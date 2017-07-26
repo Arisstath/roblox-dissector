@@ -10,3 +10,5 @@ Usage:
 The `name` option is required. If you get a panic instantly after trying to start the program, also pass the `ipv4` option. It may be required for PCAP files produced by WinPcap.
 
 Yes, I promise I will improve the startup process by getting rid of the command line flags altogether. I'm also looking into adding a HTTPS traffic proxy which would be similar to Fiddler while working properly.
+
+Code for 0x8A packets exists, but not publicly due to security reasons. This may change in the future.
