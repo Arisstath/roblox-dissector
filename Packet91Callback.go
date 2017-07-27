@@ -11,7 +11,7 @@ func ShowPacket91(data []byte, packet gopacket.Packet, context *CommunicationCon
 	labelForEnumSchema := NewQLabelF("Enum schema (%d entries):", len(MainLayer.EnumSchema))
 	layerLayout.AddWidget(labelForEnumSchema, 0, 0)
 
-	enumSchemaList := widgets.NewQTreeView(nil)
+	enumSchemaList := widgets.NewQTreeWidget(nil)
 	standardModel := NewProperSortModel(nil)
 	standardModel.SetHorizontalHeaderLabels([]string{"ID", "Name", "Size"})
 	
@@ -34,7 +34,7 @@ func ShowPacket91(data []byte, packet gopacket.Packet, context *CommunicationCon
 
 	labelForInstanceSchema := NewQLabelF("Instance schema (%d entries):", len(MainLayer.InstanceSchema))
 	layerLayout.AddWidget(labelForInstanceSchema, 0, 0)
-	instanceSchemaList := widgets.NewQTreeView(nil)
+	instanceSchemaList := widgets.NewQTreeWidget(nil)
 	instanceModel := NewProperSortModel(nil)
 	instanceModel.SetHorizontalHeaderLabels([]string{"Name", "Common ID", "Type", "Type from dictionary", "Is creatable?", "Unknown bool 1", "Is enum?", "Size in bits"})
 	instanceSchemaRootNode := instanceModel.InvisibleRootItem()

@@ -4,24 +4,15 @@ import "github.com/therecipe/qt/gui"
 import "strconv"
 import "strings"
 
-type ProperSortModel struct {
-	core.QSortFilterProxyModel
-	source *gui.QStandardItemModel
+type PropertSortItem struct {
+	gui.QStandardItem
 }
 
-func NewProperSortModel(parent core.QObject_ITF) *ProperSortModel {
-	source := gui.NewQStandardItemModel(nil)
-	new := &ProperSortModel{
-		*core.NewQSortFilterProxyModel(parent),
-		source,
-	}
-	new.SetSourceModel(source)
-	new.SetDynamicSortFilter(true)
-	new.SetSortRole(0)
-	return new
+func NewProperSortItem(content string) *PropertSortItem {
+	return &PropertSortItem{gui.NewQStandardItem2(content)}
 }
 
-func (m *ProperSortModel) LessThan(source_left core.QModelIndex_ITF, source_right core.QModelIndex_ITF) bool {
+func (m *ProperSortItem) LessThan(source_left core.QModelIndex_ITF, source_right core.QModelIndex_ITF) bool {
 	println("Proper sorting called")
 	leftData := m.source.Data(source_left, 0)
 	rightData := m.source.Data(source_right, 0)

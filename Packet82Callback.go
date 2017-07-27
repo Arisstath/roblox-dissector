@@ -11,7 +11,7 @@ func ShowPacket82(data []byte, packet gopacket.Packet, context *CommunicationCon
 	labelForDescriptorView := NewQLabelF("Dictionaries:")
 	layerLayout.AddWidget(labelForDescriptorView, 0, 0)
 
-	descriptorView := widgets.NewQTreeView(nil)
+	descriptorView := widgets.NewQTreeWidget(nil)
 	standardModel := NewProperSortModel(nil)
 	standardModel.SetHorizontalHeaderLabels([]string{"Name", "IDx", "Unknown int"})
 

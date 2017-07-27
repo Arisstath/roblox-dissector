@@ -12,7 +12,7 @@ var window *widgets.QMainWindow
 type PacketList map[uint32]([]*gui.QStandardItem)
 type SelectionHandlerList map[int](func ())
 type MyPacketListView struct {
-	*widgets.QTreeView
+	*widgets.QTreeWidget
 	ServerPackets PacketList
 	ClientPackets PacketList
 	CurrentACKSelection []*gui.QStandardItem
@@ -23,7 +23,7 @@ type MyPacketListView struct {
 
 func NewMyPacketListView(parent widgets.QWidget_ITF) *MyPacketListView {
 	new := &MyPacketListView{
-		widgets.NewQTreeView(parent),
+		widgets.NewQTreeWidget(parent),
 		make(PacketList),
 		make(PacketList),
 		nil,
@@ -39,7 +39,7 @@ func NewQLabelF(format string, args ...interface{}) *widgets.QLabel {
 }
 
 func NewQStandardItemF(format string, args ...interface{}) *gui.QStandardItem {
-	return gui.NewQStandardItem2(fmt.Sprintf(format, args...))
+	return NewProperSortItem(fmt.Sprintf(format, args...))
 }
 
 func NewBasicPacketViewer(data []byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) *widgets.QVBoxLayout {
