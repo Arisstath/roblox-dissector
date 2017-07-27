@@ -33,6 +33,8 @@ type CommunicationContext struct {
 	PropertyDescriptor map[uint32]string
 	EventDescriptor map[uint32]string
 	TypeDescriptor map[uint32]string
+	EnumSchema []*EnumSchemaItem
+	InstanceSchema []*InstanceSchemaItem
 	ReplicatorStringCache [0x80][]byte
 }
 

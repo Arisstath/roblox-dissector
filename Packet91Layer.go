@@ -70,6 +70,8 @@ func DecodePacket91Layer(data []byte, context *CommunicationContext, packet gopa
 		layer.EnumSchema[i] = &EnumSchemaItem{string(name), bitSize}
 	}
 
+	context.EnumSchema = layer.EnumSchema
+
 	thisLen, err = decompressedStream.ReadUint32BE()
 	if err != nil {
 		return layer, err
@@ -171,6 +173,7 @@ func DecodePacket91Layer(data []byte, context *CommunicationContext, packet gopa
 		}
 		layer.InstanceSchema[i] = thisInstance
 	}
+	context.InstanceSchema = layer.InstanceSchema
 
 	return layer, nil
 }

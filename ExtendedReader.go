@@ -3,6 +3,9 @@ import "github.com/dgryski/go-bitstream"
 import "encoding/binary"
 import "errors"
 import "net"
+import "math"
+import "bytes"
+import "compress/gzip"
 //import "fmt"
 
 var englishTree *HuffmanEncodingTree
@@ -177,6 +180,11 @@ func (b *ExtendedReader) ReadLengthAndString() (string, error) {
 	return string(ret), err
 }
 
+func (b *ExtendedReader) ReadASCII(length int) (string, error) {
+	res, err := b.ReadString(length)
+	return string(res), err
+}
+
 func (b *ExtendedReader) ReadAddress() (*net.UDPAddr, error) {
 	version, err := b.ReadUint8()
 	if err != nil {
@@ -196,4 +204,44 @@ func (b *ExtendedReader) ReadAddress() (*net.UDPAddr, error) {
 	}
 
 	return &net.UDPAddr{address, int(port), ""}, nil
+}
+
+func (b *ExtendedReader) ReadFloat32BE() (float32, error) {
+	intf, err := b.ReadUint32BE()
+	if err != nil {
+		return 0.0, err
+	}
+	return math.Float32frombits(intf), err
+}
+
+func (b *ExtendedReader) RegionToGZipStream() (*ExtendedReader, error) {
+	compressedLen, err := b.ReadUint32BE()
+	if err != nil {
+		return nil, err
+	}
+
+	compressed := make([]byte, compressedLen)
+	err = b.Bytes(compressed, int(compressedLen))
+	if err != nil {
+		return nil, err
+	}
+
+	gzipStream, err := gzip.NewReader(bytes.NewReader(compressed))
+	if err != nil {
+		return nil, err
+	}
+
+	return &ExtendedReader{bitstream.NewReader(gzipStream)}, err
+}
+
+func (b *ExtendedReader) ReadJoinReferent() (string, error) {
+	stringLen, err := b.ReadUint8()
+	if err != nil {
+		return "", err
+	}
+	if stringLen == 0xFF {
+		return "NULL", nil
+	} else {
+		return b.ReadASCII(int(stringLen))
+	}
 }
