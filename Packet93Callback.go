@@ -2,7 +2,6 @@ package main
 import "github.com/google/gopacket"
 import "github.com/therecipe/qt/widgets"
 import "github.com/therecipe/qt/gui"
-import "strconv"
 
 func ShowPacket93(data []byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
 	MainLayer := layers.Main.(Packet93Layer)
@@ -23,8 +22,8 @@ func ShowPacket93(data []byte, packet gopacket.Packet, context *CommunicationCon
 
 	paramListRootNode := standardModel.InvisibleRootItem()
 	for Name, Value := range MainLayer.Params {
-		nameItem := gui.NewQStandardItem2(Name)
-		valueItem := gui.NewQStandardItem2(strconv.FormatBool(Value))
+		nameItem := NewQStandardItemF(Name)
+		valueItem := NewQStandardItemF("%v", Value)
 		nameItem.SetEditable(false)
 		valueItem.SetEditable(false)
 		paramListRootNode.AppendRow([]*gui.QStandardItem{nameItem, valueItem})

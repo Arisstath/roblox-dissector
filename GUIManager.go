@@ -4,7 +4,6 @@ import "github.com/therecipe/qt/gui"
 import "github.com/therecipe/qt/core"
 import "github.com/google/gopacket"
 import "os"
-import "strconv"
 import "fmt"
 import "encoding/hex"
 
@@ -37,6 +36,10 @@ func NewMyPacketListView(parent widgets.QWidget_ITF) *MyPacketListView {
 
 func NewQLabelF(format string, args ...interface{}) *widgets.QLabel {
 	return widgets.NewQLabel2(fmt.Sprintf(format, args...), nil, 0)
+}
+
+func NewQStandardItemF(format string, args ...interface{}) *gui.QStandardItem {
+	return gui.NewQStandardItem2(fmt.Sprintf(format, args...))
 }
 
 func NewBasicPacketViewer(data []byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) *widgets.QVBoxLayout {
@@ -161,8 +164,8 @@ func (m *MyPacketListView) Add(data []byte, packet gopacket.Packet, context *Com
 	if packetName == "" {
 		packetName = fmt.Sprintf("0x%02X", data[0])
 	}
-	indexItem := gui.NewQStandardItem2(strconv.Itoa(int(m.PacketIndex)))
-	packetType := gui.NewQStandardItem2(packetName)
+	indexItem := NewQStandardItemF("%d", m.PacketIndex)
+	packetType := NewQStandardItemF(packetName)
 	indexItem.SetEditable(false)
 	packetType.SetEditable(false)
 
@@ -172,25 +175,26 @@ func (m *MyPacketListView) Add(data []byte, packet gopacket.Packet, context *Com
 
 	var direction *gui.QStandardItem
 	if isClient {
-		direction = gui.NewQStandardItem2("Client -> Server")
+		direction = NewQStandardItemF("Client -> Server")
 	} else if isServer {
-		direction = gui.NewQStandardItem2("Server -> Client")
+		direction = NewQStandardItemF("Server -> Client")
 	} else {
-		direction = gui.NewQStandardItem2("Unknown direction")
+		direction = NewQStandardItemF("Unknown direction")
 	}
 
 	direction.SetEditable(false)
 	rootRow = append(rootRow, direction)
 
-	length := gui.NewQStandardItem2(strconv.Itoa(len(data)))
+	length := NewQStandardItemF("%d", len(data))
 	length.SetEditable(false)
 	rootRow = append(rootRow, length)
-	datagramNumberString := strconv.Itoa(int(layers.RakNet.DatagramNumber))
+	var datagramNumber *gui.QStandardItem
 	if layers.Reliability != nil && layers.Reliability.HasSplitPacket {
 		allRakNetLayers := layers.Reliability.AllRakNetLayers
-		datagramNumberString = strconv.Itoa(int(allRakNetLayers[0].DatagramNumber)) + " - " + strconv.Itoa(int(allRakNetLayers[len(allRakNetLayers) - 1].DatagramNumber))
+		datagramNumber = NewQStandardItemF("%d - %d", allRakNetLayers[0].DatagramNumber, allRakNetLayers[len(allRakNetLayers) - 1].DatagramNumber)
+	} else {
+		datagramNumber = NewQStandardItemF("%d", layers.RakNet.DatagramNumber)
 	}
-	datagramNumber := gui.NewQStandardItem2(datagramNumberString)
 	datagramNumber.SetEditable(false)
 	rootRow = append(rootRow, datagramNumber)
 
@@ -212,15 +216,14 @@ func (m *MyPacketListView) AddACK(ack ACKRange, packet gopacket.Packet, context 
 	isClient := SourceInterfaceFromPacket(packet) == context.GetClient()
 	isServer := SourceInterfaceFromPacket(packet) == context.GetServer()
 
-	var rangeString string
+	var packetName *gui.QStandardItem
 	if ack.Min == ack.Max {
-		rangeString = strconv.Itoa(int(ack.Min))
+		packetName = NewQStandardItemF("ACK for packet %d", ack.Min)
 	} else {
-		rangeString = strconv.Itoa(int(ack.Min)) + "-" + strconv.Itoa(int(ack.Max))
+		packetName = NewQStandardItemF("ACK for packets %d - %d", ack.Min, ack.Max)
 	}
 
-	indexItem := gui.NewQStandardItem2(strconv.Itoa(int(m.PacketIndex)))
-	packetName := gui.NewQStandardItem2("ACK for packets " + rangeString)
+	indexItem := NewQStandardItemF("%d", m.PacketIndex)
 	indexItem.SetEditable(false)
 	packetName.SetEditable(false)
 
@@ -230,11 +233,11 @@ func (m *MyPacketListView) AddACK(ack ACKRange, packet gopacket.Packet, context 
 
 	var direction *gui.QStandardItem
 	if isClient {
-		direction = gui.NewQStandardItem2("Client -> Server")
+		direction = NewQStandardItemF("Client -> Server")
 	} else if isServer {
-		direction = gui.NewQStandardItem2("Server -> Client")
+		direction = NewQStandardItemF("Server -> Client")
 	} else {
-		direction = gui.NewQStandardItem2("Unknown direction")
+		direction = NewQStandardItemF("Unknown direction")
 	}
 
 	direction.SetEditable(false)
