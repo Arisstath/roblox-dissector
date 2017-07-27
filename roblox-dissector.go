@@ -79,7 +79,7 @@ var ActivationCallbacks map[byte]ActivationCallback = map[byte]ActivationCallbac
 	0x90: ShowPacket90,
 	0x8F: ShowPacket8F,
 	0x81: ShowPacket81,
-	0x83: ShowPacket83,
+	//0x83: ShowPacket83, // Doesn't exist yet
 }
 
 func HandleSimple(layer *RakNetLayer, packet gopacket.Packet, context *CommunicationContext, packetViewer *MyPacketListView) {
