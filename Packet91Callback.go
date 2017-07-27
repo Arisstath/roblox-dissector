@@ -2,8 +2,6 @@ package main
 import "github.com/google/gopacket"
 import "github.com/therecipe/qt/widgets"
 import "github.com/therecipe/qt/gui"
-import "strconv"
-import "fmt"
 
 func ShowPacket91(data []byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
 	MainLayer := layers.Main.(Packet91Layer)
@@ -19,9 +17,9 @@ func ShowPacket91(data []byte, packet gopacket.Packet, context *CommunicationCon
 	
 	enumSchemaRootNode := standardModel.InvisibleRootItem()
 	for id, item := range MainLayer.EnumSchema {
-		idItem := gui.NewQStandardItem2(strconv.Itoa(int(id)))
-		nameItem := gui.NewQStandardItem2(item.Name)
-		sizeItem := gui.NewQStandardItem2(strconv.Itoa(int(item.BitSize)))
+		idItem := NewQStandardItemF("%d", id)
+		nameItem := NewQStandardItemF(item.Name)
+		sizeItem := NewQStandardItemF("%d", item.BitSize)
 		idItem.SetEditable(false)
 		nameItem.SetEditable(false)
 		sizeItem.SetEditable(false)
@@ -42,28 +40,27 @@ func ShowPacket91(data []byte, packet gopacket.Packet, context *CommunicationCon
 	instanceSchemaRootNode := instanceModel.InvisibleRootItem()
 
 	for _, item := range MainLayer.InstanceSchema {
-		nameItem := gui.NewQStandardItem2(item.Name)
-		commonIDItem := gui.NewQStandardItem2(strconv.Itoa(int(item.CommonID)))
-		creatableItem := gui.NewQStandardItem2(strconv.FormatBool(item.IsCreatable))
+		nameItem := NewQStandardItemF(item.Name)
+		commonIDItem := NewQStandardItemF("%d", item.CommonID)
+		creatableItem := NewQStandardItemF("%v", item.IsCreatable)
 		nameItem.SetEditable(false)
 		commonIDItem.SetEditable(false)
 		creatableItem.SetEditable(false)
 
 		instanceRow := []*gui.QStandardItem{nameItem, commonIDItem, nil, nil, creatableItem}
 
-		propertySchemaString := fmt.Sprintf("Property schema (%d entries)", len(item.PropertySchema))
-		propertySchemaItem := gui.NewQStandardItem2(propertySchemaString)
+		propertySchemaItem := NewQStandardItemF("Property schema (%d entries)", len(item.PropertySchema))
 		propertySchemaItem.SetEditable(false)
 		nameItem.AppendRow([]*gui.QStandardItem{propertySchemaItem})
 
 		for _, property := range item.PropertySchema {
-			propertyNameItem := gui.NewQStandardItem2(property.Name)
-			propertyCommonIDItem := gui.NewQStandardItem2(strconv.Itoa(int(property.CommonID)))
-			propertyTypeItem := gui.NewQStandardItem2(property.Type)
-			propertyDictionaryTypeItem := gui.NewQStandardItem2(property.DictionaryType)
-			propertyBool1Item := gui.NewQStandardItem2(strconv.FormatBool(property.Bool1))
-			propertyIsEnumItem := gui.NewQStandardItem2(strconv.FormatBool(property.IsEnum))
-			propertyBitSizeItem := gui.NewQStandardItem2(strconv.Itoa(int(property.BitSize)))
+			propertyNameItem := NewQStandardItemF(property.Name)
+			propertyCommonIDItem := NewQStandardItemF("%d", property.CommonID)
+			propertyTypeItem := NewQStandardItemF(property.Type)
+			propertyDictionaryTypeItem := NewQStandardItemF(property.DictionaryType)
+			propertyBool1Item := NewQStandardItemF("%v", property.Bool1)
+			propertyIsEnumItem := NewQStandardItemF("%v", property.IsEnum)
+			propertyBitSizeItem := NewQStandardItemF("%d", property.BitSize)
 
 			propertyNameItem.SetEditable(false)
 			propertyCommonIDItem.SetEditable(false)
@@ -77,23 +74,21 @@ func ShowPacket91(data []byte, packet gopacket.Packet, context *CommunicationCon
 			propertySchemaItem.AppendRow(propertyRow)
 		}
 		
-		eventSchemaString := fmt.Sprintf("Event schema (%d entries)", len(item.EventSchema))
-		eventSchemaItem := gui.NewQStandardItem2(eventSchemaString)
+		eventSchemaItem := NewQStandardItemF("Event schema (%d entries)", len(item.EventSchema))
 		eventSchemaItem.SetEditable(false)
 		nameItem.AppendRow([]*gui.QStandardItem{eventSchemaItem})
 
 		for _, event := range item.EventSchema {
-			eventNameString := fmt.Sprintf("%s (%d arguments)", event.Name, len(event.ArgumentTypes))
-			eventNameItem := gui.NewQStandardItem2(eventNameString)
-			eventCommonIDItem := gui.NewQStandardItem2(strconv.Itoa(int(event.CommonID)))
+			eventNameItem := NewQStandardItemF("%s (%d arguments)", event.Name, len(event.ArgumentTypes))
+			eventCommonIDItem := NewQStandardItemF("%d", event.CommonID)
 			eventNameItem.SetEditable(false)
 			eventCommonIDItem.SetEditable(false)
 
 			eventRow := []*gui.QStandardItem{eventNameItem, eventCommonIDItem}
 
 			for _, thisArgument := range event.ArgumentTypes {
-				eventArgumentNameItem := gui.NewQStandardItem2("Event argument")
-				eventArgumentTypeItem := gui.NewQStandardItem2(thisArgument)
+				eventArgumentNameItem := NewQStandardItemF("Event argument")
+				eventArgumentTypeItem := NewQStandardItemF(thisArgument)
 				eventArgumentNameItem.SetEditable(false)
 				eventArgumentTypeItem.SetEditable(false)
 
