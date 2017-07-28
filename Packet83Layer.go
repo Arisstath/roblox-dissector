@@ -11,9 +11,8 @@ func NewPacket83Layer() Packet83Layer {
 	return Packet83Layer{}
 }
 
-func DecodePacket83Layer(data []byte, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
+func DecodePacket83Layer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
 	layer := NewPacket83Layer()
-	thisBitstream := ExtendedReader{bitstream.NewReader(bytes.NewReader(data[1:]))}
 
 	var err error
 	spawnName, err := thisBitstream.ReadHuffman()

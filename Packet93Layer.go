@@ -13,9 +13,8 @@ func NewPacket93Layer() Packet93Layer {
 	return Packet93Layer{Params: make(map[string]bool)}
 }
 
-func DecodePacket93Layer(data []byte, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
+func DecodePacket93Layer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
 	layer := NewPacket93Layer()
-	thisBitstream := ExtendedReader{bitstream.NewReader(bytes.NewReader(data[1:]))}
 
 	var err error
 	layer.UnknownBool1, err = thisBitstream.ReadBool()

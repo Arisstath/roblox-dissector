@@ -11,9 +11,8 @@ func NewPacket8FLayer() Packet8FLayer {
 	return Packet8FLayer{}
 }
 
-func DecodePacket8FLayer(data []byte, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
+func DecodePacket8FLayer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
 	layer := NewPacket8FLayer()
-	thisBitstream := ExtendedReader{bitstream.NewReader(bytes.NewReader(data[1:]))}
 
 	var err error
 	spawnName, err := thisBitstream.ReadHuffman()

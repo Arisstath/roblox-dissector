@@ -109,9 +109,8 @@ func NewReliablePacket() *ReliablePacket {
 	return &ReliablePacket{SelfData: make([]byte, 0), FinalData: make([]byte, 0), Contents: make([]byte, 0)}
 }
 
-func DecodeReliabilityLayer(data []byte, context *CommunicationContext, packet gopacket.Packet, rakNetPacket *RakNetLayer) (*ReliabilityLayer, error) {
+func DecodeReliabilityLayer(bitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet, rakNetPacket *RakNetLayer) (*ReliabilityLayer, error) {
 	layer := NewReliabilityLayer()
-	bitstream := ExtendedReader{bitstream.NewReader(bytes.NewReader(data))}
 
 	var reliability uint64
 	var err error

@@ -41,17 +41,21 @@ func NewPacket91Layer() Packet91Layer {
 	return Packet91Layer{}
 }
 
-func DecodePacket91Layer(data []byte, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
+func DecodePacket91Layer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
 	typeDescriptor := context.TypeDescriptor
 
 	layer := NewPacket91Layer()
 
-	var decompressedStream ExtendedReader
-	gzipStream, err := gzip.NewReader(bytes.NewReader(data[5:]))
+	_, err := thisBitstream.Bytes(4) // Void compressed len
 	if err != nil {
 		return layer, err
 	}
-	decompressedStream = ExtendedReader{bitstream.NewReader(gzipStream)}
+	var decompressedStream *ExtendedReader
+	gzipStream, err := gzip.NewReader(thisBitstream.GetReader())
+	if err != nil {
+		return layer, err
+	}
+	decompressedStream = &ExtendedReader{bitstream.NewReader(gzipStream)}
 	thisLen, err := decompressedStream.ReadUint32BE()
 	if err != nil {
 		return layer, err

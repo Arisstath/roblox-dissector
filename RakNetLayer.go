@@ -82,24 +82,24 @@ func NewRakNetLayer() RakNetLayer {
 	return RakNetLayer{Payload: make([]byte, 0), Contents: make([]byte, 0)}
 }
 
-func DecodeRakNetLayer(data []byte, context *CommunicationContext, packet gopacket.Packet) (RakNetLayer, error) {
+func DecodeRakNetLayer(bitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (RakNetLayer, error) {
 	layer := NewRakNetLayer()
 
-	if data[0] == 0x5 {
+	packetID := bitstream.ReadByte()
+
+	if packetID == 0x5 {
 		context.SetClient(SourceInterfaceFromPacket(packet))
 		context.SetServer(DestInterfaceFromPacket(packet))
-		layer.SimpleLayerID = data[0]
+		layer.SimpleLayerID = packetID
 		layer.Payload = data
 		layer.IsSimple = true
 		return layer, nil
-	} else if data[0] >= 0x6 && data[0] <= 0x8 {
+	} else if packetID >= 0x6 && packetID <= 0x8 {
 		layer.IsSimple = true
 		layer.Payload = data
-		layer.SimpleLayerID = data[0]
+		layer.SimpleLayerID = packetID
 		return layer, nil
 	}
-
-	bitstream := ExtendedReader{bitstream.NewReader(bytes.NewReader(data))}
 
 	var err error
 	layer.IsValid, err = bitstream.ReadBool()

@@ -11,9 +11,8 @@ func NewPacket00Layer() Packet00Layer {
 	return Packet00Layer{}
 }
 
-func DecodePacket00Layer(data []byte, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
+func DecodePacket00Layer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
 	layer := NewPacket00Layer()
-	thisBitstream := ExtendedReader{bitstream.NewReader(bytes.NewReader(data[1:]))}
 
 	var err error
 	layer.SendPingTime, err = thisBitstream.ReadUint64BE()
@@ -30,7 +29,7 @@ func NewPacket03Layer() Packet03Layer {
 	return Packet03Layer{}
 }
 
-func DecodePacket03Layer(data []byte, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
+func DecodePacket03Layer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
 	layer := NewPacket03Layer()
 	thisBitstream := ExtendedReader{bitstream.NewReader(bytes.NewReader(data[1:]))}
 

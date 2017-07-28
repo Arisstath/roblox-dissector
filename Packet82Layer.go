@@ -51,9 +51,8 @@ func LearnDictionaryHuffman(decompressedStream *ExtendedReader, ContextDescripto
 	return dictionary
 }
 
-func DecodePacket82Layer(data []byte, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
+func DecodePacket82Layer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
 	layer := NewPacket82Layer()
-	thisBitstream := ExtendedReader{bitstream.NewReader(bytes.NewReader(data[:5]))}
 	_, _ = thisBitstream.ReadUint8() // Skip ID
 	_, _ = thisBitstream.ReadUint32BE() // Skip compressed len
 
