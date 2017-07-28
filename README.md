@@ -16,7 +16,7 @@ If you want to capture traffic to localhost on Windows, you must use RawCap and 
 tail -f -c +1 -f /path/to/rawcap_output.pcap | /path/to/roblox-dissector.exe -name -
 ```
 
-When using a live capture, the `name` option should not be passed. Instead, pass an interface name to `live`. To find interface names on Windows, follow this [http://shad0wbq.blogspot.com/2006/06/windump-finding-pcap-device-mapping.html](guide).
+When using a live capture, the `name` option should not be passed. Instead, pass an interface name to `live`. To find interface names on Windows, follow this [guide](http://shad0wbq.blogspot.com/2006/06/windump-finding-pcap-device-mapping.html).
 
 If you want to capture all traffic on your local network, including other devices, pass the `promisc` flag.
 
