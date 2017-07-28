@@ -4,6 +4,7 @@ import "github.com/google/gopacket"
 import "bytes"
 //import "encoding/hex"
 import "fmt"
+import "errors"
 
 type Packet83_03 struct {
 	MarkerId uint32
@@ -40,10 +41,12 @@ type Packet83_11 struct {
 
 type ReplicationInstance struct {
 	Referent string
+	ReferentInt1 uint32
 	Int1 uint32
 	ClassName string
 	Bool1 bool
 	Referent2 string
+	ReferentInt2 uint32
 }
 
 type Packet83_0B struct {
@@ -82,6 +85,10 @@ func DecodePacket83Layer(data []byte, context *CommunicationContext, packet gopa
 	if err != nil {
 		return layer, err
 	}
+
+	//if len(data) > 0x100 {
+	//	println(hex.Dump(data[:0x100]))
+	//}
 
 	for packetType != 0 {
 		if packetType == 3 {
@@ -206,7 +213,7 @@ func DecodePacket83Layer(data []byte, context *CommunicationContext, packet gopa
 				return layer, err
 			}
 			fmt.Println("receive stats: %#v", inner)
-		} else if packetType == 0xB {
+		} else if packetType == 0x0B {
 			thisBitstream.Align()
 			arrayLen, err := thisBitstream.ReadUint32BE()
 			if err != nil {
@@ -222,7 +229,7 @@ func DecodePacket83Layer(data []byte, context *CommunicationContext, packet gopa
 			var i uint32
 			for i = 0; i < arrayLen; i++ {
 				thisInstance := &ReplicationInstance{}
-				thisInstance.Referent, err = gzipStream.ReadJoinReferent()
+				thisInstance.Referent, thisInstance.ReferentInt1, err = gzipStream.ReadJoinReferent()
 				if err != nil {
 					return layer, err
 				}
@@ -234,6 +241,9 @@ func DecodePacket83Layer(data []byte, context *CommunicationContext, packet gopa
 				realIDx := (classIDx & 1 << 8) | classIDx >> 1
 				println("Our IDx: ", realIDx)
 				thisInstance.ClassName = context.ClassDescriptor[uint32(realIDx)]
+				if int(realIDx) > int(len(context.InstanceSchema)) {
+					return layer, errors.New(fmt.Sprintf("idx %d is higher than %d", realIDx, len(context.InstanceSchema)))
+				}
 
 				thisPropertySchema := context.InstanceSchema[realIDx].PropertySchema
 
@@ -260,17 +270,41 @@ func DecodePacket83Layer(data []byte, context *CommunicationContext, packet gopa
 						if isDefault {
 							println("Read", property.Name, "1 bit: default")
 						} else {
-							if property.Type == "string" {
+							if property.Type == "string" || property.Type == "BinaryString" || property.Type == "ProtectedString" {
 								stringLen, err := gzipStream.ReadUint32BE()
 								if err != nil {
 									return layer, err
 								}
-								if stringLen > 0x200 {
+								if stringLen > 0x1E84800 {
 									println("Sanity check: string len too high", stringLen)
 									break
 								}
 								result, err := gzipStream.ReadASCII(int(stringLen))
 								println("Read", property.Name, result)
+							} else if property.Type == "int" {
+								val, err := gzipStream.ReadUint32BE()
+								if err != nil {
+									return layer, err
+								}
+								println("Read", property.Name, val)
+							} else if property.Type == "float" {
+								val, err := gzipStream.ReadFloat32BE()
+								if err != nil {
+									return layer, err
+								}
+								println("Read", property.Name, val)
+							} else if property.Type == "double" {
+								val, err := gzipStream.ReadFloat64BE()
+								if err != nil {
+									return layer, err
+								}
+								println("Read", property.Name, val)
+							} else if property.IsEnum {
+								val, err := gzipStream.Bits(int(property.BitSize))
+								if err != nil {
+									return layer, err
+								}
+								println("Read", property.Name, val)
 							} else {
 								println("Read", property.Name, "x bit")
 								break
@@ -278,15 +312,16 @@ func DecodePacket83Layer(data []byte, context *CommunicationContext, packet gopa
 						}
 					}
 				}
-				thisInstance.Referent2, err = gzipStream.ReadJoinReferent()
+				thisInstance.Referent2, thisInstance.ReferentInt2, err = gzipStream.ReadJoinReferent()
 				if err != nil {
 					return layer, err
 				}
 
-				println("Read instance", thisInstance.Referent, ",", thisInstance.Int1, ",", thisInstance.ClassName, ",", thisInstance.Referent2)
+				println("Read instance", thisInstance.Referent, ",", thisInstance.ReferentInt1, ",",thisInstance.Int1, ",", thisInstance.ClassName, ",", thisInstance.Referent2, ",", thisInstance.ReferentInt2)
 				break
 
 				gzipStream.Align()
+				panic(errors.New("DONE"))
 			}
 		} else {
 			println("Decode packet of ID", packetType)

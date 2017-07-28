@@ -214,6 +214,14 @@ func (b *ExtendedReader) ReadFloat32BE() (float32, error) {
 	return math.Float32frombits(intf), err
 }
 
+func (b *ExtendedReader) ReadFloat64BE() (float64, error) {
+	intf, err := b.Bits(64)
+	if err != nil {
+		return 0.0, err
+	}
+	return math.Float64frombits(intf), err
+}
+
 func (b *ExtendedReader) RegionToGZipStream() (*ExtendedReader, error) {
 	compressedLen, err := b.ReadUint32BE()
 	if err != nil {
@@ -234,14 +242,23 @@ func (b *ExtendedReader) RegionToGZipStream() (*ExtendedReader, error) {
 	return &ExtendedReader{bitstream.NewReader(gzipStream)}, err
 }
 
-func (b *ExtendedReader) ReadJoinReferent() (string, error) {
+func (b *ExtendedReader) ReadJoinReferent() (string, uint32, error) {
 	stringLen, err := b.ReadUint8()
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
-	if stringLen == 0xFF {
-		return "NULL", nil
-	} else {
-		return b.ReadASCII(int(stringLen))
+	ref := "NULL"
+	if stringLen != 0xFF {
+		ref, err = b.ReadASCII(int(stringLen))
+		if err != nil {
+			return "", 0, err
+		}
 	}
+
+	intVal, err := b.ReadUint32LE()
+	if err != nil {
+		return "", 0, err
+	}
+
+	return ref, intVal, nil
 }
