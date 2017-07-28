@@ -6,6 +6,7 @@ import "io"
 
 type ReliablePacket struct {
 	IsFinal bool
+	IsFirst bool
 	Reliability uint32
 	HasSplitPacket bool
 	LengthInBits uint16
@@ -16,133 +17,150 @@ type ReliablePacket struct {
 	SplitPacketCount uint32
 	SplitPacketID uint16
 	SplitPacketIndex uint32
-	SelfData []byte
-	FinalData []byte
-	Contents []byte
 	AllRakNetLayers []*RakNetLayer
 	AllReliablePackets []*ReliablePacket
+
+	FullDataReader *ExtendedReader
+	SelfData []byte
 }
 
 type ReliabilityLayer struct {
 	Packets []*ReliablePacket
-	Contents []byte
 }
 
-type CountedReliablePacketList struct {
+type SplitPacketBuffer struct {
 	ReliablePackets []*ReliablePacket
 	RakNetPackets []*RakNetLayer
-	Count uint32
+	NextExpectedPacket uint32
+
+	DataReader *ExtendedReader
+	DataWriter *io.PipeWriter
 }
-type SplitPacketList map[string](map[uint16](*CountedReliablePacketList))
+type SplitPacketList map[string](map[uint16](*SplitPacketBuffer))
 
 var SplitPackets SplitPacketList
 
-func NewCountedReliablePacketList(packet *ReliablePacket) *CountedReliablePacketList {
+func NewSplitPacketBuffer(packet *ReliablePacket) *SplitPacketBuffer {
 	reliables := make([]*ReliablePacket, int(packet.SplitPacketCount))
 	raknets := make([]*RakNetLayer, int(packet.SplitPacketCount))
-	return &CountedReliablePacketList{reliables, raknets, 0}
+
+	list := &SplitPacketBuffer{reliables, raknets, 0, nil, nil}
+	var reader *io.PipeReader
+	reader, list.DataWriter = io.Pipe()
+	list.DataReader = &ExtendedReader{bitstream.NewReader(reader)}
+
+	return list
 }
-func (list *CountedReliablePacketList) AddPacket(packet *ReliablePacket, rakNetPacket *RakNetLayer, index uint32) uint32 {// Packets may be duplicated. At least I think so. Thanks UDP
-	if list.ReliablePackets[index] == nil {
-		list.ReliablePackets[index] = packet
-		list.Count++
-	}
+func (list *SplitPacketBuffer) AddPacket(packet *ReliablePacket, rakNetPacket *RakNetLayer, index uint32) uint32 {
+	// Packets may be duplicated. At least I think so. Thanks UDP
+	list.ReliablePackets[index] = packet
 	list.RakNetPackets[index] = rakNetPacket
-	return list.Count
+
+	return list.NextExpectedPacket
 }
 
-func AddSplitPacket(source string, packet *ReliablePacket, rakNetPacket *RakNetLayer) (bool, []*ReliablePacket, []*RakNetLayer) {
+func AddSplitPacket(source string, packet *ReliablePacket, rakNetPacket *RakNetLayer) *SplitPacketBuffer {
 	splitPacketId := packet.SplitPacketID
 	splitPacketCount := packet.SplitPacketCount
 	splitPacketIndex := packet.SplitPacketIndex
 
-	var newCount uint32
+	var expectedPacket uint32
 	if SplitPackets == nil {
-		var currentList = NewCountedReliablePacketList(packet)
-		newCount = currentList.AddPacket(packet, rakNetPacket, splitPacketIndex)
+		var currentList = NewSplitPacketBuffer(packet)
+		expectedPacket = currentList.AddPacket(packet, rakNetPacket, splitPacketIndex)
 
-		SplitPackets = SplitPacketList{source: map[uint16]*CountedReliablePacketList{splitPacketId: currentList}}
+		SplitPackets = SplitPacketList{source: map[uint16]*SplitPacketBuffer{splitPacketId: currentList}}
 	} else if SplitPackets[source] == nil {
-		var currentList = NewCountedReliablePacketList(packet)
-		newCount = currentList.AddPacket(packet, rakNetPacket, splitPacketIndex)
+		var currentList = NewSplitPacketBuffer(packet)
+		expectedPacket = currentList.AddPacket(packet, rakNetPacket, splitPacketIndex)
 
-		SplitPackets[source] = map[uint16]*CountedReliablePacketList{splitPacketId: currentList}
+		SplitPackets[source] = map[uint16]*SplitPacketBuffer{splitPacketId: currentList}
 	} else if SplitPackets[source][splitPacketId] == nil {
-		var currentList = NewCountedReliablePacketList(packet)
-		newCount = currentList.AddPacket(packet, rakNetPacket, splitPacketIndex)
+		var currentList = NewSplitPacketBuffer(packet)
+		expectedPacket = currentList.AddPacket(packet, rakNetPacket, splitPacketIndex)
 
 		SplitPackets[source][splitPacketId] = currentList
 	} else {
-		newCount = SplitPackets[source][splitPacketId].AddPacket(packet, rakNetPacket, splitPacketIndex)
+		expectedPacket = SplitPackets[source][splitPacketId].AddPacket(packet, rakNetPacket, splitPacketIndex)
 	}
 
-	return newCount == splitPacketCount, SplitPackets[source][splitPacketId].ReliablePackets, SplitPackets[source][splitPacketId].RakNetPackets
+	return SplitPackets[source][splitPacketId]
 }
 
-func HandleSplitPacket(reliablePacket *ReliablePacket, rakNetPacket *RakNetLayer, context *CommunicationContext, packet gopacket.Packet) {
+func (reliablePacket *ReliablePacket) HandleSplitPacket(rakNetPacket *RakNetLayer, context *CommunicationContext, packet gopacket.Packet) error {
 	source := SourceInterfaceFromPacket(packet)
-	HasEnough, AllPackets, AllRakNetPackets := AddSplitPacket(source, reliablePacket, rakNetPacket)
-	if HasEnough {
-		reliablePacket.IsFinal = true
-		reliablePacket.AllReliablePackets = AllPackets
-		reliablePacket.AllRakNetLayers = AllRakNetPackets
-		var totalLength uint32
+	packetBuffer := AddSplitPacket(source, reliablePacket, rakNetPacket)
+	reliablePacket.AllReliablePackets = packetBuffer.ReliablePackets
+	reliablePacket.AllRakNetLayers = packetBuffer.RakNetPackets
+	expectedPacket := packetBuffer.NextExpectedPacket
 
-		var i uint32
-		for i = 0; i < reliablePacket.SplitPacketCount; i++ {
-			currentPacket := SplitPackets[source][reliablePacket.SplitPacketID].ReliablePackets[i]
-			totalLength += uint32((currentPacket.LengthInBits + 7)/8)
-		}
+	reliablePacket.FullDataReader = packetBuffer.DataReader
 
-		finalData := make([]byte, 0, totalLength)
-		for i = 0; i < reliablePacket.SplitPacketCount; i++ {
-			finalData = append(finalData, SplitPackets[source][reliablePacket.SplitPacketID].ReliablePackets[i].SelfData...)
-		}
-		reliablePacket.FinalData = finalData
+	if expectedPacket == 0 {
+		reliablePacket.IsFirst = true
 	}
+
+	for len(packetBuffer.ReliablePackets) > int(expectedPacket) && packetBuffer.ReliablePackets[expectedPacket] != nil {
+		packetBuffer.DataWriter.Write(packetBuffer.ReliablePackets[expectedPacket].SelfData)
+		packetBuffer.ReliablePackets[expectedPacket] = nil
+
+		expectedPacket++
+		packetBuffer.NextExpectedPacket = expectedPacket
+	}
+	if len(packetBuffer.ReliablePackets) == int(expectedPacket) {
+		err := packetBuffer.DataWriter.Close()
+		if err != nil {
+			return err
+		}
+		reliablePacket.IsFinal = true
+	}
+	return nil
 }
 
 func NewReliabilityLayer() *ReliabilityLayer {
-	return &ReliabilityLayer{Packets: make([]*ReliablePacket, 0), Contents: make([]byte, 0)}
+	return &ReliabilityLayer{Packets: make([]*ReliablePacket, 0)}
 }
 func NewReliablePacket() *ReliablePacket {
-	return &ReliablePacket{SelfData: make([]byte, 0), FinalData: make([]byte, 0), Contents: make([]byte, 0)}
+	return &ReliablePacket{SelfData: make([]byte, 0)}
 }
 
-func DecodeReliabilityLayer(bitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet, rakNetPacket *RakNetLayer) (*ReliabilityLayer, error) {
+func DecodeReliabilityLayer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet, rakNetPacket *RakNetLayer) (*ReliabilityLayer, error) {
 	layer := NewReliabilityLayer()
 
 	var reliability uint64
 	var err error
-	for reliability, err = bitstream.Bits(3); err == nil; reliability, err = bitstream.Bits(3) {
+	for reliability, err = thisBitstream.Bits(3); err == nil; reliability, err = thisBitstream.Bits(3) {
 		reliablePacket := NewReliablePacket()
 		reliablePacket.Reliability = uint32(reliability)
-		reliablePacket.HasSplitPacket, _ = bitstream.ReadBool()
-		bitstream.Align()
+		reliablePacket.HasSplitPacket, _ = thisBitstream.ReadBool()
+		thisBitstream.Align()
 
-		reliablePacket.LengthInBits, _ = bitstream.ReadUint16BE()
+		reliablePacket.LengthInBits, _ = thisBitstream.ReadUint16BE()
 		if reliability >= 2 && reliability <= 4 {
-			reliablePacket.ReliableMessageNumber, _ = bitstream.ReadUint24LE()
+			reliablePacket.ReliableMessageNumber, _ = thisBitstream.ReadUint24LE()
 		}
 		if reliability == 1 || reliability == 4 {
-			reliablePacket.SequencingIndex, _ = bitstream.ReadUint24LE()
+			reliablePacket.SequencingIndex, _ = thisBitstream.ReadUint24LE()
 		}
 		if reliability == 1 || reliability == 3 || reliability == 4 || reliability == 7 {
-			reliablePacket.OrderingIndex, _ = bitstream.ReadUint24LE()
-			reliablePacket.OrderingChannel, _ = bitstream.ReadUint8()
+			reliablePacket.OrderingIndex, _ = thisBitstream.ReadUint24LE()
+			reliablePacket.OrderingChannel, _ = thisBitstream.ReadUint8()
 		}
 		if reliablePacket.HasSplitPacket {
-			reliablePacket.SplitPacketCount, _ = bitstream.ReadUint32BE()
-			reliablePacket.SplitPacketID, _ = bitstream.ReadUint16BE()
-			reliablePacket.SplitPacketIndex, _ = bitstream.ReadUint32BE()
+			reliablePacket.SplitPacketCount, _ = thisBitstream.ReadUint32BE()
+			reliablePacket.SplitPacketID, _ = thisBitstream.ReadUint16BE()
+			reliablePacket.SplitPacketIndex, _ = thisBitstream.ReadUint32BE()
 		}
-		reliablePacket.SelfData, _ = bitstream.ReadString(int((reliablePacket.LengthInBits + 7)/8))
+		reliablePacket.SelfData, _ = thisBitstream.ReadString(int((reliablePacket.LengthInBits + 7)/8))
 
 		if reliablePacket.HasSplitPacket {
-			HandleSplitPacket(reliablePacket, rakNetPacket, context, packet)
+			err = reliablePacket.HandleSplitPacket(rakNetPacket, context, packet)
+			if err != nil {
+				return layer, err
+			}
 		} else {
 			reliablePacket.SplitPacketCount = 1
-			reliablePacket.FinalData = reliablePacket.SelfData
+			reliablePacket.FullDataReader = &ExtendedReader{bitstream.NewReader(bytes.NewReader(reliablePacket.SelfData))}
 			reliablePacket.IsFinal = true
 			reliablePacket.AllReliablePackets = []*ReliablePacket{reliablePacket}
 			reliablePacket.AllRakNetLayers = []*RakNetLayer{rakNetPacket}

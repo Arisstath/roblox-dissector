@@ -1,6 +1,4 @@
 package main
-import "bytes"
-import "github.com/dgryski/go-bitstream"
 import "github.com/google/gopacket"
 import "github.com/google/gopacket/layers"
 import "strconv"
@@ -11,8 +9,7 @@ type ACKRange struct {
 }
 
 type RakNetLayer struct {
-	Contents []byte
-	Payload []byte
+	Payload *ExtendedReader
 	IsSimple bool
 	SimpleLayerID uint8
 	IsValid bool
@@ -78,30 +75,32 @@ func PacketFromServer(packet gopacket.Packet, c *CommunicationContext) bool {
 	return SourceInterfaceFromPacket(packet) == c.Server
 }
 
-func NewRakNetLayer() RakNetLayer {
-	return RakNetLayer{Payload: make([]byte, 0), Contents: make([]byte, 0)}
+func NewRakNetLayer() *RakNetLayer {
+	return &RakNetLayer{}
 }
 
-func DecodeRakNetLayer(bitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (RakNetLayer, error) {
+func DecodeRakNetLayer(bitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (*RakNetLayer, error) {
 	layer := NewRakNetLayer()
 
-	packetID := bitstream.ReadByte()
+	packetID, err := bitstream.ReadByte()
+	if err != nil {
+		return layer, err
+	}
 
 	if packetID == 0x5 {
 		context.SetClient(SourceInterfaceFromPacket(packet))
 		context.SetServer(DestInterfaceFromPacket(packet))
 		layer.SimpleLayerID = packetID
-		layer.Payload = data
+		layer.Payload = bitstream
 		layer.IsSimple = true
 		return layer, nil
 	} else if packetID >= 0x6 && packetID <= 0x8 {
 		layer.IsSimple = true
-		layer.Payload = data
+		layer.Payload = bitstream
 		layer.SimpleLayerID = packetID
 		return layer, nil
 	}
 
-	var err error
 	layer.IsValid, err = bitstream.ReadBool()
 	if !layer.IsValid {
 		return layer, nil
@@ -141,8 +140,7 @@ func DecodeRakNetLayer(bitstream *ExtendedReader, context *CommunicationContext,
 		bitstream.Align()
 
 		layer.DatagramNumber, _ = bitstream.ReadUint24LE()
-		layer.Contents = data[:4]
-		layer.Payload = data[4:]
+		layer.Payload = bitstream
 		return layer, nil
 	}
 }

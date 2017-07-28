@@ -1,7 +1,5 @@
 package main
 import "github.com/google/gopacket"
-import "github.com/dgryski/go-bitstream"
-import "bytes"
 import "net"
 
 type Packet05Layer struct {
@@ -158,7 +156,7 @@ func DecodePacket09Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 	if err != nil {
 		return layer, err
 	}
-	layer.Password, err = thisBitstream.ReadString(len(data) - 1 - 8 - 8 - 1)
+	//layer.Password, err = thisBitstream.ReadString(len(data) - 1 - 8 - 8 - 1)
 	return layer, err
 }
 

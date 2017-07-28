@@ -1,8 +1,7 @@
 package main
-import "github.com/dgryski/go-bitstream"
 import "github.com/google/gopacket"
-import "bytes"
 import "compress/gzip"
+import "github.com/dgryski/go-bitstream"
 
 type EnumSchemaItem struct {
 	Name string
@@ -46,7 +45,7 @@ func DecodePacket91Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 
 	layer := NewPacket91Layer()
 
-	_, err := thisBitstream.Bytes(4) // Void compressed len
+	_, err := thisBitstream.Bits(32) // Void compressed len
 	if err != nil {
 		return layer, err
 	}

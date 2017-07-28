@@ -1,7 +1,5 @@
 package main
 import "github.com/google/gopacket"
-import "github.com/dgryski/go-bitstream"
-import "bytes"
 
 type Packet93Layer struct {
 	UnknownBool1 bool

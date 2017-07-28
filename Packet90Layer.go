@@ -1,7 +1,5 @@
 package main
-import "github.com/dgryski/go-bitstream"
 import "github.com/google/gopacket"
-import "bytes"
 
 type Packet90Layer struct {
 	SchemaVersion uint32
