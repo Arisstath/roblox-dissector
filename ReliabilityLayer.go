@@ -51,37 +51,33 @@ func NewSplitPacketBuffer(packet *ReliablePacket) *SplitPacketBuffer {
 
 	return list
 }
-func (list *SplitPacketBuffer) AddPacket(packet *ReliablePacket, rakNetPacket *RakNetLayer, index uint32) uint32 {
+func (list *SplitPacketBuffer) AddPacket(packet *ReliablePacket, rakNetPacket *RakNetLayer, index uint32)  {
 	// Packets may be duplicated. At least I think so. Thanks UDP
 	list.ReliablePackets[index] = packet
 	list.RakNetPackets[index] = rakNetPacket
-
-	return list.NextExpectedPacket
 }
 
 func AddSplitPacket(source string, packet *ReliablePacket, rakNetPacket *RakNetLayer) *SplitPacketBuffer {
 	splitPacketId := packet.SplitPacketID
-	splitPacketCount := packet.SplitPacketCount
 	splitPacketIndex := packet.SplitPacketIndex
 
-	var expectedPacket uint32
 	if SplitPackets == nil {
 		var currentList = NewSplitPacketBuffer(packet)
-		expectedPacket = currentList.AddPacket(packet, rakNetPacket, splitPacketIndex)
+		currentList.AddPacket(packet, rakNetPacket, splitPacketIndex)
 
 		SplitPackets = SplitPacketList{source: map[uint16]*SplitPacketBuffer{splitPacketId: currentList}}
 	} else if SplitPackets[source] == nil {
 		var currentList = NewSplitPacketBuffer(packet)
-		expectedPacket = currentList.AddPacket(packet, rakNetPacket, splitPacketIndex)
+		currentList.AddPacket(packet, rakNetPacket, splitPacketIndex)
 
 		SplitPackets[source] = map[uint16]*SplitPacketBuffer{splitPacketId: currentList}
 	} else if SplitPackets[source][splitPacketId] == nil {
 		var currentList = NewSplitPacketBuffer(packet)
-		expectedPacket = currentList.AddPacket(packet, rakNetPacket, splitPacketIndex)
+		currentList.AddPacket(packet, rakNetPacket, splitPacketIndex)
 
 		SplitPackets[source][splitPacketId] = currentList
 	} else {
-		expectedPacket = SplitPackets[source][splitPacketId].AddPacket(packet, rakNetPacket, splitPacketIndex)
+		SplitPackets[source][splitPacketId].AddPacket(packet, rakNetPacket, splitPacketIndex)
 	}
 
 	return SplitPackets[source][splitPacketId]
