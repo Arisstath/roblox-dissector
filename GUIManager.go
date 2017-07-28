@@ -5,6 +5,7 @@ import "github.com/therecipe/qt/core"
 import "github.com/google/gopacket"
 import "os"
 import "fmt"
+import "strconv"
 import "encoding/hex"
 
 var window *widgets.QMainWindow
@@ -12,7 +13,7 @@ var window *widgets.QMainWindow
 type PacketList map[uint32]([]*gui.QStandardItem)
 type SelectionHandlerList map[int](func ())
 type MyPacketListView struct {
-	*widgets.QTreeWidget
+	*widgets.QTreeView
 	ServerPackets PacketList
 	ClientPackets PacketList
 	CurrentACKSelection []*gui.QStandardItem
@@ -23,7 +24,7 @@ type MyPacketListView struct {
 
 func NewMyPacketListView(parent widgets.QWidget_ITF) *MyPacketListView {
 	new := &MyPacketListView{
-		widgets.NewQTreeWidget(parent),
+		widgets.NewQTreeView(parent),
 		make(PacketList),
 		make(PacketList),
 		nil,
@@ -39,7 +40,14 @@ func NewQLabelF(format string, args ...interface{}) *widgets.QLabel {
 }
 
 func NewQStandardItemF(format string, args ...interface{}) *gui.QStandardItem {
-	return NewProperSortItem(fmt.Sprintf(format, args...))
+	if format == "%d" {
+
+		ret := gui.NewQStandardItem()
+		i, _ := strconv.Atoi(fmt.Sprintf(format, args...)) // hack
+		ret.SetData(core.NewQVariant7(i), 0)
+		return ret
+	}
+	return gui.NewQStandardItem2(fmt.Sprintf(format, args...))
 }
 
 func NewBasicPacketViewer(data []byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) *widgets.QVBoxLayout {
@@ -203,6 +211,8 @@ func (m *MyPacketListView) Add(data []byte, packet gopacket.Packet, context *Com
 	}
 
 	m.RootNode.AppendRow(rootRow)
+	println("Appended row")
+	m.Model().DataChanged(packetType.Index(), datagramNumber.Index(), []int{0})
 
 	m.SelectionHandlers[packetType.Row()] = func () {
 		m.ClearACKSelection()
@@ -264,7 +274,7 @@ func GUIMain(done chan bool, viewerChan chan *MyPacketListView) {
 	layout.AddWidget(packetViewer, 0, 0)
 	window.SetCentralWidget(widget)
 
-	standardModel := NewProperSortModel(nil)
+	standardModel := NewProperSortModel(packetViewer)
 	standardModel.SetHorizontalHeaderLabels([]string{"Index", "Type", "Direction", "Length in Bytes", "Datagram Numbers"})
 	packetViewer.RootNode = standardModel.InvisibleRootItem()
 	packetViewer.SetModel(standardModel)
