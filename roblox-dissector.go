@@ -4,6 +4,7 @@ import "github.com/google/gopacket/pcap"
 import "github.com/google/gopacket/layers"
 import "github.com/fatih/color"
 import "flag"
+import "fmt"
 
 type PacketLayers struct {
 	RakNet *RakNetLayer
@@ -140,9 +141,20 @@ func main() {
 	packetViewer := <- packetViewerChan
 	packetName := flag.String("name", "", "pcap filename")
 	ipv4 := flag.Bool("ipv4", false, "Use IPv4 as initial frame type")
+	live := flag.String("live", "", "Live interface to capture from")
+	promisc := flag.Bool("promisc", false, "Capture from live interface in promisc. mode")
 	flag.Parse()
 
-	if handle, err := pcap.OpenOffline(*packetName); err == nil {
+	var handle *pcap.Handle
+	var err error
+	if *live == "" {
+		fmt.Printf("Will capture from file %s\n", *packetName)
+		handle, err = pcap.OpenOffline(*packetName)
+	} else {
+		fmt.Printf("Will capture from live device %s\n", *live)
+		handle, err = pcap.OpenLive(*live, 2000, *promisc, pcap.BlockForever)
+	}
+	if err == nil {
 		handle.SetBPFFilter("udp")
 		var packetSource *gopacket.PacketSource
 		if *ipv4 {
@@ -152,8 +164,13 @@ func main() {
 		}
 		context := NewCommunicationContext()
 		for packet := range packetSource.Packets() {
+			if packet.ApplicationLayer() == nil {
+				color.Red("Ignoring packet because ApplicationLayer can't be decoded")
+				continue
+			}
 			payload := packet.ApplicationLayer().Payload()
 			if len(payload) == 0 {
+				color.Red("Had 0 size payload")
 				continue
 			}
 			rakNetLayer, err := DecodeRakNetLayer(payload, context, packet)
