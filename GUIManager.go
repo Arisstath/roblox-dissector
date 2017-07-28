@@ -11,7 +11,7 @@ import "encoding/hex"
 var window *widgets.QMainWindow
 
 type PacketList map[uint32]([]*gui.QStandardItem)
-type SelectionHandlerList map[int](func ())
+type SelectionHandlerList map[uint64](func ())
 type MyPacketListView struct {
 	*widgets.QTreeView
 	ServerPackets PacketList
@@ -177,8 +177,6 @@ func (m *MyPacketListView) Add(data []byte, packet gopacket.Packet, context *Com
 	indexItem.SetEditable(false)
 	packetType.SetEditable(false)
 
-	m.PacketIndex++
-
 	rootRow := []*gui.QStandardItem{indexItem, packetType}
 
 	var direction *gui.QStandardItem
@@ -210,16 +208,15 @@ func (m *MyPacketListView) Add(data []byte, packet gopacket.Packet, context *Com
 		m.AddToPacketList(packetType, packet, context, layers)
 	}
 
-	m.RootNode.AppendRow(rootRow)
-	println("Appended row")
-	m.Model().DataChanged(packetType.Index(), datagramNumber.Index(), []int{0})
-
-	m.SelectionHandlers[packetType.Row()] = func () {
+	m.SelectionHandlers[m.PacketIndex] = func () {
 		m.ClearACKSelection()
 		if activationCallback != nil {
 			activationCallback(data, packet, context, layers)
 		}
 	}
+
+	m.RootNode.AppendRow(rootRow)
+	m.PacketIndex++
 }
 
 func (m *MyPacketListView) AddACK(ack ACKRange, packet gopacket.Packet, context *CommunicationContext, layer *RakNetLayer, activationCallback func()) {
@@ -237,8 +234,6 @@ func (m *MyPacketListView) AddACK(ack ACKRange, packet gopacket.Packet, context 
 	indexItem.SetEditable(false)
 	packetName.SetEditable(false)
 
-	m.PacketIndex++
-
 	rootRow := []*gui.QStandardItem{indexItem, packetName}
 
 	var direction *gui.QStandardItem
@@ -255,10 +250,12 @@ func (m *MyPacketListView) AddACK(ack ACKRange, packet gopacket.Packet, context 
 
 	m.RootNode.AppendRow(rootRow)
 
-	m.SelectionHandlers[packetName.Row()] = func () {
+	m.SelectionHandlers[m.PacketIndex] = func () {
 		m.ClearACKSelection()
 		m.HighlightByACK(ack, isServer, isClient) // intentionally the other way around
 	}
+
+	m.PacketIndex++
 }
 
 func GUIMain(done chan bool, viewerChan chan *MyPacketListView) {
@@ -284,11 +281,11 @@ func GUIMain(done chan bool, viewerChan chan *MyPacketListView) {
 		if len(selected.Indexes()) == 0 {
 			packetViewer.HandleNoneSelected()
 		}
-		realSelectedValue := selected.Indexes()[0].Row()
-		if packetViewer.SelectionHandlers[realSelectedValue] == nil {
+		realSelectedValue, _ := strconv.Atoi(standardModel.Item(selected.Indexes()[0].Row(), 0).Data(0).ToString())
+		if packetViewer.SelectionHandlers[uint64(realSelectedValue)] == nil {
 			packetViewer.HandleNoneSelected()
 		} else {
-			packetViewer.SelectionHandlers[realSelectedValue]()
+			packetViewer.SelectionHandlers[uint64(realSelectedValue)]()
 		}
 	})
 
