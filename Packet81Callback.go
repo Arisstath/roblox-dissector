@@ -3,10 +3,10 @@ import "github.com/google/gopacket"
 import "github.com/therecipe/qt/widgets"
 import "github.com/therecipe/qt/gui"
 
-func ShowPacket81(data []byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
+func ShowPacket81(packetType byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
 	MainLayer := layers.Main.(Packet81Layer)
 
-	layerLayout := NewBasicPacketViewer(data, packet, context, layers)
+	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
 	for i := 0; i < 5; i++ {
 		thisLabel := NewQLabelF("Unknown boolean %d: %v", i, MainLayer.Bools[i])
 		layerLayout.AddWidget(thisLabel, 0, 0)

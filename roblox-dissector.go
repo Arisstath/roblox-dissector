@@ -62,7 +62,7 @@ var PacketDecoders map[byte]DecoderFunc = map[byte]DecoderFunc{
 	0x83: DecodePacket83Layer,
 }
 
-type ActivationCallback func([]byte, gopacket.Packet, *CommunicationContext, *PacketLayers)
+type ActivationCallback func(byte, gopacket.Packet, *CommunicationContext, *PacketLayers)
 var ActivationCallbacks map[byte]ActivationCallback = map[byte]ActivationCallback{
 	0x05: ShowPacket05,
 	0x06: ShowPacket06,
@@ -102,7 +102,7 @@ func HandleSimple(layer *RakNetLayer, packet gopacket.Packet, context *Communica
 			return
 		}
 	}
-	packetViewer.Add(layer.Payload, packet, context, layers, ActivationCallbacks[packetType])
+	packetViewer.Add(packetType, packet, context, layers, ActivationCallbacks[packetType])
 }
 
 func HandleACK(layer *RakNetLayer, packet gopacket.Packet, context *CommunicationContext, packetViewer *MyPacketListView) {
@@ -139,7 +139,7 @@ func HandleGeneric(layer *RakNetLayer, packet gopacket.Packet, context *Communic
 						return
 					}
 				}
-				packetViewer.Add(finalData, packet, context, layers, ActivationCallbacks[packetType])
+				packetViewer.Add(packetType, packet, context, layers, ActivationCallbacks[packetType])
 			}()
 		}
 	}

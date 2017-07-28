@@ -3,10 +3,10 @@ import "github.com/google/gopacket"
 import "github.com/therecipe/qt/widgets"
 import "github.com/therecipe/qt/gui"
 
-func ShowPacket93(data []byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
+func ShowPacket93(packetType byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
 	MainLayer := layers.Main.(Packet93Layer)
 
-	layerLayout := NewBasicPacketViewer(data, packet, context, layers)
+	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
 
 	unknownBool1Label := NewQLabelF("Unknown bool 1: %v", MainLayer.UnknownBool1)
 	unknownBool2Label := NewQLabelF("Unknown bool 2: %v", MainLayer.UnknownBool2)

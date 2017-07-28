@@ -6,7 +6,6 @@ import "github.com/google/gopacket"
 import "os"
 import "fmt"
 import "strconv"
-import "encoding/hex"
 
 var window *widgets.QMainWindow
 
@@ -50,7 +49,7 @@ func NewQStandardItemF(format string, args ...interface{}) *gui.QStandardItem {
 	return gui.NewQStandardItem2(fmt.Sprintf(format, args...))
 }
 
-func NewBasicPacketViewer(data []byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) *widgets.QVBoxLayout {
+func NewBasicPacketViewer(packetType byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) *widgets.QVBoxLayout {
 	subWindow := widgets.NewQWidget(window, core.Qt__Window)
 	subWindowLayout := widgets.NewQVBoxLayout2(subWindow)
 
@@ -66,7 +65,7 @@ func NewBasicPacketViewer(data []byte, packet gopacket.Packet, context *Communic
 		direction = "Direction: Unknown"
 	}
 	directionLabel := widgets.NewQLabel2(direction, nil, 0)
-	lengthLabel := NewQLabelF("Length: %d", len(data))
+	lengthLabel := NewQLabelF("Length: %d", len(packet.ApplicationLayer().Payload()))
 	subWindowLayout.AddWidget(directionLabel, 0, 0)
 	subWindowLayout.AddWidget(lengthLabel, 0, 0)
 
@@ -82,30 +81,30 @@ func NewBasicPacketViewer(data []byte, packet gopacket.Packet, context *Communic
 
 	tabWidget := widgets.NewQTabWidget(nil)
 	subWindowLayout.AddWidget(tabWidget, 0, 0)
-	packetDataLayout := widgets.NewQVBoxLayout()
-	packetDataWidget := widgets.NewQWidget(nil, 0)
-	packetDataWidget.SetLayout(packetDataLayout)
+	//packetDataLayout := widgets.NewQVBoxLayout()
+	//packetDataWidget := widgets.NewQWidget(nil, 0)
+	//packetDataWidget.SetLayout(packetDataLayout)
 
-	monospaceFont := gui.NewQFont2("monospace", 10, 50, false)
+	//monospaceFont := gui.NewQFont2("monospace", 10, 50, false)
 
-	labelForPacketContents := widgets.NewQLabel2("Packet inner layer contents:", nil, 0)
-	packetContents := widgets.NewQPlainTextEdit2(hex.Dump(data), nil)
-	packetDataLayout.AddWidget(labelForPacketContents, 0, 0)
-	packetDataLayout.AddWidget(packetContents, 0, 0)
-	packetContents.SetReadOnly(true)
-	packetContents.Document().SetDefaultFont(monospaceFont)
-	packetContents.SetLineWrapMode(0)
+	//labelForPacketContents := widgets.NewQLabel2("Packet inner layer contents:", nil, 0)
+	//packetContents := widgets.NewQPlainTextEdit2(hex.Dump(data), nil)
+	//packetDataLayout.AddWidget(labelForPacketContents, 0, 0)
+	//packetDataLayout.AddWidget(packetContents, 0, 0)
+	//packetContents.SetReadOnly(true)
+	//packetContents.Document().SetDefaultFont(monospaceFont)
+	//packetContents.SetLineWrapMode(0)
 
-	tabWidget.AddTab(packetDataWidget, "Raw data")
+	//tabWidget.AddTab(packetDataWidget, "Raw data")
 
-	subWindow.SetWindowTitle("Packet Window: " + PacketNames[data[0]])
+	subWindow.SetWindowTitle("Packet Window: " + PacketNames[packetType])
 	subWindow.Show()
 
 	layerWidget := widgets.NewQWidget(nil, 0)
 	layerLayout := widgets.NewQVBoxLayout()
 	layerWidget.SetLayout(layerLayout)
 
-	tabWidget.AddTab(layerWidget, PacketNames[data[0]])
+	tabWidget.AddTab(layerWidget, PacketNames[packetType])
 
 	return layerLayout
 }
@@ -164,20 +163,20 @@ func (m *MyPacketListView) HandleNoneSelected() {
 	m.ClearACKSelection()
 }
 
-func (m *MyPacketListView) Add(data []byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers, activationCallback ActivationCallback) {
+func (m *MyPacketListView) Add(packetType byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers, activationCallback ActivationCallback) {
 	isClient := SourceInterfaceFromPacket(packet) == context.GetClient()
 	isServer := SourceInterfaceFromPacket(packet) == context.GetServer()
 
-	packetName := PacketNames[data[0]]
+	packetName := PacketNames[packetType]
 	if packetName == "" {
-		packetName = fmt.Sprintf("0x%02X", data[0])
+		packetName = fmt.Sprintf("0x%02X", packetType)
 	}
 	indexItem := NewQStandardItemF("%d", m.PacketIndex)
-	packetType := NewQStandardItemF(packetName)
+	packetTypeItem := NewQStandardItemF(packetName)
 	indexItem.SetEditable(false)
-	packetType.SetEditable(false)
+	packetTypeItem.SetEditable(false)
 
-	rootRow := []*gui.QStandardItem{indexItem, packetType}
+	rootRow := []*gui.QStandardItem{indexItem, packetTypeItem}
 
 	var direction *gui.QStandardItem
 	if isClient {
@@ -191,7 +190,12 @@ func (m *MyPacketListView) Add(data []byte, packet gopacket.Packet, context *Com
 	direction.SetEditable(false)
 	rootRow = append(rootRow, direction)
 
-	length := NewQStandardItemF("%d", len(data))
+	var length *gui.QStandardItem
+	if layers.Reliability != nil {
+		length = NewQStandardItemF("%d", layers.Reliability.LengthInBits / 8)
+	} else {
+		length = NewQStandardItemF("%d", len(packet.ApplicationLayer().Payload()))
+	}
 	length.SetEditable(false)
 	rootRow = append(rootRow, length)
 	var datagramNumber *gui.QStandardItem
@@ -205,13 +209,13 @@ func (m *MyPacketListView) Add(data []byte, packet gopacket.Packet, context *Com
 	rootRow = append(rootRow, datagramNumber)
 
 	if layers.Reliability != nil {
-		m.AddToPacketList(packetType, packet, context, layers)
+		m.AddToPacketList(packetTypeItem, packet, context, layers)
 	}
 
 	m.SelectionHandlers[m.PacketIndex] = func () {
 		m.ClearACKSelection()
 		if activationCallback != nil {
-			activationCallback(data, packet, context, layers)
+			activationCallback(packetType, packet, context, layers)
 		}
 	}
 
