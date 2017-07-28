@@ -1,5 +1,5 @@
 package main
-import "github.com/dgryski/go-bitstream"
+import "github.com/gskartwii/go-bitstream"
 import "github.com/google/gopacket"
 import "bytes"
 import "io"

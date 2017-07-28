@@ -5,7 +5,7 @@ import "github.com/google/gopacket/layers"
 import "github.com/fatih/color"
 import "flag"
 import "fmt"
-import "github.com/dgryski/go-bitstream"
+import "github.com/gskartwii/go-bitstream"
 import "bytes"
 
 type PacketLayers struct {

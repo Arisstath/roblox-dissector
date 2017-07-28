@@ -1,7 +1,7 @@
 package main
 import "compress/gzip"
 import "github.com/google/gopacket"
-import "github.com/dgryski/go-bitstream"
+import "github.com/gskartwii/go-bitstream"
 
 type DescriptorItem struct {
 	IDx uint32

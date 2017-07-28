@@ -1,7 +1,7 @@
 package main
 import "github.com/google/gopacket"
 import "compress/gzip"
-import "github.com/dgryski/go-bitstream"
+import "github.com/gskartwii/go-bitstream"
 
 type EnumSchemaItem struct {
 	Name string
