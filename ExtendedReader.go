@@ -144,10 +144,10 @@ func (b *ExtendedReader) ReadHuffman() ([]byte, error) {
 		return name, err
 	}
 
-	name = make([]byte, maxCharLen)
 	if maxCharLen > 0x5000 || sizeInBits > 0x5000 {
 		return name, errors.New("sanity check: exceeded maximum sizeinbits/maxcharlen of 0x1000")
 	}
+	name = make([]byte, maxCharLen)
 	englishTree.DecodeArray(b, uint(sizeInBits), uint(maxCharLen), name)
 
 	return name, nil
