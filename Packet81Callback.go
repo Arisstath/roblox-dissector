@@ -14,7 +14,7 @@ func ShowPacket81(data []byte, packet gopacket.Packet, context *CommunicationCon
 	string1Label := NewQLabelF("Unknown string: %s", MainLayer.String1)
 	layerLayout.AddWidget(string1Label, 0, 0)
 
-	deletedList := widgets.NewQTreeWidget(nil)
+	deletedList := widgets.NewQTreeView(nil)
 	standardModel := NewProperSortModel(nil)
 	standardModel.SetHorizontalHeaderLabels([]string{"Unknown int 1", "Unknown string", "Unknown int 2"})
 
