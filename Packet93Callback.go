@@ -16,7 +16,7 @@ func ShowPacket93(data []byte, packet gopacket.Packet, context *CommunicationCon
 	labelForParamList := NewQLabelF("Network params:")
 	layerLayout.AddWidget(labelForParamList, 0, 0)
 
-	paramList := widgets.NewQTreeView(nil)
+	paramList := widgets.NewQTreeWidget(nil)
 	standardModel := NewProperSortModel(nil)
 	standardModel.SetHorizontalHeaderLabels([]string{"Name", "Value"})
 
