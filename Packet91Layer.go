@@ -2,6 +2,7 @@ package main
 import "github.com/google/gopacket"
 import "compress/gzip"
 import "github.com/gskartwii/go-bitstream"
+import "errors"
 
 type EnumSchemaItem struct {
 	Name string
@@ -60,6 +61,9 @@ func DecodePacket91Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 	if err != nil {
 		return layer, err
 	}
+	if thisLen > 0x3000 {
+		return layer, errors.New("EnumSchema length exceeded maximum")
+	}
 	layer.EnumSchema = make([]*EnumSchemaItem, thisLen)
 	var i, j, k uint32
 	for i = 0; i < thisLen; i++ {
@@ -77,6 +81,9 @@ func DecodePacket91Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 	thisLen, err = decompressedStream.ReadUint32BE()
 	if err != nil {
 		return layer, err
+	}
+	if thisLen > 0x3000 {
+		return layer, errors.New("InstanceSchema length exceeded maximum")
 	}
 	layer.InstanceSchema = make([]*InstanceSchemaItem, thisLen)
 
@@ -100,6 +107,9 @@ func DecodePacket91Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 			return layer, err
 		}
 
+		if len2 > 0x3000 {
+			return layer, errors.New("InstanceSchema length exceeded maximum")
+		}
 		thisInstance.PropertySchema = make([]*PropertySchemaItem, len2)
 		for j = 0; j < len2; j++ {
 			thisProperty := &PropertySchemaItem{}
@@ -144,6 +154,9 @@ func DecodePacket91Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 		if err != nil {
 			return layer, err
 		}
+		if len3 > 0x1000 {
+			return layer, errors.New("EventSchema length exceeded maximum")
+		}
 		thisInstance.EventSchema = make([]*EventSchemaItem, len3)
 		for j = 0; j < len3; j++ {
 			thisEvent := &EventSchemaItem{}
@@ -160,6 +173,9 @@ func DecodePacket91Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 				return layer, err
 			}
 
+			if len4 > 0x1000 {
+				return layer, errors.New("EventSchema property list length exceeded maximum")
+			}
 			thisEvent.ArgumentTypes = make([]string, len4)
 			
 			for k = 0; k < len4; k++ {
