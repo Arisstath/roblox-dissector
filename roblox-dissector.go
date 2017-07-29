@@ -15,6 +15,7 @@ type PacketLayers struct {
 }
 
 var PacketNames map[byte]string = map[byte]string{
+	0xFF: "???",
 	0x05: "ID_OPEN_CONNECTION_REQUEST_1",
 	0x06: "ID_OPEN_CONNECTION_REPLY_1",
 	0x07: "ID_OPEN_CONNECTION_REQUEST_2",
@@ -102,7 +103,7 @@ func HandleSimple(layer *RakNetLayer, packet gopacket.Packet, context *Communica
 			return
 		}
 	}
-	packetViewer.Add(packetType, packet, context, layers, ActivationCallbacks[packetType])
+	packetViewer.AddFullPacket(packetType, packet, context, layers, ActivationCallbacks[packetType])
 }
 
 func HandleACK(layer *RakNetLayer, packet gopacket.Packet, context *CommunicationContext, packetViewer *MyPacketListView) {
@@ -119,17 +120,14 @@ func HandleGeneric(layer *RakNetLayer, packet gopacket.Packet, context *Communic
 	}
 
 	for _, subPacket := range reliabilityLayer.Packets {
-		if subPacket.IsFirst {
-			go func() {
-				layers := &PacketLayers{}
-				layers.RakNet = layer
-				layers.Reliability = subPacket
+		layers := &PacketLayers{}
+		layers.RakNet = layer
+		layers.Reliability = subPacket
+		packetViewer.AddSplitPacket(subPacket.PacketType, packet, context, layers)
 
-				packetType, err := subPacket.FullDataReader.ReadByte()
-				if err != nil {
-					color.Red("Failed to decode reliable packet: %s", err.Error())
-					return
-				}
+		if subPacket.HasPacketType {
+			go func() {
+				packetType := subPacket.PacketType
 
 				decoder := PacketDecoders[packetType]
 				if decoder != nil {
@@ -140,7 +138,7 @@ func HandleGeneric(layer *RakNetLayer, packet gopacket.Packet, context *Communic
 					}
 				}
 
-				packetViewer.Add(packetType, packet, context, layers, ActivationCallbacks[packetType])
+				packetViewer.BindCallback(packetType, packet, context, layers, ActivationCallbacks[packetType])
 			}()
 		}
 	}
