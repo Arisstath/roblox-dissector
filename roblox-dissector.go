@@ -91,14 +91,14 @@ func HandleSimple(layer *RakNetLayer, packet gopacket.Packet, context *Communica
 
 	packetType, err := layer.Payload.ReadByte()
 	if err != nil {
-		color.Red("Failed to decode packet: %s", err.Error())
+		color.Red("Failed to decode simple packet: %s", err.Error())
 		return
 	}
 	decoder := PacketDecoders[packetType]
 	if decoder != nil {
 		layers.Main, err = decoder(layer.Payload, context, packet)
 		if err != nil {
-			color.Red("Failed to decode packet %02X: %s", packetType, err.Error())
+			color.Red("Failed to decode simple packet %02X: %s", packetType, err.Error())
 			return
 		}
 	}
@@ -114,7 +114,7 @@ func HandleACK(layer *RakNetLayer, packet gopacket.Packet, context *Communicatio
 func HandleGeneric(layer *RakNetLayer, packet gopacket.Packet, context *CommunicationContext, packetViewer *MyPacketListView) {
 	reliabilityLayer, err := DecodeReliabilityLayer(layer.Payload, context, packet, layer)
 	if err != nil {
-		color.Red("Failed to decode packet: %s", err.Error())
+		color.Red("Failed to decode reliable packet: %s", err.Error())
 		return
 	}
 
@@ -127,7 +127,7 @@ func HandleGeneric(layer *RakNetLayer, packet gopacket.Packet, context *Communic
 
 				packetType, err := subPacket.FullDataReader.ReadByte()
 				if err != nil {
-					color.Red("Failed to decode packet %02X: %s", packetType, err.Error())
+					color.Red("Failed to decode reliable packet: %s", err.Error())
 					return
 				}
 
@@ -135,10 +135,11 @@ func HandleGeneric(layer *RakNetLayer, packet gopacket.Packet, context *Communic
 				if decoder != nil {
 					layers.Main, err = decoder(subPacket.FullDataReader, context, packet)
 					if err != nil {
-						color.Red("Failed to decode packet %02X: %s", packetType, err.Error())
+						color.Red("Failed to decode reliable packet %02X: %s", packetType, err.Error())
 						return
 					}
 				}
+
 				packetViewer.Add(packetType, packet, context, layers, ActivationCallbacks[packetType])
 			}()
 		}
