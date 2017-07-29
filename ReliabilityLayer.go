@@ -22,6 +22,8 @@ type ReliablePacket struct {
 	AllRakNetLayers []*RakNetLayer
 	AllReliablePackets []*ReliablePacket
 
+	HasBeenDecoded bool
+
 	FullDataReader *ExtendedReader
 	SelfData []byte
 

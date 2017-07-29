@@ -60,7 +60,7 @@ var PacketDecoders map[byte]DecoderFunc = map[byte]DecoderFunc{
 	0x90: DecodePacket90Layer,
 	0x8F: DecodePacket8FLayer,
 	0x81: DecodePacket81Layer,
-	0x83: DecodePacket83Layer,
+	//0x83: DecodePacket83Layer,
 }
 
 type ActivationCallback func(byte, gopacket.Packet, *CommunicationContext, *PacketLayers)
@@ -125,9 +125,15 @@ func HandleGeneric(layer *RakNetLayer, packet gopacket.Packet, context *Communic
 		layers.Reliability = subPacket
 		packetViewer.AddSplitPacket(subPacket.PacketType, packet, context, layers)
 
-		if subPacket.HasPacketType {
+		if subPacket.HasPacketType && !subPacket.HasBeenDecoded {
+			subPacket.HasBeenDecoded = true
 			go func() {
 				packetType := subPacket.PacketType
+				_, err = subPacket.FullDataReader.ReadByte() // Void first byte, since we can get it the other way
+				if err != nil {
+					color.Red("Failed to decode reliablePacket %02X: %s", packetType, err.Error())
+					return
+				}
 
 				decoder := PacketDecoders[packetType]
 				if decoder != nil {
