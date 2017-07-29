@@ -41,6 +41,7 @@ func NewPacket91Layer() Packet91Layer {
 }
 
 func DecodePacket91Layer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
+	context.MTypeDescriptor.Lock()
 	typeDescriptor := context.TypeDescriptor
 
 	layer := NewPacket91Layer()
@@ -174,6 +175,7 @@ func DecodePacket91Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 		}
 		layer.InstanceSchema[i] = thisInstance
 	}
+	context.MTypeDescriptor.Unlock()
 
 	return layer, nil
 }

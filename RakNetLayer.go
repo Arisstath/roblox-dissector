@@ -2,6 +2,7 @@ package main
 import "github.com/google/gopacket"
 import "github.com/google/gopacket/layers"
 import "strconv"
+import "sync"
 
 type ACKRange struct {
 	Min uint32
@@ -23,14 +24,21 @@ type RakNetLayer struct {
 	DatagramNumber uint32
 }
 
+type Descriptor map[uint32]string
+
 type CommunicationContext struct {
 	Server string
 	Client string
-	ClassDescriptor map[uint32]string
-	PropertyDescriptor map[uint32]string
-	EventDescriptor map[uint32]string
-	TypeDescriptor map[uint32]string
+	ClassDescriptor Descriptor
+	PropertyDescriptor Descriptor
+	EventDescriptor Descriptor
+	TypeDescriptor Descriptor
 	ReplicatorStringCache [0x80][]byte
+
+	MClassDescriptor *sync.Mutex
+	MPropertyDescriptor *sync.Mutex
+	MEventDescriptor *sync.Mutex
+	MTypeDescriptor *sync.Mutex
 }
 
 func NewCommunicationContext() *CommunicationContext {
@@ -39,6 +47,11 @@ func NewCommunicationContext() *CommunicationContext {
 		PropertyDescriptor: make(map[uint32]string),
 		EventDescriptor: make(map[uint32]string),
 		TypeDescriptor: make(map[uint32]string),
+
+		MClassDescriptor: &sync.Mutex{},
+		MPropertyDescriptor: &sync.Mutex{},
+		MEventDescriptor: &sync.Mutex{},
+		MTypeDescriptor: &sync.Mutex{},
 	}
 }
 

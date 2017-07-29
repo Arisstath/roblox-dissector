@@ -57,10 +57,21 @@ func DecodePacket82Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 	if PacketFromClient(packet, context) {
 		decompressedStream = thisBitstream
 
+		context.MClassDescriptor.Lock()
 		layer.ClassDescriptor = LearnDictionaryHuffman(decompressedStream, context.ClassDescriptor)
+		context.MClassDescriptor.Unlock()
+
+		context.MPropertyDescriptor.Lock()
 		layer.PropertyDescriptor = LearnDictionaryHuffman(decompressedStream, context.PropertyDescriptor)
+		context.MPropertyDescriptor.Unlock()
+
+		context.MEventDescriptor.Lock()
 		layer.EventDescriptor = LearnDictionaryHuffman(decompressedStream, context.EventDescriptor)
+		context.MEventDescriptor.Unlock()
+
+		context.MTypeDescriptor.Lock()
 		layer.TypeDescriptor = LearnDictionaryHuffman(decompressedStream, context.TypeDescriptor)
+		context.MTypeDescriptor.Unlock()
 		return layer, nil
 	} else {
 		_, _ = thisBitstream.ReadUint32BE() // Skip compressed len
@@ -70,10 +81,22 @@ func DecodePacket82Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 		}
 
 		decompressedStream = &ExtendedReader{bitstream.NewReader(gzipStream)}
+
+		context.MClassDescriptor.Lock()
 		layer.ClassDescriptor = LearnDictionary(decompressedStream, context.ClassDescriptor)
+		context.MClassDescriptor.Unlock()
+
+		context.MPropertyDescriptor.Lock()
 		layer.PropertyDescriptor = LearnDictionary(decompressedStream, context.PropertyDescriptor)
+		context.MPropertyDescriptor.Unlock()
+
+		context.MEventDescriptor.Lock()
 		layer.EventDescriptor = LearnDictionary(decompressedStream, context.EventDescriptor)
+		context.MEventDescriptor.Unlock()
+
+		context.MTypeDescriptor.Lock()
 		layer.TypeDescriptor = LearnDictionary(decompressedStream, context.TypeDescriptor)
+		context.MTypeDescriptor.Unlock()
 
 		return layer, nil
 	}
