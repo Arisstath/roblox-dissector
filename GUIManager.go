@@ -6,6 +6,8 @@ import "github.com/google/gopacket"
 import "os"
 import "fmt"
 import "strconv"
+import "sync/atomic"
+import "sync"
 
 var window *widgets.QMainWindow
 
@@ -19,6 +21,12 @@ type MyPacketListView struct {
 	SelectionHandlers SelectionHandlerList
 	RootNode *gui.QStandardItem
 	PacketIndex uint64
+
+	MServerPackets *sync.Mutex
+	MClientPackets *sync.Mutex
+	MSelectionHandlers *sync.Mutex
+	
+	MGUI *sync.Mutex
 }
 
 func NewMyPacketListView(parent widgets.QWidget_ITF) *MyPacketListView {
@@ -30,6 +38,11 @@ func NewMyPacketListView(parent widgets.QWidget_ITF) *MyPacketListView {
 		make(SelectionHandlerList),
 		nil,
 		0,
+
+		&sync.Mutex{},
+		&sync.Mutex{},
+		&sync.Mutex{},
+		&sync.Mutex{},
 	}
 	return new
 }
@@ -127,9 +140,13 @@ func (m *MyPacketListView) AddToPacketList(item *gui.QStandardItem, packet gopac
 	isServer := SourceInterfaceFromPacket(packet) == context.GetServer()
 
 	if isClient {
+		m.MClientPackets.Lock()
 		m.ClientPackets.Add(item, packet, context, layers)
+		m.MClientPackets.Unlock()
 	} else if isServer {
+		m.MServerPackets.Lock()
 		m.ServerPackets.Add(item, packet, context, layers)
+		m.MServerPackets.Unlock()
 	}
 }
 
@@ -164,6 +181,7 @@ func (m *MyPacketListView) HandleNoneSelected() {
 }
 
 func (m *MyPacketListView) Add(packetType byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers, activationCallback ActivationCallback) {
+	index := atomic.AddUint64(&m.PacketIndex, 1)
 	isClient := SourceInterfaceFromPacket(packet) == context.GetClient()
 	isServer := SourceInterfaceFromPacket(packet) == context.GetServer()
 
@@ -171,7 +189,7 @@ func (m *MyPacketListView) Add(packetType byte, packet gopacket.Packet, context 
 	if packetName == "" {
 		packetName = fmt.Sprintf("0x%02X", packetType)
 	}
-	indexItem := NewQStandardItemF("%d", m.PacketIndex)
+	indexItem := NewQStandardItemF("%d", index)
 	packetTypeItem := NewQStandardItemF(packetName)
 	indexItem.SetEditable(false)
 	packetTypeItem.SetEditable(false)
@@ -212,18 +230,22 @@ func (m *MyPacketListView) Add(packetType byte, packet gopacket.Packet, context 
 		m.AddToPacketList(packetTypeItem, packet, context, layers)
 	}
 
-	m.SelectionHandlers[m.PacketIndex] = func () {
+	m.MSelectionHandlers.Lock()
+	m.SelectionHandlers[index] = func () {
 		m.ClearACKSelection()
 		if activationCallback != nil {
 			activationCallback(packetType, packet, context, layers)
 		}
 	}
+	m.MSelectionHandlers.Unlock()
 
+	m.MGUI.Lock()
 	m.RootNode.AppendRow(rootRow)
-	m.PacketIndex++
+	m.MGUI.Unlock()
 }
 
 func (m *MyPacketListView) AddACK(ack ACKRange, packet gopacket.Packet, context *CommunicationContext, layer *RakNetLayer, activationCallback func()) {
+	index := atomic.AddUint64(&m.PacketIndex, 1)
 	isClient := SourceInterfaceFromPacket(packet) == context.GetClient()
 	isServer := SourceInterfaceFromPacket(packet) == context.GetServer()
 
@@ -234,7 +256,7 @@ func (m *MyPacketListView) AddACK(ack ACKRange, packet gopacket.Packet, context 
 		packetName = NewQStandardItemF("ACK for packets %d - %d", ack.Min, ack.Max)
 	}
 
-	indexItem := NewQStandardItemF("%d", m.PacketIndex)
+	indexItem := NewQStandardItemF("%d", index)
 	indexItem.SetEditable(false)
 	packetName.SetEditable(false)
 
@@ -252,14 +274,17 @@ func (m *MyPacketListView) AddACK(ack ACKRange, packet gopacket.Packet, context 
 	direction.SetEditable(false)
 	rootRow = append(rootRow, direction)
 
+	m.MGUI.Lock()
 	m.RootNode.AppendRow(rootRow)
+	m.MGUI.Unlock()
 
-	m.SelectionHandlers[m.PacketIndex] = func () {
+	m.MSelectionHandlers.Lock()
+	m.SelectionHandlers[index] = func () {
 		m.ClearACKSelection()
 		m.HighlightByACK(ack, isServer, isClient) // intentionally the other way around
 	}
+	m.MSelectionHandlers.Unlock()
 
-	m.PacketIndex++
 }
 
 func GUIMain(done chan bool, viewerChan chan *MyPacketListView) {
