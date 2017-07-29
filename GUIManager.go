@@ -129,8 +129,12 @@ func (m PacketList) Add(item *gui.QStandardItem, packet gopacket.Packet, context
 	if reliabilityLayer == nil || !reliabilityLayer.HasSplitPacket {
 		m[rakNetLayer.DatagramNumber] = append(m[rakNetLayer.DatagramNumber], item)
 	} else {
-		for _, layer := range reliabilityLayer.AllRakNetLayers {
-			m[layer.DatagramNumber] = append(m[layer.DatagramNumber], item)
+		for i, layer := range reliabilityLayer.AllRakNetLayers {
+			if layer == nil {
+				println("Encountered nil RakNetLayer", i)
+			} else {
+				m[layer.DatagramNumber] = append(m[layer.DatagramNumber], item)
+			}
 		}
 	}
 }
@@ -219,7 +223,24 @@ func (m *MyPacketListView) Add(packetType byte, packet gopacket.Packet, context 
 	var datagramNumber *gui.QStandardItem
 	if layers.Reliability != nil && layers.Reliability.HasSplitPacket {
 		allRakNetLayers := layers.Reliability.AllRakNetLayers
-		datagramNumber = NewQStandardItemF("%d - %d", allRakNetLayers[0].DatagramNumber, allRakNetLayers[len(allRakNetLayers) - 1].DatagramNumber)
+
+		firstLayer := allRakNetLayers[0]
+		lastLayer := allRakNetLayers[len(allRakNetLayers) - 1]
+		var firstLayerNumber, lastLayerNumber int32
+		if firstLayer == nil {
+			fmt.Printf("Encountered nil first raknet with %02X\n", packetType)
+			firstLayerNumber = -1
+		} else {
+			firstLayerNumber = int32(firstLayer.DatagramNumber)
+		}
+		if lastLayer == nil {
+			fmt.Printf("Encountered nil last raknet with %02X\n", packetType)
+			lastLayerNumber = -1
+		} else {
+			lastLayerNumber = int32(lastLayer.DatagramNumber)
+		}
+
+		datagramNumber = NewQStandardItemF("%d - %d", firstLayerNumber, lastLayerNumber)
 	} else {
 		datagramNumber = NewQStandardItemF("%d", layers.RakNet.DatagramNumber)
 	}
