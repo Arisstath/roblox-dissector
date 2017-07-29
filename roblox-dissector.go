@@ -187,7 +187,7 @@ func main() {
 
 			thisBitstream := &ExtendedReader{bitstream.NewReader(bytes.NewReader(payload))}
 
-			rakNetLayer, err := DecodeRakNetLayer(thisBitstream, context, packet)
+			rakNetLayer, err := DecodeRakNetLayer(payload[0], thisBitstream, context, packet)
 			if err != nil {
 				color.Red("Failed to decode RakNet layer: %s", err.Error())
 				continue
