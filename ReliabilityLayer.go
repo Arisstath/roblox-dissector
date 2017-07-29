@@ -32,9 +32,11 @@ type SplitPacketBuffer struct {
 	ReliablePackets []*ReliablePacket
 	RakNetPackets []*RakNetLayer
 	NextExpectedPacket uint32
+	WrittenPackets uint32
 
 	DataReader *ExtendedReader
 	DataWriter *io.PipeWriter
+	DataQueue chan []byte
 }
 type SplitPacketList map[string](map[uint16](*SplitPacketBuffer))
 
@@ -44,10 +46,23 @@ func NewSplitPacketBuffer(packet *ReliablePacket) *SplitPacketBuffer {
 	reliables := make([]*ReliablePacket, int(packet.SplitPacketCount))
 	raknets := make([]*RakNetLayer, int(packet.SplitPacketCount))
 
-	list := &SplitPacketBuffer{reliables, raknets, 0, nil, nil}
-	var reader *io.PipeReader
-	reader, list.DataWriter = io.Pipe()
+	list := &SplitPacketBuffer{reliables, raknets, 0, 0, nil, nil, make(chan []byte, packet.SplitPacketCount)}
+	reader, writer := io.Pipe()
 	list.DataReader = &ExtendedReader{bitstream.NewReader(reader)}
+	list.DataWriter = writer
+
+	go func() {
+		for list.WrittenPackets < packet.SplitPacketCount {
+			writer.Write(<- list.DataQueue)
+			list.WrittenPackets++
+			if list.WrittenPackets == packet.SplitPacketCount {
+				err := writer.Close()
+				if err != nil {
+					println("Warning: failed to close split packet stream:", err.Error())
+				}
+			}
+		}
+	}()
 
 	return list
 }
@@ -96,18 +111,15 @@ func (reliablePacket *ReliablePacket) HandleSplitPacket(rakNetPacket *RakNetLaye
 		reliablePacket.IsFirst = true
 	}
 
+	var shouldClose bool
 	for len(packetBuffer.ReliablePackets) > int(expectedPacket) && packetBuffer.ReliablePackets[expectedPacket] != nil {
-		packetBuffer.DataWriter.Write(packetBuffer.ReliablePackets[expectedPacket].SelfData)
-		packetBuffer.ReliablePackets[expectedPacket] = nil
+		shouldClose = len(packetBuffer.ReliablePackets) == int(expectedPacket + 1)
+		packetBuffer.DataQueue <- packetBuffer.ReliablePackets[expectedPacket].SelfData
 
 		expectedPacket++
 		packetBuffer.NextExpectedPacket = expectedPacket
 	}
-	if len(packetBuffer.ReliablePackets) == int(expectedPacket) {
-		err := packetBuffer.DataWriter.Close()
-		if err != nil {
-			return err
-		}
+	if shouldClose {
 		reliablePacket.IsFinal = true
 	}
 	return nil
@@ -157,6 +169,7 @@ func DecodeReliabilityLayer(thisBitstream *ExtendedReader, context *Communicatio
 		} else {
 			reliablePacket.SplitPacketCount = 1
 			reliablePacket.FullDataReader = &ExtendedReader{bitstream.NewReader(bytes.NewReader(reliablePacket.SelfData))}
+			reliablePacket.IsFirst = true
 			reliablePacket.IsFinal = true
 			reliablePacket.AllReliablePackets = []*ReliablePacket{reliablePacket}
 			reliablePacket.AllRakNetLayers = []*RakNetLayer{rakNetPacket}
