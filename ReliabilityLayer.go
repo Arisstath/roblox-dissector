@@ -7,6 +7,7 @@ import "io"
 type ReliablePacket struct {
 	IsFinal bool
 	IsFirst bool
+	UniqueID uint32
 	Reliability uint32
 	HasSplitPacket bool
 	LengthInBits uint16
@@ -79,6 +80,8 @@ func DecodeReliabilityLayer(thisBitstream *ExtendedReader, context *Communicatio
 		} else if !reliablePacket.HasPacketType {
 			reliablePacket.PacketType = 0xFF
 		}
+		reliablePacket.UniqueID = context.UniqueID
+		context.UniqueID++
 
 		if reliablePacket.HasSplitPacket {
 			reliablePacket, err = HandleSplitPacket(reliablePacket, rakNetPacket, context, packet)

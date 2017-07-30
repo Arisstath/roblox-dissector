@@ -39,6 +39,8 @@ type CommunicationContext struct {
 	MPropertyDescriptor *sync.Mutex
 	MEventDescriptor *sync.Mutex
 	MTypeDescriptor *sync.Mutex
+
+	UniqueID uint32
 }
 
 func NewCommunicationContext() *CommunicationContext {
