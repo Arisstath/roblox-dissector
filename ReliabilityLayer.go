@@ -53,27 +53,57 @@ func DecodeReliabilityLayer(thisBitstream *ExtendedReader, context *Communicatio
 	for reliability, err = thisBitstream.Bits(3); err == nil; reliability, err = thisBitstream.Bits(3) {
 		reliablePacket := NewReliablePacket()
 		reliablePacket.Reliability = uint32(reliability)
-		reliablePacket.HasSplitPacket, _ = thisBitstream.ReadBool()
+		reliablePacket.HasSplitPacket, err = thisBitstream.ReadBool()
+		if err != nil {
+			return layer, err
+		}
 		thisBitstream.Align()
 
-		reliablePacket.LengthInBits, _ = thisBitstream.ReadUint16BE()
+		reliablePacket.LengthInBits, err = thisBitstream.ReadUint16BE()
+		if err != nil {
+			return layer, err
+		}
 		reliablePacket.RealLength = uint32((reliablePacket.LengthInBits + 7) / 8)
 		if reliability >= 2 && reliability <= 4 {
-			reliablePacket.ReliableMessageNumber, _ = thisBitstream.ReadUint24LE()
+			reliablePacket.ReliableMessageNumber, err = thisBitstream.ReadUint24LE()
+			if err != nil {
+				return layer, err
+			}
 		}
 		if reliability == 1 || reliability == 4 {
-			reliablePacket.SequencingIndex, _ = thisBitstream.ReadUint24LE()
+			reliablePacket.SequencingIndex, err = thisBitstream.ReadUint24LE()
+			if err != nil {
+				return layer, err
+			}
 		}
 		if reliability == 1 || reliability == 3 || reliability == 4 || reliability == 7 {
-			reliablePacket.OrderingIndex, _ = thisBitstream.ReadUint24LE()
-			reliablePacket.OrderingChannel, _ = thisBitstream.ReadUint8()
+			reliablePacket.OrderingIndex, err = thisBitstream.ReadUint24LE()
+			if err != nil {
+				return layer, err
+			}
+			reliablePacket.OrderingChannel, err = thisBitstream.ReadUint8()
+			if err != nil {
+				return layer, err
+			}
 		}
 		if reliablePacket.HasSplitPacket {
-			reliablePacket.SplitPacketCount, _ = thisBitstream.ReadUint32BE()
-			reliablePacket.SplitPacketID, _ = thisBitstream.ReadUint16BE()
-			reliablePacket.SplitPacketIndex, _ = thisBitstream.ReadUint32BE()
+			reliablePacket.SplitPacketCount, err = thisBitstream.ReadUint32BE()
+			if err != nil {
+				return layer, err
+			}
+			reliablePacket.SplitPacketID, err = thisBitstream.ReadUint16BE()
+			if err != nil {
+				return layer, err
+			}
+			reliablePacket.SplitPacketIndex, err = thisBitstream.ReadUint32BE()
+			if err != nil {
+				return layer, err
+			}
 		}
-		reliablePacket.SelfData, _ = thisBitstream.ReadString(int((reliablePacket.LengthInBits + 7)/8))
+		reliablePacket.SelfData, err = thisBitstream.ReadString(int((reliablePacket.LengthInBits + 7)/8))
+		if err != nil {
+			return layer, err
+		}
 		if reliablePacket.SplitPacketIndex == 0 {
 			reliablePacket.HasPacketType = true
 			reliablePacket.PacketType = reliablePacket.SelfData[0]
