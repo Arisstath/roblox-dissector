@@ -20,9 +20,6 @@ func ShowPacket91(packetType byte, packet gopacket.Packet, context *Communicatio
 		idItem := NewQStandardItemF("%d", id)
 		nameItem := NewQStandardItemF(item.Name)
 		sizeItem := NewQStandardItemF("%d", item.BitSize)
-		idItem.SetEditable(false)
-		nameItem.SetEditable(false)
-		sizeItem.SetEditable(false)
 		enumSchemaRootNode.AppendRow([]*gui.QStandardItem{idItem, nameItem, sizeItem}) 
 	}
 
@@ -43,14 +40,10 @@ func ShowPacket91(packetType byte, packet gopacket.Packet, context *Communicatio
 		nameItem := NewQStandardItemF(item.Name)
 		commonIDItem := NewQStandardItemF("%d", item.CommonID)
 		creatableItem := NewQStandardItemF("%v", item.IsCreatable)
-		nameItem.SetEditable(false)
-		commonIDItem.SetEditable(false)
-		creatableItem.SetEditable(false)
 
 		instanceRow := []*gui.QStandardItem{nameItem, commonIDItem, nil, nil, creatableItem}
 
 		propertySchemaItem := NewQStandardItemF("Property schema (%d entries)", len(item.PropertySchema))
-		propertySchemaItem.SetEditable(false)
 		nameItem.AppendRow([]*gui.QStandardItem{propertySchemaItem})
 
 		for _, property := range item.PropertySchema {
@@ -62,35 +55,23 @@ func ShowPacket91(packetType byte, packet gopacket.Packet, context *Communicatio
 			propertyIsEnumItem := NewQStandardItemF("%v", property.IsEnum)
 			propertyBitSizeItem := NewQStandardItemF("%d", property.BitSize)
 
-			propertyNameItem.SetEditable(false)
-			propertyCommonIDItem.SetEditable(false)
-			propertyTypeItem.SetEditable(false)
-			propertyDictionaryTypeItem.SetEditable(false)
-			propertyBool1Item.SetEditable(false)
-			propertyIsEnumItem.SetEditable(false)
-			propertyBitSizeItem.SetEditable(false)
 
 			propertyRow := []*gui.QStandardItem{propertyNameItem, propertyCommonIDItem, propertyTypeItem, propertyDictionaryTypeItem, nil, propertyBool1Item, propertyIsEnumItem, propertyBitSizeItem}
 			propertySchemaItem.AppendRow(propertyRow)
 		}
 		
 		eventSchemaItem := NewQStandardItemF("Event schema (%d entries)", len(item.EventSchema))
-		eventSchemaItem.SetEditable(false)
 		nameItem.AppendRow([]*gui.QStandardItem{eventSchemaItem})
 
 		for _, event := range item.EventSchema {
 			eventNameItem := NewQStandardItemF("%s (%d arguments)", event.Name, len(event.ArgumentTypes))
 			eventCommonIDItem := NewQStandardItemF("%d", event.CommonID)
-			eventNameItem.SetEditable(false)
-			eventCommonIDItem.SetEditable(false)
 
 			eventRow := []*gui.QStandardItem{eventNameItem, eventCommonIDItem}
 
 			for _, thisArgument := range event.ArgumentTypes {
 				eventArgumentNameItem := NewQStandardItemF("Event argument")
 				eventArgumentTypeItem := NewQStandardItemF(thisArgument)
-				eventArgumentNameItem.SetEditable(false)
-				eventArgumentTypeItem.SetEditable(false)
 
 				eventSubIntRow := []*gui.QStandardItem{eventArgumentNameItem, nil, eventArgumentTypeItem}
 				eventNameItem.AppendRow(eventSubIntRow)

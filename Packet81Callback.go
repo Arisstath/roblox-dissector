@@ -23,8 +23,6 @@ func ShowPacket81(packetType byte, packet gopacket.Packet, context *Communicatio
 		unknownInt1Item := NewQStandardItemF("%d", MainLayer.Items[i].Int1)
 		unknownStringItem := NewQStandardItemF("%s", MainLayer.Items[i].String1)
 		unknownInt2Item := NewQStandardItemF("%d", MainLayer.Items[i].Int2)
-		unknownInt1Item.SetEditable(false)
-		unknownInt2Item.SetEditable(false)
 		deletedListRootNode.AppendRow([]*gui.QStandardItem{unknownInt1Item, unknownStringItem, unknownInt2Item})
 	}
 

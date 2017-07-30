@@ -70,17 +70,20 @@ func NewQStandardItemF(format string, args ...interface{}) *gui.QStandardItem {
 		ret := gui.NewQStandardItem()
 		i, _ := strconv.Atoi(fmt.Sprintf(format, args...)) // hack
 		ret.SetData(core.NewQVariant7(i), 0)
+		ret.SetEditable(false)
 		return ret
 	}
-	return gui.NewQStandardItem2(fmt.Sprintf(format, args...))
+	ret := gui.NewQStandardItem2(fmt.Sprintf(format, args...))
+	ret.SetEditable(false)
+	return ret
 }
 
 func NewBasicPacketViewer(packetType byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) *widgets.QVBoxLayout {
 	subWindow := widgets.NewQWidget(window, core.Qt__Window)
 	subWindowLayout := widgets.NewQVBoxLayout2(subWindow)
 
-	isClient := SourceInterfaceFromPacket(packet) == context.GetClient()
-	isServer := SourceInterfaceFromPacket(packet) == context.GetServer()
+	isClient := context.PacketFromClient(packet)
+	isServer := context.PacketFromServer(packet)
 
 	var direction string
 	if isClient {
@@ -136,8 +139,8 @@ func NewBasicPacketViewer(packetType byte, packet gopacket.Packet, context *Comm
 }
 
 func (m *TwoWayPacketList) Add(index uint32, row []*gui.QStandardItem, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
-	isClient := SourceInterfaceFromPacket(packet) == context.GetClient()
-	isServer := SourceInterfaceFromPacket(packet) == context.GetServer()
+	isClient := context.PacketFromClient(packet)
+	isServer := context.PacketFromServer(packet)
 
 	var mutex *sync.Mutex
 	var list PacketList
@@ -172,6 +175,12 @@ func (m *TwoWayPacketList) Get(index uint32, isClient bool, isServer bool) []*gu
 	return rows
 }
 
+func paintItems(row []*gui.QStandardItem, color *gui.QColor) {
+	for i := 0; i < len(row); i++ {
+		row[i].SetBackground(gui.NewQBrush3(color, core.Qt__SolidPattern))
+	}
+}
+
 func (m *MyPacketListView) highlightByACK(ack ACKRange, isClient bool, isServer bool) {
 	var i uint32
 
@@ -189,11 +198,9 @@ func (m *MyPacketListView) highlightByACK(ack ACKRange, isClient bool, isServer 
 	mutex.Lock()
 
 	for i = ack.Min; i <= ack.Max; i++ {
-		for j := 0; j < len(packetList[i]); j++ {
-			packetList[i][j].SetBackground(gui.NewQBrush3(gui.NewQColor3(0, 0, 255, 127), core.Qt__SolidPattern))
-			m.CurrentACKSelection = append(m.CurrentACKSelection, packetList[i][j])
-		}
+		m.CurrentACKSelection = append(m.CurrentACKSelection, packetList[i]...)
 	}
+	paintItems(m.CurrentACKSelection, gui.NewQColor3(0, 0, 255, 127))
 	mutex.Unlock()
 }
 
@@ -224,8 +231,8 @@ func (m *MyPacketListView) AddSplitPacket(packetType byte, packet gopacket.Packe
 }
 
 func (m *MyPacketListView) BindCallback(packetType byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers, activationCallback ActivationCallback) {
-	isClient := SourceInterfaceFromPacket(packet) == context.GetClient()
-	isServer := SourceInterfaceFromPacket(packet) == context.GetServer()
+	isClient := context.PacketFromClient(packet)
+	isServer := context.PacketFromServer(packet)
 
 	row := m.packetRowsByUniqueID.Get(layers.Reliability.UniqueID, isClient, isServer)
 	index, _ := strconv.Atoi(row[0].Data(0).ToString())
@@ -238,11 +245,15 @@ func (m *MyPacketListView) BindCallback(packetType byte, packet gopacket.Packet,
 		}
 	}
 	m.MSelectionHandlers.Unlock()
+
+	for _, item := range row {
+		item.SetBackground(gui.NewQBrush2(core.Qt__NoBrush))
+	}
 }
 
 func (m *MyPacketListView) handleSplitPacket(packetType byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
-	isClient := SourceInterfaceFromPacket(packet) == context.GetClient()
-	isServer := SourceInterfaceFromPacket(packet) == context.GetServer()
+	isClient := context.PacketFromClient(packet)
+	isServer := context.PacketFromServer(packet)
 
 	row := m.packetRowsBySplitPacket.Get(uint32(layers.Reliability.SplitPacketID), isClient, isServer)
 	m.registerSplitPacketRow(row, packet, context, layers)
@@ -259,8 +270,8 @@ func (m *MyPacketListView) handleSplitPacket(packetType byte, packet gopacket.Pa
 
 func (m *MyPacketListView) AddFullPacket(packetType byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers, activationCallback ActivationCallback) []*gui.QStandardItem {
 	index := atomic.AddUint64(&m.PacketIndex, 1)
-	isClient := SourceInterfaceFromPacket(packet) == context.GetClient()
-	isServer := SourceInterfaceFromPacket(packet) == context.GetServer()
+	isClient := context.PacketFromClient(packet)
+	isServer := context.PacketFromServer(packet)
 
 	packetName := PacketNames[packetType]
 	if packetName == "" {
@@ -268,8 +279,6 @@ func (m *MyPacketListView) AddFullPacket(packetType byte, packet gopacket.Packet
 	}
 	indexItem := NewQStandardItemF("%d", index)
 	packetTypeItem := NewQStandardItemF(packetName)
-	indexItem.SetEditable(false)
-	packetTypeItem.SetEditable(false)
 
 	rootRow := []*gui.QStandardItem{indexItem, packetTypeItem}
 
@@ -282,7 +291,6 @@ func (m *MyPacketListView) AddFullPacket(packetType byte, packet gopacket.Packet
 		direction = NewQStandardItemF("Unknown direction")
 	}
 
-	direction.SetEditable(false)
 	rootRow = append(rootRow, direction)
 
 	var length *gui.QStandardItem
@@ -291,7 +299,6 @@ func (m *MyPacketListView) AddFullPacket(packetType byte, packet gopacket.Packet
 	} else {
 		length = NewQStandardItemF("%d", len(packet.ApplicationLayer().Payload()))
 	}
-	length.SetEditable(false)
 	rootRow = append(rootRow, length)
 	var datagramNumber *gui.QStandardItem
 	if layers.Reliability != nil && layers.Reliability.HasSplitPacket {
@@ -317,12 +324,10 @@ func (m *MyPacketListView) AddFullPacket(packetType byte, packet gopacket.Packet
 	} else {
 		datagramNumber = NewQStandardItemF("%d", layers.RakNet.DatagramNumber)
 	}
-	datagramNumber.SetEditable(false)
 	rootRow = append(rootRow, datagramNumber)
 
 	if layers.Reliability != nil {
 		receivedSplits := NewQStandardItemF("%d/%d", layers.Reliability.NumReceivedSplits, layers.Reliability.SplitPacketCount)
-		receivedSplits.SetEditable(false)
 		rootRow = append(rootRow, receivedSplits)
 	} else {
 		rootRow = append(rootRow, nil)
@@ -332,7 +337,7 @@ func (m *MyPacketListView) AddFullPacket(packetType byte, packet gopacket.Packet
 		m.registerSplitPacketRow(rootRow, packet, context, layers)
 	}
 
-	if layers.Reliability == nil || layers.Reliability.IsFinal { // Only bind if we're done parsing the packet
+	if layers.Reliability == nil { // Only bind if we're done parsing the packet
 		m.MSelectionHandlers.Lock()
 		m.SelectionHandlers[index] = func () {
 			m.clearACKSelection()
@@ -341,6 +346,8 @@ func (m *MyPacketListView) AddFullPacket(packetType byte, packet gopacket.Packet
 			}
 		}
 		m.MSelectionHandlers.Unlock()
+	} else {
+		paintItems(rootRow, gui.NewQColor3(255, 0, 0, 127))
 	}
 
 	m.MGUI.Lock()
@@ -352,8 +359,8 @@ func (m *MyPacketListView) AddFullPacket(packetType byte, packet gopacket.Packet
 
 func (m *MyPacketListView) AddACK(ack ACKRange, packet gopacket.Packet, context *CommunicationContext, layer *RakNetLayer, activationCallback func()) {
 	index := atomic.AddUint64(&m.PacketIndex, 1)
-	isClient := SourceInterfaceFromPacket(packet) == context.GetClient()
-	isServer := SourceInterfaceFromPacket(packet) == context.GetServer()
+	isClient := context.PacketFromClient(packet)
+	isServer := context.PacketFromServer(packet)
 
 	var packetName *gui.QStandardItem
 	if ack.Min == ack.Max {
@@ -363,8 +370,6 @@ func (m *MyPacketListView) AddACK(ack ACKRange, packet gopacket.Packet, context 
 	}
 
 	indexItem := NewQStandardItemF("%d", index)
-	indexItem.SetEditable(false)
-	packetName.SetEditable(false)
 
 	rootRow := []*gui.QStandardItem{indexItem, packetName}
 
@@ -377,7 +382,6 @@ func (m *MyPacketListView) AddACK(ack ACKRange, packet gopacket.Packet, context 
 		direction = NewQStandardItemF("Unknown direction")
 	}
 
-	direction.SetEditable(false)
 	rootRow = append(rootRow, direction)
 
 	m.MGUI.Lock()

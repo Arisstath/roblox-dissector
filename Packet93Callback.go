@@ -24,8 +24,6 @@ func ShowPacket93(packetType byte, packet gopacket.Packet, context *Communicatio
 	for Name, Value := range MainLayer.Params {
 		nameItem := NewQStandardItemF(Name)
 		valueItem := NewQStandardItemF("%v", Value)
-		nameItem.SetEditable(false)
-		valueItem.SetEditable(false)
 		paramListRootNode.AppendRow([]*gui.QStandardItem{nameItem, valueItem})
 	}
 
