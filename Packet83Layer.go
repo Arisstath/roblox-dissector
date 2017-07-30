@@ -1,6 +1,5 @@
 package main
 import "github.com/google/gopacket"
-import "bytes"
 //import "encoding/hex"
 import "fmt"
 import "errors"
@@ -75,7 +74,7 @@ func extractPacketType(stream *ExtendedReader) (uint8, error) {
 	return uint8(ret), err
 }
 
-func DecodePacket83Layer(thisBitsream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
+func DecodePacket83Layer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
 	layer := NewPacket83Layer()
 
 	packetType, err := extractPacketType(thisBitstream)
