@@ -22,7 +22,7 @@ type TwoWayPacketList struct {
 type SelectionHandlerList map[uint64](func ())
 type MyPacketListView struct {
 	*widgets.QTreeView
-	packetRowsByDatagram *TwoWayPacketList
+	packetRowsByUniqueID *TwoWayPacketList
 	packetRowsBySplitPacket *TwoWayPacketList
 	
 	CurrentACKSelection []*gui.QStandardItem
@@ -178,11 +178,11 @@ func (m *MyPacketListView) highlightByACK(ack ACKRange, isClient bool, isServer 
 	var mutex *sync.Mutex
 	var packetList PacketList
 	if isClient {
-		mutex = m.packetRowsByDatagram.MClient
-		packetList = m.packetRowsByDatagram.Client
+		mutex = m.packetRowsByUniqueID.MClient
+		packetList = m.packetRowsByUniqueID.Client
 	} else if isServer {
-		mutex = m.packetRowsByDatagram.MServer
-		packetList = m.packetRowsByDatagram.Server
+		mutex = m.packetRowsByUniqueID.MServer
+		packetList = m.packetRowsByUniqueID.Server
 	} else {
 		return
 	}
@@ -212,7 +212,7 @@ func (m *MyPacketListView) registerSplitPacketRow(row []*gui.QStandardItem, pack
 		m.packetRowsBySplitPacket.Add(uint32(layers.Reliability.SplitPacketID), row, packet, context, layers)
 	}
 
-	m.packetRowsByDatagram.Add(layers.RakNet.DatagramNumber, row, packet, context, layers)
+	m.packetRowsByUniqueID.Add(layers.Reliability.UniqueID, row, packet, context, layers)
 }
 
 func (m *MyPacketListView) AddSplitPacket(packetType byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
@@ -227,7 +227,7 @@ func (m *MyPacketListView) BindCallback(packetType byte, packet gopacket.Packet,
 	isClient := SourceInterfaceFromPacket(packet) == context.GetClient()
 	isServer := SourceInterfaceFromPacket(packet) == context.GetServer()
 
-	row := m.packetRowsByDatagram.Get(uint32(layers.RakNet.DatagramNumber), isClient, isServer)
+	row := m.packetRowsByUniqueID.Get(layers.Reliability.UniqueID, isClient, isServer)
 	index, _ := strconv.Atoi(row[0].Data(0).ToString())
 
 	m.MSelectionHandlers.Lock()

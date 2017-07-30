@@ -127,7 +127,7 @@ func HandleGeneric(layer *RakNetLayer, packet gopacket.Packet, context *Communic
 
 		if subPacket.HasPacketType && !subPacket.HasBeenDecoded {
 			subPacket.HasBeenDecoded = true
-			go func() {
+			go func(subPacket *ReliablePacket) {
 				packetType := subPacket.PacketType
 				_, err = subPacket.FullDataReader.ReadByte() // Void first byte, since we can get it the other way
 				if err != nil {
@@ -145,7 +145,7 @@ func HandleGeneric(layer *RakNetLayer, packet gopacket.Packet, context *Communic
 				}
 
 				packetViewer.BindCallback(packetType, packet, context, layers, ActivationCallbacks[packetType])
-			}()
+			}(subPacket)
 		}
 	}
 }
