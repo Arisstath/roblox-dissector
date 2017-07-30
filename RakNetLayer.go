@@ -37,29 +37,29 @@ type CommunicationContext struct {
 	InstanceSchema []*InstanceSchemaItem
 	ReplicatorStringCache [0x80][]byte
 
-	MClassDescriptor *sync.Mutex
-	MPropertyDescriptor *sync.Mutex
-	MEventDescriptor *sync.Mutex
-	MTypeDescriptor *sync.Mutex
-	MEnumSchema *sync.Mutex
-	MInstanceSchema *sync.Mutex
+	MDescriptor *sync.Mutex
+	MSchema *sync.Mutex
 
 	UniqueID uint32
+
+	EDescriptorsParsed *sync.Cond
+	ESchemaParsed *sync.Cond
 }
 
 func NewCommunicationContext() *CommunicationContext {
+	MDescriptor := &sync.Mutex{}
+	MSchema := &sync.Mutex{}
 	return &CommunicationContext{
 		ClassDescriptor: make(map[uint32]string),
 		PropertyDescriptor: make(map[uint32]string),
 		EventDescriptor: make(map[uint32]string),
 		TypeDescriptor: make(map[uint32]string),
 
-		MClassDescriptor: &sync.Mutex{},
-		MPropertyDescriptor: &sync.Mutex{},
-		MEventDescriptor: &sync.Mutex{},
-		MTypeDescriptor: &sync.Mutex{},
-		MEnumSchema: &sync.Mutex{},
-		MInstanceSchema: &sync.Mutex{},
+		MDescriptor: MDescriptor,
+		MSchema: MSchema,
+
+		EDescriptorsParsed: sync.NewCond(MDescriptor),
+		ESchemaParsed: sync.NewCond(MSchema),
 	}
 }
 
@@ -89,11 +89,31 @@ func DestInterfaceFromPacket(packet gopacket.Packet) string {
 	return packet.Layer(layers.LayerTypeIPv4).(*layers.IPv4).DstIP.String() + ":" + strconv.Itoa(int(packet.Layer(layers.LayerTypeUDP).(*layers.UDP).DstPort))
 }
 
-func PacketFromClient(packet gopacket.Packet, c *CommunicationContext) bool {
+func (c *CommunicationContext) PacketFromClient(packet gopacket.Packet) bool {
 	return SourceInterfaceFromPacket(packet) == c.Client
 }
-func PacketFromServer(packet gopacket.Packet, c *CommunicationContext) bool {
+func (c *CommunicationContext) PacketFromServer(packet gopacket.Packet) bool {
 	return SourceInterfaceFromPacket(packet) == c.Server
+}
+
+func (c *CommunicationContext) WaitForDescriptors() {
+	c.MDescriptor.Lock()
+	for len(c.ClassDescriptor) == 0 {
+		c.EDescriptorsParsed.Wait()
+	}
+}
+func (c *CommunicationContext) WaitForSchema() {
+	c.MSchema.Lock()
+	for len(c.InstanceSchema) == 0 {
+		c.ESchemaParsed.Wait()
+	}
+}
+
+func (c *CommunicationContext) FinishDescriptors() {
+	c.MDescriptor.Unlock()
+}
+func (c *CommunicationContext) FinishSchema() {
+	c.MSchema.Unlock()
 }
 
 func NewRakNetLayer() *RakNetLayer {

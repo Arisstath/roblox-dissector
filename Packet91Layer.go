@@ -42,8 +42,11 @@ func NewPacket91Layer() Packet91Layer {
 }
 
 func DecodePacket91Layer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
-	context.MTypeDescriptor.Lock()
+	context.WaitForDescriptors()
 	typeDescriptor := context.TypeDescriptor
+	context.MSchema.Lock()
+	defer context.MSchema.Unlock()
+	defer context.FinishDescriptors()
 
 	layer := NewPacket91Layer()
 
@@ -78,9 +81,7 @@ func DecodePacket91Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 		layer.EnumSchema[i] = &EnumSchemaItem{string(name), bitSize}
 	}
 
-	context.MEnumSchema.Lock()
 	context.EnumSchema = layer.EnumSchema
-	context.MEnumSchema.Unlock()
 
 	thisLen, err = decompressedStream.ReadUint32BE()
 	if err != nil {
@@ -195,10 +196,8 @@ func DecodePacket91Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 		}
 		layer.InstanceSchema[i] = thisInstance
 	}
-	context.MInstanceSchema.Lock()
 	context.InstanceSchema = layer.InstanceSchema
-	context.MInstanceSchema.Unlock()
-	context.MTypeDescriptor.Unlock()
+	context.ESchemaParsed.Broadcast()
 
 	return layer, nil
 }

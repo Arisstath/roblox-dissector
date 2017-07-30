@@ -60,40 +60,36 @@ func LearnDictionaryHuffman(decompressedStream *ExtendedReader, ContextDescripto
 }
 
 func DecodePacket82Layer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
+	println("Parsing 0x82")
 	layer := NewPacket82Layer()
 
 	var err error
 	var decompressedStream *ExtendedReader
-	if PacketFromClient(packet, context) {
+	context.MDescriptor.Lock()
+	defer context.MDescriptor.Unlock() // Do not broadcast if parsing fails
+	if context.PacketFromClient(packet) {
 		decompressedStream = thisBitstream
 
-		context.MClassDescriptor.Lock()
 		layer.ClassDescriptor, err = LearnDictionaryHuffman(decompressedStream, context.ClassDescriptor)
-		context.MClassDescriptor.Unlock()
 		if err != nil {
 			return layer, err
 		}
 
-		context.MPropertyDescriptor.Lock()
 		layer.PropertyDescriptor, err = LearnDictionaryHuffman(decompressedStream, context.PropertyDescriptor)
-		context.MPropertyDescriptor.Unlock()
 		if err != nil {
 			return layer, err
 		}
 
-		context.MEventDescriptor.Lock()
 		layer.EventDescriptor, err = LearnDictionaryHuffman(decompressedStream, context.EventDescriptor)
-		context.MEventDescriptor.Unlock()
 		if err != nil {
 			return layer, err
 		}
 
-		context.MTypeDescriptor.Lock()
 		layer.TypeDescriptor, err = LearnDictionaryHuffman(decompressedStream, context.TypeDescriptor)
-		context.MTypeDescriptor.Unlock()
 		if err != nil {
 			return layer, err
 		}
+		context.EDescriptorsParsed.Broadcast()
 		return layer, nil
 	} else {
 		_, _ = thisBitstream.ReadUint32BE() // Skip compressed len
@@ -104,34 +100,27 @@ func DecodePacket82Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 
 		decompressedStream = &ExtendedReader{bitstream.NewReader(gzipStream)}
 
-		context.MClassDescriptor.Lock()
 		layer.ClassDescriptor, err = LearnDictionary(decompressedStream, context.ClassDescriptor)
-		context.MClassDescriptor.Unlock()
 		if err != nil {
 			return layer, err
 		}
 
-		context.MPropertyDescriptor.Lock()
 		layer.PropertyDescriptor, err = LearnDictionary(decompressedStream, context.PropertyDescriptor)
-		context.MPropertyDescriptor.Unlock()
 		if err != nil {
 			return layer, err
 		}
 
-		context.MEventDescriptor.Lock()
 		layer.EventDescriptor, err = LearnDictionary(decompressedStream, context.EventDescriptor)
-		context.MEventDescriptor.Unlock()
 		if err != nil {
 			return layer, err
 		}
 
-		context.MTypeDescriptor.Lock()
 		layer.TypeDescriptor, err = LearnDictionary(decompressedStream, context.TypeDescriptor)
-		context.MTypeDescriptor.Unlock()
 		if err != nil {
 			return layer, err
 		}
 
+		context.EDescriptorsParsed.Broadcast()
 		return layer, nil
 	}
 }
