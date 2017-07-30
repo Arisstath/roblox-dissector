@@ -397,7 +397,7 @@ func (m *MyPacketListView) AddACK(ack ACKRange, packet gopacket.Packet, context 
 
 }
 
-func GUIMain(done chan bool, viewerChan chan *MyPacketListView) {
+func GUIMain(viewerChan chan *MyPacketListView) {
 	widgets.NewQApplication(len(os.Args), os.Args)
 	window = widgets.NewQMainWindow(nil, 0)
 	window.SetWindowTitle("Roblox PCAP Dissector")
@@ -433,5 +433,4 @@ func GUIMain(done chan bool, viewerChan chan *MyPacketListView) {
 	viewerChan <- packetViewer
 
 	widgets.QApplication_Exec()
-	done <- true
 }

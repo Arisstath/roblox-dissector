@@ -151,64 +151,64 @@ func HandleGeneric(layer *RakNetLayer, packet gopacket.Packet, context *Communic
 }
 
 func main() {
-	done := make(chan bool)
 	packetViewerChan := make(chan *MyPacketListView)
-	go GUIMain(done, packetViewerChan)
-	packetViewer := <- packetViewerChan
-	packetName := flag.String("name", "", "pcap filename")
-	ipv4 := flag.Bool("ipv4", false, "Use IPv4 as initial frame type")
-	live := flag.String("live", "", "Live interface to capture from")
-	promisc := flag.Bool("promisc", false, "Capture from live interface in promisc. mode")
-	flag.Parse()
+	go func() {
+		packetViewer := <- packetViewerChan
+		packetName := flag.String("name", "", "pcap filename")
+		ipv4 := flag.Bool("ipv4", false, "Use IPv4 as initial frame type")
+		live := flag.String("live", "", "Live interface to capture from")
+		promisc := flag.Bool("promisc", false, "Capture from live interface in promisc. mode")
+		flag.Parse()
 
-	var handle *pcap.Handle
-	var err error
-	if *live == "" {
-		fmt.Printf("Will capture from file %s\n", *packetName)
-		handle, err = pcap.OpenOffline(*packetName)
-	} else {
-		fmt.Printf("Will capture from live device %s\n", *live)
-		handle, err = pcap.OpenLive(*live, 2000, *promisc, pcap.BlockForever)
-	}
-	if err == nil {
-		handle.SetBPFFilter("udp")
-		var packetSource *gopacket.PacketSource
-		if *ipv4 {
-			packetSource = gopacket.NewPacketSource(handle, layers.LayerTypeIPv4)
+		var handle *pcap.Handle
+		var err error
+		if *live == "" {
+			fmt.Printf("Will capture from file %s\n", *packetName)
+			handle, err = pcap.OpenOffline(*packetName)
 		} else {
-			packetSource = gopacket.NewPacketSource(handle, handle.LinkType())
+			fmt.Printf("Will capture from live device %s\n", *live)
+			handle, err = pcap.OpenLive(*live, 2000, *promisc, pcap.BlockForever)
 		}
-		context := NewCommunicationContext()
-		for packet := range packetSource.Packets() {
-			if packet.ApplicationLayer() == nil {
-				color.Red("Ignoring packet because ApplicationLayer can't be decoded")
-				continue
+		if err == nil {
+			handle.SetBPFFilter("udp")
+			var packetSource *gopacket.PacketSource
+			if *ipv4 {
+				packetSource = gopacket.NewPacketSource(handle, layers.LayerTypeIPv4)
+			} else {
+				packetSource = gopacket.NewPacketSource(handle, handle.LinkType())
 			}
-			payload := packet.ApplicationLayer().Payload()
-			if len(payload) == 0 {
-				color.Red("Had 0 size payload")
-				continue
-			}
+			context := NewCommunicationContext()
+			for packet := range packetSource.Packets() {
+				if packet.ApplicationLayer() == nil {
+					color.Red("Ignoring packet because ApplicationLayer can't be decoded")
+					continue
+				}
+				payload := packet.ApplicationLayer().Payload()
+				if len(payload) == 0 {
+					color.Red("Had 0 size payload")
+					continue
+				}
 
-			thisBitstream := &ExtendedReader{bitstream.NewReader(bytes.NewReader(payload))}
+				thisBitstream := &ExtendedReader{bitstream.NewReader(bytes.NewReader(payload))}
 
-			rakNetLayer, err := DecodeRakNetLayer(payload[0], thisBitstream, context, packet)
-			if err != nil {
-				color.Red("Failed to decode RakNet layer: %s", err.Error())
-				continue
+				rakNetLayer, err := DecodeRakNetLayer(payload[0], thisBitstream, context, packet)
+				if err != nil {
+					color.Red("Failed to decode RakNet layer: %s", err.Error())
+					continue
+				}
+				if rakNetLayer.IsSimple {
+					HandleSimple(rakNetLayer, packet, context, packetViewer)
+				} else if !rakNetLayer.IsValid {
+					color.New(color.FgRed).Printf("Sent invalid packet (packet header %x)\n", payload[0])
+				} else if rakNetLayer.IsACK {
+					HandleACK(rakNetLayer, packet, context, packetViewer)
+				} else if !rakNetLayer.IsNAK {
+					HandleGeneric(rakNetLayer, packet, context, packetViewer)
+				}
 			}
-			if rakNetLayer.IsSimple {
-				HandleSimple(rakNetLayer, packet, context, packetViewer)
-			} else if !rakNetLayer.IsValid {
-				color.New(color.FgRed).Printf("Sent invalid packet (packet header %x)\n", payload[0])
-			} else if rakNetLayer.IsACK {
-				HandleACK(rakNetLayer, packet, context, packetViewer)
-			} else if !rakNetLayer.IsNAK {
-				HandleGeneric(rakNetLayer, packet, context, packetViewer)
-			}
+		} else {
+			color.Red("Failed to create packet source: %s", err.Error())
 		}
-	} else {
-		color.Red("Failed to create packet source: %s", err.Error())
-	}
-	<- done
+	}()
+	GUIMain(packetViewerChan)
 }
