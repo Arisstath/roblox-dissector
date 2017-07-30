@@ -41,6 +41,8 @@ type CommunicationContext struct {
 	MPropertyDescriptor *sync.Mutex
 	MEventDescriptor *sync.Mutex
 	MTypeDescriptor *sync.Mutex
+	MEnumSchema *sync.Mutex
+	MInstanceSchema *sync.Mutex
 }
 
 func NewCommunicationContext() *CommunicationContext {
@@ -54,6 +56,8 @@ func NewCommunicationContext() *CommunicationContext {
 		MPropertyDescriptor: &sync.Mutex{},
 		MEventDescriptor: &sync.Mutex{},
 		MTypeDescriptor: &sync.Mutex{},
+		MEnumSchema: &sync.Mutex{},
+		MInstanceSchema: &sync.Mutex{},
 	}
 }
 

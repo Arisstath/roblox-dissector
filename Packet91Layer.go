@@ -78,7 +78,9 @@ func DecodePacket91Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 		layer.EnumSchema[i] = &EnumSchemaItem{string(name), bitSize}
 	}
 
+	context.MEnumSchema.Lock()
 	context.EnumSchema = layer.EnumSchema
+	context.MEnumSchema.Unlock()
 
 	thisLen, err = decompressedStream.ReadUint32BE()
 	if err != nil {
@@ -193,7 +195,9 @@ func DecodePacket91Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 		}
 		layer.InstanceSchema[i] = thisInstance
 	}
+	context.MInstanceSchema.Lock()
 	context.InstanceSchema = layer.InstanceSchema
+	context.MInstanceSchema.Unlock()
 	context.MTypeDescriptor.Unlock()
 
 	return layer, nil
