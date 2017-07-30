@@ -1,5 +1,5 @@
 package main
-import "github.com/dgryski/go-bitstream"
+import "github.com/gskartwii/go-bitstream"
 import "encoding/binary"
 import "errors"
 import "net"
@@ -147,13 +147,11 @@ func (b *ExtendedReader) ReadHuffman() ([]byte, error) {
 		return name, err
 	}
 
-	name = make([]byte, maxCharLen)
-//	fmt.Printf("Going for huffman: %X bits, %X chars\n", sizeInBits, maxCharLen)
 	if maxCharLen > 0x5000 || sizeInBits > 0x5000 {
 		return name, errors.New("sanity check: exceeded maximum sizeinbits/maxcharlen of 0x1000")
 	}
+	name = make([]byte, maxCharLen)
 	englishTree.DecodeArray(b, uint(sizeInBits), uint(maxCharLen), name)
-	//fmt.Printf("Done with huffman: %s\n", name)
 
 	return name, nil
 }
@@ -164,7 +162,11 @@ func (b *ExtendedReader) ReadUint8() (uint8, error) {
 }
 
 func (b *ExtendedReader) ReadString(length int) ([]byte, error) {
-	dest := make([]byte, length)
+	var dest []byte
+	if uint(length) > 0x1000000 {
+		return dest, errors.New("Sanity check: string too long")
+	}
+	dest = make([]byte, length)
 	err := b.Bytes(dest, length)
 	return dest, err
 }

@@ -1,8 +1,8 @@
 package main
-import "github.com/dgryski/go-bitstream"
 import "github.com/google/gopacket"
-import "bytes"
 import "compress/gzip"
+import "github.com/gskartwii/go-bitstream"
+import "errors"
 
 type EnumSchemaItem struct {
 	Name string
@@ -41,20 +41,28 @@ func NewPacket91Layer() Packet91Layer {
 	return Packet91Layer{}
 }
 
-func DecodePacket91Layer(data []byte, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
+func DecodePacket91Layer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
+	context.MTypeDescriptor.Lock()
 	typeDescriptor := context.TypeDescriptor
 
 	layer := NewPacket91Layer()
 
-	var decompressedStream ExtendedReader
-	gzipStream, err := gzip.NewReader(bytes.NewReader(data[5:]))
+	_, err := thisBitstream.Bits(32) // Void compressed len
 	if err != nil {
 		return layer, err
 	}
-	decompressedStream = ExtendedReader{bitstream.NewReader(gzipStream)}
+	var decompressedStream *ExtendedReader
+	gzipStream, err := gzip.NewReader(thisBitstream.GetReader())
+	if err != nil {
+		return layer, err
+	}
+	decompressedStream = &ExtendedReader{bitstream.NewReader(gzipStream)}
 	thisLen, err := decompressedStream.ReadUint32BE()
 	if err != nil {
 		return layer, err
+	}
+	if thisLen > 0x3000 {
+		return layer, errors.New("EnumSchema length exceeded maximum")
 	}
 	layer.EnumSchema = make([]*EnumSchemaItem, thisLen)
 	var i, j, k uint32
@@ -75,6 +83,9 @@ func DecodePacket91Layer(data []byte, context *CommunicationContext, packet gopa
 	thisLen, err = decompressedStream.ReadUint32BE()
 	if err != nil {
 		return layer, err
+	}
+	if thisLen > 0x3000 {
+		return layer, errors.New("InstanceSchema length exceeded maximum")
 	}
 	layer.InstanceSchema = make([]*InstanceSchemaItem, thisLen)
 
@@ -98,6 +109,9 @@ func DecodePacket91Layer(data []byte, context *CommunicationContext, packet gopa
 			return layer, err
 		}
 
+		if len2 > 0x3000 {
+			return layer, errors.New("InstanceSchema length exceeded maximum")
+		}
 		thisInstance.PropertySchema = make([]*PropertySchemaItem, len2)
 		for j = 0; j < len2; j++ {
 			thisProperty := &PropertySchemaItem{}
@@ -142,6 +156,9 @@ func DecodePacket91Layer(data []byte, context *CommunicationContext, packet gopa
 		if err != nil {
 			return layer, err
 		}
+		if len3 > 0x1000 {
+			return layer, errors.New("EventSchema length exceeded maximum")
+		}
 		thisInstance.EventSchema = make([]*EventSchemaItem, len3)
 		for j = 0; j < len3; j++ {
 			thisEvent := &EventSchemaItem{}
@@ -158,6 +175,9 @@ func DecodePacket91Layer(data []byte, context *CommunicationContext, packet gopa
 				return layer, err
 			}
 
+			if len4 > 0x1000 {
+				return layer, errors.New("EventSchema property list length exceeded maximum")
+			}
 			thisEvent.ArgumentTypes = make([]string, len4)
 			
 			for k = 0; k < len4; k++ {
@@ -174,6 +194,7 @@ func DecodePacket91Layer(data []byte, context *CommunicationContext, packet gopa
 		layer.InstanceSchema[i] = thisInstance
 	}
 	context.InstanceSchema = layer.InstanceSchema
+	context.MTypeDescriptor.Unlock()
 
 	return layer, nil
 }

@@ -3,10 +3,10 @@ import "github.com/google/gopacket"
 import "github.com/therecipe/qt/gui"
 import "github.com/therecipe/qt/widgets"
 
-func ShowPacket82(data []byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
+func ShowPacket82(packetType byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
 	MainLayer := layers.Main.(Packet82Layer)
 
-	layerLayout := NewBasicPacketViewer(data, packet, context, layers)
+	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
 
 	labelForDescriptorView := NewQLabelF("Dictionaries:")
 	layerLayout.AddWidget(labelForDescriptorView, 0, 0)

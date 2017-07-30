@@ -3,19 +3,19 @@ import "github.com/google/gopacket"
 import "github.com/therecipe/qt/widgets"
 import "github.com/therecipe/qt/gui"
 
-func ShowPacket05(data []byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
+func ShowPacket05(packetType byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
 	MainLayer := layers.Main.(Packet05Layer)
 
-	layerLayout := NewBasicPacketViewer(data, packet, context, layers)
+	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
 
 	versionLabel := NewQLabelF("Version: %d", MainLayer.ProtocolVersion)
 	layerLayout.AddWidget(versionLabel, 0, 0)
 }
 
-func ShowPacket06(data []byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
+func ShowPacket06(packetType byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
 	MainLayer := layers.Main.(Packet06Layer)
 
-	layerLayout := NewBasicPacketViewer(data, packet, context, layers)
+	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
 
 	guidLabel := NewQLabelF("GUID: %08X", MainLayer.GUID)
 	layerLayout.AddWidget(guidLabel, 0, 0)
@@ -27,10 +27,10 @@ func ShowPacket06(data []byte, packet gopacket.Packet, context *CommunicationCon
 	layerLayout.AddWidget(mtuLabel, 0, 0)
 }
 
-func ShowPacket07(data []byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
+func ShowPacket07(packetType byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
 	MainLayer := layers.Main.(Packet07Layer)
 
-	layerLayout := NewBasicPacketViewer(data, packet, context, layers)
+	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
 
 	addressLabel := NewQLabelF("IP address: %s", MainLayer.IPAddress.String())
 	layerLayout.AddWidget(addressLabel, 0, 0)
@@ -42,10 +42,10 @@ func ShowPacket07(data []byte, packet gopacket.Packet, context *CommunicationCon
 	layerLayout.AddWidget(guidLabel, 0, 0)
 }
 
-func ShowPacket08(data []byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
+func ShowPacket08(packetType byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
 	MainLayer := layers.Main.(Packet08Layer)
 
-	layerLayout := NewBasicPacketViewer(data, packet, context, layers)
+	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
 
 	guidLabel := NewQLabelF("GUID: %08X", MainLayer.GUID)
 	layerLayout.AddWidget(guidLabel, 0, 0)
@@ -60,10 +60,10 @@ func ShowPacket08(data []byte, packet gopacket.Packet, context *CommunicationCon
 	layerLayout.AddWidget(useSecurityLabel, 0, 0)
 }
 
-func ShowPacket09(data []byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
+func ShowPacket09(packetType byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
 	MainLayer := layers.Main.(Packet09Layer)
 
-	layerLayout := NewBasicPacketViewer(data, packet, context, layers)
+	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
 
 	guidLabel := NewQLabelF("GUID: %08X", MainLayer.GUID)
 	layerLayout.AddWidget(guidLabel, 0, 0)
@@ -78,10 +78,10 @@ func ShowPacket09(data []byte, packet gopacket.Packet, context *CommunicationCon
 	layerLayout.AddWidget(passwordLabel, 0, 0)
 }
 
-func ShowPacket10(data []byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
+func ShowPacket10(packetType byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
 	MainLayer := layers.Main.(Packet10Layer)
 
-	layerLayout := NewBasicPacketViewer(data, packet, context, layers)
+	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
 
 	addressLabel := NewQLabelF("IP address: %s", MainLayer.IPAddress.String())
 	layerLayout.AddWidget(addressLabel, 0, 0)
@@ -112,10 +112,10 @@ func ShowPacket10(data []byte, packet gopacket.Packet, context *CommunicationCon
 	layerLayout.AddWidget(sendPongTimeLabel, 0, 0)
 }
 
-func ShowPacket13(data []byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
+func ShowPacket13(packetType byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
 	MainLayer := layers.Main.(Packet13Layer)
 
-	layerLayout := NewBasicPacketViewer(data, packet, context, layers)
+	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
 
 	addressLabel := NewQLabelF("IP address: %s", MainLayer.IPAddress.String())
 	layerLayout.AddWidget(addressLabel, 0, 0)

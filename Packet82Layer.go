@@ -1,8 +1,8 @@
 package main
 import "compress/gzip"
 import "github.com/google/gopacket"
-import "github.com/dgryski/go-bitstream"
-import "bytes"
+import "github.com/gskartwii/go-bitstream"
+import "errors"
 
 type DescriptorItem struct {
 	IDx uint32
@@ -21,9 +21,13 @@ func NewPacket82Layer() Packet82Layer {
 	return Packet82Layer{}
 }
 
-func LearnDictionary(decompressedStream *ExtendedReader, ContextDescriptor map[uint32]string) []*DescriptorItem {
+func LearnDictionary(decompressedStream *ExtendedReader, ContextDescriptor map[uint32]string) ([]*DescriptorItem, error) {
+	var dictionary []*DescriptorItem
 	dictionaryLength, _ := decompressedStream.ReadUint32BE()
-	dictionary := make([]*DescriptorItem, 0, dictionaryLength)
+	if dictionaryLength > 0x1000 {
+		return dictionary, errors.New("sanity check: dictionary length exceeded maximum")
+	}
+	dictionary = make([]*DescriptorItem, dictionaryLength)
 	var i uint32
 	for i = 0; i < dictionaryLength; i++ {
 		IDx, _ := decompressedStream.ReadUint32BE()
@@ -31,52 +35,102 @@ func LearnDictionary(decompressedStream *ExtendedReader, ContextDescriptor map[u
 		name, _ := decompressedStream.ReadString(int(nameLength))
 		otherID, _ := decompressedStream.ReadUint32BE()
 
-		dictionary = append(dictionary, &DescriptorItem{IDx, otherID, string(name)})
+		dictionary[i] = &DescriptorItem{IDx, otherID, string(name)}
 		ContextDescriptor[IDx] = string(name)
 	}
-	return dictionary
+	return dictionary, nil
 }
 
-func LearnDictionaryHuffman(decompressedStream *ExtendedReader, ContextDescriptor map[uint32]string) []*DescriptorItem {
+func LearnDictionaryHuffman(decompressedStream *ExtendedReader, ContextDescriptor map[uint32]string) ([]*DescriptorItem, error) {
+	var dictionary []*DescriptorItem
 	dictionaryLength, _ := decompressedStream.ReadUint32BE()
-	dictionary := make([]*DescriptorItem, 0, dictionaryLength)
+	if dictionaryLength > 0x1000 {
+		return dictionary, errors.New("sanity check: dictionary length exceeded maximum")
+	}
+	dictionary = make([]*DescriptorItem, dictionaryLength)
 	var i uint32
 	for i = 0; i < dictionaryLength; i++ {
 		IDx, _ := decompressedStream.ReadUint32BE()
 		name, _ := decompressedStream.ReadHuffman()
 
-		dictionary = append(dictionary, &DescriptorItem{IDx, 0, string(name)})
+		dictionary[i] = &DescriptorItem{IDx, 0, string(name)}
 		ContextDescriptor[IDx] = string(name)
 	}
-	return dictionary
+	return dictionary, nil
 }
 
-func DecodePacket82Layer(data []byte, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
+func DecodePacket82Layer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
 	layer := NewPacket82Layer()
-	thisBitstream := ExtendedReader{bitstream.NewReader(bytes.NewReader(data[:5]))}
-	_, _ = thisBitstream.ReadUint8() // Skip ID
-	_, _ = thisBitstream.ReadUint32BE() // Skip compressed len
 
-	var decompressedStream ExtendedReader
+	var err error
+	var decompressedStream *ExtendedReader
 	if PacketFromClient(packet, context) {
-		decompressedStream = ExtendedReader{bitstream.NewReader(bytes.NewReader(data[1:]))}
+		decompressedStream = thisBitstream
 
-		layer.ClassDescriptor = LearnDictionaryHuffman(&decompressedStream, context.ClassDescriptor)
-		layer.PropertyDescriptor = LearnDictionaryHuffman(&decompressedStream, context.PropertyDescriptor)
-		layer.EventDescriptor = LearnDictionaryHuffman(&decompressedStream, context.EventDescriptor)
-		layer.TypeDescriptor = LearnDictionaryHuffman(&decompressedStream, context.TypeDescriptor)
-		return layer, nil
-	} else {
-		gzipStream, err := gzip.NewReader(bytes.NewReader(data[5:]))
+		context.MClassDescriptor.Lock()
+		layer.ClassDescriptor, err = LearnDictionaryHuffman(decompressedStream, context.ClassDescriptor)
+		context.MClassDescriptor.Unlock()
 		if err != nil {
 			return layer, err
 		}
 
-		decompressedStream = ExtendedReader{bitstream.NewReader(gzipStream)}
-		layer.ClassDescriptor = LearnDictionary(&decompressedStream, context.ClassDescriptor)
-		layer.PropertyDescriptor = LearnDictionary(&decompressedStream, context.PropertyDescriptor)
-		layer.EventDescriptor = LearnDictionary(&decompressedStream, context.EventDescriptor)
-		layer.TypeDescriptor = LearnDictionary(&decompressedStream, context.TypeDescriptor)
+		context.MPropertyDescriptor.Lock()
+		layer.PropertyDescriptor, err = LearnDictionaryHuffman(decompressedStream, context.PropertyDescriptor)
+		context.MPropertyDescriptor.Unlock()
+		if err != nil {
+			return layer, err
+		}
+
+		context.MEventDescriptor.Lock()
+		layer.EventDescriptor, err = LearnDictionaryHuffman(decompressedStream, context.EventDescriptor)
+		context.MEventDescriptor.Unlock()
+		if err != nil {
+			return layer, err
+		}
+
+		context.MTypeDescriptor.Lock()
+		layer.TypeDescriptor, err = LearnDictionaryHuffman(decompressedStream, context.TypeDescriptor)
+		context.MTypeDescriptor.Unlock()
+		if err != nil {
+			return layer, err
+		}
+		return layer, nil
+	} else {
+		_, _ = thisBitstream.ReadUint32BE() // Skip compressed len
+		gzipStream, err := gzip.NewReader(thisBitstream.GetReader())
+		if err != nil {
+			return layer, err
+		}
+
+		decompressedStream = &ExtendedReader{bitstream.NewReader(gzipStream)}
+
+		context.MClassDescriptor.Lock()
+		layer.ClassDescriptor, err = LearnDictionary(decompressedStream, context.ClassDescriptor)
+		context.MClassDescriptor.Unlock()
+		if err != nil {
+			return layer, err
+		}
+
+		context.MPropertyDescriptor.Lock()
+		layer.PropertyDescriptor, err = LearnDictionary(decompressedStream, context.PropertyDescriptor)
+		context.MPropertyDescriptor.Unlock()
+		if err != nil {
+			return layer, err
+		}
+
+		context.MEventDescriptor.Lock()
+		layer.EventDescriptor, err = LearnDictionary(decompressedStream, context.EventDescriptor)
+		context.MEventDescriptor.Unlock()
+		if err != nil {
+			return layer, err
+		}
+
+		context.MTypeDescriptor.Lock()
+		layer.TypeDescriptor, err = LearnDictionary(decompressedStream, context.TypeDescriptor)
+		context.MTypeDescriptor.Unlock()
+		if err != nil {
+			return layer, err
+		}
 
 		return layer, nil
 	}

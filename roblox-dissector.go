@@ -4,6 +4,9 @@ import "github.com/google/gopacket/pcap"
 import "github.com/google/gopacket/layers"
 import "github.com/fatih/color"
 import "flag"
+import "fmt"
+import "github.com/gskartwii/go-bitstream"
+import "bytes"
 
 type PacketLayers struct {
 	RakNet *RakNetLayer
@@ -12,6 +15,7 @@ type PacketLayers struct {
 }
 
 var PacketNames map[byte]string = map[byte]string{
+	0xFF: "???",
 	0x05: "ID_OPEN_CONNECTION_REQUEST_1",
 	0x06: "ID_OPEN_CONNECTION_REPLY_1",
 	0x07: "ID_OPEN_CONNECTION_REQUEST_2",
@@ -35,7 +39,7 @@ var PacketNames map[byte]string = map[byte]string{
 	0x81: "ID_ROBLOX_PRESCHEMA",
 	0x83: "ID_ROBLOX_REPLICATION",
 }
-type DecoderFunc func([]byte, *CommunicationContext, gopacket.Packet) (interface{}, error)
+type DecoderFunc func(*ExtendedReader, *CommunicationContext, gopacket.Packet) (interface{}, error)
 
 var PacketDecoders map[byte]DecoderFunc = map[byte]DecoderFunc{
 	0x05: DecodePacket05Layer,
@@ -56,10 +60,10 @@ var PacketDecoders map[byte]DecoderFunc = map[byte]DecoderFunc{
 	0x90: DecodePacket90Layer,
 	0x8F: DecodePacket8FLayer,
 	0x81: DecodePacket81Layer,
-	0x83: DecodePacket83Layer,
+	//0x83: DecodePacket83Layer,
 }
 
-type ActivationCallback func([]byte, gopacket.Packet, *CommunicationContext, *PacketLayers)
+type ActivationCallback func(byte, gopacket.Packet, *CommunicationContext, *PacketLayers)
 var ActivationCallbacks map[byte]ActivationCallback = map[byte]ActivationCallback{
 	0x05: ShowPacket05,
 	0x06: ShowPacket06,
@@ -86,16 +90,20 @@ func HandleSimple(layer *RakNetLayer, packet gopacket.Packet, context *Communica
 	layers := &PacketLayers{}
 	layers.RakNet = layer
 
-	decoder := PacketDecoders[layer.Payload[0]]
-	var err error
+	packetType, err := layer.Payload.ReadByte()
+	if err != nil {
+		color.Red("Failed to decode simple packet: %s", err.Error())
+		return
+	}
+	decoder := PacketDecoders[packetType]
 	if decoder != nil {
 		layers.Main, err = decoder(layer.Payload, context, packet)
 		if err != nil {
-			color.Red("Failed to decode packet %02X: %s", layer.Payload[0], err.Error())
+			color.Red("Failed to decode simple packet %02X: %s", packetType, err.Error())
 			return
 		}
 	}
-	packetViewer.Add(layer.Payload, packet, context, layers, ActivationCallbacks[layer.Payload[0]])
+	packetViewer.AddFullPacket(packetType, packet, context, layers, ActivationCallbacks[packetType])
 }
 
 func HandleACK(layer *RakNetLayer, packet gopacket.Packet, context *CommunicationContext, packetViewer *MyPacketListView) {
@@ -107,28 +115,37 @@ func HandleACK(layer *RakNetLayer, packet gopacket.Packet, context *Communicatio
 func HandleGeneric(layer *RakNetLayer, packet gopacket.Packet, context *CommunicationContext, packetViewer *MyPacketListView) {
 	reliabilityLayer, err := DecodeReliabilityLayer(layer.Payload, context, packet, layer)
 	if err != nil {
-		color.Red("Failed to decode packet: %s", err.Error())
+		color.Red("Failed to decode reliable packet: %s", err.Error())
 		return
 	}
 
 	for _, subPacket := range reliabilityLayer.Packets {
-		if subPacket.IsFinal {
-			finalData := subPacket.FinalData
+		layers := &PacketLayers{}
+		layers.RakNet = layer
+		layers.Reliability = subPacket
+		packetViewer.AddSplitPacket(subPacket.PacketType, packet, context, layers)
 
-			layers := &PacketLayers{}
-			layers.RakNet = layer
-			layers.Reliability = subPacket
-
-			decoder := PacketDecoders[finalData[0]]
-			var err error
-			if decoder != nil {
-				layers.Main, err = decoder(finalData, context, packet)
+		if subPacket.HasPacketType && !subPacket.HasBeenDecoded {
+			subPacket.HasBeenDecoded = true
+			go func() {
+				packetType := subPacket.PacketType
+				_, err = subPacket.FullDataReader.ReadByte() // Void first byte, since we can get it the other way
 				if err != nil {
-					color.Red("Failed to decode packet %02X: %s", finalData[0], err.Error())
+					color.Red("Failed to decode reliablePacket %02X: %s", packetType, err.Error())
 					return
 				}
-			}
-			packetViewer.Add(finalData, packet, context, layers, ActivationCallbacks[finalData[0]])
+
+				decoder := PacketDecoders[packetType]
+				if decoder != nil {
+					layers.Main, err = decoder(subPacket.FullDataReader, context, packet)
+					if err != nil {
+						color.Red("Failed to decode reliable packet %02X: %s", packetType, err.Error())
+						return
+					}
+				}
+
+				packetViewer.BindCallback(packetType, packet, context, layers, ActivationCallbacks[packetType])
+			}()
 		}
 	}
 }
@@ -140,9 +157,20 @@ func main() {
 	packetViewer := <- packetViewerChan
 	packetName := flag.String("name", "", "pcap filename")
 	ipv4 := flag.Bool("ipv4", false, "Use IPv4 as initial frame type")
+	live := flag.String("live", "", "Live interface to capture from")
+	promisc := flag.Bool("promisc", false, "Capture from live interface in promisc. mode")
 	flag.Parse()
 
-	if handle, err := pcap.OpenOffline(*packetName); err == nil {
+	var handle *pcap.Handle
+	var err error
+	if *live == "" {
+		fmt.Printf("Will capture from file %s\n", *packetName)
+		handle, err = pcap.OpenOffline(*packetName)
+	} else {
+		fmt.Printf("Will capture from live device %s\n", *live)
+		handle, err = pcap.OpenLive(*live, 2000, *promisc, pcap.BlockForever)
+	}
+	if err == nil {
 		handle.SetBPFFilter("udp")
 		var packetSource *gopacket.PacketSource
 		if *ipv4 {
@@ -152,23 +180,31 @@ func main() {
 		}
 		context := NewCommunicationContext()
 		for packet := range packetSource.Packets() {
-			payload := packet.ApplicationLayer().Payload()
-			if len(payload) == 0 {
+			if packet.ApplicationLayer() == nil {
+				color.Red("Ignoring packet because ApplicationLayer can't be decoded")
 				continue
 			}
-			rakNetLayer, err := DecodeRakNetLayer(payload, context, packet)
+			payload := packet.ApplicationLayer().Payload()
+			if len(payload) == 0 {
+				color.Red("Had 0 size payload")
+				continue
+			}
+
+			thisBitstream := &ExtendedReader{bitstream.NewReader(bytes.NewReader(payload))}
+
+			rakNetLayer, err := DecodeRakNetLayer(payload[0], thisBitstream, context, packet)
 			if err != nil {
 				color.Red("Failed to decode RakNet layer: %s", err.Error())
 				continue
 			}
 			if rakNetLayer.IsSimple {
-				HandleSimple(&rakNetLayer, packet, context, packetViewer)
+				HandleSimple(rakNetLayer, packet, context, packetViewer)
 			} else if !rakNetLayer.IsValid {
 				color.New(color.FgRed).Printf("Sent invalid packet (packet header %x)\n", payload[0])
 			} else if rakNetLayer.IsACK {
-				HandleACK(&rakNetLayer, packet, context, packetViewer)
+				HandleACK(rakNetLayer, packet, context, packetViewer)
 			} else if !rakNetLayer.IsNAK {
-				HandleGeneric(&rakNetLayer, packet, context, packetViewer)
+				HandleGeneric(rakNetLayer, packet, context, packetViewer)
 			}
 		}
 	} else {

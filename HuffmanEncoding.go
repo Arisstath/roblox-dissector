@@ -1,7 +1,7 @@
 // Ported from https://github.com/facebookarchive/RakNet/blob/1a169895a900c9fc4841c556e16514182b75faf8/Source/DS_HuffmanEncodingTree.cpp
 package main
 import "container/list"
-import "github.com/dgryski/go-bitstream"
+import "github.com/gskartwii/go-bitstream"
 import "bytes"
 
 type HuffmanEncodingTreeNode struct {

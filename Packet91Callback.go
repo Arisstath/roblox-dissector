@@ -3,10 +3,10 @@ import "github.com/google/gopacket"
 import "github.com/therecipe/qt/widgets"
 import "github.com/therecipe/qt/gui"
 
-func ShowPacket91(data []byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
+func ShowPacket91(packetType byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
 	MainLayer := layers.Main.(Packet91Layer)
 
-	layerLayout := NewBasicPacketViewer(data, packet, context, layers)
+	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
 
 	labelForEnumSchema := NewQLabelF("Enum schema (%d entries):", len(MainLayer.EnumSchema))
 	layerLayout.AddWidget(labelForEnumSchema, 0, 0)

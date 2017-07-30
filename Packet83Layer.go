@@ -1,5 +1,4 @@
 package main
-import "github.com/dgryski/go-bitstream"
 import "github.com/google/gopacket"
 import "bytes"
 //import "encoding/hex"
@@ -76,12 +75,10 @@ func extractPacketType(stream *ExtendedReader) (uint8, error) {
 	return uint8(ret), err
 }
 
-func DecodePacket83Layer(data []byte, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
+func DecodePacket83Layer(thisBitsream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
 	layer := NewPacket83Layer()
-	thisBitstream := &ExtendedReader{bitstream.NewReader(bytes.NewReader(data[1:]))}
 
 	packetType, err := extractPacketType(thisBitstream)
-
 	if err != nil {
 		return layer, err
 	}

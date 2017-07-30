@@ -1,7 +1,5 @@
 package main
 import "github.com/google/gopacket"
-import "github.com/dgryski/go-bitstream"
-import "bytes"
 import "net"
 
 type Packet05Layer struct {
@@ -66,9 +64,8 @@ func NewPacket13Layer() Packet13Layer {
 }
 var VoidOfflineMessage []byte = make([]byte, 0x10)
 
-func DecodePacket05Layer(data []byte, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
+func DecodePacket05Layer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
 	layer := NewPacket05Layer()
-	thisBitstream := ExtendedReader{bitstream.NewReader(bytes.NewReader(data[1:]))}
 
 	var err error
 	err = thisBitstream.Bytes(VoidOfflineMessage, 0x10)
@@ -79,9 +76,8 @@ func DecodePacket05Layer(data []byte, context *CommunicationContext, packet gopa
 	return layer, err
 }
 
-func DecodePacket06Layer(data []byte, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
+func DecodePacket06Layer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
 	layer := NewPacket06Layer()
-	thisBitstream := ExtendedReader{bitstream.NewReader(bytes.NewReader(data[1:]))}
 
 	var err error
 	err = thisBitstream.Bytes(VoidOfflineMessage, 0x10)
@@ -100,9 +96,8 @@ func DecodePacket06Layer(data []byte, context *CommunicationContext, packet gopa
 	return layer, err
 }
 
-func DecodePacket07Layer(data []byte, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
+func DecodePacket07Layer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
 	layer := NewPacket07Layer()
-	thisBitstream := ExtendedReader{bitstream.NewReader(bytes.NewReader(data[1:]))}
 
 	var err error
 	err = thisBitstream.Bytes(VoidOfflineMessage, 0x10)
@@ -121,9 +116,8 @@ func DecodePacket07Layer(data []byte, context *CommunicationContext, packet gopa
 	return layer, err
 }
 
-func DecodePacket08Layer(data []byte, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
+func DecodePacket08Layer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
 	layer := NewPacket08Layer()
-	thisBitstream := ExtendedReader{bitstream.NewReader(bytes.NewReader(data[1:]))}
 
 	var err error
 	err = thisBitstream.Bytes(VoidOfflineMessage, 0x10)
@@ -146,9 +140,8 @@ func DecodePacket08Layer(data []byte, context *CommunicationContext, packet gopa
 	return layer, err
 }
 
-func DecodePacket09Layer(data []byte, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
+func DecodePacket09Layer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
 	layer := NewPacket09Layer()
-	thisBitstream := ExtendedReader{bitstream.NewReader(bytes.NewReader(data[1:]))}
 
 	var err error
 	layer.GUID, err = thisBitstream.ReadUint64BE()
@@ -163,13 +156,12 @@ func DecodePacket09Layer(data []byte, context *CommunicationContext, packet gopa
 	if err != nil {
 		return layer, err
 	}
-	layer.Password, err = thisBitstream.ReadString(len(data) - 1 - 8 - 8 - 1)
+	//layer.Password, err = thisBitstream.ReadString(len(data) - 1 - 8 - 8 - 1)
 	return layer, err
 }
 
-func DecodePacket10Layer(data []byte, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
+func DecodePacket10Layer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
 	layer := NewPacket10Layer()
-	thisBitstream := ExtendedReader{bitstream.NewReader(bytes.NewReader(data[1:]))}
 
 	var err error
 	layer.IPAddress, err = thisBitstream.ReadAddress()
@@ -194,9 +186,8 @@ func DecodePacket10Layer(data []byte, context *CommunicationContext, packet gopa
 	return layer, err
 }
 
-func DecodePacket13Layer(data []byte, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
+func DecodePacket13Layer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
 	layer := NewPacket13Layer()
-	thisBitstream := ExtendedReader{bitstream.NewReader(bytes.NewReader(data[1:]))}
 
 	var err error
 	layer.IPAddress, err = thisBitstream.ReadAddress()

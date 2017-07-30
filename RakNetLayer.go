@@ -1,9 +1,8 @@
 package main
-import "bytes"
-import "github.com/dgryski/go-bitstream"
 import "github.com/google/gopacket"
 import "github.com/google/gopacket/layers"
 import "strconv"
+import "sync"
 
 type ACKRange struct {
 	Min uint32
@@ -11,8 +10,7 @@ type ACKRange struct {
 }
 
 type RakNetLayer struct {
-	Contents []byte
-	Payload []byte
+	Payload *ExtendedReader
 	IsSimple bool
 	SimpleLayerID uint8
 	IsValid bool
@@ -26,16 +24,23 @@ type RakNetLayer struct {
 	DatagramNumber uint32
 }
 
+type Descriptor map[uint32]string
+
 type CommunicationContext struct {
 	Server string
 	Client string
-	ClassDescriptor map[uint32]string
-	PropertyDescriptor map[uint32]string
-	EventDescriptor map[uint32]string
-	TypeDescriptor map[uint32]string
+	ClassDescriptor Descriptor
+	PropertyDescriptor Descriptor
+	EventDescriptor Descriptor
+	TypeDescriptor Descriptor
 	EnumSchema []*EnumSchemaItem
 	InstanceSchema []*InstanceSchemaItem
 	ReplicatorStringCache [0x80][]byte
+
+	MClassDescriptor *sync.Mutex
+	MPropertyDescriptor *sync.Mutex
+	MEventDescriptor *sync.Mutex
+	MTypeDescriptor *sync.Mutex
 }
 
 func NewCommunicationContext() *CommunicationContext {
@@ -44,6 +49,11 @@ func NewCommunicationContext() *CommunicationContext {
 		PropertyDescriptor: make(map[uint32]string),
 		EventDescriptor: make(map[uint32]string),
 		TypeDescriptor: make(map[uint32]string),
+
+		MClassDescriptor: &sync.Mutex{},
+		MPropertyDescriptor: &sync.Mutex{},
+		MEventDescriptor: &sync.Mutex{},
+		MTypeDescriptor: &sync.Mutex{},
 	}
 }
 
@@ -80,30 +90,28 @@ func PacketFromServer(packet gopacket.Packet, c *CommunicationContext) bool {
 	return SourceInterfaceFromPacket(packet) == c.Server
 }
 
-func NewRakNetLayer() RakNetLayer {
-	return RakNetLayer{Payload: make([]byte, 0), Contents: make([]byte, 0)}
+func NewRakNetLayer() *RakNetLayer {
+	return &RakNetLayer{}
 }
 
-func DecodeRakNetLayer(data []byte, context *CommunicationContext, packet gopacket.Packet) (RakNetLayer, error) {
+func DecodeRakNetLayer(packetType byte, bitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (*RakNetLayer, error) {
 	layer := NewRakNetLayer()
 
-	if data[0] == 0x5 {
+	var err error
+	if packetType == 0x5 {
 		context.SetClient(SourceInterfaceFromPacket(packet))
 		context.SetServer(DestInterfaceFromPacket(packet))
-		layer.SimpleLayerID = data[0]
-		layer.Payload = data
+		layer.SimpleLayerID = packetType
+		layer.Payload = bitstream
 		layer.IsSimple = true
 		return layer, nil
-	} else if data[0] >= 0x6 && data[0] <= 0x8 {
+	} else if packetType >= 0x6 && packetType <= 0x8 {
 		layer.IsSimple = true
-		layer.Payload = data
-		layer.SimpleLayerID = data[0]
+		layer.Payload = bitstream
+		layer.SimpleLayerID = packetType
 		return layer, nil
 	}
 
-	bitstream := ExtendedReader{bitstream.NewReader(bytes.NewReader(data))}
-
-	var err error
 	layer.IsValid, err = bitstream.ReadBool()
 	if !layer.IsValid {
 		return layer, nil
@@ -143,8 +151,7 @@ func DecodeRakNetLayer(data []byte, context *CommunicationContext, packet gopack
 		bitstream.Align()
 
 		layer.DatagramNumber, _ = bitstream.ReadUint24LE()
-		layer.Contents = data[:4]
-		layer.Payload = data[4:]
+		layer.Payload = bitstream
 		return layer, nil
 	}
 }
