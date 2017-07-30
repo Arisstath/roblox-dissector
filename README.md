@@ -1,6 +1,6 @@
 # Roblox UDP Dissector
 This is a WIP tool that allows dissection of Roblox UDP protocol communication in PCAP files.  
-To install this, you must first install [TheRecipe's Go bindings for Qt](github.com/therecipe/qt). 
+To install this, you must first install [TheRecipe's Go bindings for Qt](https://github.com/therecipe/qt). 
 Then fetch the repo and its dependencies: `go get -v github.com/gskartwii/roblox-dissector/...`  
 And compile: `$GOPATH/bin/qtdeploy build $GOPATH/src/github.com/gskartwii/roblox-dissector`  
 A directory named `deploy` should now exist in `$GOPATH/src/github/gskartwii/roblox-dissector`.
