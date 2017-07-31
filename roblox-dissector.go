@@ -90,7 +90,8 @@ func HandleSimple(layer *RakNetLayer, packet gopacket.Packet, context *Communica
 	layers := &PacketLayers{}
 	layers.RakNet = layer
 
-	packetType, err := layer.Payload.ReadByte()
+	var err error
+	packetType := layer.SimpleLayerID
 	if err != nil {
 		color.Red("Failed to decode simple packet: %s", err.Error())
 		return
@@ -190,6 +191,14 @@ func main() {
 				}
 
 				thisBitstream := &ExtendedReader{bitstream.NewReader(bytes.NewReader(payload))}
+
+				if context.Client == "" && payload[0] != 5 {
+					continue // drop packet because we weren't expecting it
+				}
+
+				if context.Client != "" && !context.PacketFromClient(packet) && !context.PacketFromServer(packet) {
+					continue // drop packet because it doesn't belong to this conversation
+				}
 
 				rakNetLayer, err := DecodeRakNetLayer(payload[0], thisBitstream, context, packet)
 				if err != nil {

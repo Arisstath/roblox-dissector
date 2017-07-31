@@ -3,6 +3,7 @@ import "github.com/google/gopacket"
 import "github.com/google/gopacket/layers"
 import "strconv"
 import "sync"
+import "bytes"
 
 type ACKRange struct {
 	Min uint32
@@ -120,18 +121,43 @@ func NewRakNetLayer() *RakNetLayer {
 	return &RakNetLayer{}
 }
 
+var OfflineMessageID = [...]byte{0x00,0xFF,0xFF,0x00,0xFE,0xFE,0xFE,0xFE,0xFD,0xFD,0xFD,0xFD,0x12,0x34,0x56,0x78}
+
 func DecodeRakNetLayer(packetType byte, bitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (*RakNetLayer, error) {
 	layer := NewRakNetLayer()
 
 	var err error
 	if packetType == 0x5 {
-		context.SetClient(SourceInterfaceFromPacket(packet))
-		context.SetServer(DestInterfaceFromPacket(packet))
+		_, err = bitstream.ReadByte()
+		if err != nil {
+			return layer, err
+		}
+		thisOfflineMessage := make([]byte, 0x10)
+		err = bitstream.Bytes(thisOfflineMessage, 0x10)
+		if err != nil {
+			return layer, err
+		}
+
+		if bytes.Compare(thisOfflineMessage, OfflineMessageID[:]) != 0 {
+			return layer, nil
+		}
+
+		client := SourceInterfaceFromPacket(packet)
+		server := DestInterfaceFromPacket(packet)
+		println("Automatically detected Roblox peers using 0x5 packet:")
+		println("Client:", client)
+		println("Server:", server)
+		context.SetClient(client)
+		context.SetServer(server)
 		layer.SimpleLayerID = packetType
 		layer.Payload = bitstream
 		layer.IsSimple = true
 		return layer, nil
 	} else if packetType >= 0x6 && packetType <= 0x8 {
+		_, err = bitstream.ReadByte()
+		if err != nil {
+			return layer, err
+		}
 		layer.IsSimple = true
 		layer.Payload = bitstream
 		layer.SimpleLayerID = packetType
