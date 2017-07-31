@@ -249,6 +249,9 @@ func (b *ExtendedReader) ReadJoinReferent() (string, uint32, error) {
 	if err != nil {
 		return "", 0, err
 	}
+	if stringLen == 0x00 {
+		return "NULL2", 0, err
+	}
 	ref := "NULL"
 	if stringLen != 0xFF {
 		ref, err = b.ReadASCII(int(stringLen))
@@ -263,4 +266,19 @@ func (b *ExtendedReader) ReadJoinReferent() (string, uint32, error) {
 	}
 
 	return ref, intVal, nil
+}
+
+func (b *ExtendedReader) ReadFloat16BE(floatMin float32, floatMax float32) (float32, error) {
+	scale, err := b.ReadUint16BE()
+	if err != nil {
+		return 0.0, err
+	}
+
+	outFloat := float32(scale) / 65535.0 * (floatMax - floatMin)
+	if outFloat < floatMin {
+		return floatMin, nil
+	} else if outFloat > floatMax {
+		return floatMax, nil
+	}
+	return outFloat, nil
 }
