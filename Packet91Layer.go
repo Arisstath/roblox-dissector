@@ -14,7 +14,7 @@ type PropertySchemaItem struct {
 	Name string
 	DictionaryType string
 	Type string
-	Bool1 bool
+	Replicates bool
 	IsEnum bool
 	BitSize uint32
 }
@@ -91,6 +91,7 @@ func DecodePacket91Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 		return layer, errors.New("InstanceSchema length exceeded maximum")
 	}
 	layer.InstanceSchema = make([]*InstanceSchemaItem, thisLen)
+	context.PropertySchema = make([]*PropertySchemaItem, len(context.PropertyDescriptor))
 
 	for i = 0; i < thisLen; i++ {
 		thisInstance := &InstanceSchemaItem{}
@@ -138,7 +139,7 @@ func DecodePacket91Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 			if err != nil {
 				return layer, err
 			}
-			thisProperty.Bool1, err = decompressedStream.ReadBool()
+			thisProperty.Replicates, err = decompressedStream.ReadBool()
 			if err != nil {
 				return layer, err
 			}
@@ -153,6 +154,7 @@ func DecodePacket91Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 				}
 			}
 			thisInstance.PropertySchema[j] = thisProperty
+			context.PropertySchema[thisProperty.CommonID] = thisProperty
 		}
 
 		len3, err := decompressedStream.ReadUint32BE()

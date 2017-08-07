@@ -33,7 +33,7 @@ func ShowPacket91(packetType byte, packet gopacket.Packet, context *Communicatio
 	layerLayout.AddWidget(labelForInstanceSchema, 0, 0)
 	instanceSchemaList := widgets.NewQTreeView(nil)
 	instanceModel := NewProperSortModel(nil)
-	instanceModel.SetHorizontalHeaderLabels([]string{"Name", "Common ID", "Type", "Type from dictionary", "Is creatable?", "Unknown bool 1", "Is enum?", "Size in bits"})
+	instanceModel.SetHorizontalHeaderLabels([]string{"Name", "Common ID", "Type", "Type from dictionary", "Is creatable?", "Property replicates?", "Is enum?", "Size in bits"})
 	instanceSchemaRootNode := instanceModel.InvisibleRootItem()
 
 	for _, item := range MainLayer.InstanceSchema {
@@ -51,12 +51,12 @@ func ShowPacket91(packetType byte, packet gopacket.Packet, context *Communicatio
 			propertyCommonIDItem := NewQStandardItemF("%d", property.CommonID)
 			propertyTypeItem := NewQStandardItemF(property.Type)
 			propertyDictionaryTypeItem := NewQStandardItemF(property.DictionaryType)
-			propertyBool1Item := NewQStandardItemF("%v", property.Bool1)
+			propertyReplicatesItem := NewQStandardItemF("%v", property.Replicates)
 			propertyIsEnumItem := NewQStandardItemF("%v", property.IsEnum)
 			propertyBitSizeItem := NewQStandardItemF("%d", property.BitSize)
 
 
-			propertyRow := []*gui.QStandardItem{propertyNameItem, propertyCommonIDItem, propertyTypeItem, propertyDictionaryTypeItem, nil, propertyBool1Item, propertyIsEnumItem, propertyBitSizeItem}
+			propertyRow := []*gui.QStandardItem{propertyNameItem, propertyCommonIDItem, propertyTypeItem, propertyDictionaryTypeItem, nil, propertyReplicatesItem, propertyIsEnumItem, propertyBitSizeItem}
 			propertySchemaItem.AppendRow(propertyRow)
 		}
 		
