@@ -268,17 +268,29 @@ func (b *ExtendedReader) ReadBrickColor() (BrickColor, error) {
 	val, err := b.ReadUint32BE()
 	return BrickColor(val), err
 }
-func (b *ExtendedReader) ReadObject() (Object, error) {
+func (b *ExtendedReader) ReadObject(isJoinData bool, context *CommunicationContext) (Object, error) {
 	var err error
 	Object := Object{}
-	Object.Referent, Object.ReferentInt, err = b.ReadJoinReferent()
+	if isJoinData {
+		Object.Referent, Object.ReferentInt, err = b.ReadJoinReferent()
+	} else {
+		Object.Referent, err = b.ReadCached(context)
+		if err != nil {
+			return Object, err
+		}
+		Object.ReferentInt, err = b.ReadUint32LE()
+	}
 	return Object, err
 }
 func (b *ExtendedReader) ReadEnumValue(bitSize uint32) (EnumValue, error) {
 	val, err := b.Bits(int(bitSize + 1))
 	return EnumValue(val), err
 }
-func (b *ExtendedReader) ReadPString() (pstring, error) {
+func (b *ExtendedReader) ReadPString(isJoinData bool, context *CommunicationContext) (pstring, error) {
+	if !isJoinData {
+		val, err := b.ReadCached(context)
+		return pstring(val), err
+	}
 	stringLen, err := b.ReadUint32BE()
 	if err != nil {
 		return pstring(""), err
@@ -286,7 +298,12 @@ func (b *ExtendedReader) ReadPString() (pstring, error) {
 	val, err := b.ReadASCII(int(stringLen))
 	return pstring(val), err
 }
-func (b *ExtendedReader) ReadProtectedString() (ProtectedString, error) {
+func (b *ExtendedReader) ReadProtectedString(isJoinData bool, context *CommunicationContext) (ProtectedString, error) {
+	if !isJoinData {
+		val, err := b.ReadCached(context)
+		return ProtectedString(val), err
+	}
+	b.Align() // BitStream::operator>>(BinaryString) does implicit alignment. why?
 	var result []byte
 	stringLen, err := b.ReadUint32BE()
 	if err != nil {
@@ -296,6 +313,7 @@ func (b *ExtendedReader) ReadProtectedString() (ProtectedString, error) {
 	return ProtectedString(val), err
 }
 func (b *ExtendedReader) ReadBinaryString() (BinaryString, error) {
+	b.Align() // BitStream::operator>>(BinaryString) does implicit alignment. why?
 	var result []byte
 	stringLen, err := b.ReadUint32BE()
 	if err != nil {

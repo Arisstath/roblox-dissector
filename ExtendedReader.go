@@ -208,6 +208,14 @@ func (b *ExtendedReader) ReadAddress() (*net.UDPAddr, error) {
 	return &net.UDPAddr{address, int(port), ""}, nil
 }
 
+func (b *ExtendedReader) ReadFloat32LE() (float32, error) {
+	intf, err := b.ReadUint32LE()
+	if err != nil {
+		return 0.0, err
+	}
+	return math.Float32frombits(intf), err
+}
+
 func (b *ExtendedReader) ReadFloat32BE() (float32, error) {
 	intf, err := b.ReadUint32BE()
 	if err != nil {
@@ -281,4 +289,31 @@ func (b *ExtendedReader) ReadFloat16BE(floatMin float32, floatMax float32) (floa
 		return floatMax, nil
 	}
 	return outFloat, nil
+}
+
+func (b *ExtendedReader) ReadCached(context *CommunicationContext) (string, error) {
+	var thisString []byte
+	var err error
+	cacheIndex, err := b.ReadUint8()
+	if err != nil {
+		return "", err
+	}
+	if cacheIndex == 0x00 {
+		return "NULL", err
+	}
+
+	if cacheIndex < 0x80 {
+		thisString = context.ReplicatorStringCache[cacheIndex]
+	} else {
+		stringLen, err := b.ReadUint32BE()
+		if err != nil {
+			return "", err
+		}
+		thisString, err = b.ReadString(int(stringLen))
+		if err != nil {
+			return "", err
+		}
+		context.ReplicatorStringCache[cacheIndex - 0x80] = thisString
+	}
+	return string(thisString), nil
 }

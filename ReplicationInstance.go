@@ -1,154 +1,83 @@
 package main
+import "fmt"
+import "github.com/google/gopacket"
+import "errors"
 
 type PropertyValue interface {
 	//Show() *widgets.QWidget_ITF
 }
 
-type ReplicationProperty struct {
-	Schema *PropertySchemaItem
-	Value PropertyValue
-	IsDefault bool
-}
-
 type ReplicationInstance struct {
-	Referent string
-	ReferentInt1 uint32
+	Object1 Object
 	Int1 uint32
 	ClassName string
 	Bool1 bool
-	Referent2 string
-	ReferentInt2 uint32
+	Object2 Object
 	Properties []*ReplicationProperty
 }
 
-func DecodeReplicationInstance(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet, instanceSchema []*InstanceSchemaItem, classDescriptor Descriptor) (ReplicationInstance*, error) {
+func DecodeReplicationInstance(isJoinData bool, thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet, instanceSchema []*InstanceSchemaItem) (*ReplicationInstance, error) {
+	var err error
 	thisInstance := &ReplicationInstance{}
-	thisInstance.Referent, thisInstance.ReferentInt1, err = gzipStream.ReadJoinReferent()
+	thisInstance.Object1, err = thisBitstream.ReadObject(isJoinData, context)
 	if err != nil {
-		return layer, err
+		return thisInstance, err
 	}
 
-	classIDx, err := gzipStream.Bits(9)
+	classIDx, err := thisBitstream.Bits(9)
 	if err != nil {
-		return layer, err
+		return thisInstance, err
 	}
 	realIDx := (classIDx & 1 << 8) | classIDx >> 1
 	if int(realIDx) > int(len(instanceSchema)) {
-		return layer, errors.New(fmt.Sprintf("idx %d is higher than %d", realIDx, len(context.InstanceSchema)))
+		return thisInstance, errors.New(fmt.Sprintf("idx %d is higher than %d", realIDx, len(context.InstanceSchema)))
 	}
-	thisInstance.ClassName = classDescriptor[uint32(realIDx)]
-	println(DebugInfo(context, packet), "Our class: ", thisInstance.ClassName)
+	thisInstance.ClassName = instanceSchema[realIDx].Name
+	println(DebugInfo2(context, packet, isJoinData), "Read referent", thisInstance.Object1.Referent, thisInstance.ClassName)
 
 	thisPropertySchema := instanceSchema[realIDx].PropertySchema
 
-	thisInstance.Bool1, err = gzipStream.ReadBool()
+	thisInstance.Bool1, err = thisBitstream.ReadBool()
 	if err != nil {
-		return layer, err
+		return thisInstance, err
 	}
 
-	for _, property := range thisPropertySchema {
-		if !property.Bool1 {
-			continue
+	if isJoinData {
+		for _, schema := range thisPropertySchema {
+			property, err := schema.Decode(ROUND_JOINDATA, thisBitstream, context, packet)
+			if err != nil {
+				return thisInstance, err
+			}
+			if property != nil {
+				thisInstance.Properties = append(thisInstance.Properties, property)
+			}
 		}
-		var val PropertyValue = nil
-		if property.Type == "bool" {
+	} else {
+		for _, schema := range thisPropertySchema {
+			property, err := schema.Decode(ROUND_STRINGS, thisBitstream, context, packet)
 			if err != nil {
-				return layer, err
+				return thisInstance, err
 			}
-			val, err = gzipStream.ReadPBool()
+			if property != nil {
+				thisInstance.Properties = append(thisInstance.Properties, property)
+			}
+		}
+		for _, schema := range thisPropertySchema {
+			property, err := schema.Decode(ROUND_OTHER, thisBitstream, context, packet)
 			if err != nil {
-				return layer, err
+				return thisInstance, err
 			}
-		} else {
-			isDefault, err := gzipStream.ReadBool()
-			if err != nil {
-				return layer, err
-			}
-			if isDefault {
-				println(DebugInfo(context, packet), "Read", property.Name, "1 bit: default")
-			} else {
-				switch property.Type {
-				case "string":
-					val, err = gzipStream.ReadPString()
-					break
-				case "ProtectedString":
-					val, err = gzipStream.ReadProtectedString()
-					break
-				case "BinaryString":
-					val, err = gzipStream.ReadBinaryString()
-					break
-				case "int":
-					val, err = gzipStream.ReadPInt()
-					break
-				case "float":
-					val, err = gzipStream.ReadPFloat()
-					break
-				case "double":
-					val, err = gzipStream.ReadPDouble()
-					break
-				case "Axes":
-					val, err = gzipStream.ReadAxes()
-					break
-				case "Faces":
-					val, err = gzipStream.ReadFaces()
-					break
-				case "BrickColor":
-					val, err = gzipStream.ReadBrickColor()
-					break
-				case "Object":
-					val, err = gzipStream.ReadObject()
-					break
-				case "UDim":
-					val, err = gzipStream.ReadUDim()
-					break
-				case "UDim2":
-					val, err = gzipStream.ReadUDim2()
-					break
-				case "Vector2":
-					val, err = gzipStream.ReadVector2()
-					break
-				case "Vector3":
-					val, err = gzipStream.ReadVector3()
-					break
-				case "Vector2uint16":
-					val, err = gzipStream.ReadVector2uint16()
-					break
-				case "Vector3uint16":
-					val, err = gzipStream.ReadVector3uint16()
-					break
-				case "Ray":
-					val, err = gzipStream.ReadRay()
-					break
-				case "Color3":
-					val, err = gzipStream.ReadColor3()
-					break
-				case "Color3uint8":
-					val, err = gzipStream.ReadColor3uint8()
-					break
-				case "CoordinateFrame":
-					val, err = gzipStream.ReadCFrame()
-					break
-				case "Content":
-					val, err = gzipStream.ReadContent()
-					break
-				default:
-					if property.IsEnum {
-						val, err = gzipStream.ReadEnumValue(property.BitSize)
-					} else {
-						return layer, errors.New("joindata parser encountered unknown type")
-					}
-				}
-				if val == nil {
-					break
-				}
-				println(DebugInfo(context, packet), "Read", property.Name, spew.Sdump(val))
+			if property != nil {
+				thisInstance.Properties = append(thisInstance.Properties, property)
 			}
 		}
 	}
-	thisInstance.Referent2, thisInstance.ReferentInt2, err = gzipStream.ReadJoinReferent()
-	if err != nil {
-		return layer, err
-	}
 
-	println(DebugInfo(context, packet), "Read instance", thisInstance.Referent, ",", thisInstance.ReferentInt1, ",",thisInstance.Int1, ",", thisInstance.ClassName, ",", thisInstance.Referent2, ",", thisInstance.ReferentInt2)
+	thisInstance.Object2, err = thisBitstream.ReadObject(isJoinData, context)
+	if err != nil {
+		return thisInstance, err
+	}
+	println(DebugInfo2(context, packet, isJoinData), "Parent referent", thisInstance.Object2.Referent)
+
+	return thisInstance, nil
 }
