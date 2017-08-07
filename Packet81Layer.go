@@ -68,7 +68,7 @@ func DecodePacket81Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 			context.ReplicatorStringCache[cacheIndex - 0x80] = thisItem.String1
 		}
 
-		thisItem.Int2, err = thisBitstream.ReadUint32BE()
+		thisItem.Int2, err = thisBitstream.ReadUint32LE()
 		if err != nil {
 			return layer, err
 		}
