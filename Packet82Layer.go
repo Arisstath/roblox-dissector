@@ -60,7 +60,6 @@ func LearnDictionaryHuffman(decompressedStream *ExtendedReader, ContextDescripto
 }
 
 func DecodePacket82Layer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
-	println("Parsing 0x82")
 	layer := NewPacket82Layer()
 
 	var err error
