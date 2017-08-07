@@ -36,6 +36,7 @@ type CommunicationContext struct {
 	TypeDescriptor Descriptor
 	EnumSchema []*EnumSchemaItem
 	InstanceSchema []*InstanceSchemaItem
+	PropertySchema []*PropertySchemaItem
 	ReplicatorStringCache [0x80][]byte
 
 	MDescriptor *sync.Mutex
