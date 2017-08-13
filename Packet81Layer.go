@@ -3,7 +3,7 @@ import "github.com/google/gopacket"
 
 type Packet81LayerItem struct {
 	Int1 uint16
-	String1 []byte
+	String1 string
 	Int2 uint32
 }
 
@@ -55,17 +55,17 @@ func DecodePacket81Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 			return layer, err
 		}
 		if cacheIndex < 0x80 {
-			thisItem.String1 = context.ReplicatorStringCache[cacheIndex]
+			thisItem.String1 = context.ReplicatorObjectCache[cacheIndex]
 		} else {
 			stringLen, err := thisBitstream.ReadUint32BE()
 			if err != nil {
 				return layer, err
 			}
-			thisItem.String1, err = thisBitstream.ReadString(int(stringLen))
+			thisItem.String1, err = thisBitstream.ReadASCII(int(stringLen))
 			if err != nil {
 				return layer, err
 			}
-			context.ReplicatorStringCache[cacheIndex - 0x80] = thisItem.String1
+			context.ReplicatorObjectCache[cacheIndex - 0x80] = thisItem.String1
 		}
 
 		thisItem.Int2, err = thisBitstream.ReadUint32LE()
