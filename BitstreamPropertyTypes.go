@@ -1,4 +1,5 @@
 package main
+import "net"
 
 type pbool bool
 type pint int32
@@ -68,6 +69,10 @@ type CFrame struct {
 }
 
 type Content string
+
+type SystemAddress struct {
+	net.UDPAddr
+}
 
 func (b *ExtendedReader) ReadUDim() (UDim, error) {
 	var err error
@@ -274,7 +279,7 @@ func (b *ExtendedReader) ReadObject(isJoinData bool, context *CommunicationConte
 	if isJoinData {
 		Object.Referent, Object.ReferentInt, err = b.ReadJoinReferent()
 	} else {
-		Object.Referent, err = b.ReadCached(context)
+		Object.Referent, err = b.ReadCachedObject(context)
 		if err != nil {
 			return Object, err
 		}
@@ -359,19 +364,51 @@ func (b *ExtendedReader) ReadCFrame() (CFrame, error) {
 	return val, nil
 }
 
-func (b *ExtendedReader) ReadContent() (Content, error) {
-	hasContent, err := b.ReadBoolByte()
-	if err != nil {
-		return Content(""), err
+func (b *ExtendedReader) ReadContent(isJoinData bool, context *CommunicationContext) (Content, error) {
+	if !isJoinData {
+		val, err := b.ReadCachedContent(context)
+		return Content(val), err
 	}
-	if hasContent {
-		contentLen, err := b.ReadUint32BE()
+	var result string
+	stringLen, err := b.ReadUint32BE()
+	if err != nil {
+		return Content(result), err
+	}
+	result, err = b.ReadASCII(int(stringLen))
+	return Content(result), err
+}
+
+func (b *ExtendedReader) ReadSystemAddress(isJoinData bool, context *CommunicationContext) (SystemAddress, error) {
+	var thisAddress SystemAddress
+	var err error
+	var cacheIndex uint8
+	if !isJoinData {
+		cacheIndex, err = b.ReadUint8()
 		if err != nil {
-			return Content(""), err
+			return thisAddress, err
+		}
+		if cacheIndex == 0x00 {
+			return thisAddress, err
 		}
 
-		content, err := b.ReadASCII(int(contentLen))
-		return Content(content), err
+		if cacheIndex < 0x80 {
+			return context.ReplicatorSystemAddressCache[cacheIndex], nil
+		}
 	}
-	return Content(""), nil
+	thisAddress.IP = make([]byte, 4)
+	err = b.Bytes(thisAddress.IP, 4)
+	if err != nil {
+		return thisAddress, err
+	}
+	port, err := b.ReadUint16BE()
+	thisAddress.Port = int(port)
+	if err != nil {
+		return thisAddress, err
+	}
+
+	if !isJoinData {
+		context.ReplicatorSystemAddressCache[cacheIndex - 0x80] = thisAddress
+	}
+
+	return thisAddress, nil
 }
