@@ -299,7 +299,7 @@ func (b *ExtendedReader) ReadCached(context *CommunicationContext) (string, erro
 		return "", err
 	}
 	if cacheIndex == 0x00 {
-		return "NULL", err
+		return "", err
 	}
 
 	if cacheIndex < 0x80 {
@@ -371,3 +371,32 @@ func (b *ExtendedReader) ReadCachedContent(context *CommunicationContext) (strin
 	}
 	return thisContent, nil
 }
+
+func (b *ExtendedReader) ReadCachedProtectedString(context *CommunicationContext) ([]byte, error) {
+	var thisString []byte
+	var err error
+	cacheIndex, err := b.ReadUint8()
+	if err != nil {
+		return thisString, err
+	}
+	if cacheIndex == 0x00 {
+		return thisString, err
+	}
+
+	if cacheIndex < 0x80 {
+		thisString = context.ReplicatorStringCache[cacheIndex]
+	} else {
+		b.Align()
+		stringLen, err := b.ReadUint32BE()
+		if err != nil {
+			return thisString, err
+		}
+		thisString, err = b.ReadString(int(stringLen))
+		if err != nil {
+			return thisString, err
+		}
+		context.ReplicatorStringCache[cacheIndex - 0x80] = thisString
+	}
+	return thisString, nil
+}
+

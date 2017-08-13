@@ -314,7 +314,7 @@ func (b *ExtendedReader) ReadPString(isJoinData bool, context *CommunicationCont
 }
 func (b *ExtendedReader) ReadProtectedString(isJoinData bool, context *CommunicationContext) (ProtectedString, error) {
 	if !isJoinData {
-		val, err := b.ReadCached(context)
+		val, err := b.ReadCachedProtectedString(context)
 		return ProtectedString(val), err
 	}
 	b.Align() // BitStream::operator>>(BinaryString) does implicit alignment. why?
