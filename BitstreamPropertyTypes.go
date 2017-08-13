@@ -172,22 +172,31 @@ func (b *ExtendedReader) ReadVector2() (Vector2, error) {
 	return val, err
 }
 
-func (b *ExtendedReader) ReadVector3() (Vector3, error) {
+func (b *ExtendedReader) ReadVector3Simple() (Vector3, error) {
 	var err error
 	val := Vector3{}
-	isInteger, err := b.ReadBool()
-	if !isInteger {
-		val.X, err = b.ReadFloat32BE()
-		if err != nil {
-			return val, err
-		}
-		val.Y, err = b.ReadFloat32BE()
-		if err != nil {
-			return val, err
-		}
-		val.Z, err = b.ReadFloat32BE()
+	val.X, err = b.ReadFloat32BE()
+	if err != nil {
 		return val, err
+	}
+	val.Y, err = b.ReadFloat32BE()
+	if err != nil {
+		return val, err
+	}
+	val.Z, err = b.ReadFloat32BE()
+	return val, err
+}
+
+func (b *ExtendedReader) ReadVector3() (Vector3, error) {
+	isInteger, err := b.ReadBool()
+	if err != nil {
+		return Vector3{}, err
+	}
+	if !isInteger {
+		return b.ReadVector3Simple()
 	} else {
+		var err error
+		val := Vector3{}
 		x, err := b.Bits(11)
 		if err != nil {
 			return val, err
