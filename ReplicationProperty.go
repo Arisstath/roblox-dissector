@@ -3,6 +3,20 @@ import "github.com/google/gopacket"
 import "github.com/davecgh/go-spew/spew"
 import "errors"
 
+var Vector3Override = map[string]struct{}{
+	"Rotation": struct{}{},
+	"CenterOfMass": struct{}{},
+	"OrientationLocal": struct{}{},
+	"Orientation": struct{}{},
+	"PositionLocal": struct{}{},
+	"Position": struct{}{},
+	"RotVelocity": struct{}{},
+	"size": struct{}{},
+	"Size": struct{}{},
+	"Velocity": struct{}{},
+	"siz": struct{}{}, // ???
+}
+
 type ReplicationProperty struct {
 	Schema *PropertySchemaItem
 	Value PropertyValue
@@ -19,10 +33,10 @@ const (
 
 func (schema *PropertySchemaItem) Decode(round int, thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (*ReplicationProperty, error) {
 	var err error
-	if !schema.Replicates {
+	if !schema.Replicates && round != ROUND_UPDATE {
 		return nil, nil
 	}
-	isJoinData := round == 0
+	isJoinData := round == ROUND_JOINDATA
 
 	isStringObject := true
 	if schema.Type != "Object" &&
@@ -47,7 +61,7 @@ func (schema *PropertySchemaItem) Decode(round int, thisBitstream *ExtendedReade
 			return Property, err
 		}
 		Property.Value, err = thisBitstream.ReadPBool()
-		println(DebugInfo2(context, packet, isJoinData), "Read bool", schema.Name, Property.Value)
+		println(DebugInfo2(context, packet, isJoinData), "Read bool", schema.Name, bool(Property.Value.(pbool)))
 		if err != nil {
 			return Property, err
 		}
@@ -103,7 +117,12 @@ func (schema *PropertySchemaItem) Decode(round int, thisBitstream *ExtendedReade
 			Property.Value, err = thisBitstream.ReadVector2()
 			break
 		case "Vector3":
-			Property.Value, err = thisBitstream.ReadVector3()
+			if _, ok := Vector3Override[schema.Name]; ok {
+				Property.Value, err = thisBitstream.ReadVector3()
+			} else {
+				Property.Value, err = thisBitstream.ReadVector3Simple()
+			}
+
 			break
 		case "Vector2uint16":
 			Property.Value, err = thisBitstream.ReadVector2uint16()
@@ -124,16 +143,21 @@ func (schema *PropertySchemaItem) Decode(round int, thisBitstream *ExtendedReade
 			Property.Value, err = thisBitstream.ReadCFrame()
 			break
 		case "Content":
-			Property.Value, err = thisBitstream.ReadContent()
+			Property.Value, err = thisBitstream.ReadContent(isJoinData, context)
+			break
+		case "SystemAddress":
+			Property.Value, err = thisBitstream.ReadSystemAddress(isJoinData, context)
 			break
 		default:
 			if schema.IsEnum {
 				Property.Value, err = thisBitstream.ReadEnumValue(schema.BitSize)
 			} else {
-				return Property, errors.New("property parser encountered unknown type")
+				return Property, errors.New("property parser encountered unknown type: " + schema.Type)
 			}
 		}
-		println(DebugInfo2(context, packet, isJoinData), "Read", schema.Name, spew.Sdump(Property.Value))
+		if schema.Type != "ProtectedString" {
+			println(DebugInfo2(context, packet, isJoinData), "Read", schema.Name, spew.Sdump(Property.Value))
+		}
 	}
 	return Property, nil
 }
