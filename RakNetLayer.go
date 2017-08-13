@@ -38,6 +38,9 @@ type CommunicationContext struct {
 	InstanceSchema []*InstanceSchemaItem
 	PropertySchema []*PropertySchemaItem
 	ReplicatorStringCache [0x80][]byte
+	ReplicatorObjectCache [0x80]string
+	ReplicatorContentCache [0x80]string
+	ReplicatorSystemAddressCache [0x80]SystemAddress
 
 	MDescriptor *sync.Mutex
 	MSchema *sync.Mutex
