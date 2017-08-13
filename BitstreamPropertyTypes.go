@@ -6,7 +6,7 @@ type pfloat float32
 type pdouble float64
 type Axes int32
 type Faces int32
-type BrickColor int32
+type BrickColor uint64
 type Object struct {
 	Referent string
 	ReferentInt uint32
@@ -265,7 +265,7 @@ func (b *ExtendedReader) ReadFaces() (Faces, error) {
 	return Faces(val), err
 }
 func (b *ExtendedReader) ReadBrickColor() (BrickColor, error) {
-	val, err := b.ReadUint32BE()
+	val, err := b.Bits(7)
 	return BrickColor(val), err
 }
 func (b *ExtendedReader) ReadObject(isJoinData bool, context *CommunicationContext) (Object, error) {
