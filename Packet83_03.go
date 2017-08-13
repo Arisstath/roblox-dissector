@@ -2,13 +2,27 @@ package main
 import "github.com/google/gopacket"
 import "errors"
 import "fmt"
+import "github.com/therecipe/qt/widgets"
 
 type Packet83_03 struct {
 	Object1 Object
 	Bool1 bool
 	PropertyName string
 	Schema *PropertySchemaItem
-	Value PropertyValue
+	Value *ReplicationProperty
+}
+
+func (this Packet83_03) Show() widgets.QWidget_ITF {
+	widget := widgets.NewQWidget(nil, 0)
+	layout := widgets.NewQVBoxLayout()
+	layout.AddWidget(NewQLabelF("Referent: %s", this.Object1.Show()), 0, 0)
+	layout.AddWidget(NewQLabelF("Unknown bool: %v", this.Bool1), 0, 0)
+	layout.AddWidget(NewQLabelF("Property name: %s", this.PropertyName), 0, 0)
+	layout.AddWidget(NewQLabelF("Property type: %s", this.Schema.Type), 0, 0)
+	layout.AddWidget(NewQLabelF("Property value: %s", this.Value.Show()), 0, 0)
+	widget.SetLayout(layout)
+
+	return widget
 }
 
 func DecodePacket83_03(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet, propertySchema []*PropertySchemaItem) (interface{}, error) {

@@ -1,11 +1,8 @@
 package main
 import "fmt"
 import "github.com/google/gopacket"
+import "github.com/therecipe/qt/gui"
 import "errors"
-
-type PropertyValue interface {
-	//Show() *widgets.QWidget_ITF
-}
 
 type ReplicationInstance struct {
 	Object1 Object
@@ -14,6 +11,48 @@ type ReplicationInstance struct {
 	Bool1 bool
 	Object2 Object
 	Properties []*ReplicationProperty
+}
+
+func (this *ReplicationInstance) findName() string {
+	for _, property := range this.Properties {
+		if property.Schema.Name == "Name" {
+			return property.Show()
+		}
+	}
+
+	return ""
+}
+
+func (this *ReplicationInstance) Show() []*gui.QStandardItem {
+	rootNameItem := NewQStandardItemF(this.findName())
+	typeItem := NewQStandardItemF(this.ClassName)
+	referentItem := NewQStandardItemF(this.Object1.Show())
+	unknownBoolItem := NewQStandardItemF("%v", this.Bool1)
+	parentItem := NewQStandardItemF(this.Object2.Show())
+
+	for _, property := range this.Properties {
+		nameItem := NewQStandardItemF(property.Schema.Name)
+		typeItem := NewQStandardItemF(property.Schema.Type)
+		valueItem := NewQStandardItemF(property.Show())
+
+		rootNameItem.AppendRow([]*gui.QStandardItem{
+			nameItem,
+			typeItem,
+			valueItem,
+			nil,
+			nil,
+			nil,
+		})
+	}
+
+	return []*gui.QStandardItem{
+		rootNameItem,
+		typeItem,
+		nil,
+		referentItem,
+		unknownBoolItem,
+		parentItem,
+	}
 }
 
 func DecodeReplicationInstance(isJoinData bool, thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet, instanceSchema []*InstanceSchemaItem) (*ReplicationInstance, error) {

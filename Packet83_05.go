@@ -1,4 +1,5 @@
 package main
+import "github.com/therecipe/qt/widgets"
 import "github.com/google/gopacket"
 
 type Packet83_05 struct {
@@ -6,6 +7,18 @@ type Packet83_05 struct {
 	Int1 uint64
 	Int2 uint32
 	Int3 uint32
+}
+
+func (this Packet83_05) Show() widgets.QWidget_ITF {
+	widget := widgets.NewQWidget(nil, 0)
+	layout := widgets.NewQVBoxLayout()
+	layout.AddWidget(NewQLabelF("Unknown bool: %v", this.Bool1), 0, 0)
+	layout.AddWidget(NewQLabelF("Int 1: %d", this.Int1), 0, 0)
+	layout.AddWidget(NewQLabelF("Int 2: %d", this.Int2), 0, 0)
+	layout.AddWidget(NewQLabelF("Int 3: %d", this.Int3), 0, 0)
+	widget.SetLayout(layout)
+
+	return widget
 }
 
 func DecodePacket83_05(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {

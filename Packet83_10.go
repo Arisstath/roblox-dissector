@@ -1,8 +1,13 @@
 package main
 import "github.com/google/gopacket"
+import "github.com/therecipe/qt/widgets"
 
 type Packet83_10 struct {
 	TagId uint32
+}
+
+func (this Packet83_10) Show() widgets.QWidget_ITF {
+	return NewQLabelF("Replication tag: %d", this.TagId)
 }
 
 func DecodePacket83_10(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {

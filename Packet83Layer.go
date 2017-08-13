@@ -3,10 +3,65 @@ import "github.com/google/gopacket"
 import "errors"
 import "strconv"
 import "io"
-//import "github.com/therecipe/qt/widgets"
+import "github.com/therecipe/qt/widgets"
 
-type Packet83Subpacket interface {
-	//Show() *widgets.QWidget_ITF
+var Packet83Subpackets map[uint8]string = map[uint8]string{
+	0xFF: "ID_REPLIC_???",
+	0x00: "ID_REPLIC_END",
+	0x01: "ID_REPLIC_INIT_REFERENT",
+	0x02: "ID_REPLIC_NEW_INSTANCE",
+	0x03: "ID_REPLIC_PROP",
+	0x04: "ID_REPLIC_MARKER",
+	0x05: "ID_REPLIC_UNK_05",
+	0x07: "ID_REPLIC_EVENT",
+	0x0B: "ID_REPLIC_GZIP_JOINDATA",
+	0x10: "ID_REPLIC_TAG",
+	0x11: "ID_REPLIC_STATS",
+}
+
+type packet83Subpacket_ interface {
+	Show() widgets.QWidget_ITF
+}
+
+type Packet83Subpacket struct {
+	child packet83Subpacket_
+}
+
+func NewPacket83Subpacket(child packet83Subpacket_) Packet83Subpacket {
+	return Packet83Subpacket{child}
+}
+
+func (this Packet83Subpacket) Type() uint8 {
+	switch this.child.(type) {
+		case *Packet83_01:
+			return 1
+		case *Packet83_02:
+			return 2
+		case *Packet83_03:
+			return 3
+		case *Packet83_04:
+			return 4
+		case *Packet83_05:
+			return 5
+		case *Packet83_07:
+			return 7
+		case *Packet83_0B:
+			return 0xB
+		case *Packet83_10:
+			return 0x10
+		case *Packet83_11:
+			return 0x11
+		default:
+			return 0xFF
+	}
+}
+
+func (this Packet83Subpacket) TypeString() string {
+	return Packet83Subpackets[this.Type()]
+}
+
+func (this Packet83Subpacket) Show() widgets.QWidget_ITF {
+	return this.child.Show()
 }
 
 type Packet83Layer struct {
@@ -100,7 +155,7 @@ func DecodePacket83Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 			return layer, errors.New("parsing subpacket " + Packet83Subpackets[packetType] + ": " + err.Error())
 		}
 
-		layer.SubPackets = append(layer.SubPackets, inner)
+		layer.SubPackets = append(layer.SubPackets, NewPacket83Subpacket(inner.(packet83Subpacket_)))
 
 		packetType, err = extractPacketType(thisBitstream)
 		if err == io.EOF {

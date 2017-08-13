@@ -23,6 +23,19 @@ type ReplicationProperty struct {
 	IsDefault bool
 }
 
+type PropertyValue interface {
+	Show() string
+}
+
+func (this *ReplicationProperty) Show() string {
+	if this == nil {
+		return "ERR!! NIL"
+	}
+	if this.IsDefault {
+		return "!DEFAULT"
+	}
+	return this.Value.Show()
+}
 
 const (
 	ROUND_JOINDATA	= iota

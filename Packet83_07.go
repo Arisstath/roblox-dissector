@@ -1,5 +1,6 @@
 package main
 import "github.com/google/gopacket"
+import "github.com/therecipe/qt/widgets"
 import "errors"
 import "fmt"
 
@@ -8,6 +9,10 @@ type Packet83_07 struct {
 	EventName string
 	Schema *EventSchemaItem
 	Event *ReplicationEvent
+}
+
+func (this Packet83_07) Show() widgets.QWidget_ITF {
+	return nil
 }
 
 func DecodePacket83_07(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet, eventSchema []*EventSchemaItem) (interface{}, error) {

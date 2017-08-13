@@ -1,5 +1,6 @@
 package main
 import "github.com/google/gopacket"
+import "github.com/therecipe/qt/widgets"
 import "errors"
 import "io"
 
@@ -9,6 +10,22 @@ type Packet83_0B struct {
 
 func NewPacket83_0BLayer(length int) *Packet83_0B {
 	return &Packet83_0B{make([]*ReplicationInstance, length)}
+}
+
+func (this Packet83_0B) Show() widgets.QWidget_ITF {
+	instanceList := widgets.NewQTreeView(nil)
+	standardModel := NewProperSortModel(nil)
+	standardModel.SetHorizontalHeaderLabels([]string{"Name", "Type", "Value", "Referent", "Unknown bool", "Parent"})
+
+	rootNode := standardModel.InvisibleRootItem()
+	for _, instance := range(this.Instances) {
+		rootNode.AppendRow(instance.Show())
+	}
+	instanceList.SetModel(standardModel)
+	instanceList.SetSelectionMode(0)
+	instanceList.SetSortingEnabled(true)
+
+	return instanceList
 }
 
 func DecodePacket83_0B(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet, instanceSchema []*InstanceSchemaItem) (interface{}, error) {
