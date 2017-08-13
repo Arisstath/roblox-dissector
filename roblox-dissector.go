@@ -186,7 +186,7 @@ func main() {
 				}
 				payload := packet.ApplicationLayer().Payload()
 				if len(payload) == 0 {
-					color.Red("Had 0 size payload")
+					//color.Red("Had 0 size payload") // This is way too annoying
 					continue
 				}
 
