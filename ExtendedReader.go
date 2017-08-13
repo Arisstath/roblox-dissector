@@ -317,3 +317,57 @@ func (b *ExtendedReader) ReadCached(context *CommunicationContext) (string, erro
 	}
 	return string(thisString), nil
 }
+
+func (b *ExtendedReader) ReadCachedObject(context *CommunicationContext) (string, error) {
+	var thisObject string
+	var err error
+	cacheIndex, err := b.ReadUint8()
+	if err != nil {
+		return "", err
+	}
+	if cacheIndex == 0x00 {
+		return "NULL", err
+	}
+
+	if cacheIndex < 0x80 {
+		thisObject = context.ReplicatorObjectCache[cacheIndex]
+	} else {
+		stringLen, err := b.ReadUint32BE()
+		if err != nil {
+			return "", err
+		}
+		thisObject, err := b.ReadASCII(int(stringLen))
+		if err != nil {
+			return "", err
+		}
+		context.ReplicatorObjectCache[cacheIndex - 0x80] = thisObject
+	}
+	return thisObject, nil
+}
+
+func (b *ExtendedReader) ReadCachedContent(context *CommunicationContext) (string, error) {
+	var thisContent string
+	var err error
+	cacheIndex, err := b.ReadUint8()
+	if err != nil {
+		return "", err
+	}
+	if cacheIndex == 0x00 {
+		return "", err
+	}
+
+	if cacheIndex < 0x80 {
+		thisContent = context.ReplicatorContentCache[cacheIndex]
+	} else {
+		stringLen, err := b.ReadUint32BE()
+		if err != nil {
+			return "", err
+		}
+		thisContent, err := b.ReadASCII(int(stringLen))
+		if err != nil {
+			return "", err
+		}
+		context.ReplicatorContentCache[cacheIndex - 0x80] = thisContent
+	}
+	return thisContent, nil
+}
