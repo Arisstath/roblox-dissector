@@ -394,7 +394,6 @@ func (m *MyPacketListView) AddACK(ack ACKRange, packet gopacket.Packet, context 
 		m.highlightByACK(ack, isServer, isClient) // intentionally the other way around
 	}
 	m.MSelectionHandlers.Unlock()
-
 }
 
 func GUIMain(viewerChan chan *MyPacketListView) {
