@@ -97,7 +97,7 @@ func DecodePacket83Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 			return layer, errors.New("don't know how to parse replication subpacket: " + strconv.Itoa(int(packetType)))
 		}
 		if err != nil {
-			return layer, err
+			return layer, errors.New("parsing subpacket " + Packet83Subpackets[packetType] + ": " + err.Error())
 		}
 
 		layer.SubPackets = append(layer.SubPackets, inner)
