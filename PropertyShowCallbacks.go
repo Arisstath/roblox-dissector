@@ -1,5 +1,6 @@
 package main
 import "fmt"
+import "bytes"
 
 func (x pbool) Show() string {
 	return fmt.Sprintf("%v", x)
@@ -86,4 +87,47 @@ func (x Content) Show() string {
 
 func (x SystemAddress) Show() string {
 	return x.String()
+}
+
+func (x Region3) Show() string {
+	return fmt.Sprintf("%s, %s", x.Start.Show(), x.End.Show())
+}
+func (x Region3uint16) Show() string {
+	return fmt.Sprintf("%s, %s", x.Start.Show(), x.End.Show())
+}
+
+func (x Instance) Show() string {
+	return Object(x).Show()
+}
+
+func (x Tuple) Show() string {
+	var ret bytes.Buffer
+	ret.WriteString("[")
+
+	for _, y := range x {
+		ret.WriteString(fmt.Sprintf("(%s) %s, ", y.Type, y.Value))
+	}
+
+	ret.WriteString("]")
+	return ret.String()
+}
+
+func (x Array) Show() string {
+	return Tuple(x).Show()
+}
+
+func (x Dictionary) Show() string {
+	var ret bytes.Buffer
+	ret.WriteString("{")
+
+	for k, v := range x {
+		ret.WriteString(fmt.Sprintf("%s: (%s) %s, ", k, v.Type, v.Value))
+	}
+
+	ret.WriteString("}")
+	return ret.String()
+}
+
+func (x Map) Show() string {
+	return Dictionary(x).Show()
 }

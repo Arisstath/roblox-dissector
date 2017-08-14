@@ -114,7 +114,9 @@ func DecodePacket83Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 		return layer, err
 	}
 	context.WaitForSchema()
+	context.WaitForDescriptors()
 	defer context.FinishSchema()
+	defer context.FinishDescriptors()
 	instanceSchema := context.InstanceSchema
 
 	var inner interface{}
@@ -147,6 +149,9 @@ func DecodePacket83Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 			break
 		case 0x03:
 			inner, err = DecodePacket83_03(thisBitstream, context, packet, context.PropertySchema)
+			break
+		case 0x07:
+			inner, err = DecodePacket83_07(thisBitstream, context, packet, context.EventSchema)
 			break
 		default:
 			return layer, errors.New("don't know how to parse replication subpacket: " + strconv.Itoa(int(packetType)))

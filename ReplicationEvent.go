@@ -1,87 +1,126 @@
 package main
 import "github.com/google/gopacket"
 import "github.com/davecgh/go-spew/spew"
-//import "errors"
+import "errors"
 
 type ReplicationEvent struct {
-	Schema *EventSchemaItem
-	Arguments []*PropertyValue
-	IsDefault bool
+	UnknownInt uint32
+	Arguments []PropertyValue
+}
+
+func decodeEventArgument(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet, argType string) (PropertyValue, error) {
+	var argument PropertyValue
+	var err error
+	switch argType {
+	case "bool":
+		argument, err = thisBitstream.ReadPBool()
+		break
+	case "string":
+		argument, err = thisBitstream.ReadPString(false, context)
+		break
+	case "BinaryString":
+		argument, err = thisBitstream.ReadBinaryString()
+		break
+	case "int":
+		argument, err = thisBitstream.ReadPInt()
+		break
+	case "float":
+		argument, err = thisBitstream.ReadPFloat()
+		break
+	case "double":
+		argument, err = thisBitstream.ReadPDouble()
+		break
+	case "Axes":
+		argument, err = thisBitstream.ReadAxes()
+		break
+	case "Faces":
+		argument, err = thisBitstream.ReadFaces()
+		break
+	case "BrickColor":
+		argument, err = thisBitstream.ReadBrickColor()
+		break
+	case "Object":
+		argument, err = thisBitstream.ReadObject(false, context)
+		break
+	case "UDim":
+		argument, err = thisBitstream.ReadUDim()
+		break
+	case "UDim2":
+		argument, err = thisBitstream.ReadUDim2()
+		break
+	case "Vector2":
+		argument, err = thisBitstream.ReadVector2()
+		break
+	case "Vector3":
+		argument, err = thisBitstream.ReadVector3Simple()
+		break
+	case "Vector2uint16":
+		argument, err = thisBitstream.ReadVector2uint16()
+		break
+	case "Vector3uint16":
+		argument, err = thisBitstream.ReadVector3uint16()
+		break
+	case "Ray":
+		argument, err = thisBitstream.ReadRay()
+		break
+	case "Color3":
+		argument, err = thisBitstream.ReadColor3()
+		break
+	case "Color3uint8":
+		argument, err = thisBitstream.ReadColor3uint8()
+		break
+	case "CoordinateFrame":
+		argument, err = thisBitstream.ReadCFrame()
+		break
+	case "Content":
+		argument, err = thisBitstream.ReadContent(false, context)
+		break
+	case "Instance":
+		argument, err = thisBitstream.ReadObject(false, context)
+		break
+	case "long":
+		argument, err = thisBitstream.ReadPInt()
+		break
+	case "Region3":
+		argument, err = thisBitstream.ReadRegion3()
+		break
+	case "Region3uint16":
+		argument, err = thisBitstream.ReadRegion3uint16()
+		break
+	case "Tuple":
+		argument, err = thisBitstream.ReadTuple(context, packet)
+		break
+	case "Array":
+		argument, err = thisBitstream.ReadArray(context, packet)
+		break
+	case "Dictionary":
+		argument, err = thisBitstream.ReadDictionary(context, packet)
+		break
+	case "Map":
+		argument, err = thisBitstream.ReadMap(context, packet)
+		break
+	default:
+		if schema, ok := context.EnumSchema[argType]; ok {
+			argument, err = thisBitstream.ReadEnumValue(schema.BitSize)
+		} else {
+			return argument, errors.New("event parser encountered unknown type " + argType)
+		}
+	}
+	return argument, err
 }
 
 func (schema *EventSchemaItem) Decode(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (*ReplicationEvent, error) {
-	//var err error
+	var err error
 
-	event := &ReplicationEvent{Schema: schema}
-//	switch schema.Type {
-//	case "bool":
-//		event.Value, err = thisBitstream.ReadPBool()
-//	case "string":
-//		event.Value, err = thisBitstream.ReadPString(false, context)
-//		break
-//	case "ProtectedString":
-//		event.Value, err = thisBitstream.ReadProtectedString(false, context)
-//		break
-//	case "BinaryString":
-//		event.Value, err = thisBitstream.ReadBinaryString()
-//		break
-//	case "int":
-//		event.Value, err = thisBitstream.ReadPInt()
-//		break
-//	case "float":
-//		event.Value, err = thisBitstream.ReadPFloat()
-//		break
-//	case "double":
-//		event.Value, err = thisBitstream.ReadPDouble()
-//		break
-//	case "Axes":
-//		event.Value, err = thisBitstream.ReadAxes()
-//		break
-//	case "Faces":
-//		event.Value, err = thisBitstream.ReadFaces()
-//		break
-//	case "BrickColor":
-//		event.Value, err = thisBitstream.ReadBrickColor()
-//		break
-//	case "Object":
-//		event.Value, err = thisBitstream.ReadObject(false, context)
-//		break
-//	case "UDim":
-//		event.Value, err = thisBitstream.ReadUDim()
-//		break
-//	case "UDim2":
-//		event.Value, err = thisBitstream.ReadUDim2()
-//		break
-//	case "Vector2":
-//		event.Value, err = thisBitstream.ReadVector2()
-//		break
-//	case "Vector3":
-//		event.Value, err = thisBitstream.ReadVector3()
-//		break
-//	case "Vector2uint16":
-//		event.Value, err = thisBitstream.ReadVector2uint16()
-//		break
-//	case "Vector3uint16":
-//		event.Value, err = thisBitstream.ReadVector3uint16()
-//		break
-//	case "Ray":
-//		event.Value, err = thisBitstream.ReadRay()
-//		break
-//	case "Color3":
-//		event.Value, err = thisBitstream.ReadColor3()
-//		break
-//	case "Color3uint8":
-//		event.Value, err = thisBitstream.ReadColor3uint8()
-//		break
-//	case "CoordinateFrame":
-//		event.Value, err = thisBitstream.ReadCFrame()
-//		break
-//	case "Content":
-//		event.Value, err = thisBitstream.ReadContent()
-//		break
-//	default:
-//		return event, errors.New("event parser encountered unknown type")
-//	}
+	event := &ReplicationEvent{}
+	event.UnknownInt, err = thisBitstream.ReadUint32BE()
+	event.Arguments = make([]PropertyValue, len(schema.ArgumentTypes))
+	for i, argSchemaName := range schema.ArgumentTypes {
+		event.Arguments[i], err = decodeEventArgument(thisBitstream, context, packet, argSchemaName)
+		if err != nil {
+			return event, err
+		}
+	}
 	println(DebugInfo2(context, packet, false), "Read", schema.Name, spew.Sdump(event.Arguments))
 	return event, nil
 }

@@ -33,7 +33,7 @@ type InstanceSchemaItem struct {
 }
 
 type Packet91Layer struct {
-	EnumSchema []*EnumSchemaItem
+	EnumSchema map[string]EnumSchemaItem
 	InstanceSchema []*InstanceSchemaItem
 }
 
@@ -67,7 +67,7 @@ func DecodePacket91Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 	if thisLen > 0x3000 {
 		return layer, errors.New("EnumSchema length exceeded maximum")
 	}
-	layer.EnumSchema = make([]*EnumSchemaItem, thisLen)
+	layer.EnumSchema = make(map[string]EnumSchemaItem)
 	var i, j, k uint32
 	for i = 0; i < thisLen; i++ {
 		name, err := decompressedStream.ReadLengthAndString()
@@ -78,7 +78,7 @@ func DecodePacket91Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 		if err != nil {
 			return layer, err
 		}
-		layer.EnumSchema[i] = &EnumSchemaItem{string(name), bitSize}
+		layer.EnumSchema[string(name)] = EnumSchemaItem{string(name), bitSize}
 	}
 
 	context.EnumSchema = layer.EnumSchema
@@ -92,6 +92,7 @@ func DecodePacket91Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 	}
 	layer.InstanceSchema = make([]*InstanceSchemaItem, thisLen)
 	context.PropertySchema = make([]*PropertySchemaItem, len(context.PropertyDescriptor))
+	context.EventSchema = make([]*EventSchemaItem, len(context.EventDescriptor))
 
 	for i = 0; i < thisLen; i++ {
 		thisInstance := &InstanceSchemaItem{}
@@ -195,6 +196,7 @@ func DecodePacket91Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 				thisEvent.ArgumentTypes[k] = thisType
 			}
 			thisInstance.EventSchema[j] = thisEvent
+			context.EventSchema[thisEvent.CommonID] = thisEvent
 		}
 		layer.InstanceSchema[i] = thisInstance
 	}

@@ -13,14 +13,13 @@ func ShowPacket91(packetType byte, packet gopacket.Packet, context *Communicatio
 
 	enumSchemaList := widgets.NewQTreeView(nil)
 	standardModel := NewProperSortModel(nil)
-	standardModel.SetHorizontalHeaderLabels([]string{"ID", "Name", "Size"})
+	standardModel.SetHorizontalHeaderLabels([]string{"Name", "Size"})
 	
 	enumSchemaRootNode := standardModel.InvisibleRootItem()
-	for id, item := range MainLayer.EnumSchema {
-		idItem := NewQStandardItemF("%d", id)
+	for _, item := range MainLayer.EnumSchema {
 		nameItem := NewQStandardItemF(item.Name)
 		sizeItem := NewQStandardItemF("%d", item.BitSize)
-		enumSchemaRootNode.AppendRow([]*gui.QStandardItem{idItem, nameItem, sizeItem}) 
+		enumSchemaRootNode.AppendRow([]*gui.QStandardItem{nameItem, sizeItem}) 
 	}
 
 	enumSchemaList.SetModel(standardModel)

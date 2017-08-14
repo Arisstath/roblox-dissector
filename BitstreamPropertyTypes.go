@@ -1,5 +1,8 @@
 package main
 import "net"
+import "github.com/google/gopacket"
+import "errors"
+import "fmt"
 
 type pbool bool
 type pint int32
@@ -74,6 +77,27 @@ type SystemAddress struct {
 	net.UDPAddr
 }
 
+type Region3 struct {
+	Start Vector3
+	End Vector3
+}
+
+type Region3uint16 struct {
+	Start Vector3uint16
+	End Vector3uint16
+}
+type Instance Object
+
+type TypeAndValue struct {
+	Type string
+	Value PropertyValue
+}
+
+type Tuple []TypeAndValue
+type Array []TypeAndValue
+type Dictionary map[string]TypeAndValue
+type Map map[string]TypeAndValue
+
 func (b *ExtendedReader) ReadUDim() (UDim, error) {
 	var err error
 	val := UDim{}
@@ -106,28 +130,33 @@ func (b *ExtendedReader) ReadUDim2() (UDim2, error) {
 
 func (b *ExtendedReader) ReadRay() (Ray, error) {
 	var err error
-	val := Ray{Vector3{}, Vector3{}}
-	val.Origin.X, err = b.ReadFloat32BE()
+	val := Ray{}
+	val.Origin, err = b.ReadVector3Simple()
 	if err != nil {
 		return val, err
 	}
-	val.Origin.Y, err = b.ReadFloat32BE()
+	val.Direction, err = b.ReadVector3Simple()
+	return val, err
+}
+
+func (b *ExtendedReader) ReadRegion3() (Region3, error) {
+	var err error
+	val := Region3{}
+	val.Start, err = b.ReadVector3Simple()
 	if err != nil {
 		return val, err
 	}
-	val.Origin.Z, err = b.ReadFloat32BE()
+	val.End, err = b.ReadVector3Simple()
+	return val, err
+}
+func (b *ExtendedReader) ReadRegion3uint16() (Region3uint16, error) {
+	var err error
+	val := Region3uint16{}
+	val.Start, err = b.ReadVector3uint16()
 	if err != nil {
 		return val, err
 	}
-	val.Direction.X, err = b.ReadFloat32BE()
-	if err != nil {
-		return val, err
-	}
-	val.Direction.Y, err = b.ReadFloat32BE()
-	if err != nil {
-		return val, err
-	}
-	val.Direction.Z, err = b.ReadFloat32BE()
+	val.End, err = b.ReadVector3uint16()
 	return val, err
 }
 
@@ -420,4 +449,76 @@ func (b *ExtendedReader) ReadSystemAddress(isJoinData bool, context *Communicati
 	}
 
 	return thisAddress, nil
+}
+
+func (b *ExtendedReader) ReadTypeAndValue(context *CommunicationContext, packet gopacket.Packet) (TypeAndValue, error) {
+	var value TypeAndValue
+	schemaIDx, err := b.Bits(0x8)
+	if err != nil {
+		return value, err
+	}
+	if int(schemaIDx) > int(len(context.TypeDescriptor)) {
+		return value, errors.New(fmt.Sprintf("type idx %d is higher than %d", schemaIDx, len(context.TypeDescriptor)))
+	}
+	value.Type = context.TypeDescriptor[uint32(schemaIDx)]
+	value.Value, err = decodeEventArgument(b, context, packet, value.Type)
+	return value, err
+}
+
+func (b *ExtendedReader) ReadTuple(context *CommunicationContext, packet gopacket.Packet) (Tuple, error) {
+	var tuple Tuple
+	tupleLen, err := b.ReadUint32BE()
+	if err != nil {
+		return tuple, err
+	}
+	if tupleLen > 0x10000 {
+		return tuple, errors.New("sanity check: exceeded maximum tuple len")
+	}
+	tuple = make(Tuple, tupleLen)
+	for i := 0; i < int(tupleLen); i++ {
+		tuple[i], err = b.ReadTypeAndValue(context, packet)
+		if err != nil {
+			return tuple, err
+		}
+	}
+
+	return tuple, nil
+}
+
+func (b *ExtendedReader) ReadArray(context *CommunicationContext, packet gopacket.Packet) (Array, error) {
+	array, err := b.ReadTuple(context, packet)
+	return Array(array), err
+}
+
+func (b *ExtendedReader) ReadDictionary(context *CommunicationContext, packet gopacket.Packet) (Dictionary, error) {
+	var dictionary Dictionary
+	dictionaryLen, err := b.ReadUint32BE()
+	if err != nil {
+		return dictionary, err
+	}
+	if dictionaryLen > 0x10000 {
+		return dictionary, errors.New("sanity check: exceeded maximum dictionary len")
+	}
+	dictionary = make(Dictionary, dictionaryLen)
+	for i := 0; i < int(dictionaryLen); i++ {
+		keyLen, err := b.ReadUint32BE()
+		if err != nil {
+			return dictionary, err
+		}
+		key, err := b.ReadASCII(int(keyLen))
+		if err != nil {
+			return dictionary, err
+		}
+		dictionary[key], err = b.ReadTypeAndValue(context, packet)
+		if err != nil {
+			return dictionary, err
+		}
+	}
+
+	return dictionary, nil
+}
+
+func (b *ExtendedReader) ReadMap(context *CommunicationContext, packet gopacket.Packet) (Map, error) {
+	thisMap, err := b.ReadDictionary(context, packet)
+	return Map(thisMap), err
 }
