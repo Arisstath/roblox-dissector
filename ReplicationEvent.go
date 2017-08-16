@@ -22,7 +22,7 @@ func decodeEventArgument(thisBitstream *ExtendedReader, context *CommunicationCo
 		argument, err = thisBitstream.ReadBinaryString()
 		break
 	case "int":
-		argument, err = thisBitstream.ReadPInt()
+		argument, err = thisBitstream.ReadPSInt()
 		break
 	case "float":
 		argument, err = thisBitstream.ReadPFloat()
@@ -79,7 +79,7 @@ func decodeEventArgument(thisBitstream *ExtendedReader, context *CommunicationCo
 		argument, err = thisBitstream.ReadObject(false, context)
 		break
 	case "long":
-		argument, err = thisBitstream.ReadPInt()
+		argument, err = thisBitstream.ReadPSInt()
 		break
 	case "Region3":
 		argument, err = thisBitstream.ReadRegion3()

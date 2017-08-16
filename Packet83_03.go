@@ -8,7 +8,6 @@ type Packet83_03 struct {
 	Object1 Object
 	Bool1 bool
 	PropertyName string
-	Schema *PropertySchemaItem
 	Value *ReplicationProperty
 }
 
@@ -18,7 +17,7 @@ func (this Packet83_03) Show() widgets.QWidget_ITF {
 	layout.AddWidget(NewQLabelF("Referent: %s", this.Object1.Show()), 0, 0)
 	layout.AddWidget(NewQLabelF("Unknown bool: %v", this.Bool1), 0, 0)
 	layout.AddWidget(NewQLabelF("Property name: %s", this.PropertyName), 0, 0)
-	layout.AddWidget(NewQLabelF("Property type: %s", this.Schema.Type), 0, 0)
+	layout.AddWidget(NewQLabelF("Property type: %s", this.Value.Type), 0, 0)
 	layout.AddWidget(NewQLabelF("Property value: %s", this.Value.Show()), 0, 0)
 	widget.SetLayout(layout)
 
@@ -53,6 +52,5 @@ func DecodePacket83_03(thisBitstream *ExtendedReader, context *CommunicationCont
 	}
 
 	layer.Value, err = schema.Decode(ROUND_UPDATE, thisBitstream, context, packet)
-	layer.Schema = schema
 	return layer, err
 }

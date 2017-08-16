@@ -2,6 +2,7 @@ package main
 import "github.com/google/gopacket"
 import "github.com/davecgh/go-spew/spew"
 import "errors"
+import "strconv"
 
 var Vector3Override = map[string]struct{}{
 	"Rotation": struct{}{},
@@ -18,7 +19,8 @@ var Vector3Override = map[string]struct{}{
 }
 
 type ReplicationProperty struct {
-	Schema *PropertySchemaItem
+	Name string
+	Type string
 	Value PropertyValue
 	IsDefault bool
 }
@@ -68,7 +70,7 @@ func (schema *PropertySchemaItem) Decode(round int, thisBitstream *ExtendedReade
 		return nil, nil
 	}
 
-	Property := &ReplicationProperty{Schema: schema}
+	Property := &ReplicationProperty{Type: schema.Type, Name: schema.Name}
 	if schema.Type == "bool" {
 		if err != nil {
 			return Property, err
@@ -100,7 +102,7 @@ func (schema *PropertySchemaItem) Decode(round int, thisBitstream *ExtendedReade
 			Property.Value, err = thisBitstream.ReadBinaryString()
 			break
 		case "int":
-			Property.Value, err = thisBitstream.ReadPInt()
+			Property.Value, err = thisBitstream.ReadPSInt()
 			break
 		case "float":
 			Property.Value, err = thisBitstream.ReadPFloat()
@@ -175,4 +177,86 @@ func (schema *PropertySchemaItem) Decode(round int, thisBitstream *ExtendedReade
 		}
 	}
 	return Property, nil
+}
+
+func (schema StaticPropertySchema) Decode(round int, thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet, isRebind bool) (*ReplicationProperty, error) {
+	var err error
+	result := &ReplicationProperty{schema.Name, schema.TypeString, nil, false}
+	isJoinData := round == 0
+	result.IsDefault, err = thisBitstream.ReadBool()
+	if result.IsDefault || err != nil {
+		println(DebugInfo2(context, packet, isJoinData), "Read", schema.Name, "default")
+		return result, err
+	}
+
+	switch schema.Type {
+	case PROP_TYPE_STRING:
+		result.Value, err = thisBitstream.ReadNewPString(isJoinData, context)
+	case PROP_TYPE_STRING_NO_CACHE:
+		result.Value, err = thisBitstream.ReadNewPString(true, context)
+	case PROP_TYPE_PROTECTEDSTRING_0:
+		result.Value, err = thisBitstream.ReadNewProtectedString(isJoinData, context)
+	case PROP_TYPE_PROTECTEDSTRING_1:
+		result.Value, err = thisBitstream.ReadNewProtectedString(isJoinData, context)
+	case PROP_TYPE_PROTECTEDSTRING_2:
+		result.Value, err = thisBitstream.ReadNewProtectedString(isJoinData, context)
+	case PROP_TYPE_PROTECTEDSTRING_3:
+		result.Value, err = thisBitstream.ReadNewProtectedString(isJoinData, context)
+	case PROP_TYPE_ENUM:
+		result.Value, err = thisBitstream.ReadNewEnumValue()
+	case PROP_TYPE_BINARYSTRING:
+		result.Value, err = thisBitstream.ReadNewBinaryString()
+	case PROP_TYPE_PBOOL:
+		result.Value, err = thisBitstream.ReadPBool()
+	case PROP_TYPE_PSINT:
+		result.Value, err = thisBitstream.ReadNewPSint()
+	case PROP_TYPE_PFLOAT:
+		result.Value, err = thisBitstream.ReadPFloat()
+	case PROP_TYPE_PDOUBLE:
+		result.Value, err = thisBitstream.ReadPDouble()
+	case PROP_TYPE_UDIM:
+		result.Value, err = thisBitstream.ReadUDim()
+	case PROP_TYPE_UDIM2:
+		result.Value, err = thisBitstream.ReadUDim2()
+	case PROP_TYPE_RAY:
+		result.Value, err = thisBitstream.ReadRay()
+	case PROP_TYPE_FACES:
+		result.Value, err = thisBitstream.ReadFaces()
+	case PROP_TYPE_AXES:
+		result.Value, err = thisBitstream.ReadAxes()
+	case PROP_TYPE_BRICKCOLOR:
+		result.Value, err = thisBitstream.ReadBrickColor()
+	case PROP_TYPE_COLOR3:
+		result.Value, err = thisBitstream.ReadColor3()
+	case PROP_TYPE_COLOR3UINT8:
+		result.Value, err = thisBitstream.ReadColor3uint8()
+	case PROP_TYPE_VECTOR2:
+		result.Value, err = thisBitstream.ReadVector2()
+	case PROP_TYPE_VECTOR3_SIMPLE:
+		result.Value, err = thisBitstream.ReadVector3Simple()
+	case PROP_TYPE_VECTOR3_COMPLICATED:
+		result.Value, err = thisBitstream.ReadVector3()
+	case PROP_TYPE_VECTOR2UINT16:
+		result.Value, err = thisBitstream.ReadVector2uint16()
+	case PROP_TYPE_VECTOR3UINT16:
+		result.Value, err = thisBitstream.ReadVector3uint16()
+	case PROP_TYPE_CFRAME_SIMPLE:
+		result.Value, err = thisBitstream.ReadCFrameSimple()
+	case PROP_TYPE_CFRAME_COMPLICATED:
+		result.Value, err = thisBitstream.ReadCFrame()
+	case PROP_TYPE_INSTANCE:
+		result.Value, err = thisBitstream.ReadObject(isJoinData, context)
+	case PROP_TYPE_CONTENT:
+		result.Value, err = thisBitstream.ReadNewContent(isJoinData, context)
+	case PROP_TYPE_SYSTEMADDRESS:
+		result.Value, err = thisBitstream.ReadSystemAddress(isJoinData, context)
+	default:
+		return nil, errors.New("Unsupported property type: " + schema.TypeString + strconv.Itoa(int(schema.Type)))
+	}
+	if schema.TypeString != "ProtectedString" {
+		println(DebugInfo2(context, packet, isJoinData), "Read", schema.Name, spew.Sdump(result.Value))
+	} else {
+		println(DebugInfo2(context, packet, isJoinData), "Read", schema.Name, len(result.Value.(ProtectedString)))
+	}
+	return result, err
 }

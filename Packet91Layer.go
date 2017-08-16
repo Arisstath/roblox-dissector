@@ -185,14 +185,14 @@ func DecodePacket91Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 				return layer, errors.New("EventSchema property list length exceeded maximum")
 			}
 			thisEvent.ArgumentTypes = make([]string, len4)
-			
+
 			for k = 0; k < len4; k++ {
 				typeIDx, err := decompressedStream.ReadUint32BE()
 				if err != nil {
 					return layer, err
 				}
 
-				thisType := typeDescriptor[typeIDx] 
+				thisType := typeDescriptor[typeIDx]
 				thisEvent.ArgumentTypes[k] = thisType
 			}
 			thisInstance.EventSchema[j] = thisEvent

@@ -159,7 +159,18 @@ func main() {
 		ipv4 := flag.Bool("ipv4", false, "Use IPv4 as initial frame type")
 		live := flag.String("live", "", "Live interface to capture from")
 		promisc := flag.Bool("promisc", false, "Capture from live interface in promisc. mode")
+		propertySchema := flag.String("propschema", "", "Property schema filename")
 		flag.Parse()
+		context := NewCommunicationContext()
+
+		if *propertySchema != "" {
+			staticSchema, err := ParseStaticSchema(*propertySchema)
+			if err != nil {
+				panic(err)
+			}
+			context.StaticInstanceSchema = staticSchema.Instances
+			fmt.Printf("Scanned schema: %d classes\n", len(context.StaticInstanceSchema))
+		}
 
 		var handle *pcap.Handle
 		var err error
@@ -178,7 +189,6 @@ func main() {
 			} else {
 				packetSource = gopacket.NewPacketSource(handle, handle.LinkType())
 			}
-			context := NewCommunicationContext()
 			for packet := range packetSource.Packets() {
 				if packet.ApplicationLayer() == nil {
 					color.Red("Ignoring packet because ApplicationLayer can't be decoded")

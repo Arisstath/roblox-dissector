@@ -51,6 +51,12 @@ func DecodePacket93Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 		}
 		layer.Params[string(name)] = string(value) == "true"
 	}
+	if val, ok := layer.Params["UseNetworkSchema2"]; val && ok {
+		context.MSchema.Lock()
+		context.UseStaticSchema = true
+		context.ESchemaParsed.Broadcast()
+		context.MSchema.Unlock()
+	}
 
 	return layer, nil
 }

@@ -5,7 +5,7 @@ import "errors"
 import "fmt"
 
 type pbool bool
-type pint int32
+type psint int32
 type pfloat float32
 type pdouble float64
 type Axes int32
@@ -14,6 +14,10 @@ type BrickColor uint64
 type Object struct {
 	Referent string
 	ReferentInt uint32
+}
+type RebindObject struct {
+	Referent1 uint32
+	Referent2 uint16
 }
 type EnumValue int64
 type pstring string
@@ -68,6 +72,12 @@ type Color3uint8 struct {
 type CFrame struct {
 	Position Vector3
 	Matrix [4]float32
+	SpecialRotMatrix uint64
+}
+
+type CFrameSimple struct {
+	Position Vector3
+	Matrix [9]float32
 	SpecialRotMatrix uint64
 }
 
@@ -287,9 +297,9 @@ func (b *ExtendedReader) ReadPBool() (pbool, error) {
 	val, err := b.ReadBool()
 	return pbool(val), err
 }
-func (b *ExtendedReader) ReadPInt() (pint, error) {
+func (b *ExtendedReader) ReadPSInt() (psint, error) {
 	val, err := b.ReadUint32BE()
-	return pint(val), err
+	return psint(val), err
 }
 func (b *ExtendedReader) ReadPFloat() (pfloat, error) {
 	val, err := b.ReadFloat32BE()
@@ -311,6 +321,11 @@ func (b *ExtendedReader) ReadBrickColor() (BrickColor, error) {
 	val, err := b.Bits(7)
 	return BrickColor(val), err
 }
+
+func formatBindable(obj Object) string {
+	return fmt.Sprintf("%s_%d", obj.Referent, obj.ReferentInt)
+}
+
 func (b *ExtendedReader) ReadObject(isJoinData bool, context *CommunicationContext) (Object, error) {
 	var err error
 	Object := Object{}
@@ -364,6 +379,10 @@ func (b *ExtendedReader) ReadBinaryString() (BinaryString, error) {
 	}
 	val, err := b.ReadString(int(stringLen))
 	return BinaryString(val), err
+}
+
+func (b *ExtendedReader) ReadCFrameSimple() (CFrame, error) {
+	return CFrame{}, nil // nop for now, since nothing uses this
 }
 
 func (b *ExtendedReader) ReadCFrame() (CFrame, error) {
@@ -430,7 +449,7 @@ func (b *ExtendedReader) ReadSystemAddress(isJoinData bool, context *Communicati
 		}
 
 		if cacheIndex < 0x80 {
-			return context.ReplicatorSystemAddressCache[cacheIndex], nil
+			return context.ReplicatorSystemAddressCache[cacheIndex].(SystemAddress), nil
 		}
 	}
 	thisAddress.IP = make([]byte, 4)
@@ -521,4 +540,66 @@ func (b *ExtendedReader) ReadDictionary(context *CommunicationContext, packet go
 func (b *ExtendedReader) ReadMap(context *CommunicationContext, packet gopacket.Packet) (Map, error) {
 	thisMap, err := b.ReadDictionary(context, packet)
 	return Map(thisMap), err
+}
+
+func (b *ExtendedReader) ReadUintUTF8() (uint32, error) {
+	var res uint32
+	thisByte, err := b.ReadByte()
+	var shiftIndex uint32 = 0
+	for err == nil {
+		res |= uint32(thisByte & 0x7F) << shiftIndex
+		shiftIndex += 7
+		if thisByte & 0x80 == 0 {
+			break
+		}
+		thisByte, err = b.ReadByte()
+	}
+	return res, err
+}
+func (b *ExtendedReader) ReadSintUTF8() (int32, error) {
+	res, err := b.ReadUintUTF8()
+	return int32((res >> 1) ^ -(res & 1)), err
+}
+
+func (b *ExtendedReader) ReadNewPString(isJoinData bool, context *CommunicationContext) (pstring, error) {
+	if !isJoinData {
+		val, err := b.ReadCached(context)
+		return pstring(val), err
+	}
+	stringLen, err := b.ReadUintUTF8()
+	if err != nil {
+		return pstring(""), err
+	}
+	val, err := b.ReadASCII(int(stringLen))
+	return pstring(val), err
+}
+func (b *ExtendedReader) ReadNewProtectedString(isJoinData bool, context *CommunicationContext) (ProtectedString, error) {
+	if !isJoinData {
+		res, err := b.ReadCachedProtectedString(context)
+		return ProtectedString(res), err
+	}
+	res, err := b.ReadNewPString(true, context)
+	return ProtectedString(res), err
+}
+func (b *ExtendedReader) ReadNewContent(isJoinData bool, context *CommunicationContext) (Content, error) {
+	if !isJoinData {
+		res, err := b.ReadCachedContent(context)
+		return Content(res), err
+	}
+	res, err := b.ReadNewPString(true, context)
+	return Content(res), err
+}
+func (b *ExtendedReader) ReadNewBinaryString() (BinaryString, error) {
+	res, err := b.ReadNewPString(true, nil)
+	return BinaryString(res), err
+}
+
+func (b *ExtendedReader) ReadNewEnumValue() (EnumValue, error) {
+	val, err := b.ReadUintUTF8()
+	return EnumValue(val), err
+}
+
+func (b *ExtendedReader) ReadNewPSint() (psint, error) {
+	val, err := b.ReadSintUTF8()
+	return psint(val), err
 }

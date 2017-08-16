@@ -2,9 +2,10 @@ package main
 import "github.com/google/gopacket"
 
 type Packet81LayerItem struct {
-	Int1 uint16
-	String1 string
-	Int2 uint32
+	ClassID uint16
+	Object1 Object
+	Bool1 bool
+	Bool2 bool
 }
 
 type Packet81Layer struct {
@@ -36,45 +37,66 @@ func DecodePacket81Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 		return layer, err
 	}
 
-	len, err := thisBitstream.ReadUint8()
-	if err != nil {
+	context.WaitForSchema()
+	defer context.FinishSchema()
+
+	if !context.UseStaticSchema {
+		len, err := thisBitstream.ReadUint8()
+		if err != nil {
+			return layer, err
+		}
+		var j uint8
+		layer.Items = make([]*Packet81LayerItem, len)
+		for j = 0; j < len; j++ {
+			thisItem := &Packet81LayerItem{}
+			len9Value, err := thisBitstream.Bits(9)
+			if err != nil {
+				return layer, err
+			}
+			thisItem.ClassID = uint16(len9Value)
+			thisItem.Object1, err = thisBitstream.ReadObject(false, context)
+			if err != nil {
+				return layer, err
+			}
+			serialized := formatBindable(thisItem.Object1)
+			context.Rebindables[serialized] = struct{}{}
+			println("REGISTERED REBIND: ", serialized)
+
+			layer.Items[j] = thisItem
+		}
 		return layer, err
-	}
-	var j uint8
-	layer.Items = make([]*Packet81LayerItem, len)
-	for j = 0; j < len; j++ {
-		thisItem := &Packet81LayerItem{}
-		len9Value, err := thisBitstream.Bits(9)
+	} else {
+		arrayLen, err := thisBitstream.ReadUintUTF8()
 		if err != nil {
 			return layer, err
 		}
-		thisItem.Int1 = uint16(len9Value)
+		println("Will read array of", arrayLen)
 
-		cacheIndex, err := thisBitstream.ReadUint8()
-		if err != nil {
-			return layer, err
-		}
-		if cacheIndex < 0x80 {
-			thisItem.String1 = context.ReplicatorObjectCache[cacheIndex]
-		} else {
-			stringLen, err := thisBitstream.ReadUint32BE()
+		layer.Items = make([]*Packet81LayerItem, arrayLen)
+		for i := 0; i < int(arrayLen); i++ {
+			thisItem := &Packet81LayerItem{}
+			thisItem.Object1, err = thisBitstream.ReadObject(false, context)
 			if err != nil {
 				return layer, err
 			}
-			thisItem.String1, err = thisBitstream.ReadASCII(int(stringLen))
+			serialized := formatBindable(thisItem.Object1)
+			context.Rebindables[serialized] = struct{}{}
+			println("REGISTERED REBIND: ", serialized)
+
+			thisItem.ClassID, err = thisBitstream.ReadUint16BE()
 			if err != nil {
 				return layer, err
 			}
-			context.ReplicatorObjectCache[cacheIndex - 0x80] = thisItem.String1
-		}
 
-		thisItem.Int2, err = thisBitstream.ReadUint32LE()
-		if err != nil {
-			return layer, err
+			thisItem.Bool1, err = thisBitstream.ReadBool()
+			if err != nil {
+				return layer, err
+			}
+			thisItem.Bool2, err = thisBitstream.ReadBool()
+			if err != nil {
+				return layer, err
+			}
 		}
-
-		layer.Items[j] = thisItem
+		return layer, nil
 	}
-
-	return layer, err
 }

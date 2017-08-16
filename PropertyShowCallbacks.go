@@ -5,7 +5,7 @@ import "bytes"
 func (x pbool) Show() string {
 	return fmt.Sprintf("%v", x)
 }
-func (x pint) Show() string {
+func (x psint) Show() string {
 	return fmt.Sprintf("%d", x)
 }
 func (x pfloat) Show() string {
@@ -28,6 +28,9 @@ func (x BrickColor) Show() string {
 
 func (x Object) Show() string {
 	return fmt.Sprintf("%s / %d", x.Referent, x.ReferentInt)
+}
+func (x RebindObject) Show() string {
+	return fmt.Sprintf("%d / %d", x.Referent1, x.Referent2)
 }
 
 func (x EnumValue) Show() string {

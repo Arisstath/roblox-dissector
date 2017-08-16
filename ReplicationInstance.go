@@ -6,7 +6,6 @@ import "errors"
 
 type ReplicationInstance struct {
 	Object1 Object
-	Int1 uint32
 	ClassName string
 	Bool1 bool
 	Object2 Object
@@ -15,7 +14,7 @@ type ReplicationInstance struct {
 
 func (this *ReplicationInstance) findName() string {
 	for _, property := range this.Properties {
-		if property.Schema.Name == "Name" {
+		if property.Name == "Name" {
 			return property.Show()
 		}
 	}
@@ -31,8 +30,8 @@ func (this *ReplicationInstance) Show() []*gui.QStandardItem {
 	parentItem := NewQStandardItemF(this.Object2.Show())
 
 	for _, property := range this.Properties {
-		nameItem := NewQStandardItemF(property.Schema.Name)
-		typeItem := NewQStandardItemF(property.Schema.Type)
+		nameItem := NewQStandardItemF(property.Name)
+		typeItem := NewQStandardItemF(property.Type)
 		valueItem := NewQStandardItemF(property.Show())
 
 		rootNameItem.AppendRow([]*gui.QStandardItem{
@@ -63,60 +62,89 @@ func DecodeReplicationInstance(isJoinData bool, thisBitstream *ExtendedReader, c
 		return thisInstance, err
 	}
 
-	classIDx, err := thisBitstream.Bits(9)
-	if err != nil {
-		return thisInstance, err
-	}
-	realIDx := (classIDx & 1 << 8) | classIDx >> 1
-	if int(realIDx) > int(len(instanceSchema)) {
-		return thisInstance, errors.New(fmt.Sprintf("idx %d is higher than %d", realIDx, len(context.InstanceSchema)))
-	}
-	thisInstance.ClassName = instanceSchema[realIDx].Name
-	println(DebugInfo2(context, packet, isJoinData), "Read referent", thisInstance.Object1.Referent, thisInstance.ClassName)
+	if !context.UseStaticSchema {
+		classIDx, err := thisBitstream.Bits(9)
+		if err != nil {
+			return thisInstance, err
+		}
+		realIDx := (classIDx & 1 << 8) | classIDx >> 1
+		if int(realIDx) > int(len(instanceSchema)) {
+			return thisInstance, errors.New(fmt.Sprintf("idx %d is higher than %d", realIDx, len(context.InstanceSchema)))
+		}
+		thisInstance.ClassName = instanceSchema[realIDx].Name
+		println(DebugInfo2(context, packet, isJoinData), "Read referent", thisInstance.Object1.Referent, thisInstance.ClassName)
 
-	thisPropertySchema := instanceSchema[realIDx].PropertySchema
+		thisPropertySchema := instanceSchema[realIDx].PropertySchema
 
-	thisInstance.Bool1, err = thisBitstream.ReadBool()
-	if err != nil {
-		return thisInstance, err
-	}
+		thisInstance.Bool1, err = thisBitstream.ReadBool()
+		if err != nil {
+			return thisInstance, err
+		}
 
-	if isJoinData {
-		for _, schema := range thisPropertySchema {
-			property, err := schema.Decode(ROUND_JOINDATA, thisBitstream, context, packet)
-			if err != nil {
-				return thisInstance, err
+		if isJoinData {
+			for _, schema := range thisPropertySchema {
+				property, err := schema.Decode(ROUND_JOINDATA, thisBitstream, context, packet)
+				if err != nil {
+					return thisInstance, err
+				}
+				if property != nil {
+					thisInstance.Properties = append(thisInstance.Properties, property)
+				}
 			}
-			if property != nil {
-				thisInstance.Properties = append(thisInstance.Properties, property)
+		} else {
+			for _, schema := range thisPropertySchema {
+				property, err := schema.Decode(ROUND_STRINGS, thisBitstream, context, packet)
+				if err != nil {
+					return thisInstance, err
+				}
+				if property != nil {
+					thisInstance.Properties = append(thisInstance.Properties, property)
+				}
+			}
+			for _, schema := range thisPropertySchema {
+				property, err := schema.Decode(ROUND_OTHER, thisBitstream, context, packet)
+				if err != nil {
+					return thisInstance, err
+				}
+				if property != nil {
+					thisInstance.Properties = append(thisInstance.Properties, property)
+				}
 			}
 		}
+
+		thisInstance.Object2, err = thisBitstream.ReadObject(isJoinData, context)
+		if err != nil {
+			return thisInstance, err
+		}
+		println(DebugInfo2(context, packet, isJoinData), "Parent referent", thisInstance.Object2.Referent)
+
+		return thisInstance, nil
 	} else {
-		for _, schema := range thisPropertySchema {
-			property, err := schema.Decode(ROUND_STRINGS, thisBitstream, context, packet)
-			if err != nil {
-				return thisInstance, err
-			}
-			if property != nil {
-				thisInstance.Properties = append(thisInstance.Properties, property)
-			}
+		serialized := formatBindable(thisInstance.Object1)
+		_, wasRebind := context.Rebindables[serialized]
+		context.Rebindables[serialized] = struct{}{}
+		schemaIDx, err := thisBitstream.ReadUint16BE()
+		if int(schemaIDx) > len(context.StaticInstanceSchema) {
+			return thisInstance, errors.New(fmt.Sprintf("class idx %d is higher than %d", schemaIDx, len(context.StaticInstanceSchema)))
 		}
-		for _, schema := range thisPropertySchema {
-			property, err := schema.Decode(ROUND_OTHER, thisBitstream, context, packet)
-			if err != nil {
-				return thisInstance, err
-			}
-			if property != nil {
-				thisInstance.Properties = append(thisInstance.Properties, property)
-			}
-		}
-	}
+		schema := context.StaticInstanceSchema[schemaIDx]
+		println("Our class:", schema.Name, serialized)
 
-	thisInstance.Object2, err = thisBitstream.ReadObject(isJoinData, context)
-	if err != nil {
+		thisInstance.Bool1, err = thisBitstream.ReadBool()
+		if err != nil {
+			return thisInstance, err
+		}
+
+		thisInstance.ClassName = schema.Name
+		thisInstance.Properties = make([]*ReplicationProperty, len(schema.Properties))
+		for i := 0; i < len(thisInstance.Properties); i++ {
+			thisInstance.Properties[i], err = schema.Properties[i].Decode(0, thisBitstream, context, packet, !wasRebind)
+			if err != nil {
+				return thisInstance, err
+			}
+		}
+
+		thisInstance.Object2, err = thisBitstream.ReadObject(isJoinData, context)
 		return thisInstance, err
 	}
-	println(DebugInfo2(context, packet, isJoinData), "Parent referent", thisInstance.Object2.Referent)
-
-	return thisInstance, nil
 }

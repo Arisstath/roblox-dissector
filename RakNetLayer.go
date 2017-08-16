@@ -26,6 +26,7 @@ type RakNetLayer struct {
 }
 
 type Descriptor map[uint32]string
+type Cache [0x80]interface{}
 
 type CommunicationContext struct {
 	Server string
@@ -38,10 +39,13 @@ type CommunicationContext struct {
 	InstanceSchema []*InstanceSchemaItem
 	PropertySchema []*PropertySchemaItem
 	EventSchema []*EventSchemaItem
-	ReplicatorStringCache [0x80][]byte
-	ReplicatorObjectCache [0x80]string
-	ReplicatorContentCache [0x80]string
-	ReplicatorSystemAddressCache [0x80]SystemAddress
+	ReplicatorStringCache Cache
+	ReplicatorObjectCache Cache
+	ReplicatorContentCache Cache
+	ReplicatorSystemAddressCache Cache
+	ReplicatorProtectedStringCache Cache
+	ReplicatorRebindObjectCache Cache
+	Rebindables map[string]struct{}
 
 	MDescriptor *sync.Mutex
 	MSchema *sync.Mutex
@@ -50,6 +54,9 @@ type CommunicationContext struct {
 
 	EDescriptorsParsed *sync.Cond
 	ESchemaParsed *sync.Cond
+
+	UseStaticSchema bool
+	StaticInstanceSchema []StaticInstanceSchema
 }
 
 func NewCommunicationContext() *CommunicationContext {
@@ -60,6 +67,7 @@ func NewCommunicationContext() *CommunicationContext {
 		PropertyDescriptor: make(map[uint32]string),
 		EventDescriptor: make(map[uint32]string),
 		TypeDescriptor: make(map[uint32]string),
+		Rebindables: make(map[string]struct{}),
 
 		MDescriptor: MDescriptor,
 		MSchema: MSchema,
@@ -110,7 +118,7 @@ func (c *CommunicationContext) WaitForDescriptors() {
 }
 func (c *CommunicationContext) WaitForSchema() {
 	c.MSchema.Lock()
-	for len(c.InstanceSchema) == 0 {
+	for len(c.InstanceSchema) == 0 && !c.UseStaticSchema {
 		c.ESchemaParsed.Wait()
 	}
 }
