@@ -57,6 +57,7 @@ type CommunicationContext struct {
 
 	UseStaticSchema bool
 	StaticInstanceSchema []StaticInstanceSchema
+	StaticPropertySchema []StaticPropertySchema
 }
 
 func NewCommunicationContext() *CommunicationContext {

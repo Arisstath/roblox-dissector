@@ -137,13 +137,48 @@ func DecodeReplicationInstance(isJoinData bool, thisBitstream *ExtendedReader, c
 
 		thisInstance.ClassName = schema.Name
 		thisInstance.Properties = make([]*ReplicationProperty, len(schema.Properties))
-		for i := 0; i < len(thisInstance.Properties); i++ {
-			thisInstance.Properties[i], err = schema.Properties[i].Decode(0, thisBitstream, context, packet, !wasRebind)
-			if err != nil {
-				return thisInstance, err
+
+		if isJoinData {
+			for i := 0; i < len(thisInstance.Properties); i++ {
+				thisInstance.Properties[i], err = schema.Properties[i].Decode(ROUND_JOINDATA, thisBitstream, context, packet, !wasRebind)
+				if err != nil {
+					return thisInstance, err
+				}
+			}
+		} else {
+			for i := 0; i < len(thisInstance.Properties); i++ {
+				isStringObject := false
+				if  schema.Properties[i].Type == 0x21 ||
+					schema.Properties[i].Type == 0x01 ||
+					schema.Properties[i].Type == 0x1C ||
+					schema.Properties[i].Type == 0x22 ||
+					schema.Properties[i].Type == 0x06 ||
+					schema.Properties[i].Type == 0x04 ||
+					schema.Properties[i].Type == 0x05 ||
+					schema.Properties[i].Type == 0x03 {
+						isStringObject = true
+				}
+				if isStringObject {
+					thisInstance.Properties[i], err = schema.Properties[i].Decode(ROUND_STRINGS, thisBitstream, context, packet, !wasRebind)
+				}
+			}
+			for i := 0; i < len(thisInstance.Properties); i++ {
+				isStringObject := false
+				if  schema.Properties[i].Type == 0x21 ||
+					schema.Properties[i].Type == 0x01 ||
+					schema.Properties[i].Type == 0x1C ||
+					schema.Properties[i].Type == 0x22 ||
+					schema.Properties[i].Type == 0x06 ||
+					schema.Properties[i].Type == 0x04 ||
+					schema.Properties[i].Type == 0x05 ||
+					schema.Properties[i].Type == 0x03 {
+						isStringObject = true
+				}
+				if !isStringObject {
+					thisInstance.Properties[i], err = schema.Properties[i].Decode(ROUND_STRINGS, thisBitstream, context, packet, !wasRebind)
+				}
 			}
 		}
-
 		thisInstance.Object2, err = thisBitstream.ReadObject(isJoinData, context)
 		return thisInstance, err
 	}

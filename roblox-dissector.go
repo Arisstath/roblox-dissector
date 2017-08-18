@@ -160,16 +160,18 @@ func main() {
 		live := flag.String("live", "", "Live interface to capture from")
 		promisc := flag.Bool("promisc", false, "Capture from live interface in promisc. mode")
 		propertySchema := flag.String("propschema", "", "Property schema filename")
+		instanceSchema := flag.String("instschema", "", "Instance schema filename")
 		flag.Parse()
 		context := NewCommunicationContext()
 
 		if *propertySchema != "" {
-			staticSchema, err := ParseStaticSchema(*propertySchema)
+			staticSchema, err := ParseStaticSchema(*instanceSchema, *propertySchema)
 			if err != nil {
 				panic(err)
 			}
 			context.StaticInstanceSchema = staticSchema.Instances
-			fmt.Printf("Scanned schema: %d classes\n", len(context.StaticInstanceSchema))
+			context.StaticPropertySchema = staticSchema.Properties
+			fmt.Printf("Scanned schema: %d classes, %d properties\n", len(context.StaticInstanceSchema), len(context.StaticPropertySchema))
 		}
 
 		var handle *pcap.Handle

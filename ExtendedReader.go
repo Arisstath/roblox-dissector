@@ -299,6 +299,7 @@ func (b *ExtendedReader) readWithCache(cache Cache, readCallback CacheReadCallba
 	if err != nil {
 		return "", err
 	}
+	println("Read with cache:", cacheIndex)
 	if cacheIndex == 0x00 {
 		return "", err
 	}
@@ -353,6 +354,9 @@ func (b *ExtendedReader) ReadCachedProtectedString(context *CommunicationContext
 		thisString, err := b.ReadString(int(stringLen))
 		return thisString, err
 	})
+	if _, ok := thisString.(string); ok {
+		return nil, err
+	}
 	return thisString.([]byte), err
 }
 
@@ -365,5 +369,8 @@ func (b *ExtendedReader) ReadNewCachedProtectedString(context *CommunicationCont
 		thisString, err := b.ReadString(int(stringLen))
 		return thisString, err
 	})
+	if _, ok := thisString.(string); ok {
+		return nil, err
+	}
 	return thisString.([]byte), err
 }

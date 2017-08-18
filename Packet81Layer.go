@@ -1,5 +1,6 @@
 package main
 import "github.com/google/gopacket"
+import "errors"
 
 type Packet81LayerItem struct {
 	ClassID uint16
@@ -11,6 +12,8 @@ type Packet81LayerItem struct {
 type Packet81Layer struct {
 	Bools [5]bool
 	String1 []byte
+	Int1 uint32
+	Int2 uint32
 	Items []*Packet81LayerItem
 }
 
@@ -33,6 +36,14 @@ func DecodePacket81Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 		return layer, err
 	}
 	layer.String1, err = thisBitstream.ReadString(int(stringLen))
+	if err != nil {
+		return layer, err
+	}
+	layer.Int1, err = thisBitstream.ReadUint32BE()
+	if err != nil {
+		return layer, err
+	}
+	layer.Int2, err = thisBitstream.ReadUint32BE()
 	if err != nil {
 		return layer, err
 	}
@@ -70,12 +81,15 @@ func DecodePacket81Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 		if err != nil {
 			return layer, err
 		}
+		if arrayLen > 0x1000 {
+			return layer, errors.New("sanity check: exceeded maximum preschema len")
+		}
 		println("Will read array of", arrayLen)
 
 		layer.Items = make([]*Packet81LayerItem, arrayLen)
 		for i := 0; i < int(arrayLen); i++ {
 			thisItem := &Packet81LayerItem{}
-			thisItem.Object1, err = thisBitstream.ReadObject(false, context)
+			thisItem.Object1, err = thisBitstream.ReadObject(true, context)
 			if err != nil {
 				return layer, err
 			}

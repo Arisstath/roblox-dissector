@@ -26,7 +26,7 @@ type BinaryString []byte
 
 type UDim struct {
 	Scale float32
-	Offset uint32
+	Offset int32
 }
 
 type UDim2 struct {
@@ -115,7 +115,8 @@ func (b *ExtendedReader) ReadUDim() (UDim, error) {
 	if err != nil {
 		return val, err
 	}
-	val.Offset, err = b.ReadUint32BE()
+	off, err := b.ReadUint32BE()
+	val.Offset = int32(off)
 	return val, err
 }
 
@@ -126,7 +127,8 @@ func (b *ExtendedReader) ReadUDim2() (UDim2, error) {
 	if err != nil {
 		return val, err
 	}
-	val.X.Offset, err = b.ReadUint32BE()
+	offx, err := b.ReadUint32BE()
+	val.X.Offset = int32(offx)
 	if err != nil {
 		return val, err
 	}
@@ -134,7 +136,8 @@ func (b *ExtendedReader) ReadUDim2() (UDim2, error) {
 	if err != nil {
 		return val, err
 	}
-	val.Y.Offset, err = b.ReadUint32BE()
+	offy, err := b.ReadUint32BE()
+	val.Y.Offset = int32(offy)
 	return val, err
 }
 
@@ -449,7 +452,11 @@ func (b *ExtendedReader) ReadSystemAddress(isJoinData bool, context *Communicati
 		}
 
 		if cacheIndex < 0x80 {
-			return context.ReplicatorSystemAddressCache[cacheIndex].(SystemAddress), nil
+			result := context.ReplicatorSystemAddressCache[cacheIndex]
+			if result == nil {
+				return SystemAddress{net.UDPAddr{[]byte{0,0,0,0}, 0, "udp"}}, nil
+			}
+			return result.(SystemAddress), nil
 		}
 	}
 	thisAddress.IP = make([]byte, 4)

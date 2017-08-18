@@ -182,11 +182,13 @@ func (schema *PropertySchemaItem) Decode(round int, thisBitstream *ExtendedReade
 func (schema StaticPropertySchema) Decode(round int, thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet, isRebind bool) (*ReplicationProperty, error) {
 	var err error
 	result := &ReplicationProperty{schema.Name, schema.TypeString, nil, false}
-	isJoinData := round == 0
-	result.IsDefault, err = thisBitstream.ReadBool()
-	if result.IsDefault || err != nil {
-		println(DebugInfo2(context, packet, isJoinData), "Read", schema.Name, "default")
-		return result, err
+	isJoinData := round == ROUND_JOINDATA
+	if round != ROUND_UPDATE {
+		result.IsDefault, err = thisBitstream.ReadBool()
+		if result.IsDefault || err != nil {
+			println(DebugInfo2(context, packet, isJoinData), "Read", schema.Name, "default")
+			return result, err
+		}
 	}
 
 	switch schema.Type {

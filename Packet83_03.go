@@ -32,25 +32,47 @@ func DecodePacket83_03(thisBitstream *ExtendedReader, context *CommunicationCont
 		return layer, err
 	}
 
-	propertyIDx, err := thisBitstream.Bits(0xB)
-	if err != nil {
+	if !context.UseStaticSchema {
+		propertyIDx, err := thisBitstream.Bits(0xB)
+		if err != nil {
+			return layer, err
+		}
+		realIDx := (propertyIDx & 0x7 << 8) | propertyIDx >> 3
+
+		if int(realIDx) > int(len(propertySchema)) {
+			return layer, errors.New(fmt.Sprintf("prop idx %d is higher than %d", realIDx, len(propertySchema)))
+		}
+
+		schema := propertySchema[realIDx]
+		layer.PropertyName = schema.Name
+		println(DebugInfo2(context, packet, false), "Our prop: ", layer.PropertyName)
+
+		layer.Bool1, err = thisBitstream.ReadBool()
+		if err != nil {
+			return layer, err
+		}
+
+		layer.Value, err = schema.Decode(ROUND_UPDATE, thisBitstream, context, packet)
+		return layer, err
+	} else {
+		println(DebugInfo2(context, packet, false), "Our prop: ", layer.PropertyName, formatBindable(layer.Object1))
+		propertyIDx, err := thisBitstream.ReadUint16BE()
+		if err != nil {
+			return layer, err
+		}
+
+		if int(propertyIDx) >= int(len(context.StaticPropertySchema)) {
+			return layer, errors.New(fmt.Sprintf("prop idx %d is higher than %d", propertyIDx, len(context.StaticPropertySchema)))
+		}
+		schema := context.StaticPropertySchema[propertyIDx]
+
+		layer.Bool1, err = thisBitstream.ReadBool()
+		if err != nil {
+			return layer, err
+		}
+
+		layer.PropertyName = schema.Name
+		layer.Value, err = schema.Decode(ROUND_UPDATE, thisBitstream, context, packet, false)
 		return layer, err
 	}
-	realIDx := (propertyIDx & 0x7 << 8) | propertyIDx >> 3
-
-	if int(realIDx) > int(len(propertySchema)) {
-		return layer, errors.New(fmt.Sprintf("prop idx %d is higher than %d", realIDx, len(propertySchema)))
-	}
-
-	schema := propertySchema[realIDx]
-	layer.PropertyName = schema.Name
-	println(DebugInfo2(context, packet, false), "Our prop: ", layer.PropertyName)
-
-	layer.Bool1, err = thisBitstream.ReadBool()
-	if err != nil {
-		return layer, err
-	}
-
-	layer.Value, err = schema.Decode(ROUND_UPDATE, thisBitstream, context, packet)
-	return layer, err
 }

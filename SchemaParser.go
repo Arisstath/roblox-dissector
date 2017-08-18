@@ -54,6 +54,7 @@ type StaticPropertySchema struct {
 	Name string
 	Type uint8
 	TypeString string
+	InstanceSchema *StaticInstanceSchema
 }
 
 type StaticInstanceSchema struct {
@@ -63,11 +64,13 @@ type StaticInstanceSchema struct {
 
 type StaticSchema struct {
 	Instances []StaticInstanceSchema
+	Properties []StaticPropertySchema
 }
 
-func ParseStaticSchema(propertyFilename string) (*StaticSchema, error) {
+func parseInstSchema(filename string) ([]StaticInstanceSchema, error) {
 	var countInstances uint16
-	propFile, err := os.Open(propertyFilename)
+
+	propFile, err := os.Open(filename)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +79,7 @@ func ParseStaticSchema(propertyFilename string) (*StaticSchema, error) {
 	if err != nil {
 		return nil, err
 	}
-	schema := &StaticSchema{make([]StaticInstanceSchema, countInstances)}
+	instances := make([]StaticInstanceSchema, countInstances)
 
 	propMatcher := regexp.MustCompile(`\s+(\d+)\s+'([a-zA-Z0-9 _]+)'\s+(\w+)\s*`)
 
@@ -107,10 +110,56 @@ func ParseStaticSchema(propertyFilename string) (*StaticSchema, error) {
 			if err != nil {
 				return nil, err
 			}
-			instance.Properties[j] = StaticPropertySchema{propertyName, uint8(propertyType), propertyTypeName}
+			instance.Properties[j] = StaticPropertySchema{propertyName, uint8(propertyType), propertyTypeName, &instance}
 		}
-		schema.Instances[i] = instance
+		instances[i] = instance
 	}
+	return instances, nil
+}
 
-	return schema, nil
+func parsePropSchema(filename string, schema []StaticInstanceSchema) ([]StaticPropertySchema, error) {
+	var countProperties uint16
+
+	propFile, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	file := bufio.NewReader(propFile)
+	_, err = fmt.Fscanf(file, "%d\n", &countProperties)
+	if err != nil {
+		return nil, err
+	}
+	props := make([]StaticPropertySchema, countProperties)
+
+	propMatcher := regexp.MustCompile(`(\d+)\s+'([a-zA-Z0-9 _]+)'\s+(\w+)\s+(\d+)\s*`)
+
+	for i := 0; i < int(countProperties); i++ {
+		var propertyType int
+		var propertyName string
+		var propertyTypeName string
+		var classID int
+		line, err := file.ReadString('\n')
+		matches := propMatcher.FindStringSubmatch(line)
+		propertyType, _ = strconv.Atoi(matches[1])
+		propertyName = matches[2]
+		propertyTypeName = matches[3]
+		classID, _ = strconv.Atoi(matches[4])
+		if err != nil {
+			return nil, err
+		}
+		props[i] = StaticPropertySchema{propertyName, uint8(propertyType), propertyTypeName, &schema[classID]}
+	}
+	return props, nil
+}
+
+func ParseStaticSchema(instanceFilename string, propertyFilename string) (*StaticSchema, error) {
+	schema := &StaticSchema{}
+	var err error
+	schema.Instances, err = parseInstSchema(instanceFilename)
+	if err != nil {
+		return schema, err
+	}
+	schema.Properties, err = parsePropSchema(propertyFilename, schema.Instances)
+
+	return schema, err
 }
