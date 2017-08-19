@@ -312,7 +312,6 @@ func (b *ExtendedReader) readWithCache(cache Cache, readCallback CacheReadCallba
 			return "", err
 		}
 		cache[cacheIndex - 0x80] = result
-		println("Wrote to cache:", cacheIndex - 0x80)
 	}
 
 	if result == nil {
@@ -386,7 +385,7 @@ func (b *ExtendedReader) ReadCachedNewProtectedString(context *CommunicationCont
 		return thisString, err
 	})
 	if _, ok := thisString.(string); ok {
-		return nil, err
+		return []byte{}, err
 	}
 	return thisString.([]byte), err
 }

@@ -1,7 +1,7 @@
 package main
 import "github.com/google/gopacket"
 import "errors"
-import "strconv"
+//import "strconv"
 import "io"
 import "github.com/therecipe/qt/widgets"
 
@@ -12,8 +12,9 @@ var Packet83Subpackets map[uint8]string = map[uint8]string{
 	0x02: "ID_REPLIC_NEW_INSTANCE",
 	0x03: "ID_REPLIC_PROP",
 	0x04: "ID_REPLIC_MARKER",
-	0x05: "ID_REPLIC_UNK_05",
+	0x05: "ID_REPLIC_PING",
 	0x07: "ID_REPLIC_EVENT",
+	0x09: "ID_REPLIC_UNK_09",
 	0x0B: "ID_REPLIC_GZIP_JOINDATA",
 	0x10: "ID_REPLIC_TAG",
 	0x11: "ID_REPLIC_STATS",

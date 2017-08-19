@@ -36,6 +36,9 @@ func (this *ReplicationProperty) Show() string {
 	if this.IsDefault {
 		return "!DEFAULT"
 	}
+	if this.Value == nil {
+		return "ERR!! NIL"
+	}
 	return this.Value.Show()
 }
 
