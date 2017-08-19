@@ -26,31 +26,29 @@ func ShowPacket83(packetType byte, packet gopacket.Packet, context *Communicatio
 	packetList.SetSelectionMode(1)
 	packetList.SetSortingEnabled(true)
 	packetList.SetModel(standardModel)
-	packetList.ConnectSelectionChanged(func (selected *core.QItemSelection, deselected *core.QItemSelection) {
-		if len(selected.Indexes()) != 0 {
-			index, _ := strconv.Atoi(standardModel.Item(selected.Indexes()[0].Row(), 0).Data(0).ToString())
-			subpacket := MainLayer.SubPackets[index]
+	packetList.ConnectClicked(func (index *core.QModelIndex) {
+		thisIndex, _ := strconv.Atoi(standardModel.Item(index.Row(), 0).Data(0).ToString())
+		subpacket := MainLayer.SubPackets[thisIndex]
 
-			subWindow := widgets.NewQWidget(packetList, core.Qt__Window)
-			subWindowLayout := widgets.NewQVBoxLayout2(subWindow)
+		subWindow := widgets.NewQWidget(packetList, core.Qt__Window)
+		subWindowLayout := widgets.NewQVBoxLayout2(subWindow)
 
-			isClient := context.PacketFromClient(packet)
-			isServer := context.PacketFromServer(packet)
+		isClient := context.PacketFromClient(packet)
+		isServer := context.PacketFromServer(packet)
 
-			var direction string
-			if isClient {
-				direction = "Direction: Client -> Server"
-			} else if isServer {
-				direction = "Direction: Server -> Client"
-			} else {
-				direction = "Direction: Unknown"
-			}
-			directionLabel := widgets.NewQLabel2(direction, nil, 0)
-			subWindowLayout.AddWidget(directionLabel, 0, 0)
-			subWindowLayout.AddWidget(subpacket.Show(), 0, 0)
-			subWindow.SetWindowTitle("Replication Packet Window: " + subpacket.TypeString())
-			subWindow.Show()
+		var direction string
+		if isClient {
+			direction = "Direction: Client -> Server"
+		} else if isServer {
+			direction = "Direction: Server -> Client"
+		} else {
+			direction = "Direction: Unknown"
 		}
+		directionLabel := widgets.NewQLabel2(direction, nil, 0)
+		subWindowLayout.AddWidget(directionLabel, 0, 0)
+		subWindowLayout.AddWidget(subpacket.Show(), 0, 0)
+		subWindow.SetWindowTitle("Replication Packet Window: " + subpacket.TypeString())
+		subWindow.Show()
 	})
 	layerLayout.AddWidget(packetList, 0, 0)
 }

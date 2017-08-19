@@ -415,11 +415,8 @@ func GUIMain(viewerChan chan *MyPacketListView) {
 	packetViewer.SetModel(standardModel)
 	packetViewer.SetSelectionMode(1)
 	packetViewer.SetSortingEnabled(true)
-	packetViewer.ConnectSelectionChanged(func (selected *core.QItemSelection, deselected *core.QItemSelection) {
-		if len(selected.Indexes()) == 0 {
-			packetViewer.handleNoneSelected()
-		}
-		realSelectedValue, _ := strconv.Atoi(standardModel.Item(selected.Indexes()[0].Row(), 0).Data(0).ToString())
+	packetViewer.ConnectClicked(func (index *core.QModelIndex) {
+		realSelectedValue, _ := strconv.Atoi(standardModel.Item(index.Row(), 0).Data(0).ToString())
 		if packetViewer.SelectionHandlers[uint64(realSelectedValue)] == nil {
 			packetViewer.handleNoneSelected()
 		} else {
