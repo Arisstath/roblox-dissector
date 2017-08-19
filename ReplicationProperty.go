@@ -176,7 +176,7 @@ func (schema *PropertySchemaItem) Decode(round int, thisBitstream *ExtendedReade
 		if schema.Type != "ProtectedString" {
 			println(DebugInfo2(context, packet, isJoinData), "Read", schema.Name, spew.Sdump(Property.Value))
 		} else {
-			println(DebugInfo2(context, packet, isJoinData), "Read", schema.Name, len(Property.Value.(ProtectedString)), spew.Sdump(Property.Value.(ProtectedString)[:0x0a]))
+			println(DebugInfo2(context, packet, isJoinData), "Read", schema.Name, len(Property.Value.(ProtectedString)))
 		}
 	}
 	return Property, nil

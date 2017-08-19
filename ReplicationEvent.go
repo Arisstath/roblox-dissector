@@ -1,6 +1,5 @@
 package main
 import "github.com/google/gopacket"
-import "github.com/davecgh/go-spew/spew"
 import "errors"
 
 type ReplicationEvent struct {
@@ -123,7 +122,6 @@ func (schema *EventSchemaItem) Decode(thisBitstream *ExtendedReader, context *Co
 			return event, err
 		}
 	}
-	println(DebugInfo2(context, packet, false), "Read", schema.Name, spew.Sdump(event.Arguments))
 	return event, nil
 }
 

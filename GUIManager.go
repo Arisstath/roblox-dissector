@@ -29,9 +29,15 @@ type MyPacketListView struct {
 	SelectionHandlers SelectionHandlerList
 	RootNode *gui.QStandardItem
 	PacketIndex uint64
+	StandardModel *gui.QStandardItemModel
 
 	MSelectionHandlers *sync.Mutex
 	MGUI *sync.Mutex
+
+	IsCapturing bool
+	StopCaptureJob chan struct{}
+
+	StaticSchema *StaticSchema
 }
 
 func NewTwoWayPacketList() *TwoWayPacketList {
@@ -53,11 +59,29 @@ func NewMyPacketListView(parent widgets.QWidget_ITF) *MyPacketListView {
 		make(SelectionHandlerList),
 		nil,
 		0,
+		nil,
 
 		&sync.Mutex{},
 		&sync.Mutex{},
+		
+		false,
+		make(chan struct{}),
+
+		nil,
 	}
 	return new
+}
+
+func (m *MyPacketListView) Reset() {
+	m.StandardModel.Clear()
+	m.StandardModel.SetHorizontalHeaderLabels([]string{"Index", "Type", "Direction", "Length in Bytes", "Datagram Numbers", "Received Splits"})
+
+	m.CurrentACKSelection = []*gui.QStandardItem{}
+	m.packetRowsByUniqueID = NewTwoWayPacketList()
+	m.packetRowsBySplitPacket = NewTwoWayPacketList()
+	m.SelectionHandlers = make(SelectionHandlerList)
+	m.RootNode = m.StandardModel.InvisibleRootItem()
+	m.PacketIndex = 0
 }
 
 func NewQLabelF(format string, args ...interface{}) *widgets.QLabel {
@@ -396,7 +420,7 @@ func (m *MyPacketListView) AddACK(ack ACKRange, packet gopacket.Packet, context 
 	m.MSelectionHandlers.Unlock()
 }
 
-func GUIMain(viewerChan chan *MyPacketListView) {
+func GUIMain() {
 	widgets.NewQApplication(len(os.Args), os.Args)
 	window = widgets.NewQMainWindow(nil, 0)
 	window.SetWindowTitle("Roblox PCAP Dissector")
@@ -410,6 +434,7 @@ func GUIMain(viewerChan chan *MyPacketListView) {
 	window.SetCentralWidget(widget)
 
 	standardModel := NewProperSortModel(packetViewer)
+	packetViewer.StandardModel = standardModel
 	standardModel.SetHorizontalHeaderLabels([]string{"Index", "Type", "Direction", "Length in Bytes", "Datagram Numbers", "Received Splits"})
 	packetViewer.RootNode = standardModel.InvisibleRootItem()
 	packetViewer.SetModel(standardModel)
@@ -424,9 +449,72 @@ func GUIMain(viewerChan chan *MyPacketListView) {
 		}
 	})
 
-	window.Show()
+	captureBar := window.MenuBar().AddMenu2("&Capture")
+	captureFileAction := captureBar.AddAction("From &file...")
+	captureLiveAction := captureBar.AddAction("From &live interface...")
 
-	viewerChan <- packetViewer
+	captureFileAction.ConnectTriggered(func(checked bool)() {
+		if packetViewer.IsCapturing {
+			packetViewer.StopCaptureJob <- struct{}{}
+		}
+		file := widgets.QFileDialog_GetOpenFileName(window, "Capture from file", "", "PCAP files (*.pcap)", "", 0)
+		packetViewer.IsCapturing = true
+
+		context := NewCommunicationContext()
+		if packetViewer.StaticSchema != nil {
+			context.StaticInstanceSchema = packetViewer.StaticSchema.Instances
+			context.StaticPropertySchema = packetViewer.StaticSchema.Properties
+			context.StaticEventSchema = packetViewer.StaticSchema.Events
+		}
+
+		packetViewer.Reset()
+
+		go func() {
+			captureFromFile(file, false, packetViewer.StopCaptureJob, packetViewer, context)
+			packetViewer.IsCapturing = false
+		}()
+	})
+	captureLiveAction.ConnectTriggered(func(checked bool)() {
+		if packetViewer.IsCapturing {
+			packetViewer.StopCaptureJob <- struct{}{}
+		}
+
+		NewSelectInterfaceWidget(packetViewer, func(thisItf string, usePromisc bool) {
+			packetViewer.IsCapturing = true
+
+			context := NewCommunicationContext()
+			if packetViewer.StaticSchema != nil {
+				context.StaticInstanceSchema = packetViewer.StaticSchema.Instances
+				context.StaticPropertySchema = packetViewer.StaticSchema.Properties
+				context.StaticEventSchema = packetViewer.StaticSchema.Events
+			}
+
+			packetViewer.Reset()
+
+			go func() {
+				captureFromLive(thisItf, false, usePromisc, packetViewer.StopCaptureJob, packetViewer, context)
+				packetViewer.IsCapturing = false
+			}()
+		})
+	})
+
+	schemaBar := window.MenuBar().AddMenu2("&Schema")
+	parseSchemaAction := schemaBar.AddAction("&Parse schema...")
+	parseSchemaAction.ConnectTriggered(func(checked bool)() {
+		var err error
+		file := widgets.QFileDialog_GetExistingDirectory(window, "Parse schema...", "", widgets.QFileDialog__ShowDirsOnly)
+		packetViewer.StaticSchema, err = ParseStaticSchema(
+			file + "/instances.txt",
+			file + "/properties.txt",
+			file + "/events.txt",
+		)
+		if err != nil {
+			println(err.Error())
+		}
+	})
+
+
+	window.Show()
 
 	widgets.QApplication_Exec()
 }

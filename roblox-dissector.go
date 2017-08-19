@@ -3,10 +3,10 @@ import "github.com/google/gopacket"
 import "github.com/google/gopacket/pcap"
 import "github.com/google/gopacket/layers"
 import "github.com/fatih/color"
-import "flag"
 import "fmt"
 import "github.com/gskartwii/go-bitstream"
 import "bytes"
+import "time"
 
 type PacketLayers struct {
 	RakNet *RakNetLayer
@@ -151,87 +151,77 @@ func HandleGeneric(layer *RakNetLayer, packet gopacket.Packet, context *Communic
 	}
 }
 
-func main() {
-	packetViewerChan := make(chan *MyPacketListView)
-	go func() {
-		packetViewer := <- packetViewerChan
-		packetName := flag.String("name", "", "pcap filename")
-		ipv4 := flag.Bool("ipv4", false, "Use IPv4 as initial frame type")
-		live := flag.String("live", "", "Live interface to capture from")
-		promisc := flag.Bool("promisc", false, "Capture from live interface in promisc. mode")
-		propertySchema := flag.String("propschema", "", "Property schema filename")
-		instanceSchema := flag.String("instschema", "", "Instance schema filename")
-		eventSchema := flag.String("eventschema", "", "Event schema filename")
-		flag.Parse()
-		context := NewCommunicationContext()
+func captureJob(handle *pcap.Handle, useIPv4 bool, stopCaptureJob chan struct{}, packetViewer *MyPacketListView, context *CommunicationContext) {
+	handle.SetBPFFilter("udp")
+	var packetSource *gopacket.PacketSource
+	if useIPv4 {
+		packetSource = gopacket.NewPacketSource(handle, layers.LayerTypeIPv4)
+	} else {
+		packetSource = gopacket.NewPacketSource(handle, handle.LinkType())
+	}
+	for packet := range packetSource.Packets() {
+		select {
+		case _ = <- stopCaptureJob:
+			return
+		default:
+			if packet.ApplicationLayer() == nil {
+				color.Red("Ignoring packet because ApplicationLayer can't be decoded")
+				continue
+			}
+			payload := packet.ApplicationLayer().Payload()
+			if len(payload) == 0 {
+				continue
+			}
 
-		if *propertySchema != "" {
-			staticSchema, err := ParseStaticSchema(*instanceSchema, *propertySchema, *eventSchema)
+			thisBitstream := &ExtendedReader{bitstream.NewReader(bytes.NewReader(payload))}
+
+			if context.Client == "" && payload[0] != 5 {
+				continue // drop packet because we weren't expecting it
+			}
+
+			if context.Client != "" && !context.PacketFromClient(packet) && !context.PacketFromServer(packet) {
+				continue // drop packet because it doesn't belong to this conversation
+			}
+
+			rakNetLayer, err := DecodeRakNetLayer(payload[0], thisBitstream, context, packet)
 			if err != nil {
-				panic(err)
+				color.Red("Failed to decode RakNet layer: %s", err.Error())
+				continue
 			}
-			context.StaticInstanceSchema = staticSchema.Instances
-			context.StaticPropertySchema = staticSchema.Properties
-			context.StaticEventSchema = staticSchema.Events
-			fmt.Printf("Scanned schema: %d classes, %d properties, %d events\n", len(context.StaticInstanceSchema), len(context.StaticPropertySchema), len(context.StaticEventSchema))
-		}
-
-		var handle *pcap.Handle
-		var err error
-		if *live == "" {
-			fmt.Printf("Will capture from file %s\n", *packetName)
-			handle, err = pcap.OpenOffline(*packetName)
-		} else {
-			fmt.Printf("Will capture from live device %s\n", *live)
-			handle, err = pcap.OpenLive(*live, 2000, *promisc, pcap.BlockForever)
-		}
-		if err == nil {
-			handle.SetBPFFilter("udp")
-			var packetSource *gopacket.PacketSource
-			if *ipv4 {
-				packetSource = gopacket.NewPacketSource(handle, layers.LayerTypeIPv4)
-			} else {
-				packetSource = gopacket.NewPacketSource(handle, handle.LinkType())
+			if rakNetLayer.IsSimple {
+				HandleSimple(rakNetLayer, packet, context, packetViewer)
+			} else if !rakNetLayer.IsValid {
+				color.New(color.FgRed).Printf("Sent invalid packet (packet header %x)\n", payload[0])
+			} else if rakNetLayer.IsACK {
+				HandleACK(rakNetLayer, packet, context, packetViewer)
+			} else if !rakNetLayer.IsNAK {
+				HandleGeneric(rakNetLayer, packet, context, packetViewer)
 			}
-			for packet := range packetSource.Packets() {
-				if packet.ApplicationLayer() == nil {
-					color.Red("Ignoring packet because ApplicationLayer can't be decoded")
-					continue
-				}
-				payload := packet.ApplicationLayer().Payload()
-				if len(payload) == 0 {
-					//color.Red("Had 0 size payload") // This is way too annoying
-					continue
-				}
-
-				thisBitstream := &ExtendedReader{bitstream.NewReader(bytes.NewReader(payload))}
-
-				if context.Client == "" && payload[0] != 5 {
-					continue // drop packet because we weren't expecting it
-				}
-
-				if context.Client != "" && !context.PacketFromClient(packet) && !context.PacketFromServer(packet) {
-					continue // drop packet because it doesn't belong to this conversation
-				}
-
-				rakNetLayer, err := DecodeRakNetLayer(payload[0], thisBitstream, context, packet)
-				if err != nil {
-					color.Red("Failed to decode RakNet layer: %s", err.Error())
-					continue
-				}
-				if rakNetLayer.IsSimple {
-					HandleSimple(rakNetLayer, packet, context, packetViewer)
-				} else if !rakNetLayer.IsValid {
-					color.New(color.FgRed).Printf("Sent invalid packet (packet header %x)\n", payload[0])
-				} else if rakNetLayer.IsACK {
-					HandleACK(rakNetLayer, packet, context, packetViewer)
-				} else if !rakNetLayer.IsNAK {
-					HandleGeneric(rakNetLayer, packet, context, packetViewer)
-				}
-			}
-		} else {
-			color.Red("Failed to create packet source: %s", err.Error())
 		}
-	}()
-	GUIMain(packetViewerChan)
+	}
+	return
+}
+
+func captureFromFile(filename string, useIPv4 bool, stopCaptureJob chan struct{}, packetViewer *MyPacketListView, context *CommunicationContext) {
+	fmt.Printf("Will capture from file %s\n", filename)
+	handle, err := pcap.OpenOffline(filename)
+	if err != nil {
+		println(err.Error())
+		return
+	}
+	captureJob(handle, useIPv4, stopCaptureJob, packetViewer, context)
+}
+
+func captureFromLive(livename string, useIPv4 bool, usePromisc bool, stopCaptureJob chan struct{}, packetViewer *MyPacketListView, context *CommunicationContext) {
+	fmt.Printf("Will capture from live device %s\n", livename)
+	handle, err := pcap.OpenLive(livename, 2000, usePromisc, 10 * time.Second)
+	if err != nil {
+		println(err.Error())
+		return
+	}
+	captureJob(handle, useIPv4, stopCaptureJob, packetViewer, context)
+}
+
+func main() {
+	GUIMain()
 }
