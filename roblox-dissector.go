@@ -16,28 +16,29 @@ type PacketLayers struct {
 
 var PacketNames map[byte]string = map[byte]string{
 	0xFF: "???",
-	0x05: "ID_OPEN_CONNECTION_REQUEST_1",
-	0x06: "ID_OPEN_CONNECTION_REPLY_1",
-	0x07: "ID_OPEN_CONNECTION_REQUEST_2",
-	0x08: "ID_OPEN_CONNECTION_REPLY_2",
 	0x00: "ID_CONNECTED_PING",
 	0x01: "ID_UNCONNECTED_PING",
 	0x03: "ID_CONNECTED_PONG",
 	0x04: "ID_DETECT_LOST_CONNECTIONS",
+	0x05: "ID_OPEN_CONNECTION_REQUEST_1",
+	0x06: "ID_OPEN_CONNECTION_REPLY_1",
+	0x07: "ID_OPEN_CONNECTION_REQUEST_2",
+	0x08: "ID_OPEN_CONNECTION_REPLY_2",
 	0x09: "ID_CONNECTION_REQUEST",
 	0x10: "ID_CONNECTION_REQUEST_ACCEPTED",
 	0x13: "ID_NEW_INCOMING_CONNECTION",
-	0x1B: "ID_ROBLOX_PHYSICS",
+	0x15: "ID_DISCONNECTION_NOTIFICATION",
+	0x1B: "ID_TIMESTAMP",
 	0x1C: "ID_UNCONNECTED_PONG",
+	0x81: "ID_ROBLOX_PRESCHEMA",
 	0x82: "ID_ROBLOX_DICTIONARIES",
-	0x91: "ID_ROBLOX_NETWORK_SCHEMA",
+	0x83: "ID_ROBLOX_REPLICATION",
 	0x8A: "ID_ROBLOX_AUTH",
-	0x93: "ID_ROBLOX_NETWORK_PARAMS",
-	0x92: "ID_ROBLOX_START_AUTH_THREAD",
 	0x8F: "ID_ROBLOX_INITIAL_SPAWN_NAME",
 	0x90: "ID_ROBLOX_SCHEMA_VERSION",
-	0x81: "ID_ROBLOX_PRESCHEMA",
-	0x83: "ID_ROBLOX_REPLICATION",
+	0x91: "ID_ROBLOX_NETWORK_SCHEMA",
+	0x92: "ID_ROBLOX_START_AUTH_THREAD",
+	0x93: "ID_ROBLOX_NETWORK_PARAMS",
 }
 type DecoderFunc func(*ExtendedReader, *CommunicationContext, gopacket.Packet) (interface{}, error)
 
@@ -193,7 +194,7 @@ func captureJob(handle *pcap.Handle, useIPv4 bool, stopCaptureJob chan struct{},
 			} else if !rakNetLayer.IsValid {
 				color.New(color.FgRed).Printf("Sent invalid packet (packet header %x)\n", payload[0])
 			} else if rakNetLayer.IsACK {
-				HandleACK(rakNetLayer, packet, context, packetViewer)
+				//HandleACK(rakNetLayer, packet, context, packetViewer) // Ignore ACKs, they add clutter to the packet list
 			} else if !rakNetLayer.IsNAK {
 				HandleGeneric(rakNetLayer, packet, context, packetViewer)
 			}
