@@ -254,6 +254,20 @@ func readSerializedValue(isJoinData bool, valueType uint8, thisBitstream *Extend
 		result, err = thisBitstream.ReadNewDictionary(isJoinData, context)
 	case PROP_TYPE_MAP:
 		result, err = thisBitstream.ReadNewMap(isJoinData, context)
+	case PROP_TYPE_NUMBERSEQUENCE:
+		result, err = thisBitstream.ReadNumberSequence()
+	case PROP_TYPE_NUMBERSEQUENCEKEYPOINT:
+		result, err = thisBitstream.ReadNumberSequenceKeypoint()
+	case PROP_TYPE_NUMBERRANGE:
+		result, err = thisBitstream.ReadNumberRange()
+	case PROP_TYPE_COLORSEQUENCE:
+		result, err = thisBitstream.ReadColorSequence()
+	case PROP_TYPE_COLORSEQUENCEKEYPOINT:
+		result, err = thisBitstream.ReadColorSequenceKeypoint()
+	case PROP_TYPE_RECT2D:
+		result, err = thisBitstream.ReadRect2D()
+	case PROP_TYPE_PHYSICALPROPERTIES:
+		result, err = thisBitstream.ReadPhysicalProperties()
 	default:
 		return nil, errors.New("Unsupported property type: " + strconv.Itoa(int(valueType)))
 	}

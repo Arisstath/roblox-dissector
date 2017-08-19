@@ -134,3 +134,50 @@ func (x Dictionary) Show() string {
 func (x Map) Show() string {
 	return Dictionary(x).Show()
 }
+
+func (x NumberSequenceKeypoint) Show() string {
+	return fmt.Sprintf("Time: %g, Value: %g, Envelope: %g", x.Time, x.Value, x.Envelope)
+}
+
+func (x NumberSequence) Show() string {
+	var ret bytes.Buffer
+	ret.WriteString("{")
+
+	for _, v := range x {
+		ret.WriteString("{")
+		ret.WriteString(v.Show())
+		ret.WriteString("}, ")
+	}
+	ret.WriteString("}")
+	return ret.String()
+}
+
+func (x NumberRange) Show() string {
+	return fmt.Sprintf("Min: %g, Max: %g", x.Min, x.Max)
+}
+
+func (x ColorSequenceKeypoint) Show() string {
+	return fmt.Sprintf("Time: %g, Value: {%s}, Envelope: %g", x.Time, x.Value.Show(), x.Envelope)
+}
+
+func (x ColorSequence) Show() string {
+	var ret bytes.Buffer
+	ret.WriteString("{")
+
+	for _, v := range x {
+		ret.WriteString("{")
+		ret.WriteString(v.Show())
+		ret.WriteString("}, ")
+	}
+	ret.WriteString("}")
+	return ret.String()
+}
+
+func (x Rect2D) Show() string {
+	return fmt.Sprintf("Min X: %g, Min Y: %g, Max X: %g, Max Y: %g", x.MinX, x.MinY, x.MaxX, x.MaxY)
+}
+
+func (x PhysicalProperties) Show() string {
+	return fmt.Sprintf("Density: %g, Friction: %g, Elasticity: %g, FrictionWeight: %g, ElasticityWeight: %g", x.Density, x.Friction, x.Elasticity, x.FrictionWeight, x.ElasticityWeight)
+}
+

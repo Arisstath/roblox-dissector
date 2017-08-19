@@ -103,6 +103,39 @@ type TypeAndValue struct {
 	Value PropertyValue
 }
 
+type NumberSequenceKeypoint struct {
+	Time float32
+	Value float32
+	Envelope float32
+}
+type NumberSequence []NumberSequenceKeypoint
+type NumberRange struct {
+	Min float32
+	Max float32
+}
+
+type ColorSequenceKeypoint struct {
+	Time float32
+	Value Color3
+	Envelope float32
+}
+type ColorSequence []ColorSequenceKeypoint
+
+type Rect2D struct {
+	MinX float32
+	MinY float32
+	MaxX float32
+	MaxY float32
+}
+
+type PhysicalProperties struct {
+	Density float32
+	Friction float32
+	Elasticity float32
+	FrictionWeight float32
+	ElasticityWeight float32
+}
+
 type Tuple []TypeAndValue
 type Array []TypeAndValue
 type Dictionary map[string]TypeAndValue
@@ -683,4 +716,137 @@ func (b *ExtendedReader) ReadNewDictionary(isJoinData bool, context *Communicati
 func (b *ExtendedReader) ReadNewMap(isJoinData bool, context *CommunicationContext) (Map, error) {
 	thisMap, err := b.ReadNewDictionary(isJoinData, context)
 	return Map(thisMap), err
+}
+
+func (b *ExtendedReader) ReadNumberSequenceKeypoint() (NumberSequenceKeypoint, error) {
+	var err error
+	thisKeypoint := NumberSequenceKeypoint{}
+	thisKeypoint.Time, err = b.ReadFloat32BE()
+	if err != nil {
+		return thisKeypoint, err
+	}
+	thisKeypoint.Value, err = b.ReadFloat32BE()
+	if err != nil {
+		return thisKeypoint, err
+	}
+	thisKeypoint.Envelope, err = b.ReadFloat32BE()
+	return thisKeypoint, err
+}
+
+func (b *ExtendedReader) ReadNumberSequence() (NumberSequence, error) {
+	var err error
+	numKeypoints, err := b.ReadUint32BE()
+	if err != nil {
+		return nil, err
+	}
+	if numKeypoints > 0x10000 {
+		return nil, errors.New("sanity check: exceeded maximum numberseq len")
+	}
+	thisSequence := make(NumberSequence, numKeypoints)
+
+	for i := 0; i < int(numKeypoints); i++ {
+		thisSequence[i], err = b.ReadNumberSequenceKeypoint()
+		if err != nil {
+			return thisSequence, err
+		}
+	}
+
+	return thisSequence, nil
+}
+
+func (b *ExtendedReader) ReadNumberRange() (NumberRange, error) {
+	thisRange := NumberRange{}
+	var err error
+	thisRange.Min, err = b.ReadFloat32BE()
+	if err != nil {
+		return thisRange, err
+	}
+	thisRange.Max, err = b.ReadFloat32BE()
+	return thisRange, err
+}
+
+func (b *ExtendedReader) ReadColorSequenceKeypoint() (ColorSequenceKeypoint, error) {
+	var err error
+	thisKeypoint := ColorSequenceKeypoint{}
+	thisKeypoint.Time, err = b.ReadFloat32BE()
+	if err != nil {
+		return thisKeypoint, err
+	}
+	thisKeypoint.Value, err = b.ReadColor3()
+	if err != nil {
+		return thisKeypoint, err
+	}
+	thisKeypoint.Envelope, err = b.ReadFloat32BE()
+	return thisKeypoint, err
+}
+
+func (b *ExtendedReader) ReadColorSequence() (ColorSequence, error) {
+	var err error
+	numKeypoints, err := b.ReadUint32BE()
+	if err != nil {
+		return nil, err
+	}
+	if numKeypoints > 0x10000 {
+		return nil, errors.New("sanity check: exceeded maximum colorseq len")
+	}
+	thisSequence := make(ColorSequence, numKeypoints)
+
+	for i := 0; i < int(numKeypoints); i++ {
+		thisSequence[i], err = b.ReadColorSequenceKeypoint()
+		if err != nil {
+			return thisSequence, err
+		}
+	}
+
+	return thisSequence, nil
+}
+
+func (b *ExtendedReader) ReadRect2D() (Rect2D, error) {
+	var err error
+	thisRect := Rect2D{}
+
+	thisRect.MinX, err = b.ReadFloat32BE()
+	if err != nil {
+		return thisRect, err
+	}
+	thisRect.MinY, err = b.ReadFloat32BE()
+	if err != nil {
+		return thisRect, err
+	}
+	thisRect.MaxX, err = b.ReadFloat32BE()
+	if err != nil {
+		return thisRect, err
+	}
+	thisRect.MaxY, err = b.ReadFloat32BE()
+	return thisRect, err
+}
+
+func (b *ExtendedReader) ReadPhysicalProperties() (PhysicalProperties, error) {
+	var err error
+	props := PhysicalProperties{}
+	hasProperties, err := b.ReadBool()
+	if hasProperties {
+		if err != nil {
+			return props, err
+		}
+		props.Density, err = b.ReadFloat32BE()
+		if err != nil {
+			return props, err
+		}
+		props.Friction, err = b.ReadFloat32BE()
+		if err != nil {
+			return props, err
+		}
+		props.Elasticity, err = b.ReadFloat32BE()
+		if err != nil {
+			return props, err
+		}
+		props.FrictionWeight, err = b.ReadFloat32BE()
+		if err != nil {
+			return props, err
+		}
+		props.ElasticityWeight, err = b.ReadFloat32BE()
+	}
+
+	return props, err
 }
