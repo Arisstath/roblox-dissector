@@ -150,9 +150,12 @@ func DecodePacket83Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 		case 0x03:
 			inner, err = DecodePacket83_03(thisBitstream, context, packet, context.PropertySchema)
 			break
-		//case 0x07:
-		//	inner, err = DecodePacket83_07(thisBitstream, context, packet, context.EventSchema)
-		//	break
+		case 0x07:
+			inner, err = DecodePacket83_07(thisBitstream, context, packet, context.EventSchema)
+			break
+		case 0x09:
+			inner, err = DecodePacket83_09(thisBitstream, context, packet)
+			break
 		default:
 			return layer, errors.New("don't know how to parse replication subpacket: " + strconv.Itoa(int(packetType)))
 		}

@@ -50,6 +50,19 @@ const (
 	PROP_TYPE_PHYSICALPROPERTIES = iota
 )
 
+var TypeNames = map[uint8]string{}
+
+type StaticArgumentSchema struct {
+	Name string
+	Type uint8
+	TypeString string
+}
+
+type StaticEventSchema struct {
+	Name string
+	Arguments []StaticArgumentSchema
+}
+
 type StaticPropertySchema struct {
 	Name string
 	Type uint8
@@ -65,6 +78,7 @@ type StaticInstanceSchema struct {
 type StaticSchema struct {
 	Instances []StaticInstanceSchema
 	Properties []StaticPropertySchema
+	Events []StaticEventSchema
 }
 
 func parseInstSchema(filename string) ([]StaticInstanceSchema, error) {
@@ -110,6 +124,11 @@ func parseInstSchema(filename string) ([]StaticInstanceSchema, error) {
 			if err != nil {
 				return nil, err
 			}
+
+			if TypeNames[uint8(propertyType)] == "" {
+				TypeNames[uint8(propertyType)] = propertyTypeName
+			}
+
 			instance.Properties[j] = StaticPropertySchema{propertyName, uint8(propertyType), propertyTypeName, &instance}
 		}
 		instances[i] = instance
@@ -152,7 +171,51 @@ func parsePropSchema(filename string, schema []StaticInstanceSchema) ([]StaticPr
 	return props, nil
 }
 
-func ParseStaticSchema(instanceFilename string, propertyFilename string) (*StaticSchema, error) {
+func parseEventSchema(filename string) ([]StaticEventSchema, error) {
+	var countEvents uint16
+
+	eventFile, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	file := bufio.NewReader(eventFile)
+	_, err = fmt.Fscanf(file, "%d\n", &countEvents)
+	if err != nil {
+		return nil, err
+	}
+	events := make([]StaticEventSchema, countEvents)
+
+	argMatcher := regexp.MustCompile(`\s*([a-zA-Z0-9 _]+)\s+(\d+)\s+(\w+)\s*`)
+
+	for i := 0; i < int(countEvents); i++ {
+		var eventName string
+		var countArgs uint32
+		eventName, err = file.ReadString('\n')
+		if err != nil {
+			return nil, err
+		}
+		_, err = fmt.Fscanf(file, "%d\n", &countArgs)
+		if err != nil {
+			return nil, err
+		}
+		args := make([]StaticArgumentSchema, countArgs)
+		for j := 0; j < int(countArgs); j++ {
+			line, err := file.ReadString('\n')
+			matches := argMatcher.FindStringSubmatch(line)
+			argName := matches[1]
+			argType, _ := strconv.Atoi(matches[2])
+			argTypeName := matches[3]
+			if err != nil {
+				return nil, err
+			}
+			args[j] = StaticArgumentSchema{argName, uint8(argType), argTypeName}
+		}
+		events[i] = StaticEventSchema{eventName, args}
+	}
+	return events, nil
+}
+
+func ParseStaticSchema(instanceFilename string, propertyFilename string, eventFilename string) (*StaticSchema, error) {
 	schema := &StaticSchema{}
 	var err error
 	schema.Instances, err = parseInstSchema(instanceFilename)
@@ -160,6 +223,10 @@ func ParseStaticSchema(instanceFilename string, propertyFilename string) (*Stati
 		return schema, err
 	}
 	schema.Properties, err = parsePropSchema(propertyFilename, schema.Instances)
+	if err != nil {
+		return schema, err
+	}
+	schema.Events, err = parseEventSchema(eventFilename)
 
 	return schema, err
 }

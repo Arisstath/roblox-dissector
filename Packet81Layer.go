@@ -84,7 +84,6 @@ func DecodePacket81Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 		if arrayLen > 0x1000 {
 			return layer, errors.New("sanity check: exceeded maximum preschema len")
 		}
-		println("Will read array of", arrayLen)
 
 		layer.Items = make([]*Packet81LayerItem, arrayLen)
 		for i := 0; i < int(arrayLen); i++ {
@@ -110,6 +109,7 @@ func DecodePacket81Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 			if err != nil {
 				return layer, err
 			}
+			layer.Items[i] = thisItem
 		}
 		return layer, nil
 	}

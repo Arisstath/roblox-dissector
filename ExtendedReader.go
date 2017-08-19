@@ -6,6 +6,7 @@ import "net"
 import "math"
 import "bytes"
 import "compress/gzip"
+import "strconv"
 //import "fmt"
 
 var englishTree *HuffmanEncodingTree
@@ -299,7 +300,6 @@ func (b *ExtendedReader) readWithCache(cache Cache, readCallback CacheReadCallba
 	if err != nil {
 		return "", err
 	}
-	println("Read with cache:", cacheIndex)
 	if cacheIndex == 0x00 {
 		return "", err
 	}
@@ -312,10 +312,11 @@ func (b *ExtendedReader) readWithCache(cache Cache, readCallback CacheReadCallba
 			return "", err
 		}
 		cache[cacheIndex - 0x80] = result
+		println("Wrote to cache:", cacheIndex - 0x80)
 	}
 
 	if result == nil {
-		return "WARN_UNASSIGNED", nil
+		return "WARN_UNASSIGNED_" + strconv.Itoa(int(cacheIndex)), nil
 	}
 
 	return result, err
@@ -324,7 +325,7 @@ func (b *ExtendedReader) readWithCache(cache Cache, readCallback CacheReadCallba
 func (b *ExtendedReader) ReadUint32AndString() (interface{}, error) {
 	stringLen, err := b.ReadUint32BE()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	return b.ReadASCII(int(stringLen))
 }
@@ -362,6 +363,21 @@ func (b *ExtendedReader) ReadCachedProtectedString(context *CommunicationContext
 
 func (b *ExtendedReader) ReadNewCachedProtectedString(context *CommunicationContext) ([]byte, error) {
 	thisString, err := b.readWithCache(context.ReplicatorProtectedStringCache, func(b *ExtendedReader)(interface{}, error) {
+		stringLen, err := b.ReadUint32BE()
+		if err != nil {
+			return []byte{}, err
+		}
+		thisString, err := b.ReadString(int(stringLen))
+		return thisString, err
+	})
+	if _, ok := thisString.(string); ok {
+		return nil, err
+	}
+	return thisString.([]byte), err
+}
+
+func (b *ExtendedReader) ReadCachedNewProtectedString(context *CommunicationContext) ([]byte, error) {
+	thisString, err := b.readWithCache(context.ReplicatorStringCache, func(b *ExtendedReader)(interface{}, error) {
 		stringLen, err := b.ReadUint32BE()
 		if err != nil {
 			return []byte{}, err

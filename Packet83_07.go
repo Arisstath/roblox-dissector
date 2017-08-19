@@ -8,7 +8,6 @@ import "fmt"
 type Packet83_07 struct {
 	Object1 Object
 	EventName string
-	Schema *EventSchemaItem
 	Event *ReplicationEvent
 }
 
@@ -25,10 +24,10 @@ func (this Packet83_07) Show() widgets.QWidget_ITF {
 	standardModel.SetHorizontalHeaderLabels([]string{"Type", "Value"})
 	rootNode := standardModel.InvisibleRootItem()
 
-	for i, argument := range this.Event.Arguments {
+	for _, argument := range this.Event.Arguments {
 		rootNode.AppendRow([]*gui.QStandardItem{
-			NewQStandardItemF(this.Schema.ArgumentTypes[i]),
-			NewQStandardItemF("%s", argument.Show()),
+			NewQStandardItemF(argument.Type),
+			NewQStandardItemF("%s", argument.Value.Show()),
 		})
 	}
 
@@ -49,21 +48,36 @@ func DecodePacket83_07(thisBitstream *ExtendedReader, context *CommunicationCont
 		return layer, err
 	}
 
-	eventIDx, err := thisBitstream.Bits(0x9)
-	if err != nil {
+	if !context.UseStaticSchema {
+		eventIDx, err := thisBitstream.Bits(0x9)
+		if err != nil {
+			return layer, err
+		}
+		realIDx := (eventIDx & 1 << 8) | eventIDx >> 1
+
+		if int(realIDx) > int(len(eventSchema)) {
+			return layer, errors.New(fmt.Sprintf("event idx %d is higher than %d", realIDx, len(eventSchema)))
+		}
+
+		schema := eventSchema[realIDx]
+		layer.EventName = schema.Name
+		//println(DebugInfo2(context, packet, false), "Our event: ", layer.EventName)
+
+		layer.Event, err = schema.Decode(thisBitstream, context, packet)
+		return layer, err
+	} else {
+		eventIDx, err := thisBitstream.ReadUint16BE()
+		if err != nil {
+			return layer, err
+		}
+
+		if int(eventIDx) > int(len(context.StaticEventSchema)) {
+			return layer, errors.New(fmt.Sprintf("event idx %d is higher than %d", eventIDx, len(context.StaticEventSchema)))
+		}
+
+		schema := context.StaticEventSchema[eventIDx]
+		layer.EventName = schema.Name
+		layer.Event, err = schema.Decode(thisBitstream, context, packet)
 		return layer, err
 	}
-	realIDx := (eventIDx & 1 << 8) | eventIDx >> 1
-
-	if int(realIDx) > int(len(eventSchema)) {
-		return layer, errors.New(fmt.Sprintf("event idx %d is higher than %d", realIDx, len(eventSchema)))
-	}
-
-	schema := eventSchema[realIDx]
-	layer.EventName = schema.Name
-	println(DebugInfo2(context, packet, false), "Our event: ", layer.EventName)
-
-	layer.Event, err = schema.Decode(thisBitstream, context, packet)
-	layer.Schema = schema
-	return layer, err
 }

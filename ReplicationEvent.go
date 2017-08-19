@@ -5,7 +5,7 @@ import "errors"
 
 type ReplicationEvent struct {
 	UnknownInt uint32
-	Arguments []PropertyValue
+	Arguments []TypeAndValue
 }
 
 func decodeEventArgument(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet, argType string) (PropertyValue, error) {
@@ -114,13 +114,32 @@ func (schema *EventSchemaItem) Decode(thisBitstream *ExtendedReader, context *Co
 
 	event := &ReplicationEvent{}
 	event.UnknownInt, err = thisBitstream.ReadUint32BE()
-	event.Arguments = make([]PropertyValue, len(schema.ArgumentTypes))
+	event.Arguments = make([]TypeAndValue, len(schema.ArgumentTypes))
 	for i, argSchemaName := range schema.ArgumentTypes {
-		event.Arguments[i], err = decodeEventArgument(thisBitstream, context, packet, argSchemaName)
+		thisVal := TypeAndValue{Type: argSchemaName}
+		thisVal.Value, err = decodeEventArgument(thisBitstream, context, packet, argSchemaName)
+		event.Arguments[i] = thisVal
 		if err != nil {
 			return event, err
 		}
 	}
 	println(DebugInfo2(context, packet, false), "Read", schema.Name, spew.Sdump(event.Arguments))
+	return event, nil
+}
+
+func (schema *StaticEventSchema) Decode(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (*ReplicationEvent, error) {
+	var err error
+	
+	event := &ReplicationEvent{}
+	event.Arguments = make([]TypeAndValue, len(schema.Arguments))
+	for i, argSchema := range schema.Arguments {
+		thisVal := TypeAndValue{Type: argSchema.TypeString}
+		thisVal.Value, err = readSerializedValue(false, argSchema.Type, thisBitstream, context)
+		event.Arguments[i] = thisVal
+		if err != nil {
+			return event, err
+		}
+	}
+
 	return event, nil
 }

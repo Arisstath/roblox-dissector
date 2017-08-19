@@ -582,7 +582,7 @@ func (b *ExtendedReader) ReadNewPString(isJoinData bool, context *CommunicationC
 }
 func (b *ExtendedReader) ReadNewProtectedString(isJoinData bool, context *CommunicationContext) (ProtectedString, error) {
 	if !isJoinData {
-		res, err := b.ReadCachedProtectedString(context)
+		res, err := b.ReadNewCachedProtectedString(context)
 		return ProtectedString(res), err
 	}
 	res, err := b.ReadNewPString(true, context)
@@ -609,4 +609,78 @@ func (b *ExtendedReader) ReadNewEnumValue() (EnumValue, error) {
 func (b *ExtendedReader) ReadNewPSint() (psint, error) {
 	val, err := b.ReadSintUTF8()
 	return psint(val), err
+}
+
+func (b *ExtendedReader) ReadNewTypeAndValue(isJoinData bool, context *CommunicationContext) (TypeAndValue, error) {
+	val := TypeAndValue{}
+	thisType, err := b.ReadUint8()
+	val.Type = TypeNames[thisType]
+	if thisType == 7 {
+		_, err = b.ReadUint16BE()
+		if err != nil {
+			return val, err
+		}
+	}
+
+	val.Value, err = readSerializedValue(isJoinData, thisType, b, context)
+	return val, err
+}
+
+func (b *ExtendedReader) ReadNewTuple(isJoinData bool, context *CommunicationContext) (Tuple, error) {
+	var tuple Tuple
+	tupleLen, err := b.ReadUintUTF8()
+	if err != nil {
+		return tuple, err
+	}
+	if tupleLen > 0x10000 {
+		return tuple, errors.New("sanity check: exceeded maximum tuple len")
+	}
+	tuple = make(Tuple, tupleLen)
+	for i := 0; i < int(tupleLen); i++ {
+		val, err := b.ReadNewTypeAndValue(isJoinData, context)
+		if err != nil {
+			return tuple, err
+		}
+		tuple[i] = val
+	}
+
+	return tuple, nil
+}
+
+func (b *ExtendedReader) ReadNewArray(isJoinData bool, context *CommunicationContext) (Array, error) {
+	array, err := b.ReadNewTuple(isJoinData, context)
+	return Array(array), err
+}
+
+func (b *ExtendedReader) ReadNewDictionary(isJoinData bool, context *CommunicationContext) (Dictionary, error) {
+	var dictionary Dictionary
+	dictionaryLen, err := b.ReadUintUTF8()
+	if err != nil {
+		return dictionary, err
+	}
+	if dictionaryLen > 0x10000 {
+		return dictionary, errors.New("sanity check: exceeded maximum dictionary len")
+	}
+	dictionary = make(Dictionary, dictionaryLen)
+	for i := 0; i < int(dictionaryLen); i++ {
+		keyLen, err := b.ReadUintUTF8()
+		if err != nil {
+			return dictionary, err
+		}
+		key, err := b.ReadASCII(int(keyLen))
+		if err != nil {
+			return dictionary, err
+		}
+		dictionary[key], err = b.ReadNewTypeAndValue(isJoinData, context)
+		if err != nil {
+			return dictionary, err
+		}
+	}
+
+	return dictionary, nil
+}
+
+func (b *ExtendedReader) ReadNewMap(isJoinData bool, context *CommunicationContext) (Map, error) {
+	thisMap, err := b.ReadNewDictionary(isJoinData, context)
+	return Map(thisMap), err
 }

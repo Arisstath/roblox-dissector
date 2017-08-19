@@ -161,17 +161,19 @@ func main() {
 		promisc := flag.Bool("promisc", false, "Capture from live interface in promisc. mode")
 		propertySchema := flag.String("propschema", "", "Property schema filename")
 		instanceSchema := flag.String("instschema", "", "Instance schema filename")
+		eventSchema := flag.String("eventschema", "", "Event schema filename")
 		flag.Parse()
 		context := NewCommunicationContext()
 
 		if *propertySchema != "" {
-			staticSchema, err := ParseStaticSchema(*instanceSchema, *propertySchema)
+			staticSchema, err := ParseStaticSchema(*instanceSchema, *propertySchema, *eventSchema)
 			if err != nil {
 				panic(err)
 			}
 			context.StaticInstanceSchema = staticSchema.Instances
 			context.StaticPropertySchema = staticSchema.Properties
-			fmt.Printf("Scanned schema: %d classes, %d properties\n", len(context.StaticInstanceSchema), len(context.StaticPropertySchema))
+			context.StaticEventSchema = staticSchema.Events
+			fmt.Printf("Scanned schema: %d classes, %d properties, %d events\n", len(context.StaticInstanceSchema), len(context.StaticPropertySchema), len(context.StaticEventSchema))
 		}
 
 		var handle *pcap.Handle

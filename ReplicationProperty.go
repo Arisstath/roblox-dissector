@@ -179,6 +179,84 @@ func (schema *PropertySchemaItem) Decode(round int, thisBitstream *ExtendedReade
 	return Property, nil
 }
 
+func readSerializedValue(isJoinData bool, valueType uint8, thisBitstream *ExtendedReader, context *CommunicationContext) (PropertyValue, error) {
+	var err error
+	var result PropertyValue
+	switch valueType {
+	case PROP_TYPE_STRING:
+		result, err = thisBitstream.ReadNewPString(isJoinData, context)
+	case PROP_TYPE_STRING_NO_CACHE:
+		result, err = thisBitstream.ReadNewPString(true, context)
+	case PROP_TYPE_PROTECTEDSTRING_0:
+		result, err = thisBitstream.ReadNewProtectedString(isJoinData, context)
+	case PROP_TYPE_PROTECTEDSTRING_1:
+		result, err = thisBitstream.ReadNewProtectedString(isJoinData, context)
+	case PROP_TYPE_PROTECTEDSTRING_2:
+		result, err = thisBitstream.ReadNewProtectedString(isJoinData, context)
+	case PROP_TYPE_PROTECTEDSTRING_3:
+		result, err = thisBitstream.ReadNewProtectedString(isJoinData, context)
+	case PROP_TYPE_ENUM:
+		result, err = thisBitstream.ReadNewEnumValue()
+	case PROP_TYPE_BINARYSTRING:
+		result, err = thisBitstream.ReadNewBinaryString()
+	case PROP_TYPE_PBOOL:
+		result, err = thisBitstream.ReadPBool()
+	case PROP_TYPE_PSINT:
+		result, err = thisBitstream.ReadNewPSint()
+	case PROP_TYPE_PFLOAT:
+		result, err = thisBitstream.ReadPFloat()
+	case PROP_TYPE_PDOUBLE:
+		result, err = thisBitstream.ReadPDouble()
+	case PROP_TYPE_UDIM:
+		result, err = thisBitstream.ReadUDim()
+	case PROP_TYPE_UDIM2:
+		result, err = thisBitstream.ReadUDim2()
+	case PROP_TYPE_RAY:
+		result, err = thisBitstream.ReadRay()
+	case PROP_TYPE_FACES:
+		result, err = thisBitstream.ReadFaces()
+	case PROP_TYPE_AXES:
+		result, err = thisBitstream.ReadAxes()
+	case PROP_TYPE_BRICKCOLOR:
+		result, err = thisBitstream.ReadBrickColor()
+	case PROP_TYPE_COLOR3:
+		result, err = thisBitstream.ReadColor3()
+	case PROP_TYPE_COLOR3UINT8:
+		result, err = thisBitstream.ReadColor3uint8()
+	case PROP_TYPE_VECTOR2:
+		result, err = thisBitstream.ReadVector2()
+	case PROP_TYPE_VECTOR3_SIMPLE:
+		result, err = thisBitstream.ReadVector3Simple()
+	case PROP_TYPE_VECTOR3_COMPLICATED:
+		result, err = thisBitstream.ReadVector3()
+	case PROP_TYPE_VECTOR2UINT16:
+		result, err = thisBitstream.ReadVector2uint16()
+	case PROP_TYPE_VECTOR3UINT16:
+		result, err = thisBitstream.ReadVector3uint16()
+	case PROP_TYPE_CFRAME_SIMPLE:
+		result, err = thisBitstream.ReadCFrameSimple()
+	case PROP_TYPE_CFRAME_COMPLICATED:
+		result, err = thisBitstream.ReadCFrame()
+	case PROP_TYPE_INSTANCE:
+		result, err = thisBitstream.ReadObject(isJoinData, context)
+	case PROP_TYPE_CONTENT:
+		result, err = thisBitstream.ReadNewContent(isJoinData, context)
+	case PROP_TYPE_SYSTEMADDRESS:
+		result, err = thisBitstream.ReadSystemAddress(isJoinData, context)
+	case PROP_TYPE_TUPLE:
+		result, err = thisBitstream.ReadNewTuple(isJoinData, context)
+	case PROP_TYPE_ARRAY:
+		result, err = thisBitstream.ReadNewArray(isJoinData, context)
+	case PROP_TYPE_DICTIONARY:
+		result, err = thisBitstream.ReadNewDictionary(isJoinData, context)
+	case PROP_TYPE_MAP:
+		result, err = thisBitstream.ReadNewMap(isJoinData, context)
+	default:
+		return nil, errors.New("Unsupported property type: " + strconv.Itoa(int(valueType)))
+	}
+	return result, err
+}
+
 func (schema StaticPropertySchema) Decode(round int, thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet, isRebind bool) (*ReplicationProperty, error) {
 	var err error
 	result := &ReplicationProperty{schema.Name, schema.TypeString, nil, false}
@@ -186,79 +264,16 @@ func (schema StaticPropertySchema) Decode(round int, thisBitstream *ExtendedRead
 	if round != ROUND_UPDATE {
 		result.IsDefault, err = thisBitstream.ReadBool()
 		if result.IsDefault || err != nil {
-			println(DebugInfo2(context, packet, isJoinData), "Read", schema.Name, "default")
+			//println(DebugInfo2(context, packet, isJoinData), "Read", schema.Name, "default")
 			return result, err
 		}
 	}
 
-	switch schema.Type {
-	case PROP_TYPE_STRING:
-		result.Value, err = thisBitstream.ReadNewPString(isJoinData, context)
-	case PROP_TYPE_STRING_NO_CACHE:
-		result.Value, err = thisBitstream.ReadNewPString(true, context)
-	case PROP_TYPE_PROTECTEDSTRING_0:
-		result.Value, err = thisBitstream.ReadNewProtectedString(isJoinData, context)
-	case PROP_TYPE_PROTECTEDSTRING_1:
-		result.Value, err = thisBitstream.ReadNewProtectedString(isJoinData, context)
-	case PROP_TYPE_PROTECTEDSTRING_2:
-		result.Value, err = thisBitstream.ReadNewProtectedString(isJoinData, context)
-	case PROP_TYPE_PROTECTEDSTRING_3:
-		result.Value, err = thisBitstream.ReadNewProtectedString(isJoinData, context)
-	case PROP_TYPE_ENUM:
-		result.Value, err = thisBitstream.ReadNewEnumValue()
-	case PROP_TYPE_BINARYSTRING:
-		result.Value, err = thisBitstream.ReadNewBinaryString()
-	case PROP_TYPE_PBOOL:
-		result.Value, err = thisBitstream.ReadPBool()
-	case PROP_TYPE_PSINT:
-		result.Value, err = thisBitstream.ReadNewPSint()
-	case PROP_TYPE_PFLOAT:
-		result.Value, err = thisBitstream.ReadPFloat()
-	case PROP_TYPE_PDOUBLE:
-		result.Value, err = thisBitstream.ReadPDouble()
-	case PROP_TYPE_UDIM:
-		result.Value, err = thisBitstream.ReadUDim()
-	case PROP_TYPE_UDIM2:
-		result.Value, err = thisBitstream.ReadUDim2()
-	case PROP_TYPE_RAY:
-		result.Value, err = thisBitstream.ReadRay()
-	case PROP_TYPE_FACES:
-		result.Value, err = thisBitstream.ReadFaces()
-	case PROP_TYPE_AXES:
-		result.Value, err = thisBitstream.ReadAxes()
-	case PROP_TYPE_BRICKCOLOR:
-		result.Value, err = thisBitstream.ReadBrickColor()
-	case PROP_TYPE_COLOR3:
-		result.Value, err = thisBitstream.ReadColor3()
-	case PROP_TYPE_COLOR3UINT8:
-		result.Value, err = thisBitstream.ReadColor3uint8()
-	case PROP_TYPE_VECTOR2:
-		result.Value, err = thisBitstream.ReadVector2()
-	case PROP_TYPE_VECTOR3_SIMPLE:
-		result.Value, err = thisBitstream.ReadVector3Simple()
-	case PROP_TYPE_VECTOR3_COMPLICATED:
-		result.Value, err = thisBitstream.ReadVector3()
-	case PROP_TYPE_VECTOR2UINT16:
-		result.Value, err = thisBitstream.ReadVector2uint16()
-	case PROP_TYPE_VECTOR3UINT16:
-		result.Value, err = thisBitstream.ReadVector3uint16()
-	case PROP_TYPE_CFRAME_SIMPLE:
-		result.Value, err = thisBitstream.ReadCFrameSimple()
-	case PROP_TYPE_CFRAME_COMPLICATED:
-		result.Value, err = thisBitstream.ReadCFrame()
-	case PROP_TYPE_INSTANCE:
-		result.Value, err = thisBitstream.ReadObject(isJoinData, context)
-	case PROP_TYPE_CONTENT:
-		result.Value, err = thisBitstream.ReadNewContent(isJoinData, context)
-	case PROP_TYPE_SYSTEMADDRESS:
-		result.Value, err = thisBitstream.ReadSystemAddress(isJoinData, context)
-	default:
-		return nil, errors.New("Unsupported property type: " + schema.TypeString + strconv.Itoa(int(schema.Type)))
-	}
-	if schema.TypeString != "ProtectedString" {
-		println(DebugInfo2(context, packet, isJoinData), "Read", schema.Name, spew.Sdump(result.Value))
-	} else {
-		println(DebugInfo2(context, packet, isJoinData), "Read", schema.Name, len(result.Value.(ProtectedString)))
-	}
+	result.Value, err = readSerializedValue(isJoinData, schema.Type, thisBitstream, context)
+	//if schema.TypeString != "ProtectedString" {
+	//	println(DebugInfo2(context, packet, isJoinData), "Read", schema.Name, spew.Sdump(result.Value))
+	//} else {
+	//	println(DebugInfo2(context, packet, isJoinData), "Read", schema.Name, len(result.Value.(ProtectedString)))
+	//}
 	return result, err
 }

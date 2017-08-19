@@ -128,7 +128,6 @@ func DecodeReplicationInstance(isJoinData bool, thisBitstream *ExtendedReader, c
 			return thisInstance, errors.New(fmt.Sprintf("class idx %d is higher than %d", schemaIDx, len(context.StaticInstanceSchema)))
 		}
 		schema := context.StaticInstanceSchema[schemaIDx]
-		println("Our class:", schema.Name, serialized)
 
 		thisInstance.Bool1, err = thisBitstream.ReadBool()
 		if err != nil {
@@ -137,6 +136,7 @@ func DecodeReplicationInstance(isJoinData bool, thisBitstream *ExtendedReader, c
 
 		thisInstance.ClassName = schema.Name
 		thisInstance.Properties = make([]*ReplicationProperty, len(schema.Properties))
+		//println("Our class:", schema.Name)
 
 		if isJoinData {
 			for i := 0; i < len(thisInstance.Properties); i++ {

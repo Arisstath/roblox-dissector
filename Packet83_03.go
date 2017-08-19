@@ -55,7 +55,6 @@ func DecodePacket83_03(thisBitstream *ExtendedReader, context *CommunicationCont
 		layer.Value, err = schema.Decode(ROUND_UPDATE, thisBitstream, context, packet)
 		return layer, err
 	} else {
-		println(DebugInfo2(context, packet, false), "Our prop: ", layer.PropertyName, formatBindable(layer.Object1))
 		propertyIDx, err := thisBitstream.ReadUint16BE()
 		if err != nil {
 			return layer, err
@@ -65,13 +64,14 @@ func DecodePacket83_03(thisBitstream *ExtendedReader, context *CommunicationCont
 			return layer, errors.New(fmt.Sprintf("prop idx %d is higher than %d", propertyIDx, len(context.StaticPropertySchema)))
 		}
 		schema := context.StaticPropertySchema[propertyIDx]
+		layer.PropertyName = schema.Name
+		//println(DebugInfo2(context, packet, false), "Our prop: ", layer.PropertyName, formatBindable(layer.Object1))
 
 		layer.Bool1, err = thisBitstream.ReadBool()
 		if err != nil {
 			return layer, err
 		}
 
-		layer.PropertyName = schema.Name
 		layer.Value, err = schema.Decode(ROUND_UPDATE, thisBitstream, context, packet, false)
 		return layer, err
 	}
