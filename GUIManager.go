@@ -4,10 +4,14 @@ import "github.com/therecipe/qt/gui"
 import "github.com/therecipe/qt/core"
 import "github.com/google/gopacket"
 import "os"
+import "os/exec"
 import "fmt"
 import "strconv"
 import "sync/atomic"
 import "sync"
+import "net/http"
+import "io/ioutil"
+import "strings"
 
 var window *widgets.QMainWindow
 
@@ -17,6 +21,15 @@ type TwoWayPacketList struct {
 	Client PacketList
 	MServer *sync.Mutex
 	MClient *sync.Mutex
+}
+
+type StudioSettings struct {
+	Location string
+	
+	Flags string
+	Address string
+	Port string
+	RBXL string
 }
 
 type SelectionHandlerList map[uint64](func ())
@@ -38,6 +51,12 @@ type MyPacketListView struct {
 	StopCaptureJob chan struct{}
 
 	StaticSchema *StaticSchema
+
+	StudioVersion string
+	PlayerVersion string
+
+	StudioSettings *StudioSettings
+	PlayerLocation string
 }
 
 func NewTwoWayPacketList() *TwoWayPacketList {
@@ -68,6 +87,11 @@ func NewMyPacketListView(parent widgets.QWidget_ITF) *MyPacketListView {
 		make(chan struct{}),
 
 		nil,
+		"",
+		"",
+
+		&StudioSettings{},
+		"",
 	}
 	return new
 }
@@ -511,6 +535,68 @@ func GUIMain() {
 		if err != nil {
 			println(err.Error())
 		}
+	})
+
+	resp, err := http.Get("http://setup.roblox.com/versionQTStudio")
+	if err != nil {
+		println("trying to get studio version: " + err.Error())
+	} else {
+		studioVersion, err := ioutil.ReadAll(resp.Body)
+
+		if err != nil {
+			println("trying to read studio version: " + err.Error())
+		} else {
+			packetViewer.StudioVersion = string(studioVersion)
+			potentialLocation := os.Getenv("LOCALAPPDATA") + `/Roblox/Versions/` + packetViewer.StudioVersion + `/RobloxStudioBeta.exe`
+
+			if _, err := os.Stat(potentialLocation); !os.IsNotExist(err) {
+				packetViewer.StudioSettings.Location = potentialLocation
+			}
+		}
+		resp.Body.Close()
+	}
+
+	resp, err = http.Get("http://setup.roblox.com/version")
+	if err != nil {
+		println("trying to get player version: " + err.Error())
+	} else {
+		playerVersion, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			println("trying to read player version: " + err.Error())
+		} else {
+			packetViewer.PlayerVersion = string(playerVersion)
+			potentialLocation := os.Getenv("LOCALAPPDATA") + `/Roblox/Versions/` + packetViewer.PlayerVersion + `/RobloxPlayerBeta.exe`
+			if _, err := os.Stat(potentialLocation); !os.IsNotExist(err) {
+				packetViewer.PlayerLocation = potentialLocation
+			}
+		}
+		resp.Body.Close()
+	}
+
+	packetViewer.StudioSettings.Flags = `-testMode`
+	packetViewer.StudioSettings.Port = "53640"
+
+	manageRobloxBar := window.MenuBar().AddMenu2("Start &Roblox")
+	startServerAction := manageRobloxBar.AddAction("Start &local server...")
+	_ = manageRobloxBar.AddAction("Start local &client...")
+	_ = manageRobloxBar.AddAction("Start Roblox &Player...")
+	startServerAction.ConnectTriggered(func(checked bool)() {
+		NewStudioChooser(packetViewer, packetViewer.StudioSettings, func(settings *StudioSettings) {
+			packetViewer.StudioSettings = settings
+			port, err := strconv.Atoi(settings.Port)
+			if err != nil {
+				println("while converting port:", err.Error())
+			}
+
+			flags := []string{"-fileLocation", settings.RBXL}
+			script := fmt.Sprintf(`game:GetService'NetworkServer':Start(%d)`, port)
+			flags = append(flags, strings.Split(settings.Flags, " ")...)
+			flags = append(flags, "-script", script)
+			err = exec.Command(settings.Location, flags...).Start()
+			if err != nil {
+				println("while starting process:", err.Error())
+			}
+		})
 	})
 
 
