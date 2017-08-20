@@ -39,13 +39,15 @@ func DecodePacket81Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 	if err != nil {
 		return layer, err
 	}
-	layer.Int1, err = thisBitstream.ReadUint32BE()
-	if err != nil {
-		return layer, err
-	}
-	layer.Int2, err = thisBitstream.ReadUint32BE()
-	if err != nil {
-		return layer, err
+	if !context.IsStudio {
+		layer.Int1, err = thisBitstream.ReadUint32BE()
+		if err != nil {
+			return layer, err
+		}
+		layer.Int2, err = thisBitstream.ReadUint32BE()
+		if err != nil {
+			return layer, err
+		}
 	}
 
 	context.WaitForSchema()
@@ -71,7 +73,6 @@ func DecodePacket81Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 			}
 			serialized := formatBindable(thisItem.Object1)
 			context.Rebindables[serialized] = struct{}{}
-			println("REGISTERED REBIND: ", serialized)
 
 			layer.Items[j] = thisItem
 		}
@@ -94,7 +95,6 @@ func DecodePacket81Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 			}
 			serialized := formatBindable(thisItem.Object1)
 			context.Rebindables[serialized] = struct{}{}
-			println("REGISTERED REBIND: ", serialized)
 
 			thisItem.ClassID, err = thisBitstream.ReadUint16BE()
 			if err != nil {

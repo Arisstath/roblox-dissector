@@ -156,7 +156,10 @@ func DecodePacket09Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 	if err != nil {
 		return layer, err
 	}
-	//layer.Password, err = thisBitstream.ReadString(len(data) - 1 - 8 - 8 - 1)
+	layer.Password, err = thisBitstream.ReadString(0x10)
+	if layer.Password[0] == 0x5E && layer.Password[1] == 0x11 {
+		context.IsStudio = true
+	}
 	return layer, err
 }
 
