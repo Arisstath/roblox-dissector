@@ -69,6 +69,7 @@ var PacketDecoders map[byte]DecoderFunc = map[byte]DecoderFunc{
 	0x8F: DecodePacket8FLayer,
 	0x81: DecodePacket81Layer,
 	0x83: DecodePacket83Layer,
+	0x97: DecodePacket97Layer,
 }
 
 type ActivationCallback func(byte, gopacket.Packet, *CommunicationContext, *PacketLayers)

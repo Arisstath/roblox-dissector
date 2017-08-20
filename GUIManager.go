@@ -58,8 +58,6 @@ type MyPacketListView struct {
 	IsCapturing bool
 	StopCaptureJob chan struct{}
 
-	StaticSchema *StaticSchema
-
 	StudioVersion string
 	PlayerVersion string
 
@@ -95,7 +93,6 @@ func NewMyPacketListView(parent widgets.QWidget_ITF) *MyPacketListView {
 		false,
 		make(chan struct{}),
 
-		nil,
 		"",
 		"",
 
@@ -500,7 +497,6 @@ func GUIMain() {
 		packetViewer.IsCapturing = true
 
 		context := NewCommunicationContext()
-		context.StaticSchema = packetViewer.StaticSchema
 		packetViewer.Context = context
 
 		packetViewer.Reset()
@@ -520,7 +516,6 @@ func GUIMain() {
 
 			context := NewCommunicationContext()
 			packetViewer.Context = context
-			context.StaticSchema = packetViewer.StaticSchema
 
 			packetViewer.Reset()
 
@@ -529,29 +524,6 @@ func GUIMain() {
 				packetViewer.IsCapturing = false
 			}()
 		})
-	})
-
-	schemaBar := window.MenuBar().AddMenu2("&Schema")
-	parseSchemaAction := schemaBar.AddAction("&Parse schema...")
-	parseSchemaAction.ConnectTriggered(func(checked bool)() {
-		var err error
-		file := widgets.QFileDialog_GetExistingDirectory(window, "Parse schema...", "", widgets.QFileDialog__ShowDirsOnly)
-		packetViewer.StaticSchema, err = ParseStaticSchema(
-			file + "/instances.txt",
-			file + "/properties.txt",
-			file + "/events.txt",
-		)
-		if err != nil {
-			println("while parsing schema: " + err.Error())
-		}
-		fmt.Printf("Parsed schema - instances: %d, properties: %d, events: %d\n",
-			len(packetViewer.StaticSchema.Instances),
-			len(packetViewer.StaticSchema.Properties),
-			len(packetViewer.StaticSchema.Events),
-		)
-		if packetViewer.Context != nil {
-			packetViewer.Context.StaticSchema = packetViewer.StaticSchema
-		}
 	})
 
 	resp, err := http.Get("http://setup.roblox.com/versionQTStudio")
