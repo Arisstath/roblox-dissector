@@ -7,7 +7,7 @@ import "math"
 import "bytes"
 import "compress/gzip"
 import "strconv"
-//import "fmt"
+import "io"
 
 var englishTree *HuffmanEncodingTree
 
@@ -270,7 +270,7 @@ func (b *ExtendedReader) ReadJoinReferent() (string, uint32, error) {
 	}
 
 	intVal, err := b.ReadUint32LE()
-	if err != nil {
+	if err != nil && err != io.EOF {
 		return "", 0, err
 	}
 

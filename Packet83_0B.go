@@ -2,7 +2,6 @@ package main
 import "github.com/google/gopacket"
 import "github.com/therecipe/qt/widgets"
 import "errors"
-import "io"
 
 type Packet83_0B struct {
 	Instances []*ReplicationInstance
@@ -49,9 +48,6 @@ func DecodePacket83_0B(thisBitstream *ExtendedReader, context *CommunicationCont
 	var i uint32
 	for i = 0; i < arrayLen; i++ {
 		layer.Instances[i], err = DecodeReplicationInstance(true, gzipStream, context, packet, instanceSchema)
-		if arrayLen - i == 1 && err == io.EOF {
-			return layer, nil // What is up with Go's gzip streams?
-		}
 		if err != nil {
 			return layer, err
 		}
