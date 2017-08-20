@@ -59,6 +59,11 @@ type CommunicationContext struct {
 	StaticInstanceSchema []StaticInstanceSchema
 	StaticPropertySchema []StaticPropertySchema
 	StaticEventSchema []StaticEventSchema
+
+	IsStudio bool
+	IsValid bool
+
+	SplitPackets SplitPacketList
 }
 
 func NewCommunicationContext() *CommunicationContext {
@@ -76,6 +81,7 @@ func NewCommunicationContext() *CommunicationContext {
 
 		EDescriptorsParsed: sync.NewCond(MDescriptor),
 		ESchemaParsed: sync.NewCond(MSchema),
+		IsValid: true,
 	}
 }
 
