@@ -583,7 +583,7 @@ func GUIMain() {
 
 	manageRobloxBar := window.MenuBar().AddMenu2("Start &Roblox")
 	startServerAction := manageRobloxBar.AddAction("Start &local server...")
-	_ = manageRobloxBar.AddAction("Start local &client...")
+	startClientAction := manageRobloxBar.AddAction("Start local &client...")
 	_ = manageRobloxBar.AddAction("Start Roblox &Player...")
 	startServerAction.ConnectTriggered(func(checked bool)() {
 		NewStudioChooser(packetViewer, packetViewer.StudioSettings, func(settings *StudioSettings) {
@@ -591,10 +591,30 @@ func GUIMain() {
 			port, err := strconv.Atoi(settings.Port)
 			if err != nil {
 				println("while converting port:", err.Error())
+				return
 			}
 
 			flags := []string{"-fileLocation", settings.RBXL}
 			script := fmt.Sprintf(`game:GetService'NetworkServer':Start(%d)`, port)
+			flags = append(flags, strings.Split(settings.Flags, " ")...)
+			flags = append(flags, "-script", script)
+			err = exec.Command(settings.Location, flags...).Start()
+			if err != nil {
+				println("while starting process:", err.Error())
+			}
+		})
+	})
+	startClientAction.ConnectTriggered(func(checked bool)() {
+		NewStudioChooser(packetViewer, packetViewer.StudioSettings, func(settings *StudioSettings) {
+			packetViewer.StudioSettings = settings
+			port, err := strconv.Atoi(settings.Port)
+			if err != nil {
+				println("while converting port:", err.Error())
+				return
+			}
+
+			flags := []string{}
+			script := fmt.Sprintf(`game:GetService'NetworkClient':PlayerConnect(0, %q, %d)`, settings.Address, port)
 			flags = append(flags, strings.Split(settings.Flags, " ")...)
 			flags = append(flags, "-script", script)
 			err = exec.Command(settings.Location, flags...).Start()
