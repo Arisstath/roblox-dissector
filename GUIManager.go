@@ -64,7 +64,7 @@ type MyPacketListView struct {
 	PlayerVersion string
 
 	StudioSettings *StudioSettings
-	PlayerLocation string
+	PlayerSettings *PlayerSettings
 	Context *CommunicationContext
 }
 
@@ -100,7 +100,7 @@ func NewMyPacketListView(parent widgets.QWidget_ITF) *MyPacketListView {
 		"",
 
 		&StudioSettings{},
-		"",
+		&PlayerSettings{},
 		nil,
 	}
 	return new
@@ -584,7 +584,7 @@ func GUIMain() {
 			packetViewer.PlayerVersion = string(playerVersion)
 			potentialLocation := os.Getenv("LOCALAPPDATA") + `/Roblox/Versions/` + packetViewer.PlayerVersion + `/RobloxPlayerBeta.exe`
 			if _, err := os.Stat(potentialLocation); !os.IsNotExist(err) {
-				packetViewer.PlayerLocation = potentialLocation
+				packetViewer.PlayerSettings.Location = potentialLocation
 			}
 		}
 		resp.Body.Close()
@@ -592,11 +592,14 @@ func GUIMain() {
 
 	packetViewer.StudioSettings.Flags = `-testMode`
 	packetViewer.StudioSettings.Port = "53640"
+	packetViewer.PlayerSettings.Flags = `--play -a https://www.roblox.com/Login/Negotiate.ashx --launchtime=1503226579241`
+	packetViewer.PlayerSettings.AuthTicket = `Guest%3A-306579839`
+	packetViewer.PlayerSettings.TrackerID = "11076148732"
 
 	manageRobloxBar := window.MenuBar().AddMenu2("Start &Roblox")
 	startServerAction := manageRobloxBar.AddAction("Start &local server...")
 	startClientAction := manageRobloxBar.AddAction("Start local &client...")
-	_ = manageRobloxBar.AddAction("Start Roblox &Player...")
+	startPlayerAction := manageRobloxBar.AddAction("Start Roblox &Player...")
 	startServerAction.ConnectTriggered(func(checked bool)() {
 		NewStudioChooser(packetViewer, packetViewer.StudioSettings, func(settings *StudioSettings) {
 			packetViewer.StudioSettings = settings
@@ -635,9 +638,27 @@ func GUIMain() {
 			}
 		})
 	})
-	//startPlayerAction.ConnectTriggered(func(checked bool)() {
+	startPlayerAction.ConnectTriggered(func(checked bool)() {
+		NewPlayerChooser(packetViewer, packetViewer.PlayerSettings, func(settings *PlayerSettings) {
+			packetViewer.PlayerSettings = settings
+			placeID, err := strconv.Atoi(settings.GameID)
+			if err != nil {
+				println("while converting place id:", err.Error())
+				return
+			}
 
-	//})
+			flags := []string{}
+			joinScript := fmt.Sprintf(`https://assetgame.roblox.com/game/PlaceLauncher.ashx?request=RequestGame&browserTrackerId=%s&placeId=%d&isPartyLeader=false&genderId=2`, settings.TrackerID, placeID)
+			flags = append(flags, strings.Split(settings.Flags, " ")...)
+			flags = append(flags, "-j", joinScript)
+			flags = append(flags, "-b", settings.TrackerID)
+			flags = append(flags, "-t", settings.AuthTicket)
+			err = exec.Command(settings.Location, flags...).Start()
+			if err != nil {
+				println("while starting process:", err.Error())
+			}
+		})
+	})
 
 
 	window.Show()
