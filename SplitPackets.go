@@ -48,7 +48,7 @@ func (list *SplitPacketBuffer) AddPacket(packet *ReliablePacket, rakNetPacket *R
 	list.RakNetPackets[index] = rakNetPacket
 }
 
-func AddSplitPacket(source string, packet *ReliablePacket, rakNetPacket *RakNetLayer) *ReliablePacket {
+func (SplitPackets SplitPacketList) AddSplitPacket(source string, packet *ReliablePacket, rakNetPacket *RakNetLayer) *ReliablePacket {
 	splitPacketId := packet.SplitPacketID
 	splitPacketIndex := packet.SplitPacketIndex
 
@@ -81,10 +81,10 @@ func AddSplitPacket(source string, packet *ReliablePacket, rakNetPacket *RakNetL
 	return SplitPackets[source][splitPacketId]
 }
 
-func HandleSplitPacket(reliablePacket *ReliablePacket, rakNetPacket *RakNetLayer, context *CommunicationContext, packet gopacket.Packet) (*ReliablePacket, error) {
+func (context *CommunicationContext) HandleSplitPacket(reliablePacket *ReliablePacket, rakNetPacket *RakNetLayer, packet gopacket.Packet) (*ReliablePacket, error) {
 	source := SourceInterfaceFromPacket(packet)
 
-	fullPacket := AddSplitPacket(source, reliablePacket, rakNetPacket)
+	fullPacket := context.SplitPackets.AddSplitPacket(source, reliablePacket, rakNetPacket)
 	packetBuffer := fullPacket.Buffer
 	expectedPacket := packetBuffer.NextExpectedPacket
 

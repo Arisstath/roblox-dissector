@@ -114,7 +114,7 @@ func DecodeReliabilityLayer(thisBitstream *ExtendedReader, context *Communicatio
 		context.UniqueID++
 
 		if reliablePacket.HasSplitPacket {
-			reliablePacket, err = HandleSplitPacket(reliablePacket, rakNetPacket, context, packet)
+			reliablePacket, err = context.HandleSplitPacket(reliablePacket, rakNetPacket, packet)
 			if err != nil {
 				return layer, err
 			}

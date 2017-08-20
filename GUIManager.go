@@ -37,7 +37,7 @@ type MyPacketListView struct {
 	*widgets.QTreeView
 	packetRowsByUniqueID *TwoWayPacketList
 	packetRowsBySplitPacket *TwoWayPacketList
-	
+
 	CurrentACKSelection []*gui.QStandardItem
 	SelectionHandlers SelectionHandlerList
 	RootNode *gui.QStandardItem

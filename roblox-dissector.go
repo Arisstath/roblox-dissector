@@ -30,7 +30,7 @@ var PacketNames map[byte]string = map[byte]string{
 	0x15: "ID_DISCONNECTION_NOTIFICATION",
 	0x1B: "ID_TIMESTAMP",
 	0x1C: "ID_UNCONNECTED_PONG",
-	0x81: "ID_ROBLOX_PRESCHEMA",
+	0x81: "ID_ROBLOX_INIT_INSTANCES",
 	0x82: "ID_ROBLOX_DICTIONARIES",
 	0x83: "ID_ROBLOX_REPLICATION",
 	0x8A: "ID_ROBLOX_AUTH",
@@ -105,12 +105,16 @@ func HandleSimple(layer *RakNetLayer, packet gopacket.Packet, context *Communica
 			return
 		}
 	}
-	packetViewer.AddFullPacket(packetType, packet, context, layers, ActivationCallbacks[packetType])
+	if context.IsValid {
+		packetViewer.AddFullPacket(packetType, packet, context, layers, ActivationCallbacks[packetType])
+	}
 }
 
 func HandleACK(layer *RakNetLayer, packet gopacket.Packet, context *CommunicationContext, packetViewer *MyPacketListView) {
 	for _, ACK := range layer.ACKs {
-		packetViewer.AddACK(ACK, packet, context, layer, func() {})
+		if context.IsValid {
+			packetViewer.AddACK(ACK, packet, context, layer, func() {})
+		}
 	}
 }
 
@@ -125,7 +129,9 @@ func HandleGeneric(layer *RakNetLayer, packet gopacket.Packet, context *Communic
 		layers := &PacketLayers{}
 		layers.RakNet = layer
 		layers.Reliability = subPacket
-		packetViewer.AddSplitPacket(subPacket.PacketType, packet, context, layers)
+		if context.IsValid {
+			packetViewer.AddSplitPacket(subPacket.PacketType, packet, context, layers)
+		}
 
 		if subPacket.HasPacketType && !subPacket.HasBeenDecoded {
 			subPacket.HasBeenDecoded = true
@@ -146,7 +152,9 @@ func HandleGeneric(layer *RakNetLayer, packet gopacket.Packet, context *Communic
 					}
 				}
 
-				packetViewer.BindCallback(packetType, packet, context, layers, ActivationCallbacks[packetType])
+				if context.IsValid {
+					packetViewer.BindCallback(packetType, packet, context, layers, ActivationCallbacks[packetType])
+				}
 			}(subPacket)
 		}
 	}
@@ -160,11 +168,20 @@ func captureJob(handle *pcap.Handle, useIPv4 bool, stopCaptureJob chan struct{},
 	} else {
 		packetSource = gopacket.NewPacketSource(handle, handle.LinkType())
 	}
-	for packet := range packetSource.Packets() {
+	packetChannel := make(chan gopacket.Packet)
+
+	go func() {
+		for packet := range packetSource.Packets() {
+			packetChannel <- packet
+		}
+	}()
+
+	for true {
 		select {
 		case _ = <- stopCaptureJob:
+			context.IsValid = false
 			return
-		default:
+		case packet := <- packetChannel:
 			if packet.ApplicationLayer() == nil {
 				color.Red("Ignoring packet because ApplicationLayer can't be decoded")
 				continue
