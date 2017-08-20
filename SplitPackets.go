@@ -15,8 +15,6 @@ type SplitPacketBuffer struct {
 }
 type SplitPacketList map[string](map[uint16](*ReliablePacket))
 
-var SplitPackets SplitPacketList
-
 func NewSplitPacketBuffer(packet *ReliablePacket) *SplitPacketBuffer {
 	reliables := make([]*ReliablePacket, int(packet.SplitPacketCount))
 	raknets := make([]*RakNetLayer, int(packet.SplitPacketCount))
@@ -48,43 +46,43 @@ func (list *SplitPacketBuffer) AddPacket(packet *ReliablePacket, rakNetPacket *R
 	list.RakNetPackets[index] = rakNetPacket
 }
 
-func (SplitPackets SplitPacketList) AddSplitPacket(source string, packet *ReliablePacket, rakNetPacket *RakNetLayer) *ReliablePacket {
+func (context *CommunicationContext) AddSplitPacket(source string, packet *ReliablePacket, rakNetPacket *RakNetLayer) *ReliablePacket {
 	splitPacketId := packet.SplitPacketID
 	splitPacketIndex := packet.SplitPacketIndex
 
-	if SplitPackets == nil {
+	if context.SplitPackets == nil {
 		packet.Buffer = NewSplitPacketBuffer(packet)
 		packet.IsFirst = true
 		packet.FullDataReader = packet.Buffer.DataReader
 		packet.Buffer.AddPacket(packet, rakNetPacket, splitPacketIndex)
 
-		SplitPackets = SplitPacketList{source: map[uint16]*ReliablePacket{splitPacketId: packet}}
-	} else if SplitPackets[source] == nil {
+		context.SplitPackets = SplitPacketList{source: map[uint16]*ReliablePacket{splitPacketId: packet}}
+	} else if context.SplitPackets[source] == nil {
 		packet.Buffer = NewSplitPacketBuffer(packet)
 		packet.IsFirst = true
 		packet.FullDataReader = packet.Buffer.DataReader
 		packet.Buffer.AddPacket(packet, rakNetPacket, splitPacketIndex)
 
-		SplitPackets[source] = map[uint16]*ReliablePacket{splitPacketId: packet}
-	} else if SplitPackets[source][splitPacketId] == nil {
+		context.SplitPackets[source] = map[uint16]*ReliablePacket{splitPacketId: packet}
+	} else if context.SplitPackets[source][splitPacketId] == nil {
 		packet.Buffer = NewSplitPacketBuffer(packet)
 		packet.IsFirst = true
 		packet.FullDataReader = packet.Buffer.DataReader
 		packet.Buffer.AddPacket(packet, rakNetPacket, splitPacketIndex)
 
-		SplitPackets[source][splitPacketId] = packet
+		context.SplitPackets[source][splitPacketId] = packet
 	} else {
-		SplitPackets[source][splitPacketId].IsFirst = false
-		SplitPackets[source][splitPacketId].Buffer.AddPacket(packet, rakNetPacket, splitPacketIndex)
+		context.SplitPackets[source][splitPacketId].IsFirst = false
+		context.SplitPackets[source][splitPacketId].Buffer.AddPacket(packet, rakNetPacket, splitPacketIndex)
 	}
 
-	return SplitPackets[source][splitPacketId]
+	return context.SplitPackets[source][splitPacketId]
 }
 
 func (context *CommunicationContext) HandleSplitPacket(reliablePacket *ReliablePacket, rakNetPacket *RakNetLayer, packet gopacket.Packet) (*ReliablePacket, error) {
 	source := SourceInterfaceFromPacket(packet)
 
-	fullPacket := context.SplitPackets.AddSplitPacket(source, reliablePacket, rakNetPacket)
+	fullPacket := context.AddSplitPacket(source, reliablePacket, rakNetPacket)
 	packetBuffer := fullPacket.Buffer
 	expectedPacket := packetBuffer.NextExpectedPacket
 

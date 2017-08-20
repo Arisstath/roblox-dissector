@@ -32,6 +32,14 @@ type StudioSettings struct {
 	RBXL string
 }
 
+type PlayerSettings struct {
+	Location string
+	Flags string
+	GameID string
+	TrackerID string
+	AuthTicket string
+}
+
 type SelectionHandlerList map[uint64](func ())
 type MyPacketListView struct {
 	*widgets.QTreeView
@@ -57,6 +65,7 @@ type MyPacketListView struct {
 
 	StudioSettings *StudioSettings
 	PlayerLocation string
+	Context *CommunicationContext
 }
 
 func NewTwoWayPacketList() *TwoWayPacketList {
@@ -92,6 +101,7 @@ func NewMyPacketListView(parent widgets.QWidget_ITF) *MyPacketListView {
 
 		&StudioSettings{},
 		"",
+		nil,
 	}
 	return new
 }
@@ -490,11 +500,8 @@ func GUIMain() {
 		packetViewer.IsCapturing = true
 
 		context := NewCommunicationContext()
-		if packetViewer.StaticSchema != nil {
-			context.StaticInstanceSchema = packetViewer.StaticSchema.Instances
-			context.StaticPropertySchema = packetViewer.StaticSchema.Properties
-			context.StaticEventSchema = packetViewer.StaticSchema.Events
-		}
+		context.StaticSchema = packetViewer.StaticSchema
+		packetViewer.Context = context
 
 		packetViewer.Reset()
 
@@ -512,11 +519,8 @@ func GUIMain() {
 			packetViewer.IsCapturing = true
 
 			context := NewCommunicationContext()
-			if packetViewer.StaticSchema != nil {
-				context.StaticInstanceSchema = packetViewer.StaticSchema.Instances
-				context.StaticPropertySchema = packetViewer.StaticSchema.Properties
-				context.StaticEventSchema = packetViewer.StaticSchema.Events
-			}
+			packetViewer.Context = context
+			context.StaticSchema = packetViewer.StaticSchema
 
 			packetViewer.Reset()
 
@@ -538,7 +542,15 @@ func GUIMain() {
 			file + "/events.txt",
 		)
 		if err != nil {
-			println(err.Error())
+			println("while parsing schema: " + err.Error())
+		}
+		fmt.Printf("Parsed schema - instances: %d, properties: %d, events: %d\n",
+			len(packetViewer.StaticSchema.Instances),
+			len(packetViewer.StaticSchema.Properties),
+			len(packetViewer.StaticSchema.Events),
+		)
+		if packetViewer.Context != nil {
+			packetViewer.Context.StaticSchema = packetViewer.StaticSchema
 		}
 	})
 
@@ -623,6 +635,9 @@ func GUIMain() {
 			}
 		})
 	})
+	//startPlayerAction.ConnectTriggered(func(checked bool)() {
+
+	//})
 
 
 	window.Show()

@@ -71,11 +71,11 @@ func DecodePacket83_07(thisBitstream *ExtendedReader, context *CommunicationCont
 			return layer, err
 		}
 
-		if int(eventIDx) > int(len(context.StaticEventSchema)) {
-			return layer, errors.New(fmt.Sprintf("event idx %d is higher than %d", eventIDx, len(context.StaticEventSchema)))
+		if int(eventIDx) > int(len(context.StaticSchema.Events)) {
+			return layer, errors.New(fmt.Sprintf("event idx %d is higher than %d", eventIDx, len(context.StaticSchema.Events)))
 		}
 
-		schema := context.StaticEventSchema[eventIDx]
+		schema := context.StaticSchema.Events[eventIDx]
 		layer.EventName = schema.Name
 		layer.Event, err = schema.Decode(thisBitstream, context, packet)
 		return layer, err

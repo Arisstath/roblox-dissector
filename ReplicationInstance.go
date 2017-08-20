@@ -124,10 +124,10 @@ func DecodeReplicationInstance(isJoinData bool, thisBitstream *ExtendedReader, c
 		_, wasRebind := context.Rebindables[serialized]
 		context.Rebindables[serialized] = struct{}{}
 		schemaIDx, err := thisBitstream.ReadUint16BE()
-		if int(schemaIDx) > len(context.StaticInstanceSchema) {
-			return thisInstance, errors.New(fmt.Sprintf("class idx %d is higher than %d", schemaIDx, len(context.StaticInstanceSchema)))
+		if int(schemaIDx) > len(context.StaticSchema.Instances) {
+			return thisInstance, errors.New(fmt.Sprintf("class idx %d is higher than %d", schemaIDx, len(context.StaticSchema.Instances)))
 		}
-		schema := context.StaticInstanceSchema[schemaIDx]
+		schema := context.StaticSchema.Instances[schemaIDx]
 
 		thisInstance.Bool1, err = thisBitstream.ReadBool()
 		if err != nil {

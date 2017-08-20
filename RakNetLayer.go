@@ -56,9 +56,7 @@ type CommunicationContext struct {
 	ESchemaParsed *sync.Cond
 
 	UseStaticSchema bool
-	StaticInstanceSchema []StaticInstanceSchema
-	StaticPropertySchema []StaticPropertySchema
-	StaticEventSchema []StaticEventSchema
+	StaticSchema *StaticSchema
 
 	IsStudio bool
 	IsValid bool

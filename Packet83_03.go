@@ -60,10 +60,10 @@ func DecodePacket83_03(thisBitstream *ExtendedReader, context *CommunicationCont
 			return layer, err
 		}
 
-		if int(propertyIDx) >= int(len(context.StaticPropertySchema)) {
-			return layer, errors.New(fmt.Sprintf("prop idx %d is higher than %d", propertyIDx, len(context.StaticPropertySchema)))
+		if int(propertyIDx) >= int(len(context.StaticSchema.Properties)) {
+			return layer, errors.New(fmt.Sprintf("prop idx %d is higher than %d", propertyIDx, len(context.StaticSchema.Properties)))
 		}
-		schema := context.StaticPropertySchema[propertyIDx]
+		schema := context.StaticSchema.Properties[propertyIDx]
 		layer.PropertyName = schema.Name
 		//println(DebugInfo2(context, packet, false), "Our prop: ", layer.PropertyName, formatBindable(layer.Object1))
 

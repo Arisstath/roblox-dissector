@@ -15,6 +15,5 @@ func DecodePacket83_01(thisBitstream *ExtendedReader, context *CommunicationCont
 	var err error
 	inner := &Packet83_01{}
 	inner.Object1, err = thisBitstream.ReadObject(false, context)
-	println("Read init referent", spew.Sdump(inner))
 	return inner, err
 }
