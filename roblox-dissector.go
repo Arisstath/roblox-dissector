@@ -198,8 +198,6 @@ func captureJob(handle *pcap.Handle, useIPv4 bool, stopCaptureJob chan struct{},
 				continue
 			}
 
-			thisBitstream := &ExtendedReader{bitstream.NewReader(bytes.NewReader(payload))}
-
 			if context.Client == "" && payload[0] != 5 {
 				continue // drop packet because we weren't expecting it
 			}
@@ -208,11 +206,17 @@ func captureJob(handle *pcap.Handle, useIPv4 bool, stopCaptureJob chan struct{},
 				continue // drop packet because it doesn't belong to this conversation
 			}
 
+			thisBitstream := &ExtendedReader{bitstream.NewReader(bytes.NewReader(payload))}
+
 			rakNetLayer, err := DecodeRakNetLayer(payload[0], thisBitstream, context, packet)
 			if err != nil {
 				color.Red("Failed to decode RakNet layer: %s", err.Error())
 				continue
 			}
+			if rakNetLayer.IsDuplicate {
+				continue // drop packet because it's duplicate (due to bouncing back from router)
+			}
+
 			if rakNetLayer.IsSimple {
 				HandleSimple(rakNetLayer, packet, context, packetViewer)
 			} else if !rakNetLayer.IsValid {

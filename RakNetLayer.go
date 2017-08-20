@@ -13,6 +13,7 @@ type ACKRange struct {
 type RakNetLayer struct {
 	Payload *ExtendedReader
 	IsSimple bool
+	IsDuplicate bool
 	SimpleLayerID uint8
 	IsValid bool
 	IsACK bool
@@ -62,6 +63,8 @@ type CommunicationContext struct {
 	IsValid bool
 
 	SplitPackets SplitPacketList
+	UniqueDatagramsClient map[uint32]struct{}
+	UniqueDatagramsServer map[uint32]struct{}
 }
 
 func NewCommunicationContext() *CommunicationContext {
@@ -80,6 +83,9 @@ func NewCommunicationContext() *CommunicationContext {
 		EDescriptorsParsed: sync.NewCond(MDescriptor),
 		ESchemaParsed: sync.NewCond(MSchema),
 		IsValid: true,
+
+		UniqueDatagramsClient: make(map[uint32]struct{}),
+		UniqueDatagramsServer: make(map[uint32]struct{}),
 	}
 }
 
@@ -222,6 +228,13 @@ func DecodeRakNetLayer(packetType byte, bitstream *ExtendedReader, context *Comm
 		bitstream.Align()
 
 		layer.DatagramNumber, _ = bitstream.ReadUint24LE()
+		if context.PacketFromClient(packet) {
+			_, layer.IsDuplicate = context.UniqueDatagramsClient[layer.DatagramNumber]
+			context.UniqueDatagramsClient[layer.DatagramNumber] = struct{}{}
+		} else if context.PacketFromServer(packet) {
+			_, layer.IsDuplicate = context.UniqueDatagramsServer[layer.DatagramNumber]
+			context.UniqueDatagramsServer[layer.DatagramNumber] = struct{}{}
+		}
 		layer.Payload = bitstream
 		return layer, nil
 	}
