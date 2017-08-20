@@ -308,7 +308,12 @@ func (m *MyPacketListView) handleSplitPacket(packetType byte, packet gopacket.Pa
 
 	reliablePacket := layers.Reliability
 	if reliablePacket.HasPacketType {
-		row[1].SetData(core.NewQVariant14(PacketNames[reliablePacket.PacketType]), 0)
+		packetType := reliablePacket.PacketType
+		packetName := PacketNames[packetType]
+		if packetName == "" {
+			packetName = fmt.Sprintf("0x%02X", packetType)
+		}
+		row[1].SetData(core.NewQVariant14(packetName), 0)
 	}
 
 	row[3].SetData(core.NewQVariant7(int(layers.Reliability.RealLength)), 0)
