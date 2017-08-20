@@ -1,6 +1,5 @@
 package main
 import "github.com/google/gopacket"
-import "github.com/davecgh/go-spew/spew"
 import "github.com/therecipe/qt/widgets"
 
 type Packet83_01 struct {

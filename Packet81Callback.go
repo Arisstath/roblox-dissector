@@ -16,11 +16,11 @@ func ShowPacket81(packetType byte, packet gopacket.Packet, context *Communicatio
 
 	deletedList := widgets.NewQTreeView(nil)
 	standardModel := NewProperSortModel(nil)
-	standardModel.SetHorizontalHeaderLabels([]string{"Class ID", "Unknown referent"})
+	standardModel.SetHorizontalHeaderLabels([]string{"Class name", "Referent"})
 
 	deletedListRootNode := standardModel.InvisibleRootItem()
 	for i := 0; i < len(MainLayer.Items); i++ {
-		unknownInt1Item := NewQStandardItemF("%d", MainLayer.Items[i].ClassID)
+		unknownInt1Item := NewQStandardItemF("%s", context.StaticSchema.Instances[MainLayer.Items[i].ClassID].Name)
 		unknownStringItem := NewQStandardItemF("%s", MainLayer.Items[i].Object1.Show())
 		deletedListRootNode.AppendRow([]*gui.QStandardItem{unknownInt1Item, unknownStringItem})
 	}
