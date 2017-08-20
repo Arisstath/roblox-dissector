@@ -95,7 +95,7 @@ func parseInstSchema(filename string) ([]StaticInstanceSchema, error) {
 	}
 	instances := make([]StaticInstanceSchema, countInstances)
 
-	propMatcher := regexp.MustCompile(`\s+(\d+)\s+'([a-zA-Z0-9 _]+)'\s+(\w+)\s*`)
+	propMatcher := regexp.MustCompile(`\s+(\d+)\s+'([^']+)'\s+(\w+)\s*`)
 
 	for i := 0; i < int(countInstances); i++ {
 		var instanceName string
@@ -150,7 +150,7 @@ func parsePropSchema(filename string, schema []StaticInstanceSchema) ([]StaticPr
 	}
 	props := make([]StaticPropertySchema, countProperties)
 
-	propMatcher := regexp.MustCompile(`(\d+)\s+'([a-zA-Z0-9 _]+)'\s+(\w+)\s+(\d+)\s*`)
+	propMatcher := regexp.MustCompile(`(\d+)\s+'([^']+)'\s+(\w+)\s+(\d+)\s*`)
 
 	for i := 0; i < int(countProperties); i++ {
 		var propertyType int
