@@ -69,6 +69,7 @@ var PacketDecoders map[byte]DecoderFunc = map[byte]DecoderFunc{
 	0x8F: DecodePacket8FLayer,
 	0x81: DecodePacket81Layer,
 	0x83: DecodePacket83Layer,
+	0x97: DecodePacket97Layer,
 }
 
 type ActivationCallback func(byte, gopacket.Packet, *CommunicationContext, *PacketLayers)
@@ -92,6 +93,7 @@ var ActivationCallbacks map[byte]ActivationCallback = map[byte]ActivationCallbac
 	0x8F: ShowPacket8F,
 	0x81: ShowPacket81,
 	0x83: ShowPacket83,
+    0x97: ShowPacket97,
 }
 
 func HandleSimple(layer *RakNetLayer, packet gopacket.Packet, context *CommunicationContext, packetViewer *MyPacketListView) {

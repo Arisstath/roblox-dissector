@@ -130,7 +130,7 @@ func (c *CommunicationContext) WaitForDescriptors() {
 }
 func (c *CommunicationContext) WaitForSchema() {
 	c.MSchema.Lock()
-	for len(c.InstanceSchema) == 0 && !c.UseStaticSchema {
+	for len(c.InstanceSchema) == 0 && c.StaticSchema == nil {
 		c.ESchemaParsed.Wait()
 	}
 }
