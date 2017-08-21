@@ -42,11 +42,8 @@ func NewSelectInterfaceWidget(parent widgets.QWidget_ITF, callback func (string,
 		}
 		ipAddr, _, err := thisItf.GetStringValue("DhcpIPAddress")
 		if err != nil {
-			if err.Error() == "The system cannot find the file specified." {
-				continue
-			}
 			println("trying to get sub key content: " + err.Error())
-			return
+			continue
 		}
 		rootNode.AppendRow([]*gui.QStandardItem{
 			NewQStandardItemF(SubKeyName),
