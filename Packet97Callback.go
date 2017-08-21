@@ -14,12 +14,12 @@ func ShowPacket97(packetType byte, packet gopacket.Packet, context *Communicatio
 	enumSchemaList := widgets.NewQTreeView(nil)
 	standardModel := NewProperSortModel(nil)
 	standardModel.SetHorizontalHeaderLabels([]string{"Name", "Size"})
-	
+
 	enumSchemaRootNode := standardModel.InvisibleRootItem()
 	for _, item := range MainLayer.Schema.Enums {
 		nameItem := NewQStandardItemF(item.Name)
 		sizeItem := NewQStandardItemF("%d", item.BitSize)
-		enumSchemaRootNode.AppendRow([]*gui.QStandardItem{nameItem, sizeItem}) 
+		enumSchemaRootNode.AppendRow([]*gui.QStandardItem{nameItem, sizeItem})
 	}
 
 	enumSchemaList.SetModel(standardModel)
@@ -49,7 +49,7 @@ func ShowPacket97(packetType byte, packet gopacket.Packet, context *Communicatio
 			propertySchemaItem.AppendRow(propertyRow)
 		}
 		nameItem.AppendRow([]*gui.QStandardItem{propertySchemaItem})
-		
+
 		eventSchemaItem := NewQStandardItemF("Event schema (%d entries)", len(item.Events))
 		nameItem.AppendRow([]*gui.QStandardItem{eventSchemaItem})
 

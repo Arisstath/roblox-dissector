@@ -195,6 +195,9 @@ func DecodePacket97Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 	layer.Schema.Instances = make([]StaticInstanceSchema, classArrayLen)
 	layer.Schema.Properties = make([]StaticPropertySchema, propertyArrayLen)
 	layer.Schema.Events = make([]StaticEventSchema, eventArrayLen)
+    propertyGlobalIndex := 0
+    classGlobalIndex := 0
+    eventGlobalIndex := 0
 	for i := 0; i < int(classArrayLen); i++ {
 		classNameLen, err := stream.ReadUintUTF8()
 		if err != nil {
@@ -205,7 +208,6 @@ func DecodePacket97Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 		if err != nil {
 			return layer, err
 		}
-		println("Instance:", thisInstance.Name)
 		propertyCount, err := stream.ReadUintUTF8()
 		if err != nil {
 			return layer, err
@@ -222,7 +224,6 @@ func DecodePacket97Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 				return layer, err
 			}
 			thisProperty.Name, err = stream.ReadASCII(int(propNameLen))
-			println("Property:", thisProperty.Name)
 			if err != nil {
 				return layer, err
 			}
@@ -233,19 +234,24 @@ func DecodePacket97Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 			}
 			thisProperty.TypeString = TypeNames[thisProperty.Type]
 
-			propertyGlobalIndex, err := stream.ReadUint16BE()
-			if err != nil {
-				return layer, err
-			}
+            if thisProperty.Type == 7 {
+                _, err = stream.ReadUint16BE()
+                if err != nil {
+                    return layer, err
+                }
+            }
+
 			if int(propertyGlobalIndex) >= int(propertyArrayLen) {
 				return layer, errors.New("property global index too high")
 			}
 
 			thisProperty.InstanceSchema = &thisInstance
 			layer.Schema.Properties[propertyGlobalIndex] = thisProperty
+            thisInstance.Properties[j] = thisProperty
+            propertyGlobalIndex++
 		}
 
-		classGlobalIndex, err := stream.ReadUint16BE()
+		_, err = stream.ReadUint16BE()
 		if err != nil {
 			return layer, err
 		}
@@ -261,7 +267,7 @@ func DecodePacket97Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 			return layer, errors.New("sanity check: exceeded maximum event count")
 		}
 		thisInstance.Events = make([]StaticEventSchema, eventCount)
-		
+
 		for j := 0; j < int(eventCount); j++ {
 			thisEvent := thisInstance.Events[j]
 			eventNameLen, err := stream.ReadUintUTF8()
@@ -293,8 +299,14 @@ func DecodePacket97Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 				if err != nil {
 					return layer, err
 				}
+                thisEvent.Arguments[k] = thisArgument
 			}
+            layer.Schema.Events[eventGlobalIndex] = thisEvent
+            thisInstance.Events[j] = thisEvent
+            eventGlobalIndex++
 		}
+        layer.Schema.Instances[classGlobalIndex] = thisInstance
+        classGlobalIndex++
 	}
 	context.StaticSchema = &layer.Schema
 	context.ESchemaParsed.Broadcast()
