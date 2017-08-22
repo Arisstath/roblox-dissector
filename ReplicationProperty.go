@@ -1,46 +1,8 @@
 package main
 import "github.com/google/gopacket"
-import "github.com/davecgh/go-spew/spew"
 import "errors"
 import "strconv"
-
-var Vector3Override = map[string]struct{}{
-	"Rotation": struct{}{},
-	"CenterOfMass": struct{}{},
-	"OrientationLocal": struct{}{},
-	"Orientation": struct{}{},
-	"PositionLocal": struct{}{},
-	"Position": struct{}{},
-	"RotVelocity": struct{}{},
-	"size": struct{}{},
-	"Size": struct{}{},
-	"Velocity": struct{}{},
-	"siz": struct{}{}, // ???
-}
-
-type ReplicationProperty struct {
-	Name string
-	Type string
-	Value PropertyValue
-	IsDefault bool
-}
-
-type PropertyValue interface {
-	Show() string
-}
-
-func (this *ReplicationProperty) Show() string {
-	if this == nil {
-		return "ERR!! NIL"
-	}
-	if this.IsDefault {
-		return "!DEFAULT"
-	}
-	if this.Value == nil {
-		return "ERR!! NIL"
-	}
-	return this.Value.Show()
-}
+import "github.com/gskartwii/rbxfile"
 
 const (
 	ROUND_JOINDATA	= iota
@@ -49,142 +11,9 @@ const (
 	ROUND_UPDATE	= iota
 )
 
-func (schema *PropertySchemaItem) Decode(round int, thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (*ReplicationProperty, error) {
+func readSerializedValue(isJoinData bool, valueType uint8, thisBitstream *ExtendedReader, context *CommunicationContext) (rbxfile.Value, error) {
 	var err error
-	if !schema.Replicates && round != ROUND_UPDATE {
-		return nil, nil
-	}
-	isJoinData := round == ROUND_JOINDATA
-
-	isStringObject := true
-	if schema.Type != "Object" &&
-	schema.Type != "string" &&
-	schema.Type != "ProtectedString" &&
-	schema.Type != "BinaryString" &&
-	schema.Type != "SystemAddress" &&
-	schema.Type != "Content" {
-		isStringObject = false
-	}
-
-	if round == ROUND_STRINGS && !isStringObject {
-		return nil, nil
-	}
-	if round == ROUND_OTHER && isStringObject {
-		return nil, nil
-	}
-
-	Property := &ReplicationProperty{Type: schema.Type, Name: schema.Name}
-	if schema.Type == "bool" {
-		if err != nil {
-			return Property, err
-		}
-		Property.Value, err = thisBitstream.ReadPBool()
-		println(DebugInfo2(context, packet, isJoinData), "Read bool", schema.Name, bool(Property.Value.(pbool)))
-		if err != nil {
-			return Property, err
-		}
-	} else {
-		if round != ROUND_UPDATE {
-			Property.IsDefault, err = thisBitstream.ReadBool()
-			if err != nil {
-				return Property, err
-			}
-			if Property.IsDefault {
-				println(DebugInfo2(context, packet, isJoinData), "Read", schema.Name, "1 bit: default")
-				return Property, nil
-			}
-		}
-		switch schema.Type {
-		case "string":
-			Property.Value, err = thisBitstream.ReadPString(isJoinData, context)
-			break
-		case "ProtectedString":
-			Property.Value, err = thisBitstream.ReadProtectedString(isJoinData, context)
-			break
-		case "BinaryString":
-			Property.Value, err = thisBitstream.ReadBinaryString()
-			break
-		case "int":
-			Property.Value, err = thisBitstream.ReadPSInt()
-			break
-		case "float":
-			Property.Value, err = thisBitstream.ReadPFloat()
-			break
-		case "double":
-			Property.Value, err = thisBitstream.ReadPDouble()
-			break
-		case "Axes":
-			Property.Value, err = thisBitstream.ReadAxes()
-			break
-		case "Faces":
-			Property.Value, err = thisBitstream.ReadFaces()
-			break
-		case "BrickColor":
-			Property.Value, err = thisBitstream.ReadBrickColor()
-			break
-		case "Object":
-			Property.Value, err = thisBitstream.ReadObject(isJoinData, context)
-			break
-		case "UDim":
-			Property.Value, err = thisBitstream.ReadUDim()
-			break
-		case "UDim2":
-			Property.Value, err = thisBitstream.ReadUDim2()
-			break
-		case "Vector2":
-			Property.Value, err = thisBitstream.ReadVector2()
-			break
-		case "Vector3":
-			if _, ok := Vector3Override[schema.Name]; ok {
-				Property.Value, err = thisBitstream.ReadVector3()
-			} else {
-				Property.Value, err = thisBitstream.ReadVector3Simple()
-			}
-
-			break
-		case "Vector2uint16":
-			Property.Value, err = thisBitstream.ReadVector2uint16()
-			break
-		case "Vector3uint16":
-			Property.Value, err = thisBitstream.ReadVector3uint16()
-			break
-		case "Ray":
-			Property.Value, err = thisBitstream.ReadRay()
-			break
-		case "Color3":
-			Property.Value, err = thisBitstream.ReadColor3()
-			break
-		case "Color3uint8":
-			Property.Value, err = thisBitstream.ReadColor3uint8()
-			break
-		case "CoordinateFrame":
-			Property.Value, err = thisBitstream.ReadCFrame()
-			break
-		case "Content":
-			Property.Value, err = thisBitstream.ReadContent(isJoinData, context)
-			break
-		case "SystemAddress":
-			Property.Value, err = thisBitstream.ReadSystemAddress(isJoinData, context)
-			break
-		default:
-			if schema.IsEnum {
-				Property.Value, err = thisBitstream.ReadEnumValue(schema.BitSize)
-			} else {
-				return Property, errors.New("property parser encountered unknown type: " + schema.Type)
-			}
-		}
-		if schema.Type != "ProtectedString" {
-			println(DebugInfo2(context, packet, isJoinData), "Read", schema.Name, spew.Sdump(Property.Value))
-		} else {
-			println(DebugInfo2(context, packet, isJoinData), "Read", schema.Name, len(Property.Value.(ProtectedString)))
-		}
-	}
-	return Property, nil
-}
-
-func readSerializedValue(isJoinData bool, valueType uint8, thisBitstream *ExtendedReader, context *CommunicationContext) (PropertyValue, error) {
-	var err error
-	var result PropertyValue
+	var result rbxfile.Value
 	switch valueType {
 	case PROP_TYPE_STRING:
 		result, err = thisBitstream.ReadNewPString(isJoinData, context)
@@ -233,15 +62,17 @@ func readSerializedValue(isJoinData bool, valueType uint8, thisBitstream *Extend
 	case PROP_TYPE_VECTOR3_COMPLICATED:
 		result, err = thisBitstream.ReadVector3()
 	case PROP_TYPE_VECTOR2UINT16:
-		result, err = thisBitstream.ReadVector2uint16()
+		result, err = thisBitstream.ReadVector2int16()
 	case PROP_TYPE_VECTOR3UINT16:
-		result, err = thisBitstream.ReadVector3uint16()
+		result, err = thisBitstream.ReadVector3int16()
 	case PROP_TYPE_CFRAME_SIMPLE:
 		result, err = thisBitstream.ReadCFrameSimple()
 	case PROP_TYPE_CFRAME_COMPLICATED:
 		result, err = thisBitstream.ReadCFrame()
 	case PROP_TYPE_INSTANCE:
-		result, err = thisBitstream.ReadObject(isJoinData, context)
+        var referent Referent
+        referent, err = thisBitstream.ReadObject(isJoinData, context)
+        result = rbxfile.ValueReference{context.InstancesByReferent[referent]}
 	case PROP_TYPE_CONTENT:
 		result, err = thisBitstream.ReadNewContent(isJoinData, context)
 	case PROP_TYPE_SYSTEMADDRESS:
@@ -274,23 +105,58 @@ func readSerializedValue(isJoinData bool, valueType uint8, thisBitstream *Extend
 	return result, err
 }
 
-func (schema StaticPropertySchema) Decode(round int, thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet, isRebind bool) (*ReplicationProperty, error) {
+var DefaultValues = map[uint8]rbxfile.Value{
+    PROP_TYPE_INVALID: nil,
+	PROP_TYPE_STRING: rbxfile.ValueString{},
+	PROP_TYPE_STRING_NO_CACHE: rbxfile.ValueString{},
+	PROP_TYPE_PROTECTEDSTRING_0: rbxfile.ValueProtectedString{},
+	PROP_TYPE_PROTECTEDSTRING_1: rbxfile.ValueProtectedString{},
+	PROP_TYPE_PROTECTEDSTRING_2: rbxfile.ValueProtectedString{},
+	PROP_TYPE_PROTECTEDSTRING_3: rbxfile.ValueProtectedString{},
+	PROP_TYPE_ENUM: rbxfile.ValueToken(0),
+	PROP_TYPE_BINARYSTRING: rbxfile.ValueBinaryString{},
+	PROP_TYPE_PBOOL: rbxfile.ValueBool(false),
+	PROP_TYPE_PSINT: rbxfile.ValueInt(0),
+	PROP_TYPE_PFLOAT: rbxfile.ValueFloat(0),
+	PROP_TYPE_PDOUBLE: rbxfile.ValueDouble(0),
+	PROP_TYPE_UDIM: rbxfile.ValueUDim{},
+	PROP_TYPE_UDIM2: rbxfile.ValueUDim2{},
+	PROP_TYPE_RAY: rbxfile.ValueRay{},
+	PROP_TYPE_FACES: rbxfile.ValueFaces{},
+	PROP_TYPE_AXES: rbxfile.ValueAxes{},
+	PROP_TYPE_BRICKCOLOR: rbxfile.ValueBrickColor(0),
+	PROP_TYPE_COLOR3: rbxfile.ValueColor3{},
+	PROP_TYPE_COLOR3UINT8: rbxfile.ValueColor3uint8{},
+	PROP_TYPE_VECTOR2: rbxfile.ValueVector2{},
+	PROP_TYPE_VECTOR3_SIMPLE: rbxfile.ValueVector3{},
+	PROP_TYPE_VECTOR3_COMPLICATED: rbxfile.ValueVector3{},
+	PROP_TYPE_VECTOR2UINT16: rbxfile.ValueVector2int16{},
+	PROP_TYPE_VECTOR3UINT16: rbxfile.ValueVector3int16{},
+	PROP_TYPE_CFRAME_SIMPLE: rbxfile.ValueCFrame{},
+	PROP_TYPE_CFRAME_COMPLICATED: rbxfile.ValueCFrame{},
+	PROP_TYPE_INSTANCE: rbxfile.ValueReference{},
+	PROP_TYPE_CONTENT: rbxfile.ValueContent{},
+	PROP_TYPE_SYSTEMADDRESS: rbxfile.ValueSystemAddress{},
+	PROP_TYPE_NUMBERSEQUENCE: rbxfile.ValueNumberSequence{},
+	PROP_TYPE_NUMBERSEQUENCEKEYPOINT: rbxfile.ValueNumberSequenceKeypoint{},
+	PROP_TYPE_NUMBERRANGE: rbxfile.ValueNumberRange{},
+	PROP_TYPE_COLORSEQUENCE: rbxfile.ValueColorSequence{},
+	PROP_TYPE_COLORSEQUENCEKEYPOINT: rbxfile.ValueColorSequenceKeypoint{},
+	PROP_TYPE_RECT2D: rbxfile.ValueRect2D{},
+	PROP_TYPE_PHYSICALPROPERTIES: rbxfile.ValuePhysicalProperties{},
+
+}
+
+func (schema StaticPropertySchema) Decode(round int, thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (rbxfile.Value, error) {
 	var err error
-	result := &ReplicationProperty{schema.Name, schema.TypeString, nil, false}
 	isJoinData := round == ROUND_JOINDATA
 	if round != ROUND_UPDATE {
-		result.IsDefault, err = thisBitstream.ReadBool()
-		if result.IsDefault || err != nil {
-			//println(DebugInfo2(context, packet, isJoinData), "Read", schema.Name, "default")
-			return result, err
+        var isDefault bool
+        isDefault, err = thisBitstream.ReadBool()
+		if isDefault || err != nil {
+			return DefaultValues[schema.Type], err
 		}
 	}
 
-	result.Value, err = readSerializedValue(isJoinData, schema.Type, thisBitstream, context)
-	//if schema.TypeString != "ProtectedString" {
-	//	println(DebugInfo2(context, packet, isJoinData), "Read", schema.Name, spew.Sdump(result.Value))
-	//} else {
-	//	println(DebugInfo2(context, packet, isJoinData), "Read", schema.Name, len(result.Value.(ProtectedString)))
-	//}
-	return result, err
+	return readSerializedValue(isJoinData, schema.Type, thisBitstream, context)
 }

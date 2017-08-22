@@ -1,18 +1,19 @@
 package main
 import "github.com/google/gopacket"
 import "github.com/therecipe/qt/widgets"
+import "github.com/gskartwii/rbxfile"
 
 type Packet83_02 struct {
-	child *ReplicationInstance
+	child *rbxfile.Instance
 }
 
 func (this Packet83_02) Show() widgets.QWidget_ITF {
 	instanceList := widgets.NewQTreeView(nil)
 	standardModel := NewProperSortModel(nil)
-	standardModel.SetHorizontalHeaderLabels([]string{"Name", "Type", "Value", "Referent", "Unknown bool", "Parent"})
+	standardModel.SetHorizontalHeaderLabels([]string{"Name", "Type", "Value", "Referent", "Parent"})
 
 	rootNode := standardModel.InvisibleRootItem()
-	rootNode.AppendRow(this.child.Show())
+	rootNode.AppendRow(getInstanceRow(this.child))
 	instanceList.SetModel(standardModel)
 	instanceList.SetSelectionMode(0)
 	instanceList.SetSortingEnabled(true)

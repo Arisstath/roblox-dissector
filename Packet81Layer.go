@@ -1,10 +1,11 @@
 package main
 import "github.com/google/gopacket"
 import "errors"
+import "github.com/gskartwii/rbxfile"
 
 type Packet81LayerItem struct {
 	ClassID uint16
-	Object1 Object
+	Instance *rbxfile.Instance
 	Bool1 bool
 	Bool2 bool
 }
@@ -52,65 +53,48 @@ func DecodePacket81Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 
 	context.WaitForSchema()
 	defer context.FinishSchema()
+    arrayLen, err := thisBitstream.ReadUintUTF8()
+    if err != nil {
+        return layer, err
+    }
+    if arrayLen > 0x1000 {
+        return layer, errors.New("sanity check: exceeded maximum preschema len")
+    }
 
-	if !context.UseStaticSchema {
-		len, err := thisBitstream.ReadUint8()
-		if err != nil {
-			return layer, err
-		}
-		var j uint8
-		layer.Items = make([]*Packet81LayerItem, len)
-		for j = 0; j < len; j++ {
-			thisItem := &Packet81LayerItem{}
-			len9Value, err := thisBitstream.Bits(9)
-			if err != nil {
-				return layer, err
-			}
-			thisItem.ClassID = uint16(len9Value)
-			thisItem.Object1, err = thisBitstream.ReadObject(false, context)
-			if err != nil {
-				return layer, err
-			}
-			serialized := formatBindable(thisItem.Object1)
-			context.Rebindables[serialized] = struct{}{}
+    context.DataModel = &rbxfile.Root{make([]*rbxfile.Instance, arrayLen)}
+    context.InstancesByReferent = make(map[Referent]*rbxfile.Instance)
 
-			layer.Items[j] = thisItem
-		}
-		return layer, err
-	} else {
-		arrayLen, err := thisBitstream.ReadUintUTF8()
-		if err != nil {
-			return layer, err
-		}
-		if arrayLen > 0x1000 {
-			return layer, errors.New("sanity check: exceeded maximum preschema len")
-		}
+    layer.Items = make([]*Packet81LayerItem, arrayLen)
+    for i := 0; i < int(arrayLen); i++ {
+        thisItem := &Packet81LayerItem{}
+        referent, err := thisBitstream.ReadObject(true, context)
+        if err != nil {
+            return layer, err
+        }
 
-		layer.Items = make([]*Packet81LayerItem, arrayLen)
-		for i := 0; i < int(arrayLen); i++ {
-			thisItem := &Packet81LayerItem{}
-			thisItem.Object1, err = thisBitstream.ReadObject(true, context)
-			if err != nil {
-				return layer, err
-			}
-			serialized := formatBindable(thisItem.Object1)
-			context.Rebindables[serialized] = struct{}{}
+        thisItem.ClassID, err = thisBitstream.ReadUint16BE()
+        if err != nil {
+            return layer, err
+        }
+        className := context.StaticSchema.Instances[thisItem.ClassID].Name
+        thisService := &rbxfile.Instance{
+            ClassName: className,
+            Reference: string(referent),
+            Properties: make(map[string]rbxfile.Value, 0),
+        }
+        context.DataModel.Instances[i] = thisService
+        context.InstancesByReferent[referent] = thisService
+        thisItem.Instance = thisService
 
-			thisItem.ClassID, err = thisBitstream.ReadUint16BE()
-			if err != nil {
-				return layer, err
-			}
-
-			thisItem.Bool1, err = thisBitstream.ReadBool()
-			if err != nil {
-				return layer, err
-			}
-			thisItem.Bool2, err = thisBitstream.ReadBool()
-			if err != nil {
-				return layer, err
-			}
-			layer.Items[i] = thisItem
-		}
-		return layer, nil
-	}
+        thisItem.Bool1, err = thisBitstream.ReadBool()
+        if err != nil {
+            return layer, err
+        }
+        thisItem.Bool2, err = thisBitstream.ReadBool()
+        if err != nil {
+            return layer, err
+        }
+        layer.Items[i] = thisItem
+    }
+    return layer, nil
 }

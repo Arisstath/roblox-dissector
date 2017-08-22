@@ -21,7 +21,7 @@ func ShowPacket81(packetType byte, packet gopacket.Packet, context *Communicatio
 	deletedListRootNode := standardModel.InvisibleRootItem()
 	for i := 0; i < len(MainLayer.Items); i++ {
 		unknownInt1Item := NewQStandardItemF("%s", context.StaticSchema.Instances[MainLayer.Items[i].ClassID].Name)
-		unknownStringItem := NewQStandardItemF("%s", MainLayer.Items[i].Object1.Show())
+		unknownStringItem := NewQStandardItemF("%s", MainLayer.Items[i].Instance.Reference)
 		deletedListRootNode.AppendRow([]*gui.QStandardItem{unknownInt1Item, unknownStringItem})
 	}
 

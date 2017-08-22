@@ -1,138 +1,20 @@
 package main
 import "github.com/google/gopacket"
-import "errors"
+import "github.com/gskartwii/rbxfile"
 
 type ReplicationEvent struct {
 	UnknownInt uint32
-	Arguments []TypeAndValue
-}
-
-func decodeEventArgument(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet, argType string) (PropertyValue, error) {
-	var argument PropertyValue
-	var err error
-	switch argType {
-	case "bool":
-		argument, err = thisBitstream.ReadPBool()
-		break
-	case "string":
-		argument, err = thisBitstream.ReadPString(false, context)
-		break
-	case "BinaryString":
-		argument, err = thisBitstream.ReadBinaryString()
-		break
-	case "int":
-		argument, err = thisBitstream.ReadPSInt()
-		break
-	case "float":
-		argument, err = thisBitstream.ReadPFloat()
-		break
-	case "double":
-		argument, err = thisBitstream.ReadPDouble()
-		break
-	case "Axes":
-		argument, err = thisBitstream.ReadAxes()
-		break
-	case "Faces":
-		argument, err = thisBitstream.ReadFaces()
-		break
-	case "BrickColor":
-		argument, err = thisBitstream.ReadBrickColor()
-		break
-	case "Object":
-		argument, err = thisBitstream.ReadObject(false, context)
-		break
-	case "UDim":
-		argument, err = thisBitstream.ReadUDim()
-		break
-	case "UDim2":
-		argument, err = thisBitstream.ReadUDim2()
-		break
-	case "Vector2":
-		argument, err = thisBitstream.ReadVector2()
-		break
-	case "Vector3":
-		argument, err = thisBitstream.ReadVector3Simple()
-		break
-	case "Vector2uint16":
-		argument, err = thisBitstream.ReadVector2uint16()
-		break
-	case "Vector3uint16":
-		argument, err = thisBitstream.ReadVector3uint16()
-		break
-	case "Ray":
-		argument, err = thisBitstream.ReadRay()
-		break
-	case "Color3":
-		argument, err = thisBitstream.ReadColor3()
-		break
-	case "Color3uint8":
-		argument, err = thisBitstream.ReadColor3uint8()
-		break
-	case "CoordinateFrame":
-		argument, err = thisBitstream.ReadCFrame()
-		break
-	case "Content":
-		argument, err = thisBitstream.ReadContent(false, context)
-		break
-	case "Instance":
-		argument, err = thisBitstream.ReadObject(false, context)
-		break
-	case "long":
-		argument, err = thisBitstream.ReadPSInt()
-		break
-	case "Region3":
-		argument, err = thisBitstream.ReadRegion3()
-		break
-	case "Region3uint16":
-		argument, err = thisBitstream.ReadRegion3uint16()
-		break
-	case "Tuple":
-		argument, err = thisBitstream.ReadTuple(context, packet)
-		break
-	case "Array":
-		argument, err = thisBitstream.ReadArray(context, packet)
-		break
-	case "Dictionary":
-		argument, err = thisBitstream.ReadDictionary(context, packet)
-		break
-	case "Map":
-		argument, err = thisBitstream.ReadMap(context, packet)
-		break
-	default:
-		if schema, ok := context.EnumSchema[argType]; ok {
-			argument, err = thisBitstream.ReadEnumValue(schema.BitSize)
-		} else {
-			return argument, errors.New("event parser encountered unknown type " + argType)
-		}
-	}
-	return argument, err
-}
-
-func (schema *EventSchemaItem) Decode(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (*ReplicationEvent, error) {
-	var err error
-
-	event := &ReplicationEvent{}
-	event.UnknownInt, err = thisBitstream.ReadUint32BE()
-	event.Arguments = make([]TypeAndValue, len(schema.ArgumentTypes))
-	for i, argSchemaName := range schema.ArgumentTypes {
-		thisVal := TypeAndValue{Type: argSchemaName}
-		thisVal.Value, err = decodeEventArgument(thisBitstream, context, packet, argSchemaName)
-		event.Arguments[i] = thisVal
-		if err != nil {
-			return event, err
-		}
-	}
-	return event, nil
+	Arguments []rbxfile.Value
 }
 
 func (schema *StaticEventSchema) Decode(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (*ReplicationEvent, error) {
 	var err error
-	
+    var thisVal rbxfile.Value
+
 	event := &ReplicationEvent{}
-	event.Arguments = make([]TypeAndValue, len(schema.Arguments))
+	event.Arguments = make([]rbxfile.Value, len(schema.Arguments))
 	for i, argSchema := range schema.Arguments {
-		thisVal := TypeAndValue{Type: argSchema.TypeString}
-		thisVal.Value, err = readSerializedValue(false, argSchema.Type, thisBitstream, context)
+		thisVal, err = readSerializedValue(false, argSchema.Type, thisBitstream, context)
 		event.Arguments[i] = thisVal
 		if err != nil {
 			return event, err

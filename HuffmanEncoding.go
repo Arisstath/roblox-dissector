@@ -45,7 +45,7 @@ type HuffmanEncodingTree struct {
 	root *HuffmanEncodingTreeNode
 	encodingTable [256](struct {
 		encoding []byte
-		bitLength uint16
+		bitLength int16
 	})
 }
 
@@ -89,7 +89,7 @@ func GenerateHuffmanFromFrequencyTable(frequencyTable []uint32) *HuffmanEncoding
 	}
 
 	var tempPath [256]bool
-	var tempPathLength uint16
+	var tempPathLength int16
 	var currentNode *HuffmanEncodingTreeNode
 
 	for counter = 0; counter < 256; counter++ {

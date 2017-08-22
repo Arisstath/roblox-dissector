@@ -1,18 +1,21 @@
 package main
 import "github.com/google/gopacket"
 import "github.com/therecipe/qt/widgets"
+import "github.com/gskartwii/rbxfile"
 
 type Packet83_01 struct {
-	Object1 Object
+	Instance *rbxfile.Instance
 }
 
 func (this Packet83_01) Show() widgets.QWidget_ITF {
-	return NewQLabelF("Init referent: %s", this.Object1.Show())
+	return NewQLabelF("Init referent: %s", this.Instance.Reference)
 }
 
 func DecodePacket83_01(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
 	var err error
 	inner := &Packet83_01{}
-	inner.Object1, err = thisBitstream.ReadObject(false, context)
+    referent, err := thisBitstream.ReadObject(false, context)
+    inner.Instance = context.InstancesByReferent[referent]
+
 	return inner, err
 }

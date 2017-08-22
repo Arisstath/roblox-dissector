@@ -1,24 +1,56 @@
 package main
 import "github.com/google/gopacket"
 import "github.com/therecipe/qt/widgets"
+import "github.com/therecipe/qt/gui"
 import "errors"
+import "github.com/gskartwii/rbxfile"
 
 type Packet83_0B struct {
-	Instances []*ReplicationInstance
+	Instances []*rbxfile.Instance
 }
 
 func NewPacket83_0BLayer(length int) *Packet83_0B {
-	return &Packet83_0B{make([]*ReplicationInstance, length)}
+	return &Packet83_0B{make([]*rbxfile.Instance, length)}
+}
+
+func getInstanceRow(this *rbxfile.Instance) []*gui.QStandardItem {
+    rootNameItem := NewQStandardItemF("Name: %s", this.Properties["Name"].String())
+	typeItem := NewQStandardItemF(this.ClassName)
+	referentItem := NewQStandardItemF(this.Reference)
+	parentItem := NewQStandardItemF(this.Parent().Reference)
+
+	for name, property := range this.Properties {
+		nameItem := NewQStandardItemF(name)
+		typeItem := NewQStandardItemF(property.Type().String())
+		valueItem := NewQStandardItemF(property.String())
+
+		rootNameItem.AppendRow([]*gui.QStandardItem{
+			nameItem,
+			typeItem,
+			valueItem,
+			nil,
+			nil,
+			nil,
+		})
+	}
+
+	return []*gui.QStandardItem{
+		rootNameItem,
+		typeItem,
+		nil,
+		referentItem,
+		parentItem,
+	}
 }
 
 func (this Packet83_0B) Show() widgets.QWidget_ITF {
 	instanceList := widgets.NewQTreeView(nil)
 	standardModel := NewProperSortModel(nil)
-	standardModel.SetHorizontalHeaderLabels([]string{"Name", "Type", "Value", "Referent", "Unknown bool", "Parent"})
+	standardModel.SetHorizontalHeaderLabels([]string{"Name", "Type", "Value", "Referent", "Parent"})
 
 	rootNode := standardModel.InvisibleRootItem()
 	for _, instance := range(this.Instances) {
-		rootNode.AppendRow(instance.Show())
+		rootNode.AppendRow(getInstanceRow(instance))
 	}
 	instanceList.SetModel(standardModel)
 	instanceList.SetSelectionMode(0)

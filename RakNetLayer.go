@@ -4,6 +4,7 @@ import "github.com/google/gopacket/layers"
 import "strconv"
 import "sync"
 import "bytes"
+import "github.com/gskartwii/rbxfile"
 
 type ACKRange struct {
 	Min uint32
@@ -46,7 +47,9 @@ type CommunicationContext struct {
 	ReplicatorSystemAddressCache Cache
 	ReplicatorProtectedStringCache Cache
 	ReplicatorRebindObjectCache Cache
-	Rebindables map[string]struct{}
+
+	DataModel *rbxfile.Root
+    InstancesByReferent map[Referent]*rbxfile.Instance
 
 	MDescriptor *sync.Mutex
 	MSchema *sync.Mutex
@@ -75,7 +78,6 @@ func NewCommunicationContext() *CommunicationContext {
 		PropertyDescriptor: make(map[uint32]string),
 		EventDescriptor: make(map[uint32]string),
 		TypeDescriptor: make(map[uint32]string),
-		Rebindables: make(map[string]struct{}),
 
 		MDescriptor: MDescriptor,
 		MSchema: MSchema,
