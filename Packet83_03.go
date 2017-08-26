@@ -15,7 +15,11 @@ type Packet83_03 struct {
 func (this Packet83_03) Show() widgets.QWidget_ITF {
 	widget := widgets.NewQWidget(nil, 0)
 	layout := widgets.NewQVBoxLayout()
-	layout.AddWidget(NewQLabelF("Object: %s", this.Instance.Reference), 0, 0)
+    if this.Instance != nil {
+        layout.AddWidget(NewQLabelF("Object: %s", this.Instance.Reference), 0, 0)
+    } else {
+        layout.AddWidget(NewQLabelF("Object: nil"), 0, 0)
+    }
 	layout.AddWidget(NewQLabelF("Unknown bool: %v", this.Bool1), 0, 0)
 	layout.AddWidget(NewQLabelF("Property name: %s", this.PropertyName), 0, 0)
 	layout.AddWidget(NewQLabelF("Property type: %s", this.Value.Type().String()), 0, 0)
@@ -32,11 +36,6 @@ func DecodePacket83_03(thisBitstream *ExtendedReader, context *CommunicationCont
 	if err != nil {
 		return layer, err
 	}
-    instance, ok := context.InstancesByReferent[referent]
-    layer.Instance = instance
-    if !ok {
-        return layer, errors.New("invalid rebind: " + string(referent))
-    }
 
     propertyIDx, err := thisBitstream.ReadUint16BE()
     if err != nil {
@@ -55,6 +54,11 @@ func DecodePacket83_03(thisBitstream *ExtendedReader, context *CommunicationCont
     }
 
     layer.Value, err = schema.Decode(ROUND_UPDATE, thisBitstream, context, packet)
-    instance.Properties[layer.PropertyName] = layer.Value
+
+    context.InstancesByReferent.OnAddInstance(referent, func(instance *rbxfile.Instance) {
+        layer.Instance = instance
+        instance.Properties[layer.PropertyName] = layer.Value
+    })
+
     return layer, err
 }

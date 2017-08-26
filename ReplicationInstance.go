@@ -6,17 +6,11 @@ import "github.com/gskartwii/rbxfile"
 
 func DecodeReplicationInstance(isJoinData bool, thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet, instanceSchema []*InstanceSchemaItem) (*rbxfile.Instance, error) {
 	var err error
-    var thisInstance *rbxfile.Instance
     referent, err := thisBitstream.ReadObject(isJoinData, context)
 	if err != nil {
-		return thisInstance, err
+        return nil, errors.New("while parsing self: " + err.Error())
 	}
-    var ok bool
-    if thisInstance, ok = context.InstancesByReferent[referent]; !ok {
-        thisInstance = &rbxfile.Instance{
-            Reference: string(referent),
-        }
-    }
+    thisInstance := context.InstancesByReferent.TryGetInstance(referent)
 
     schemaIDx, err := thisBitstream.ReadUint16BE()
     if int(schemaIDx) > len(context.StaticSchema.Instances) {
@@ -24,6 +18,7 @@ func DecodeReplicationInstance(isJoinData bool, thisBitstream *ExtendedReader, c
     }
     schema := context.StaticSchema.Instances[schemaIDx]
     thisInstance.ClassName = schema.Name
+    println("will parse", referent, schema.Name, isJoinData)
 
     _, err = thisBitstream.ReadBool()
     if err != nil {
@@ -79,10 +74,13 @@ func DecodeReplicationInstance(isJoinData bool, thisBitstream *ExtendedReader, c
         }
     }
     referent, err = thisBitstream.ReadObject(isJoinData, context)
-    parent, ok := context.InstancesByReferent[referent]
-    if !ok {
-        return thisInstance, errors.New("invalid parent: " + string(referent))
+    if err != nil {
+        return thisInstance, errors.New("while parsing parent: " + err.Error())
     }
-    parent.AddChild(thisInstance)
+
+    context.InstancesByReferent.AddInstance(Referent(thisInstance.Reference), thisInstance)
+    parent := context.InstancesByReferent.TryGetInstance(referent)
+    err = parent.AddChild(thisInstance)
+
     return thisInstance, err
 }

@@ -142,7 +142,7 @@ func HandleGeneric(layer *RakNetLayer, packet gopacket.Packet, context *Communic
 			packetViewer.AddSplitPacket(subPacket.PacketType, packet, context, layers)
 		}
 
-		if subPacket.HasPacketType && !subPacket.HasBeenDecoded {
+		if subPacket.IsFinal {
 			subPacket.HasBeenDecoded = true
 			go func(subPacket *ReliablePacket) {
 				packetType := subPacket.PacketType
@@ -156,7 +156,7 @@ func HandleGeneric(layer *RakNetLayer, packet gopacket.Packet, context *Communic
 				if decoder != nil {
 					layers.Main, err = decoder(subPacket.FullDataReader, context, packet)
 					if err != nil {
-						color.Red("Failed to decode reliable packet %02X: %s", packetType, err.Error())
+						fmt.Printf("Failed to decode reliable packet %02X: %s", packetType, err.Error())
 						return
 					}
 				}

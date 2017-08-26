@@ -62,7 +62,6 @@ func DecodePacket81Layer(thisBitstream *ExtendedReader, context *CommunicationCo
     }
 
     context.DataModel = &rbxfile.Root{make([]*rbxfile.Instance, arrayLen)}
-    context.InstancesByReferent = make(map[Referent]*rbxfile.Instance)
 
     layer.Items = make([]*Packet81LayerItem, arrayLen)
     for i := 0; i < int(arrayLen); i++ {
@@ -83,7 +82,7 @@ func DecodePacket81Layer(thisBitstream *ExtendedReader, context *CommunicationCo
             Properties: make(map[string]rbxfile.Value, 0),
         }
         context.DataModel.Instances[i] = thisService
-        context.InstancesByReferent[referent] = thisService
+        context.InstancesByReferent.AddInstance(referent, thisService)
         thisItem.Instance = thisService
 
         thisItem.Bool1, err = thisBitstream.ReadBool()

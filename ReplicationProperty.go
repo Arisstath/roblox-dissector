@@ -72,7 +72,8 @@ func readSerializedValue(isJoinData bool, valueType uint8, thisBitstream *Extend
 	case PROP_TYPE_INSTANCE:
         var referent Referent
         referent, err = thisBitstream.ReadObject(isJoinData, context)
-        result = rbxfile.ValueReference{context.InstancesByReferent[referent]}
+        instance := context.InstancesByReferent.TryGetInstance(referent)
+        result = rbxfile.ValueReference{instance}
 	case PROP_TYPE_CONTENT:
 		result, err = thisBitstream.ReadNewContent(isJoinData, context)
 	case PROP_TYPE_SYSTEMADDRESS:
@@ -105,48 +106,6 @@ func readSerializedValue(isJoinData bool, valueType uint8, thisBitstream *Extend
 	return result, err
 }
 
-var DefaultValues = map[uint8]rbxfile.Value{
-    PROP_TYPE_INVALID: nil,
-	PROP_TYPE_STRING: rbxfile.ValueString{},
-	PROP_TYPE_STRING_NO_CACHE: rbxfile.ValueString{},
-	PROP_TYPE_PROTECTEDSTRING_0: rbxfile.ValueProtectedString{},
-	PROP_TYPE_PROTECTEDSTRING_1: rbxfile.ValueProtectedString{},
-	PROP_TYPE_PROTECTEDSTRING_2: rbxfile.ValueProtectedString{},
-	PROP_TYPE_PROTECTEDSTRING_3: rbxfile.ValueProtectedString{},
-	PROP_TYPE_ENUM: rbxfile.ValueToken(0),
-	PROP_TYPE_BINARYSTRING: rbxfile.ValueBinaryString{},
-	PROP_TYPE_PBOOL: rbxfile.ValueBool(false),
-	PROP_TYPE_PSINT: rbxfile.ValueInt(0),
-	PROP_TYPE_PFLOAT: rbxfile.ValueFloat(0),
-	PROP_TYPE_PDOUBLE: rbxfile.ValueDouble(0),
-	PROP_TYPE_UDIM: rbxfile.ValueUDim{},
-	PROP_TYPE_UDIM2: rbxfile.ValueUDim2{},
-	PROP_TYPE_RAY: rbxfile.ValueRay{},
-	PROP_TYPE_FACES: rbxfile.ValueFaces{},
-	PROP_TYPE_AXES: rbxfile.ValueAxes{},
-	PROP_TYPE_BRICKCOLOR: rbxfile.ValueBrickColor(0),
-	PROP_TYPE_COLOR3: rbxfile.ValueColor3{},
-	PROP_TYPE_COLOR3UINT8: rbxfile.ValueColor3uint8{},
-	PROP_TYPE_VECTOR2: rbxfile.ValueVector2{},
-	PROP_TYPE_VECTOR3_SIMPLE: rbxfile.ValueVector3{},
-	PROP_TYPE_VECTOR3_COMPLICATED: rbxfile.ValueVector3{},
-	PROP_TYPE_VECTOR2UINT16: rbxfile.ValueVector2int16{},
-	PROP_TYPE_VECTOR3UINT16: rbxfile.ValueVector3int16{},
-	PROP_TYPE_CFRAME_SIMPLE: rbxfile.ValueCFrame{},
-	PROP_TYPE_CFRAME_COMPLICATED: rbxfile.ValueCFrame{},
-	PROP_TYPE_INSTANCE: rbxfile.ValueReference{},
-	PROP_TYPE_CONTENT: rbxfile.ValueContent{},
-	PROP_TYPE_SYSTEMADDRESS: rbxfile.ValueSystemAddress{},
-	PROP_TYPE_NUMBERSEQUENCE: rbxfile.ValueNumberSequence{},
-	PROP_TYPE_NUMBERSEQUENCEKEYPOINT: rbxfile.ValueNumberSequenceKeypoint{},
-	PROP_TYPE_NUMBERRANGE: rbxfile.ValueNumberRange{},
-	PROP_TYPE_COLORSEQUENCE: rbxfile.ValueColorSequence{},
-	PROP_TYPE_COLORSEQUENCEKEYPOINT: rbxfile.ValueColorSequenceKeypoint{},
-	PROP_TYPE_RECT2D: rbxfile.ValueRect2D{},
-	PROP_TYPE_PHYSICALPROPERTIES: rbxfile.ValuePhysicalProperties{},
-
-}
-
 func (schema StaticPropertySchema) Decode(round int, thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (rbxfile.Value, error) {
 	var err error
 	isJoinData := round == ROUND_JOINDATA
@@ -154,9 +113,16 @@ func (schema StaticPropertySchema) Decode(round int, thisBitstream *ExtendedRead
         var isDefault bool
         isDefault, err = thisBitstream.ReadBool()
 		if isDefault || err != nil {
-			return DefaultValues[schema.Type], err
+			return nil, err
 		}
 	}
 
-	return readSerializedValue(isJoinData, schema.Type, thisBitstream, context)
+    val, err := readSerializedValue(isJoinData, schema.Type, thisBitstream, context)
+    if val.Type().String() != "ProtectedString" {
+        println("Read", schema.Name, val.String())
+    }
+    if err != nil {
+        return val, errors.New("while parsing " + schema.Name + ": " + err.Error())
+    }
+    return val, nil
 }

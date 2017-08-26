@@ -115,9 +115,7 @@ func DecodePacket83Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 		return layer, err
 	}
 	context.WaitForSchema()
-	context.WaitForDescriptors()
 	defer context.FinishSchema()
-	defer context.FinishDescriptors()
 	instanceSchema := context.InstanceSchema
 
 	var inner interface{}

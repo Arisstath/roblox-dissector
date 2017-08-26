@@ -49,7 +49,7 @@ type CommunicationContext struct {
 	ReplicatorRebindObjectCache Cache
 
 	DataModel *rbxfile.Root
-    InstancesByReferent map[Referent]*rbxfile.Instance
+    InstancesByReferent InstanceList
 
 	MDescriptor *sync.Mutex
 	MSchema *sync.Mutex
@@ -88,6 +88,11 @@ func NewCommunicationContext() *CommunicationContext {
 
 		UniqueDatagramsClient: make(map[uint32]struct{}),
 		UniqueDatagramsServer: make(map[uint32]struct{}),
+        InstancesByReferent: InstanceList{
+            CommonMutex: MSchema,
+            EAddReferent: sync.NewCond(MSchema),
+            Instances: make(map[string]*rbxfile.Instance),
+        },
 	}
 }
 

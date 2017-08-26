@@ -47,11 +47,6 @@ func DecodePacket83_07(thisBitstream *ExtendedReader, context *CommunicationCont
 	if err != nil {
 		return layer, err
 	}
-    var ok bool
-    layer.Instance, ok = context.InstancesByReferent[referent]
-    if !ok {
-        return layer, errors.New("invalid rebind: " + string(referent))
-    }
 
     eventIDx, err := thisBitstream.ReadUint16BE()
     if err != nil {
@@ -65,5 +60,8 @@ func DecodePacket83_07(thisBitstream *ExtendedReader, context *CommunicationCont
     schema := context.StaticSchema.Events[eventIDx]
     layer.EventName = schema.Name
     layer.Event, err = schema.Decode(thisBitstream, context, packet)
+    context.InstancesByReferent.OnAddInstance(referent, func(instance *rbxfile.Instance) {
+        layer.Instance = instance
+    })
     return layer, err
 }

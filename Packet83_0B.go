@@ -17,7 +17,12 @@ func getInstanceRow(this *rbxfile.Instance) []*gui.QStandardItem {
     rootNameItem := NewQStandardItemF("Name: %s", this.Properties["Name"].String())
 	typeItem := NewQStandardItemF(this.ClassName)
 	referentItem := NewQStandardItemF(this.Reference)
-	parentItem := NewQStandardItemF(this.Parent().Reference)
+    var parentItem *gui.QStandardItem
+    if this.Parent() != nil {
+        parentItem = NewQStandardItemF(this.Parent().Reference)
+    } else {
+        parentItem = NewQStandardItemF("DataModel/NULL")
+    }
 
 	for name, property := range this.Properties {
 		nameItem := NewQStandardItemF(name)
