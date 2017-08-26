@@ -258,7 +258,9 @@ func (b *ExtendedReader) ReadObject(isJoinData bool, context *CommunicationConte
 		if err != nil {
 			return Object, err
 		}
-		referentInt, err = b.ReadUint32LE()
+		if referent != "" {
+			referentInt, err = b.ReadUint32LE()
+		}
 	}
 
     serialized := objectToRef(referent, referentInt)
@@ -356,13 +358,13 @@ func lookupRotMatrix(special uint64) [9]float32 {
     specialRowMod6 := specialRows[special%6]
 
     ret := [9]float32{
-        0,0,0,
-        specialRowMod6[0],specialRowMod6[1],specialRowMod6[2],
         specialRowDiv6[0],specialRowDiv6[1],specialRowDiv6[2],
+        specialRowMod6[0],specialRowMod6[1],specialRowMod6[2],
+        0,0,0,
     }
-    ret[0] = ret[2*3+1]*ret[1*3+2] - ret[2*3+2]*ret[1*3+1]
-    ret[1] = ret[1*3+0]*ret[2*3+2] - ret[2*3+0]*ret[1*3+2]
-    ret[2] = ret[2*3+0]*ret[1*3+1] - ret[1*3+0]*ret[2*3+0]
+    ret[6] = ret[2*3+1]*ret[1*3+2] - ret[2*3+2]*ret[1*3+1]
+    ret[7] = ret[1*3+0]*ret[2*3+2] - ret[2*3+0]*ret[1*3+2]
+    ret[8] = ret[2*3+0]*ret[1*3+1] - ret[1*3+0]*ret[2*3+0]
 
     return ret
 }

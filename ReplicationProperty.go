@@ -113,12 +113,15 @@ func (schema StaticPropertySchema) Decode(round int, thisBitstream *ExtendedRead
         var isDefault bool
         isDefault, err = thisBitstream.ReadBool()
 		if isDefault || err != nil {
+			if DEBUG && round != ROUND_JOINDATA {
+				println("Read", schema.Name, "default")
+			}
 			return nil, err
 		}
 	}
 
     val, err := readSerializedValue(isJoinData, schema.Type, thisBitstream, context)
-    if val.Type().String() != "ProtectedString" {
+    if val.Type().String() != "ProtectedString" && round != ROUND_JOINDATA && DEBUG {
         println("Read", schema.Name, val.String())
     }
     if err != nil {

@@ -23,7 +23,11 @@ func (this Packet83_03) Show() widgets.QWidget_ITF {
 	layout.AddWidget(NewQLabelF("Unknown bool: %v", this.Bool1), 0, 0)
 	layout.AddWidget(NewQLabelF("Property name: %s", this.PropertyName), 0, 0)
 	layout.AddWidget(NewQLabelF("Property type: %s", this.Value.Type().String()), 0, 0)
-	layout.AddWidget(NewQLabelF("Property value: %s", this.Value.String()), 0, 0)
+	if this.Value.Type() == rbxfile.TypeProtectedString {
+		layout.AddWidget(NewQLabelF("Property value: ... (len %d)", len(this.Value.String())), 0, 0)
+	} else {
+		layout.AddWidget(NewQLabelF("Property value: %s", this.Value.String()), 0, 0)
+	}
 	widget.SetLayout(layout)
 
 	return widget
@@ -42,7 +46,25 @@ func DecodePacket83_03(thisBitstream *ExtendedReader, context *CommunicationCont
         return layer, err
     }
 
-    if int(propertyIDx) >= int(len(context.StaticSchema.Properties)) {
+    if int(propertyIDx) == int(len(context.StaticSchema.Properties)) { // explicit Parent property system
+		layer.Bool1, err = thisBitstream.ReadBool()
+		if err != nil {
+			return layer, err
+		}
+
+        var referent Referent
+        referent, err = thisBitstream.ReadObject(false, context)
+        instance := context.InstancesByReferent.TryGetInstance(referent)
+		result := rbxfile.ValueReference{instance}
+		layer.Value = result
+
+		context.InstancesByReferent.OnAddInstance(referent, func(instance *rbxfile.Instance) {
+			result.AddChild(instance)
+		})
+		return layer, err
+    }
+
+    if int(propertyIDx) > int(len(context.StaticSchema.Properties)) {
         return layer, errors.New(fmt.Sprintf("prop idx %d is higher than %d", propertyIDx, len(context.StaticSchema.Properties)))
     }
     schema := context.StaticSchema.Properties[propertyIDx]

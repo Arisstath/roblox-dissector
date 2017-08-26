@@ -8,6 +8,8 @@ import "github.com/gskartwii/go-bitstream"
 import "bytes"
 import "time"
 
+const DEBUG bool = false
+
 type PacketLayers struct {
 	RakNet *RakNetLayer
 	Reliability *ReliablePacket

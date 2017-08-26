@@ -14,7 +14,7 @@ func NewPacket83_0BLayer(length int) *Packet83_0B {
 }
 
 func getInstanceRow(this *rbxfile.Instance) []*gui.QStandardItem {
-    rootNameItem := NewQStandardItemF("Name: %s", this.Properties["Name"].String())
+    rootNameItem := NewQStandardItemF("Name: %s", this.Name())
 	typeItem := NewQStandardItemF(this.ClassName)
 	referentItem := NewQStandardItemF(this.Reference)
     var parentItem *gui.QStandardItem
@@ -27,7 +27,12 @@ func getInstanceRow(this *rbxfile.Instance) []*gui.QStandardItem {
 	for name, property := range this.Properties {
 		nameItem := NewQStandardItemF(name)
 		typeItem := NewQStandardItemF(property.Type().String())
-		valueItem := NewQStandardItemF(property.String())
+		var valueItem *gui.QStandardItem
+		if property.Type() == rbxfile.TypeProtectedString {
+			valueItem = NewQStandardItemF("... (len %d)", len(property.String()))
+		} else {
+			valueItem = NewQStandardItemF(property.String())
+		}
 
 		rootNameItem.AppendRow([]*gui.QStandardItem{
 			nameItem,

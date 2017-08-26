@@ -18,7 +18,9 @@ func DecodeReplicationInstance(isJoinData bool, thisBitstream *ExtendedReader, c
     }
     schema := context.StaticSchema.Instances[schemaIDx]
     thisInstance.ClassName = schema.Name
-    println("will parse", referent, schema.Name, isJoinData)
+	if DEBUG {
+		println("will parse", referent, schema.Name, isJoinData, len(schema.Properties))
+	}
 
     _, err = thisBitstream.ReadBool()
     if err != nil {
@@ -29,13 +31,16 @@ func DecodeReplicationInstance(isJoinData bool, thisBitstream *ExtendedReader, c
     if isJoinData {
         for i := 0; i < len(schema.Properties); i++ {
             propertyName := schema.Properties[i].Name
-            thisInstance.Properties[propertyName], err = schema.Properties[i].Decode(ROUND_JOINDATA, thisBitstream, context, packet)
-            if err != nil {
-                return thisInstance, err
-            }
+			value, err := schema.Properties[i].Decode(ROUND_JOINDATA, thisBitstream, context, packet)
+			if err != nil {
+				return thisInstance, err
+			}
+			if value != nil {
+				thisInstance.Properties[propertyName] = value
+			}
         }
     } else {
-        for i := 0; i < len(thisInstance.Properties); i++ {
+        for i := 0; i < len(schema.Properties); i++ {
             isStringObject := false
             if  schema.Properties[i].Type == 0x21 ||
                 schema.Properties[i].Type == 0x01 ||
@@ -49,10 +54,16 @@ func DecodeReplicationInstance(isJoinData bool, thisBitstream *ExtendedReader, c
             }
             if isStringObject {
                 propertyName := schema.Properties[i].Name
-                thisInstance.Properties[propertyName], err = schema.Properties[i].Decode(ROUND_STRINGS, thisBitstream, context, packet)
+				value, err := schema.Properties[i].Decode(ROUND_STRINGS, thisBitstream, context, packet)
+				if err != nil {
+					return thisInstance, err
+				}
+				if value != nil {
+					thisInstance.Properties[propertyName] = value
+				}
             }
         }
-        for i := 0; i < len(thisInstance.Properties); i++ {
+        for i := 0; i < len(schema.Properties); i++ {
             isStringObject := false
             if  schema.Properties[i].Type == 0x21 ||
                 schema.Properties[i].Type == 0x01 ||
@@ -66,10 +77,13 @@ func DecodeReplicationInstance(isJoinData bool, thisBitstream *ExtendedReader, c
             }
             if !isStringObject {
                 propertyName := schema.Properties[i].Name
-                thisInstance.Properties[propertyName], err = schema.Properties[i].Decode(ROUND_OTHER, thisBitstream, context, packet)
-                if err != nil {
-                    return thisInstance, err
-                }
+				value, err := schema.Properties[i].Decode(ROUND_OTHER, thisBitstream, context, packet)
+				if err != nil {
+					return thisInstance, err
+				}
+				if value != nil {
+					thisInstance.Properties[propertyName] = value
+				}
             }
         }
     }

@@ -12,7 +12,7 @@ type InstanceList struct {
 func (l *InstanceList) TryGetInstance(ref Referent) *rbxfile.Instance {
     instance := l.Instances[string(ref)]
     if instance == nil {
-        instance = &rbxfile.Instance{Reference: string(ref)}
+		instance = &rbxfile.Instance{Reference: string(ref), Properties: make(map[string]rbxfile.Value)}
         l.AddInstance(ref, instance)
     }
     return instance
@@ -21,12 +21,9 @@ func (l *InstanceList) TryGetInstance(ref Referent) *rbxfile.Instance {
 func (l *InstanceList) WaitForInstance(ref Referent) *rbxfile.Instance {
     instance := l.Instances[string(ref)]
     for instance == nil {
-        println("Waiting on", string(ref))
         l.EAddReferent.Wait()
         instance = l.Instances[string(ref)]
-        println("Check on", string(ref))
         if instance != nil {
-            println("Wait successful", string(ref))
             return instance
         }
     }
