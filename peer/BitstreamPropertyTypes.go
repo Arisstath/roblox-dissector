@@ -1,166 +1,32 @@
 package peer
 import "net"
 import "errors"
+import "github.com/gskartwii/rbxfile"
 import "fmt"
 
-type pbool bool
-type psint int32
-type pfloat float32
-type pdouble float64
-type Axes int32
-type Faces int32
-type BrickColor uint64
-type Object struct {
-	Referent string
-	ReferentInt uint32
-}
-type RebindObject struct {
-	Referent1 uint32
-	Referent2 uint16
-}
-type EnumValue int64
-type pstring string
-type ProtectedString []byte
-type BinaryString []byte
+type Referent string
 
-type UDim struct {
-	Scale float32
-	Offset int32
-}
-
-type UDim2 struct {
-	X UDim
-	Y UDim
-}
-
-type Vector2 struct {
-	X float32
-	Y float32
-}
-type Vector3 struct {
-	X float32
-	Y float32
-	Z float32
-}
-type Vector2uint16 struct {
-	X uint16
-	Y uint16
-}
-type Vector3uint16 struct {
-	X uint16
-	Y uint16
-	Z uint16
-}
-
-type Ray struct {
-	Origin Vector3
-	Direction Vector3
-}
-
-type Color3 struct {
-	R float32
-	G float32
-	B float32
-}
-type Color3uint8 struct {
-	R uint8
-	G uint8
-	B uint8
-}
-
-type CFrame struct {
-	Position Vector3
-	Matrix [4]float32
-	SpecialRotMatrix uint64
-}
-
-type CFrameSimple struct {
-	Position Vector3
-	Matrix [9]float32
-	SpecialRotMatrix uint64
-}
-
-type Content string
-
-type SystemAddress struct {
-	net.UDPAddr
-}
-
-type Region3 struct {
-	Start Vector3
-	End Vector3
-}
-
-type Region3uint16 struct {
-	Start Vector3uint16
-	End Vector3uint16
-}
-type Instance Object
-
-type TypeAndValue struct {
-	Type string
-	Value PropertyValue
-}
-
-type NumberSequenceKeypoint struct {
-	Time float32
-	Value float32
-	Envelope float32
-}
-type NumberSequence []NumberSequenceKeypoint
-type NumberRange struct {
-	Min float32
-	Max float32
-}
-
-type ColorSequenceKeypoint struct {
-	Time float32
-	Value Color3
-	Envelope float32
-}
-type ColorSequence []ColorSequenceKeypoint
-
-type Rect2D struct {
-	MinX float32
-	MinY float32
-	MaxX float32
-	MaxY float32
-}
-
-type PhysicalProperties struct {
-	Density float32
-	Friction float32
-	Elasticity float32
-	FrictionWeight float32
-	ElasticityWeight float32
-}
-
-type Tuple []TypeAndValue
-type Array []TypeAndValue
-type Dictionary map[string]TypeAndValue
-type Map map[string]TypeAndValue
-
-func (b *ExtendedReader) ReadUDim() (UDim, error) {
+func (b *ExtendedReader) ReadUDim() (rbxfile.ValueUDim, error) {
 	var err error
-	val := UDim{}
+	val := rbxfile.ValueUDim{}
 	val.Scale, err = b.ReadFloat32BE()
 	if err != nil {
 		return val, err
 	}
 	off, err := b.ReadUint32BE()
-	val.Offset = int32(off)
+	val.Offset = int16(off)
 	return val, err
 }
 
-func (b *ExtendedReader) ReadUDim2() (UDim2, error) {
+func (b *ExtendedReader) ReadUDim2() (rbxfile.ValueUDim2, error) {
 	var err error
-	val := UDim2{UDim{}, UDim{}}
+	val := rbxfile.ValueUDim2{rbxfile.ValueUDim{}, rbxfile.ValueUDim{}}
 	val.X.Scale, err = b.ReadFloat32BE()
 	if err != nil {
 		return val, err
 	}
 	offx, err := b.ReadUint32BE()
-	val.X.Offset = int32(offx)
+	val.X.Offset = int16(offx)
 	if err != nil {
 		return val, err
 	}
@@ -169,13 +35,13 @@ func (b *ExtendedReader) ReadUDim2() (UDim2, error) {
 		return val, err
 	}
 	offy, err := b.ReadUint32BE()
-	val.Y.Offset = int32(offy)
+	val.Y.Offset = int16(offy)
 	return val, err
 }
 
-func (b *ExtendedReader) ReadRay() (Ray, error) {
+func (b *ExtendedReader) ReadRay() (rbxfile.ValueRay, error) {
 	var err error
-	val := Ray{}
+	val := rbxfile.ValueRay{}
 	val.Origin, err = b.ReadVector3Simple()
 	if err != nil {
 		return val, err
@@ -184,9 +50,9 @@ func (b *ExtendedReader) ReadRay() (Ray, error) {
 	return val, err
 }
 
-func (b *ExtendedReader) ReadRegion3() (Region3, error) {
+func (b *ExtendedReader) ReadRegion3() (rbxfile.ValueRegion3, error) {
 	var err error
-	val := Region3{}
+	val := rbxfile.ValueRegion3{}
 	val.Start, err = b.ReadVector3Simple()
 	if err != nil {
 		return val, err
@@ -194,20 +60,20 @@ func (b *ExtendedReader) ReadRegion3() (Region3, error) {
 	val.End, err = b.ReadVector3Simple()
 	return val, err
 }
-func (b *ExtendedReader) ReadRegion3uint16() (Region3uint16, error) {
+func (b *ExtendedReader) ReadRegion3int16() (rbxfile.ValueRegion3int16, error) {
 	var err error
-	val := Region3uint16{}
-	val.Start, err = b.ReadVector3uint16()
+	val := rbxfile.ValueRegion3int16{}
+	val.Start, err = b.ReadVector3int16()
 	if err != nil {
 		return val, err
 	}
-	val.End, err = b.ReadVector3uint16()
+	val.End, err = b.ReadVector3int16()
 	return val, err
 }
 
-func (b *ExtendedReader) ReadColor3() (Color3, error) {
+func (b *ExtendedReader) ReadColor3() (rbxfile.ValueColor3, error) {
 	var err error
-	val := Color3{}
+	val := rbxfile.ValueColor3{}
 	val.R, err = b.ReadFloat32BE()
 	if err != nil {
 		return val, err
@@ -220,9 +86,9 @@ func (b *ExtendedReader) ReadColor3() (Color3, error) {
 	return val, err
 }
 
-func (b *ExtendedReader) ReadColor3uint8() (Color3uint8, error) {
+func (b *ExtendedReader) ReadColor3uint8() (rbxfile.ValueColor3uint8, error) {
 	var err error
-	val := Color3uint8{}
+	val := rbxfile.ValueColor3uint8{}
 	val.R, err = b.ReadByte()
 	if err != nil {
 		return val, err
@@ -235,9 +101,9 @@ func (b *ExtendedReader) ReadColor3uint8() (Color3uint8, error) {
 	return val, err
 }
 
-func (b *ExtendedReader) ReadVector2() (Vector2, error) {
+func (b *ExtendedReader) ReadVector2() (rbxfile.ValueVector2, error) {
 	var err error
-	val := Vector2{}
+	val := rbxfile.ValueVector2{}
 	val.X, err = b.ReadFloat32BE()
 	if err != nil {
 		return val, err
@@ -246,9 +112,9 @@ func (b *ExtendedReader) ReadVector2() (Vector2, error) {
 	return val, err
 }
 
-func (b *ExtendedReader) ReadVector3Simple() (Vector3, error) {
+func (b *ExtendedReader) ReadVector3Simple() (rbxfile.ValueVector3, error) {
 	var err error
-	val := Vector3{}
+	val := rbxfile.ValueVector3{}
 	val.X, err = b.ReadFloat32BE()
 	if err != nil {
 		return val, err
@@ -261,16 +127,16 @@ func (b *ExtendedReader) ReadVector3Simple() (Vector3, error) {
 	return val, err
 }
 
-func (b *ExtendedReader) ReadVector3() (Vector3, error) {
+func (b *ExtendedReader) ReadVector3() (rbxfile.ValueVector3, error) {
 	isInteger, err := b.ReadBool()
 	if err != nil {
-		return Vector3{}, err
+		return rbxfile.ValueVector3{}, err
 	}
 	if !isInteger {
 		return b.ReadVector3Simple()
 	} else {
 		var err error
-		val := Vector3{}
+		val := rbxfile.ValueVector3{}
 		x, err := b.Bits(11)
 		if err != nil {
 			return val, err
@@ -302,99 +168,129 @@ func (b *ExtendedReader) ReadVector3() (Vector3, error) {
 	}
 }
 
-func (b *ExtendedReader) ReadVector2uint16() (Vector2uint16, error) {
+func (b *ExtendedReader) ReadVector2int16() (rbxfile.ValueVector2int16, error) {
 	var err error
-	val := Vector2uint16{}
-	val.X, err = b.ReadUint16BE()
+	val := rbxfile.ValueVector2int16{}
+    valX, err := b.ReadUint16BE()
 	if err != nil {
 		return val, err
 	}
-	val.Y, err = b.ReadUint16BE()
+    valY, err := b.ReadUint16BE()
+    val.X = int16(valX)
+    val.Y = int16(valY)
 	return val, err
 }
 
-func (b *ExtendedReader) ReadVector3uint16() (Vector3uint16, error) {
+func (b *ExtendedReader) ReadVector3int16() (rbxfile.ValueVector3int16, error) {
 	var err error
-	val := Vector3uint16{}
-	val.X, err = b.ReadUint16BE()
+    var val rbxfile.ValueVector3int16
+    valX, err := b.ReadUint16BE()
 	if err != nil {
 		return val, err
 	}
-	val.Y, err = b.ReadUint16BE()
+    valY, err := b.ReadUint16BE()
 	if err != nil {
 		return val, err
 	}
-	val.Z, err = b.ReadUint16BE()
+    valZ, err := b.ReadUint16BE()
+	val = rbxfile.ValueVector3int16{int16(valX), int16(valY), int16(valZ)}
 	return val, err
 }
 
-func (b *ExtendedReader) ReadPBool() (pbool, error) {
+func (b *ExtendedReader) ReadPBool() (rbxfile.ValueBool, error) {
 	val, err := b.ReadBool()
-	return pbool(val), err
+	return rbxfile.ValueBool(val), err
 }
-func (b *ExtendedReader) ReadPSInt() (psint, error) {
+func (b *ExtendedReader) ReadPSInt() (rbxfile.ValueInt, error) {
 	val, err := b.ReadUint32BE()
-	return psint(val), err
+	return rbxfile.ValueInt(val), err
 }
-func (b *ExtendedReader) ReadPFloat() (pfloat, error) {
+func (b *ExtendedReader) ReadPFloat() (rbxfile.ValueFloat, error) {
 	val, err := b.ReadFloat32BE()
-	return pfloat(val), err
+	return rbxfile.ValueFloat(val), err
 }
-func (b *ExtendedReader) ReadPDouble() (pdouble, error) {
+func (b *ExtendedReader) ReadPDouble() (rbxfile.ValueDouble, error) {
 	val, err := b.ReadFloat64BE()
-	return pdouble(val), err
+	return rbxfile.ValueDouble(val), err
 }
-func (b *ExtendedReader) ReadAxes() (Axes, error) {
+func (b *ExtendedReader) ReadAxes() (rbxfile.ValueAxes, error) {
 	val, err := b.ReadUint32BE()
-	return Axes(val), err
+    axesVal := rbxfile.ValueAxes{
+        X: val & 4 != 0,
+        Y: val & 2 != 0,
+        Z: val & 1 != 0,
+    }
+	return axesVal, err
 }
-func (b *ExtendedReader) ReadFaces() (Faces, error) {
+func (b *ExtendedReader) ReadFaces() (rbxfile.ValueFaces, error) {
 	val, err := b.ReadUint32BE()
-	return Faces(val), err
+    facesVal := rbxfile.ValueFaces{
+        Right: val & 32 != 0,
+        Top: val & 16 != 0,
+        Back: val & 8 != 0,
+        Left: val & 4 != 0,
+        Bottom: val & 2 != 0,
+        Front: val & 1 != 0,
+    }
+	return facesVal, err
 }
-func (b *ExtendedReader) ReadBrickColor() (BrickColor, error) {
+func (b *ExtendedReader) ReadBrickColor() (rbxfile.ValueBrickColor, error) {
 	val, err := b.Bits(7)
-	return BrickColor(val), err
+	return rbxfile.ValueBrickColor(val), err
 }
 
-func formatBindable(obj Object) string {
-	return fmt.Sprintf("%s_%d", obj.Referent, obj.ReferentInt)
+func formatBindable(obj rbxfile.ValueReference) string {
+	return obj.String()
 }
-
-func (b *ExtendedReader) ReadObject(isJoinData bool, context *CommunicationContext) (Object, error) {
-	var err error
-	Object := Object{}
-	if isJoinData {
-		Object.Referent, Object.ReferentInt, err = b.ReadJoinReferent()
+func objectToRef(referent string, referentInt uint32) string {
+	if referentInt == 0 {
+		return "null"
 	} else {
-		Object.Referent, err = b.ReadCachedObject(context)
+		return fmt.Sprintf("%d", referentInt)
+	}
+}
+
+func (b *ExtendedReader) ReadObject(isJoinData bool, context *CommunicationContext) (Referent, error) {
+	var err error
+    var referent string
+    var referentInt uint32
+    var Object Referent
+	if isJoinData {
+		referent, referentInt, err = b.ReadJoinReferent()
+	} else {
+		referent, err = b.ReadCachedObject(context)
 		if err != nil {
 			return Object, err
 		}
-		Object.ReferentInt, err = b.ReadUint32LE()
+		if referent != "" {
+			referentInt, err = b.ReadUint32LE()
+		}
 	}
-	return Object, err
+
+    serialized := objectToRef(referent, referentInt)
+
+	return Referent(serialized), err
 }
-func (b *ExtendedReader) ReadEnumValue(bitSize uint32) (EnumValue, error) {
+func (b *ExtendedReader) ReadEnumValue(bitSize uint32) (rbxfile.ValueToken, error) {
 	val, err := b.Bits(int(bitSize + 1))
-	return EnumValue(val), err
+	return rbxfile.ValueToken(val), err
 }
-func (b *ExtendedReader) ReadPString(isJoinData bool, context *CommunicationContext) (pstring, error) {
+func (b *ExtendedReader) ReadPString(isJoinData bool, context *CommunicationContext) (rbxfile.ValueString, error) {
 	if !isJoinData {
 		val, err := b.ReadCached(context)
-		return pstring(val), err
+		return rbxfile.ValueString(val), err
 	}
 	stringLen, err := b.ReadUint32BE()
 	if err != nil {
-		return pstring(""), err
+		return rbxfile.ValueString(""), err
 	}
 	val, err := b.ReadASCII(int(stringLen))
-	return pstring(val), err
+	return rbxfile.ValueString(val), err
 }
-func (b *ExtendedReader) ReadProtectedString(isJoinData bool, context *CommunicationContext) (ProtectedString, error) {
+func (b *ExtendedReader) ReadProtectedString(isJoinData bool, context *CommunicationContext) (rbxfile.ValueProtectedString, error) {
 	if !isJoinData {
 		val, err := b.ReadCachedProtectedString(context)
-		return ProtectedString(val), err
+		return rbxfile.ValueProtectedString(val), err
 	}
 	b.Align() // BitStream::operator>>(BinaryString) does implicit alignment. why?
 	var result []byte
@@ -403,9 +299,9 @@ func (b *ExtendedReader) ReadProtectedString(isJoinData bool, context *Communica
 		return result, err
 	}
 	val, err := b.ReadString(int(stringLen))
-	return ProtectedString(val), err
+	return rbxfile.ValueProtectedString(val), err
 }
-func (b *ExtendedReader) ReadBinaryString() (BinaryString, error) {
+func (b *ExtendedReader) ReadBinaryString() (rbxfile.ValueBinaryString, error) {
 	b.Align() // BitStream::operator>>(BinaryString) does implicit alignment. why?
 	var result []byte
 	stringLen, err := b.ReadUint32BE()
@@ -413,16 +309,73 @@ func (b *ExtendedReader) ReadBinaryString() (BinaryString, error) {
 		return result, err
 	}
 	val, err := b.ReadString(int(stringLen))
-	return BinaryString(val), err
+	return rbxfile.ValueBinaryString(val), err
 }
 
-func (b *ExtendedReader) ReadCFrameSimple() (CFrame, error) {
-	return CFrame{}, nil // nop for now, since nothing uses this
+func (b *ExtendedReader) ReadCFrameSimple() (rbxfile.ValueCFrame, error) {
+	return rbxfile.ValueCFrame{}, nil // nop for now, since nothing uses this
 }
 
-func (b *ExtendedReader) ReadCFrame() (CFrame, error) {
+func quaternionToRotMatrix(q [4]float32) [9]float32 {
+    X  := q[0]
+    Y  := q[1]
+    Z  := q[2]
+    W  := q[3]
+    XS := X * 2
+    YS := Y * 2
+    ZS := Z * 2
+    WX := W * XS
+    WY := W * YS
+    WZ := W * ZS
+
+    XX := XS * X
+    XY := YS * X
+    XZ := ZS * X
+    YY := YS * Y
+    YZ := ZS * Y
+    ZZ := ZS * Z
+
+    return [9]float32{
+        1-(YY+ZZ),
+        XY-WZ,
+        XZ+WY,
+        XY+WZ,
+        1-(XX+ZZ),
+        YZ-WX,
+        XZ-WY,
+        YZ+WX,
+        1-(XX+YY),
+    }
+}
+
+var specialRows = [6][3]float32{
+    [3]float32{1,0,0},
+    [3]float32{0,1,0},
+    [3]float32{0,0,1},
+    [3]float32{-1,0,0},
+    [3]float32{0,-1,0},
+    [3]float32{0,0,-1},
+}
+
+func lookupRotMatrix(special uint64) [9]float32 {
+    specialRowDiv6 := specialRows[special/6]
+    specialRowMod6 := specialRows[special%6]
+
+    ret := [9]float32{
+        specialRowDiv6[0],specialRowDiv6[1],specialRowDiv6[2],
+        specialRowMod6[0],specialRowMod6[1],specialRowMod6[2],
+        0,0,0,
+    }
+    ret[6] = ret[2*3+1]*ret[1*3+2] - ret[2*3+2]*ret[1*3+1]
+    ret[7] = ret[1*3+0]*ret[2*3+2] - ret[2*3+0]*ret[1*3+2]
+    ret[8] = ret[2*3+0]*ret[1*3+1] - ret[1*3+0]*ret[2*3+0]
+
+    return ret
+}
+
+func (b *ExtendedReader) ReadCFrame() (rbxfile.ValueCFrame, error) {
 	var err error
-	val := CFrame{}
+	val := rbxfile.ValueCFrame{}
 	val.Position, err = b.ReadVector3()
 	if err != nil {
 		return val, err
@@ -433,45 +386,51 @@ func (b *ExtendedReader) ReadCFrame() (CFrame, error) {
 		return val, err
 	}
 	if isLookup {
-		val.SpecialRotMatrix, err = b.Bits(6)
+        special, err := b.Bits(6)
+        if err != nil {
+            return val, err
+        }
+        val.Rotation = lookupRotMatrix(special)
 	} else {
-		val.Matrix[3], err = b.ReadFloat16BE(-1.0, 1.0)
+        var matrix [4]float32
+		matrix[3], err = b.ReadFloat16BE(-1.0, 1.0)
 		if err != nil {
 			return val, err
 		}
-		val.Matrix[0], err = b.ReadFloat16BE(-1.0, 1.0)
+		matrix[0], err = b.ReadFloat16BE(-1.0, 1.0)
 		if err != nil {
 			return val, err
 		}
-		val.Matrix[1], err = b.ReadFloat16BE(-1.0, 1.0)
+		matrix[1], err = b.ReadFloat16BE(-1.0, 1.0)
 		if err != nil {
 			return val, err
 		}
-		val.Matrix[2], err = b.ReadFloat16BE(-1.0, 1.0)
+		matrix[2], err = b.ReadFloat16BE(-1.0, 1.0)
 		if err != nil {
 			return val, err
 		}
+        val.Rotation = quaternionToRotMatrix(matrix)
 	}
 
 	return val, nil
 }
 
-func (b *ExtendedReader) ReadContent(isJoinData bool, context *CommunicationContext) (Content, error) {
+func (b *ExtendedReader) ReadContent(isJoinData bool, context *CommunicationContext) (rbxfile.ValueContent, error) {
 	if !isJoinData {
 		val, err := b.ReadCachedContent(context)
-		return Content(val), err
+		return rbxfile.ValueContent(val), err
 	}
 	var result string
 	stringLen, err := b.ReadUint32BE()
 	if err != nil {
-		return Content(result), err
+		return rbxfile.ValueContent(result), err
 	}
 	result, err = b.ReadASCII(int(stringLen))
-	return Content(result), err
+	return rbxfile.ValueContent(result), err
 }
 
-func (b *ExtendedReader) ReadSystemAddress(isJoinData bool, context *CommunicationContext) (SystemAddress, error) {
-	var thisAddress SystemAddress
+func (b *ExtendedReader) ReadSystemAddress(isJoinData bool, context *CommunicationContext) (rbxfile.ValueSystemAddress, error) {
+	var thisAddress rbxfile.ValueSystemAddress
 	var err error
 	var cacheIndex uint8
 	if !isJoinData {
@@ -486,18 +445,19 @@ func (b *ExtendedReader) ReadSystemAddress(isJoinData bool, context *Communicati
 		if cacheIndex < 0x80 {
 			result := context.ReplicatorSystemAddressCache[cacheIndex]
 			if result == nil {
-				return SystemAddress{net.UDPAddr{[]byte{0,0,0,0}, 0, "udp"}}, nil
+                return rbxfile.ValueSystemAddress("0.0.0.0:0"), nil
 			}
-			return result.(SystemAddress), nil
+			return result.(rbxfile.ValueSystemAddress), nil
 		}
 	}
-	thisAddress.IP = make([]byte, 4)
-	err = b.Bytes(thisAddress.IP, 4)
+    thisAddr := net.UDPAddr{}
+	thisAddr.IP = make([]byte, 4)
+	err = b.Bytes(thisAddr.IP, 4)
 	if err != nil {
 		return thisAddress, err
 	}
 	port, err := b.ReadUint16BE()
-	thisAddress.Port = int(port)
+	thisAddr.Port = int(port)
 	if err != nil {
 		return thisAddress, err
 	}
@@ -506,79 +466,7 @@ func (b *ExtendedReader) ReadSystemAddress(isJoinData bool, context *Communicati
 		context.ReplicatorSystemAddressCache[cacheIndex - 0x80] = thisAddress
 	}
 
-	return thisAddress, nil
-}
-
-func (b *ExtendedReader) ReadTypeAndValue(context *CommunicationContext) (TypeAndValue, error) {
-	var value TypeAndValue
-	schemaIDx, err := b.Bits(0x8)
-	if err != nil {
-		return value, err
-	}
-	if int(schemaIDx) > int(len(context.TypeDescriptor)) {
-		return value, errors.New(fmt.Sprintf("type idx %d is higher than %d", schemaIDx, len(context.TypeDescriptor)))
-	}
-	value.Type = context.TypeDescriptor[uint32(schemaIDx)]
-	value.Value, err = decodeEventArgument(b, context, value.Type)
-	return value, err
-}
-
-func (b *ExtendedReader) ReadTuple(context *CommunicationContext) (Tuple, error) {
-	var tuple Tuple
-	tupleLen, err := b.ReadUint32BE()
-	if err != nil {
-		return tuple, err
-	}
-	if tupleLen > 0x10000 {
-		return tuple, errors.New("sanity check: exceeded maximum tuple len")
-	}
-	tuple = make(Tuple, tupleLen)
-	for i := 0; i < int(tupleLen); i++ {
-		tuple[i], err = b.ReadTypeAndValue(context)
-		if err != nil {
-			return tuple, err
-		}
-	}
-
-	return tuple, nil
-}
-
-func (b *ExtendedReader) ReadArray(context *CommunicationContext) (Array, error) {
-	array, err := b.ReadTuple(context)
-	return Array(array), err
-}
-
-func (b *ExtendedReader) ReadDictionary(context *CommunicationContext) (Dictionary, error) {
-	var dictionary Dictionary
-	dictionaryLen, err := b.ReadUint32BE()
-	if err != nil {
-		return dictionary, err
-	}
-	if dictionaryLen > 0x10000 {
-		return dictionary, errors.New("sanity check: exceeded maximum dictionary len")
-	}
-	dictionary = make(Dictionary, dictionaryLen)
-	for i := 0; i < int(dictionaryLen); i++ {
-		keyLen, err := b.ReadUint32BE()
-		if err != nil {
-			return dictionary, err
-		}
-		key, err := b.ReadASCII(int(keyLen))
-		if err != nil {
-			return dictionary, err
-		}
-		dictionary[key], err = b.ReadTypeAndValue(context)
-		if err != nil {
-			return dictionary, err
-		}
-	}
-
-	return dictionary, nil
-}
-
-func (b *ExtendedReader) ReadMap(context *CommunicationContext) (Map, error) {
-	thisMap, err := b.ReadDictionary(context)
-	return Map(thisMap), err
+	return rbxfile.ValueSystemAddress(thisAddr.String()), nil
 }
 
 func (b *ExtendedReader) ReadUintUTF8() (uint32, error) {
@@ -600,53 +488,52 @@ func (b *ExtendedReader) ReadSintUTF8() (int32, error) {
 	return int32((res >> 1) ^ -(res & 1)), err
 }
 
-func (b *ExtendedReader) ReadNewPString(isJoinData bool, context *CommunicationContext) (pstring, error) {
+func (b *ExtendedReader) ReadNewPString(isJoinData bool, context *CommunicationContext) (rbxfile.ValueString, error) {
 	if !isJoinData {
 		val, err := b.ReadCached(context)
-		return pstring(val), err
+		return rbxfile.ValueString(val), err
 	}
 	stringLen, err := b.ReadUintUTF8()
 	if err != nil {
-		return pstring(""), err
+		return rbxfile.ValueString(""), err
 	}
 	val, err := b.ReadASCII(int(stringLen))
-	return pstring(val), err
+	return rbxfile.ValueString(val), err
 }
-func (b *ExtendedReader) ReadNewProtectedString(isJoinData bool, context *CommunicationContext) (ProtectedString, error) {
+func (b *ExtendedReader) ReadNewProtectedString(isJoinData bool, context *CommunicationContext) (rbxfile.ValueProtectedString, error) {
 	if !isJoinData {
 		res, err := b.ReadNewCachedProtectedString(context)
-		return ProtectedString(res), err
+		return rbxfile.ValueProtectedString(res), err
 	}
 	res, err := b.ReadNewPString(true, context)
-	return ProtectedString(res), err
+	return rbxfile.ValueProtectedString(res), err
 }
-func (b *ExtendedReader) ReadNewContent(isJoinData bool, context *CommunicationContext) (Content, error) {
+func (b *ExtendedReader) ReadNewContent(isJoinData bool, context *CommunicationContext) (rbxfile.ValueContent, error) {
 	if !isJoinData {
 		res, err := b.ReadCachedContent(context)
-		return Content(res), err
+		return rbxfile.ValueContent(res), err
 	}
 	res, err := b.ReadNewPString(true, context)
-	return Content(res), err
+	return rbxfile.ValueContent(res), err
 }
-func (b *ExtendedReader) ReadNewBinaryString() (BinaryString, error) {
+func (b *ExtendedReader) ReadNewBinaryString() (rbxfile.ValueBinaryString, error) {
 	res, err := b.ReadNewPString(true, nil)
-	return BinaryString(res), err
+	return rbxfile.ValueBinaryString(res), err
 }
 
-func (b *ExtendedReader) ReadNewEnumValue() (EnumValue, error) {
+func (b *ExtendedReader) ReadNewEnumValue() (rbxfile.ValueToken, error) {
 	val, err := b.ReadUintUTF8()
-	return EnumValue(val), err
+	return rbxfile.ValueToken(val), err
 }
 
-func (b *ExtendedReader) ReadNewPSint() (psint, error) {
+func (b *ExtendedReader) ReadNewPSint() (rbxfile.ValueInt, error) {
 	val, err := b.ReadSintUTF8()
-	return psint(val), err
+	return rbxfile.ValueInt(val), err
 }
 
-func (b *ExtendedReader) ReadNewTypeAndValue(isJoinData bool, context *CommunicationContext) (TypeAndValue, error) {
-	val := TypeAndValue{}
+func (b *ExtendedReader) ReadNewTypeAndValue(isJoinData bool, context *CommunicationContext) (rbxfile.Value, error) {
+    var val rbxfile.Value
 	thisType, err := b.ReadUint8()
-	val.Type = TypeNames[thisType]
 	if thisType == 7 {
 		_, err = b.ReadUint16BE()
 		if err != nil {
@@ -654,12 +541,12 @@ func (b *ExtendedReader) ReadNewTypeAndValue(isJoinData bool, context *Communica
 		}
 	}
 
-	val.Value, err = readSerializedValue(isJoinData, thisType, b, context)
+	val, err = readSerializedValue(isJoinData, thisType, b, context)
 	return val, err
 }
 
-func (b *ExtendedReader) ReadNewTuple(isJoinData bool, context *CommunicationContext) (Tuple, error) {
-	var tuple Tuple
+func (b *ExtendedReader) ReadNewTuple(isJoinData bool, context *CommunicationContext) (rbxfile.ValueTuple, error) {
+	var tuple rbxfile.ValueTuple
 	tupleLen, err := b.ReadUintUTF8()
 	if err != nil {
 		return tuple, err
@@ -667,7 +554,7 @@ func (b *ExtendedReader) ReadNewTuple(isJoinData bool, context *CommunicationCon
 	if tupleLen > 0x10000 {
 		return tuple, errors.New("sanity check: exceeded maximum tuple len")
 	}
-	tuple = make(Tuple, tupleLen)
+	tuple = make(rbxfile.ValueTuple, tupleLen)
 	for i := 0; i < int(tupleLen); i++ {
 		val, err := b.ReadNewTypeAndValue(isJoinData, context)
 		if err != nil {
@@ -679,13 +566,13 @@ func (b *ExtendedReader) ReadNewTuple(isJoinData bool, context *CommunicationCon
 	return tuple, nil
 }
 
-func (b *ExtendedReader) ReadNewArray(isJoinData bool, context *CommunicationContext) (Array, error) {
+func (b *ExtendedReader) ReadNewArray(isJoinData bool, context *CommunicationContext) (rbxfile.ValueArray, error) {
 	array, err := b.ReadNewTuple(isJoinData, context)
-	return Array(array), err
+	return rbxfile.ValueArray(array), err
 }
 
-func (b *ExtendedReader) ReadNewDictionary(isJoinData bool, context *CommunicationContext) (Dictionary, error) {
-	var dictionary Dictionary
+func (b *ExtendedReader) ReadNewDictionary(isJoinData bool, context *CommunicationContext) (rbxfile.ValueDictionary, error) {
+	var dictionary rbxfile.ValueDictionary
 	dictionaryLen, err := b.ReadUintUTF8()
 	if err != nil {
 		return dictionary, err
@@ -693,7 +580,7 @@ func (b *ExtendedReader) ReadNewDictionary(isJoinData bool, context *Communicati
 	if dictionaryLen > 0x10000 {
 		return dictionary, errors.New("sanity check: exceeded maximum dictionary len")
 	}
-	dictionary = make(Dictionary, dictionaryLen)
+	dictionary = make(rbxfile.ValueDictionary, dictionaryLen)
 	for i := 0; i < int(dictionaryLen); i++ {
 		keyLen, err := b.ReadUintUTF8()
 		if err != nil {
@@ -712,14 +599,14 @@ func (b *ExtendedReader) ReadNewDictionary(isJoinData bool, context *Communicati
 	return dictionary, nil
 }
 
-func (b *ExtendedReader) ReadNewMap(isJoinData bool, context *CommunicationContext) (Map, error) {
+func (b *ExtendedReader) ReadNewMap(isJoinData bool, context *CommunicationContext) (rbxfile.ValueMap, error) {
 	thisMap, err := b.ReadNewDictionary(isJoinData, context)
-	return Map(thisMap), err
+	return rbxfile.ValueMap(thisMap), err
 }
 
-func (b *ExtendedReader) ReadNumberSequenceKeypoint() (NumberSequenceKeypoint, error) {
+func (b *ExtendedReader) ReadNumberSequenceKeypoint() (rbxfile.ValueNumberSequenceKeypoint, error) {
 	var err error
-	thisKeypoint := NumberSequenceKeypoint{}
+	thisKeypoint := rbxfile.ValueNumberSequenceKeypoint{}
 	thisKeypoint.Time, err = b.ReadFloat32BE()
 	if err != nil {
 		return thisKeypoint, err
@@ -732,7 +619,7 @@ func (b *ExtendedReader) ReadNumberSequenceKeypoint() (NumberSequenceKeypoint, e
 	return thisKeypoint, err
 }
 
-func (b *ExtendedReader) ReadNumberSequence() (NumberSequence, error) {
+func (b *ExtendedReader) ReadNumberSequence() (rbxfile.ValueNumberSequence, error) {
 	var err error
 	numKeypoints, err := b.ReadUint32BE()
 	if err != nil {
@@ -741,7 +628,7 @@ func (b *ExtendedReader) ReadNumberSequence() (NumberSequence, error) {
 	if numKeypoints > 0x10000 {
 		return nil, errors.New("sanity check: exceeded maximum numberseq len")
 	}
-	thisSequence := make(NumberSequence, numKeypoints)
+	thisSequence := make(rbxfile.ValueNumberSequence, numKeypoints)
 
 	for i := 0; i < int(numKeypoints); i++ {
 		thisSequence[i], err = b.ReadNumberSequenceKeypoint()
@@ -753,8 +640,8 @@ func (b *ExtendedReader) ReadNumberSequence() (NumberSequence, error) {
 	return thisSequence, nil
 }
 
-func (b *ExtendedReader) ReadNumberRange() (NumberRange, error) {
-	thisRange := NumberRange{}
+func (b *ExtendedReader) ReadNumberRange() (rbxfile.ValueNumberRange, error) {
+	thisRange := rbxfile.ValueNumberRange{}
 	var err error
 	thisRange.Min, err = b.ReadFloat32BE()
 	if err != nil {
@@ -764,9 +651,9 @@ func (b *ExtendedReader) ReadNumberRange() (NumberRange, error) {
 	return thisRange, err
 }
 
-func (b *ExtendedReader) ReadColorSequenceKeypoint() (ColorSequenceKeypoint, error) {
+func (b *ExtendedReader) ReadColorSequenceKeypoint() (rbxfile.ValueColorSequenceKeypoint, error) {
 	var err error
-	thisKeypoint := ColorSequenceKeypoint{}
+	thisKeypoint := rbxfile.ValueColorSequenceKeypoint{}
 	thisKeypoint.Time, err = b.ReadFloat32BE()
 	if err != nil {
 		return thisKeypoint, err
@@ -779,7 +666,7 @@ func (b *ExtendedReader) ReadColorSequenceKeypoint() (ColorSequenceKeypoint, err
 	return thisKeypoint, err
 }
 
-func (b *ExtendedReader) ReadColorSequence() (ColorSequence, error) {
+func (b *ExtendedReader) ReadColorSequence() (rbxfile.ValueColorSequence, error) {
 	var err error
 	numKeypoints, err := b.ReadUint32BE()
 	if err != nil {
@@ -788,7 +675,7 @@ func (b *ExtendedReader) ReadColorSequence() (ColorSequence, error) {
 	if numKeypoints > 0x10000 {
 		return nil, errors.New("sanity check: exceeded maximum colorseq len")
 	}
-	thisSequence := make(ColorSequence, numKeypoints)
+	thisSequence := make(rbxfile.ValueColorSequence, numKeypoints)
 
 	for i := 0; i < int(numKeypoints); i++ {
 		thisSequence[i], err = b.ReadColorSequenceKeypoint()
@@ -800,31 +687,31 @@ func (b *ExtendedReader) ReadColorSequence() (ColorSequence, error) {
 	return thisSequence, nil
 }
 
-func (b *ExtendedReader) ReadRect2D() (Rect2D, error) {
+func (b *ExtendedReader) ReadRect2D() (rbxfile.ValueRect2D, error) {
 	var err error
-	thisRect := Rect2D{}
+	thisRect := rbxfile.ValueRect2D{rbxfile.ValueVector2{}, rbxfile.ValueVector2{}}
 
-	thisRect.MinX, err = b.ReadFloat32BE()
+	thisRect.Min.X, err = b.ReadFloat32BE()
 	if err != nil {
 		return thisRect, err
 	}
-	thisRect.MinY, err = b.ReadFloat32BE()
+	thisRect.Min.Y, err = b.ReadFloat32BE()
 	if err != nil {
 		return thisRect, err
 	}
-	thisRect.MaxX, err = b.ReadFloat32BE()
+	thisRect.Max.X, err = b.ReadFloat32BE()
 	if err != nil {
 		return thisRect, err
 	}
-	thisRect.MaxY, err = b.ReadFloat32BE()
+	thisRect.Max.Y, err = b.ReadFloat32BE()
 	return thisRect, err
 }
 
-func (b *ExtendedReader) ReadPhysicalProperties() (PhysicalProperties, error) {
+func (b *ExtendedReader) ReadPhysicalProperties() (rbxfile.ValuePhysicalProperties, error) {
 	var err error
-	props := PhysicalProperties{}
-	hasProperties, err := b.ReadBool()
-	if hasProperties {
+	props := rbxfile.ValuePhysicalProperties{}
+	props.CustomPhysics, err = b.ReadBool()
+	if props.CustomPhysics {
 		if err != nil {
 			return props, err
 		}

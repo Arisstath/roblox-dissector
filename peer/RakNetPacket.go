@@ -1,5 +1,6 @@
 package peer
 import "github.com/google/gopacket"
+import "github.com/google/gopacket/layers"
 import "bytes"
 import "net"
 import "github.com/gskartwii/go-bitstream"
@@ -15,14 +16,22 @@ func BufferToStream(buffer []byte) *ExtendedReader {
 }
 
 func UDPPacketFromGoPacket(packet gopacket.Packet) *UDPPacket {
-	ret := &RakNetPacket{}
+	if packet.Layer(layers.LayerTypeIPv4) == nil {
+		return nil
+	}
+
+	ret := &UDPPacket{}
 	ret.Stream = BufferToStream(packet.ApplicationLayer().Payload())
 	ret.Source = net.UDPAddr{
 		packet.Layer(layers.LayerTypeIPv4).(*layers.IPv4).SrcIP,
-		packet.Layer(layers.LayerTypeUDP).(*layers.UDP).SrcPort,
+		int(packet.Layer(layers.LayerTypeUDP).(*layers.UDP).SrcPort),
+		"udp",
 	}
 	ret.Destination = net.UDPAddr{
 		packet.Layer(layers.LayerTypeIPv4).(*layers.IPv4).DstIP,
-		packet.Layer(layers.LayerTypeUDP).(*layers.UDP).DstPort,
+		int(packet.Layer(layers.LayerTypeUDP).(*layers.UDP).DstPort),
+		"udp",
 	}
+
+	return ret
 }

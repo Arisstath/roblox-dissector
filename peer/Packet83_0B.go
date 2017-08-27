@@ -1,12 +1,13 @@
 package peer
 import "errors"
+import "github.com/gskartwii/rbxfile"
 
 type Packet83_0B struct {
-	Instances []*ReplicationInstance
+	Instances []*rbxfile.Instance
 }
 
 func NewPacket83_0BLayer(length int) *Packet83_0B {
-	return &Packet83_0B{make([]*ReplicationInstance, length)}
+	return &Packet83_0B{make([]*rbxfile.Instance, length)}
 }
 
 func DecodePacket83_0B(packet *UDPPacket, context *CommunicationContext, instanceSchema []*InstanceSchemaItem) (interface{}, error) {
@@ -17,7 +18,7 @@ func DecodePacket83_0B(packet *UDPPacket, context *CommunicationContext, instanc
 	if err != nil {
 		return layer, err
 	}
-	if arrayLen > 0x10000 {
+	if arrayLen > 0x100000 {
 		return layer, errors.New("sanity check: array len too long")
 	}
 

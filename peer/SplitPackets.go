@@ -79,7 +79,7 @@ func (context *CommunicationContext) AddSplitPacket(source string, packet *Relia
 }
 
 func (context *CommunicationContext) HandleSplitPacket(reliablePacket *ReliablePacket, rakNetPacket *RakNetLayer, packet *UDPPacket) (*ReliablePacket, error) {
-	source := SourceInterfaceFromPacket(packet)
+	source := packet.Source.String()
 
 	fullPacket := context.AddSplitPacket(source, reliablePacket, rakNetPacket)
 	packetBuffer := fullPacket.Buffer

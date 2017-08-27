@@ -10,6 +10,7 @@ func NewPacket00Layer() Packet00Layer {
 
 func DecodePacket00Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
 	layer := NewPacket00Layer()
+	thisBitstream := packet.Stream
 
 	var err error
 	layer.SendPingTime, err = thisBitstream.ReadUint64BE()
@@ -28,6 +29,7 @@ func NewPacket03Layer() Packet03Layer {
 
 func DecodePacket03Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
 	layer := NewPacket03Layer()
+	thisBitstream := packet.Stream
 
 	var err error
 	layer.SendPingTime, err = thisBitstream.ReadUint64BE()

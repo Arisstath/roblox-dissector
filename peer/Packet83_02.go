@@ -1,7 +1,8 @@
 package peer
+import "github.com/gskartwii/rbxfile"
 
 type Packet83_02 struct {
-	child *ReplicationInstance
+	Child *rbxfile.Instance
 }
 
 func DecodePacket83_02(packet *UDPPacket, context *CommunicationContext, instanceSchema []*InstanceSchemaItem) (interface{}, error) {

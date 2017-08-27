@@ -46,6 +46,7 @@ func NewReliablePacket() *ReliablePacket {
 
 func DecodeReliabilityLayer(packet *UDPPacket, context *CommunicationContext, rakNetPacket *RakNetLayer) (*ReliabilityLayer, error) {
 	layer := NewReliabilityLayer()
+	thisBitstream := packet.Stream
 
 	var reliability uint64
 	var err error

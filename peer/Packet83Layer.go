@@ -81,9 +81,7 @@ func DecodePacket83Layer(packet *UDPPacket, context *CommunicationContext) (inte
 		return layer, err
 	}
 	context.WaitForSchema()
-	context.WaitForDescriptors()
 	defer context.FinishSchema()
-	defer context.FinishDescriptors()
 	instanceSchema := context.InstanceSchema
 
 	var inner interface{}

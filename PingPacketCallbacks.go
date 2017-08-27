@@ -1,8 +1,8 @@
 package main
-import "github.com/google/gopacket"
+import "./peer"
 
-func ShowPacket00(packetType byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
-	MainLayer := layers.Main.(Packet00Layer)
+func ShowPacket00(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
+	MainLayer := layers.Main.(peer.Packet00Layer)
 
 	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
 
@@ -10,8 +10,8 @@ func ShowPacket00(packetType byte, packet gopacket.Packet, context *Communicatio
 	layerLayout.AddWidget(sendPingTimeLabel, 0, 0)
 }
 
-func ShowPacket03(packetType byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
-	MainLayer := layers.Main.(Packet03Layer)
+func ShowPacket03(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
+	MainLayer := layers.Main.(peer.Packet03Layer)
 
 	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
 

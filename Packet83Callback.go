@@ -1,12 +1,12 @@
 package main
-import "github.com/google/gopacket"
 import "strconv"
 import "github.com/therecipe/qt/widgets"
 import "github.com/therecipe/qt/core"
 import "github.com/therecipe/qt/gui"
-import "github.com/gskartwii/roblox-dissector/peer"
+import "./peer"
+import "github.com/gskartwii/rbxfile"
 
-var SubpacketCallbacks = map[uint8](func() widgets.QWidget_ITF){
+var SubpacketCallbacks = map[uint8](func(peer.Packet83Subpacket) widgets.QWidget_ITF){
 	0xB: show83_0B,
 	0x1: show83_01,
 	0x2: show83_02,
@@ -18,51 +18,62 @@ var SubpacketCallbacks = map[uint8](func() widgets.QWidget_ITF){
 	0x10: show83_10,
 	0x11: show83_11,
 }
-var Callbacks83_09 = map[uint8](func() widgets.QWidget_ITF){
+var Callbacks83_09 = map[uint8](func(peer.Packet83_09Subpacket) widgets.QWidget_ITF){
 	0x1: show83_09_01,
 	0x5: show83_09_05,
 	0x7: show83_09_07,
-	0x9: show83_09_09,
+	0x9: show83_09_default,
 }
 
-func showReplicationInstance(this *peer.ReplicationInstance) []*gui.QStandardItem {
-	rootNameItem := NewQStandardItemF(this.findName())
+func showReplicationInstance(this *rbxfile.Instance) []*gui.QStandardItem {
+    rootNameItem := NewQStandardItemF("Name: %s", this.Name())
 	typeItem := NewQStandardItemF(this.ClassName)
-	referentItem := NewQStandardItemF(this.Object1.Show())
-	unknownBoolItem := NewQStandardItemF("%v", this.Bool1)
-	parentItem := NewQStandardItemF(this.Object2.Show())
+	referentItem := NewQStandardItemF(this.Reference)
+    var parentItem *gui.QStandardItem
+    if this.Parent() != nil {
+        parentItem = NewQStandardItemF(this.Parent().Reference)
+    } else {
+        parentItem = NewQStandardItemF("DataModel/NULL")
+    }
 
-	for _, property := range this.Properties {
-		nameItem := NewQStandardItemF(property.Name)
-		typeItem := NewQStandardItemF(property.Type)
-		valueItem := NewQStandardItemF(property.Show())
+	if len(this.Properties) > 0 {
+		propertyRootItem := NewQStandardItemF("%d properties", len(this.Properties))
+		for name, property := range this.Properties {
+			nameItem := NewQStandardItemF(name)
+			typeItem := NewQStandardItemF(property.Type().String())
+			var valueItem *gui.QStandardItem
+			if property.Type() == rbxfile.TypeProtectedString {
+				valueItem = NewQStandardItemF("... (len %d)", len(property.String()))
+			} else {
+				valueItem = NewQStandardItemF(property.String())
+			}
 
-		rootNameItem.AppendRow([]*gui.QStandardItem{
-			nameItem,
-			typeItem,
-			valueItem,
-			nil,
-			nil,
-			nil,
-		})
+			propertyRootItem.AppendRow([]*gui.QStandardItem{
+				nameItem,
+				typeItem,
+				valueItem,
+				nil,
+				nil,
+				nil,
+			})
+		}
+		rootNameItem.AppendRow([]*gui.QStandardItem{propertyRootItem,nil,nil,nil,nil,nil})
 	}
-
 	return []*gui.QStandardItem{
 		rootNameItem,
 		typeItem,
 		nil,
 		referentItem,
-		unknownBoolItem,
 		parentItem,
 	}
 }
 
-
 type Packet83Subpacket peer.Packet83Subpacket
-func show83_0B() widgets.QWidget_ITF {
+func show83_0B(t peer.Packet83Subpacket) widgets.QWidget_ITF {
+	this := t.(peer.Packet83_0B)
 	instanceList := widgets.NewQTreeView(nil)
 	standardModel := NewProperSortModel(nil)
-	standardModel.SetHorizontalHeaderLabels([]string{"Name", "Type", "Value", "Referent", "Unknown bool", "Parent"})
+	standardModel.SetHorizontalHeaderLabels([]string{"Name", "Type", "Value", "Referent", "Parent"})
 
 	rootNode := standardModel.InvisibleRootItem()
 	for _, instance := range(this.Instances) {
@@ -74,13 +85,15 @@ func show83_0B() widgets.QWidget_ITF {
 
 	return instanceList
 }
-func show83_01() widgets.QWidget_ITF {
-	return NewQLabelF("Init referent: %s", this.Object1.Show())
+func show83_01(t peer.Packet83Subpacket) widgets.QWidget_ITF {
+	this := t.(peer.Packet83_01)
+	return NewQLabelF("Init referent: %s", this.Instance.Reference)
 }
-func show83_02() widgets.QWidget_ITF {
+func show83_02(t peer.Packet83Subpacket) widgets.QWidget_ITF {
+	this := t.(peer.Packet83_02)
 	instanceList := widgets.NewQTreeView(nil)
 	standardModel := NewProperSortModel(nil)
-	standardModel.SetHorizontalHeaderLabels([]string{"Name", "Type", "Value", "Referent", "Unknown bool", "Parent"})
+	standardModel.SetHorizontalHeaderLabels([]string{"Name", "Type", "Value", "Referent", "Parent"})
 
 	rootNode := standardModel.InvisibleRootItem()
 	rootNode.AppendRow(showReplicationInstance(this.Child))
@@ -90,22 +103,33 @@ func show83_02() widgets.QWidget_ITF {
 
 	return instanceList
 }
-func show83_03() widgets.QWidget_ITF {
+func show83_03(t peer.Packet83Subpacket) widgets.QWidget_ITF {
+	this := t.(peer.Packet83_03)
 	widget := widgets.NewQWidget(nil, 0)
 	layout := widgets.NewQVBoxLayout()
-	layout.AddWidget(NewQLabelF("Referent: %s", this.Object1.Show()), 0, 0)
+    if this.Instance != nil {
+        layout.AddWidget(NewQLabelF("Object: %s", this.Instance.Reference), 0, 0)
+    } else {
+        layout.AddWidget(NewQLabelF("Object: nil"), 0, 0)
+    }
 	layout.AddWidget(NewQLabelF("Unknown bool: %v", this.Bool1), 0, 0)
 	layout.AddWidget(NewQLabelF("Property name: %s", this.PropertyName), 0, 0)
-	layout.AddWidget(NewQLabelF("Property type: %s", this.Value.Type), 0, 0)
-	layout.AddWidget(NewQLabelF("Property value: %s", this.Value.Show()), 0, 0)
+	layout.AddWidget(NewQLabelF("Property type: %s", this.Value.Type().String()), 0, 0)
+	if this.Value.Type() == rbxfile.TypeProtectedString {
+		layout.AddWidget(NewQLabelF("Property value: ... (len %d)", len(this.Value.String())), 0, 0)
+	} else {
+		layout.AddWidget(NewQLabelF("Property value: %s", this.Value.String()), 0, 0)
+	}
 	widget.SetLayout(layout)
 
 	return widget
 }
-func show83_04() widgets.QWidget_ITF {
+func show83_04(t peer.Packet83Subpacket) widgets.QWidget_ITF {
+	this := t.(peer.Packet83_04)
 	return NewQLabelF("Marker: %d", this.MarkerId)
 }
-func show83_05() widgets.QWidget_ITF {
+func show83_05(t peer.Packet83Subpacket) widgets.QWidget_ITF {
+	this := t.(peer.Packet83_05)
 	widget := widgets.NewQWidget(nil, 0)
 	layout := widgets.NewQVBoxLayout()
 	layout.AddWidget(NewQLabelF("Unknown bool: %v", this.Bool1), 0, 0)
@@ -116,12 +140,12 @@ func show83_05() widgets.QWidget_ITF {
 
 	return widget
 }
-func packet83_07() widgets.QWidget_ITF {
+func show83_07(t peer.Packet83Subpacket) widgets.QWidget_ITF {
+	this := t.(peer.Packet83_07)
 	widget := widgets.NewQWidget(nil, 0)
 	layout := widgets.NewQVBoxLayout()
-	layout.AddWidget(NewQLabelF("Referent: %s", this.Object1.Show()), 0, 0)
+	layout.AddWidget(NewQLabelF("Object: %s", this.Instance.Reference), 0, 0)
 	layout.AddWidget(NewQLabelF("Event name: %s", this.EventName), 0, 0)
-	layout.AddWidget(NewQLabelF("Unknown int: %d", this.Event.UnknownInt), 0, 0)
 	layout.AddWidget(NewQLabelF("Arguments:"), 0, 0)
 
 	argumentList := widgets.NewQTreeView(nil)
@@ -131,8 +155,8 @@ func packet83_07() widgets.QWidget_ITF {
 
 	for _, argument := range this.Event.Arguments {
 		rootNode.AppendRow([]*gui.QStandardItem{
-			NewQStandardItemF(argument.Type),
-			NewQStandardItemF("%s", argument.Value.Show()),
+			NewQStandardItemF(argument.Type().String()),
+			NewQStandardItemF("%s", argument.String()),
 		})
 	}
 
@@ -141,11 +165,12 @@ func packet83_07() widgets.QWidget_ITF {
 	argumentList.SetSortingEnabled(true)
 	layout.AddWidget(argumentList, 0, 0)
 	widget.SetLayout(layout)
-	
+
 	return widget
 }
 
-func show83_09_01() widgets.QWidget_ITF {
+func show83_09_01(t peer.Packet83_09Subpacket) widgets.QWidget_ITF {
+	this := t.(peer.Packet83_09_01)
 	widget := widgets.NewQWidget(nil, 0)
 	layout := widgets.NewQVBoxLayout()
 	layout.AddWidget(NewQLabelF("Int 1: %d", this.Int1), 0, 0)
@@ -157,13 +182,15 @@ func show83_09_01() widgets.QWidget_ITF {
 
 	return widget
 }
-func show83_09_05() widgets.QWidget_ITF {
+func show83_09_05(t peer.Packet83_09Subpacket) widgets.QWidget_ITF {
+	this := t.(peer.Packet83_09_05)
 	return NewQLabelF("Int: %d", this.Int)
 }
-func show83_09_07() widgets.QWidget_ITF {
+func show83_09_07(t peer.Packet83_09Subpacket) widgets.QWidget_ITF {
 	return NewQLabelF("(no values)")
 }
-func show83_09_09() widgets.QWidget_ITF {
+func show83_09_default(t peer.Packet83_09Subpacket) widgets.QWidget_ITF {
+	this := t.(peer.Packet83_09_default)
 	widget := widgets.NewQWidget(nil, 0)
 	layout := widgets.NewQVBoxLayout()
 	layout.AddWidget(NewQLabelF("Int 1: %d", this.Int1), 0, 0)
@@ -172,19 +199,28 @@ func show83_09_09() widgets.QWidget_ITF {
 
 	return widget
 }
-func show83_09() widgets.QWidget_ITF {
+func show83_09(t peer.Packet83Subpacket) widgets.QWidget_ITF {
+	this := t.(peer.Packet83_09)
 	widget := widgets.NewQWidget(nil, 0)
 	layout := widgets.NewQVBoxLayout()
 	layout.AddWidget(NewQLabelF("Type: %d", this.Type), 0, 0)
-	layout.AddWidget(Callbacks83_09[this.Type](), 0, 0)
+
+	callback, ok := Callbacks83_09[this.Type]
+	if !ok {
+		callback = Callbacks83_09[9]
+	}
+
+	layout.AddWidget(callback(this), 0, 0)
 	widget.SetLayout(layout)
 
 	return widget
 }
-func show83_10() widgets.QWidget_ITF {
+func show83_10(t peer.Packet83Subpacket) widgets.QWidget_ITF {
+	this := t.(peer.Packet83_10)
 	return NewQLabelF("Replication tag: %d", this.TagId)
 }
-func show83_11() widgets.QWidget_ITF {
+func show83_11(t peer.Packet83Subpacket) widgets.QWidget_ITF {
+	this := t.(peer.Packet83_11)
 	widget := widgets.NewQWidget(nil, 0)
 	layout := widgets.NewQVBoxLayout()
 	layout.AddWidget(NewQLabelF("Skip stat set 1: %v", this.SkipStats1), 0, 0)
@@ -212,13 +248,13 @@ func show83_11() widgets.QWidget_ITF {
 	return widget
 }
 
-func (this Packet83Subpacket) Show() widgets.QWidget_ITF {
-	return SubpacketCallbacks[this.Type()](this)
+func showPacket83Subpacket(this Packet83Subpacket) widgets.QWidget_ITF {
+	return SubpacketCallbacks[peer.Packet83ToType(this)](this)
 }
 
 
-func ShowPacket83(packetType byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
-	MainLayer := layers.Main.(Packet83Layer)
+func ShowPacket83(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
+	MainLayer := layers.Main.(peer.Packet83Layer)
 
 	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
 
@@ -232,7 +268,7 @@ func ShowPacket83(packetType byte, packet gopacket.Packet, context *Communicatio
 	for index, subpacket := range(MainLayer.SubPackets) {
 		rootItem.AppendRow([]*gui.QStandardItem{
 			NewQStandardItemF("%d", index),
-			NewQStandardItemF(subpacket.TypeString()),
+			NewQStandardItemF(peer.Packet83ToTypeString(subpacket)),
 		})
 	}
 	packetList.SetSelectionMode(1)
@@ -245,8 +281,8 @@ func ShowPacket83(packetType byte, packet gopacket.Packet, context *Communicatio
 		subWindow := widgets.NewQWidget(packetList, core.Qt__Window)
 		subWindowLayout := widgets.NewQVBoxLayout2(subWindow)
 
-		isClient := context.PacketFromClient(packet)
-		isServer := context.PacketFromServer(packet)
+		isClient := context.IsClient(packet.Source)
+		isServer := context.IsServer(packet.Source)
 
 		var direction string
 		if isClient {
@@ -258,8 +294,11 @@ func ShowPacket83(packetType byte, packet gopacket.Packet, context *Communicatio
 		}
 		directionLabel := widgets.NewQLabel2(direction, nil, 0)
 		subWindowLayout.AddWidget(directionLabel, 0, 0)
-		subWindowLayout.AddWidget(subpacket.Show(), 0, 0)
-		subWindow.SetWindowTitle("Replication Packet Window: " + subpacket.TypeString())
+
+		showCallback := SubpacketCallbacks[peer.Packet83ToType(subpacket)]
+
+		subWindowLayout.AddWidget(showCallback(subpacket), 0, 0)
+		subWindow.SetWindowTitle("Replication Packet Window: " + peer.Packet83ToTypeString(subpacket))
 		subWindow.Show()
 	})
 	layerLayout.AddWidget(packetList, 0, 0)

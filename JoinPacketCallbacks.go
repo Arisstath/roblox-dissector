@@ -1,10 +1,10 @@
 package main
-import "github.com/google/gopacket"
 import "github.com/therecipe/qt/widgets"
 import "github.com/therecipe/qt/gui"
+import "./peer"
 
-func ShowPacket05(packetType byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
-	MainLayer := layers.Main.(Packet05Layer)
+func ShowPacket05(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
+	MainLayer := layers.Main.(peer.Packet05Layer)
 
 	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
 
@@ -12,8 +12,8 @@ func ShowPacket05(packetType byte, packet gopacket.Packet, context *Communicatio
 	layerLayout.AddWidget(versionLabel, 0, 0)
 }
 
-func ShowPacket06(packetType byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
-	MainLayer := layers.Main.(Packet06Layer)
+func ShowPacket06(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
+	MainLayer := layers.Main.(peer.Packet06Layer)
 
 	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
 
@@ -27,8 +27,8 @@ func ShowPacket06(packetType byte, packet gopacket.Packet, context *Communicatio
 	layerLayout.AddWidget(mtuLabel, 0, 0)
 }
 
-func ShowPacket07(packetType byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
-	MainLayer := layers.Main.(Packet07Layer)
+func ShowPacket07(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
+	MainLayer := layers.Main.(peer.Packet07Layer)
 
 	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
 
@@ -42,8 +42,8 @@ func ShowPacket07(packetType byte, packet gopacket.Packet, context *Communicatio
 	layerLayout.AddWidget(guidLabel, 0, 0)
 }
 
-func ShowPacket08(packetType byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
-	MainLayer := layers.Main.(Packet08Layer)
+func ShowPacket08(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
+	MainLayer := layers.Main.(peer.Packet08Layer)
 
 	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
 
@@ -60,8 +60,8 @@ func ShowPacket08(packetType byte, packet gopacket.Packet, context *Communicatio
 	layerLayout.AddWidget(useSecurityLabel, 0, 0)
 }
 
-func ShowPacket09(packetType byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
-	MainLayer := layers.Main.(Packet09Layer)
+func ShowPacket09(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
+	MainLayer := layers.Main.(peer.Packet09Layer)
 
 	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
 
@@ -78,8 +78,8 @@ func ShowPacket09(packetType byte, packet gopacket.Packet, context *Communicatio
 	layerLayout.AddWidget(passwordLabel, 0, 0)
 }
 
-func ShowPacket10(packetType byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
-	MainLayer := layers.Main.(Packet10Layer)
+func ShowPacket10(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
+	MainLayer := layers.Main.(peer.Packet10Layer)
 
 	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
 
@@ -112,8 +112,8 @@ func ShowPacket10(packetType byte, packet gopacket.Packet, context *Communicatio
 	layerLayout.AddWidget(sendPongTimeLabel, 0, 0)
 }
 
-func ShowPacket13(packetType byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
-	MainLayer := layers.Main.(Packet13Layer)
+func ShowPacket13(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
+	MainLayer := layers.Main.(peer.Packet13Layer)
 
 	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
 

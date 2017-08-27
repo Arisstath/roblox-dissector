@@ -2,6 +2,14 @@ package peer
 import "sync"
 import "bytes"
 import "net"
+import "github.com/gskartwii/rbxfile"
+
+const DEBUG bool = false
+type PacketLayers struct {
+	RakNet *RakNetLayer
+	Reliability *ReliablePacket
+	Main interface{}
+}
 
 type ACKRange struct {
 	Min uint32
@@ -44,7 +52,9 @@ type CommunicationContext struct {
 	ReplicatorSystemAddressCache Cache
 	ReplicatorProtectedStringCache Cache
 	ReplicatorRebindObjectCache Cache
-	Rebindables map[string]struct{}
+
+	DataModel *rbxfile.Root
+    InstancesByReferent InstanceList
 
 	MDescriptor *sync.Mutex
 	MSchema *sync.Mutex
@@ -73,7 +83,6 @@ func NewCommunicationContext() *CommunicationContext {
 		PropertyDescriptor: make(map[uint32]string),
 		EventDescriptor: make(map[uint32]string),
 		TypeDescriptor: make(map[uint32]string),
-		Rebindables: make(map[string]struct{}),
 
 		MDescriptor: MDescriptor,
 		MSchema: MSchema,
@@ -84,6 +93,11 @@ func NewCommunicationContext() *CommunicationContext {
 
 		UniqueDatagramsClient: make(map[uint32]struct{}),
 		UniqueDatagramsServer: make(map[uint32]struct{}),
+        InstancesByReferent: InstanceList{
+            CommonMutex: MSchema,
+            EAddReferent: sync.NewCond(MSchema),
+            Instances: make(map[string]*rbxfile.Instance),
+        },
 	}
 }
 
@@ -133,8 +147,9 @@ func NewRakNetLayer() *RakNetLayer {
 
 var OfflineMessageID = [...]byte{0x00,0xFF,0xFF,0x00,0xFE,0xFE,0xFE,0xFE,0xFD,0xFD,0xFD,0xFD,0x12,0x34,0x56,0x78}
 
-func DecodeRakNetLayer(packetType byte, bitstream *ExtendedReader, context *CommunicationContext) (*RakNetLayer, error) {
+func DecodeRakNetLayer(packetType byte, packet *UDPPacket, context *CommunicationContext) (*RakNetLayer, error) {
 	layer := NewRakNetLayer()
+	bitstream := packet.Stream
 
 	var err error
 	if packetType == 0x5 {
@@ -152,13 +167,13 @@ func DecodeRakNetLayer(packetType byte, bitstream *ExtendedReader, context *Comm
 			return layer, nil
 		}
 
-		client := SourceInterfaceFromPacket(packet)
-		server := DestInterfaceFromPacket(packet)
+		client := packet.Source
+		server := packet.Destination
 		println("Automatically detected Roblox peers using 0x5 packet:")
-		println("Client:", client)
-		println("Server:", server)
-		context.SetClient(client)
-		context.SetServer(server)
+		println("Client:", client.String())
+		println("Server:", server.String())
+		context.SetClient(client.String())
+		context.SetServer(server.String())
 		layer.SimpleLayerID = packetType
 		layer.Payload = bitstream
 		layer.IsSimple = true
@@ -213,10 +228,10 @@ func DecodeRakNetLayer(packetType byte, bitstream *ExtendedReader, context *Comm
 		bitstream.Align()
 
 		layer.DatagramNumber, _ = bitstream.ReadUint24LE()
-		if context.PacketFromClient(packet) {
+		if context.IsClient(packet.Source) {
 			_, layer.IsDuplicate = context.UniqueDatagramsClient[layer.DatagramNumber]
 			context.UniqueDatagramsClient[layer.DatagramNumber] = struct{}{}
-		} else if context.PacketFromServer(packet) {
+		} else if context.IsServer(packet.Source) {
 			_, layer.IsDuplicate = context.UniqueDatagramsServer[layer.DatagramNumber]
 			context.UniqueDatagramsServer[layer.DatagramNumber] = struct{}{}
 		}

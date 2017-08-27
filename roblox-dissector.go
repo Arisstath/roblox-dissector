@@ -4,15 +4,10 @@ import "github.com/google/gopacket/pcap"
 import "github.com/google/gopacket/layers"
 import "github.com/fatih/color"
 import "fmt"
-import "github.com/gskartwii/go-bitstream"
-import "bytes"
+import "./peer"
 import "time"
 
-type PacketLayers struct {
-	RakNet *RakNetLayer
-	Reliability *ReliablePacket
-	Main interface{}
-}
+const DEBUG bool = false
 
 var PacketNames map[byte]string = map[byte]string{
 	0xFF: "???",
@@ -47,32 +42,8 @@ var PacketNames map[byte]string = map[byte]string{
 	0x95: "ID_ROBLOX_SECURITY_KEY_REJECTED",
 	0x97: "ID_ROBLOX_NEW_SCHEMA",
 }
-type DecoderFunc func(*ExtendedReader, *CommunicationContext, gopacket.Packet) (interface{}, error)
 
-var PacketDecoders map[byte]DecoderFunc = map[byte]DecoderFunc{
-	0x05: DecodePacket05Layer,
-	0x06: DecodePacket06Layer,
-	0x07: DecodePacket07Layer,
-	0x08: DecodePacket08Layer,
-	0x00: DecodePacket00Layer,
-	0x03: DecodePacket03Layer,
-	0x09: DecodePacket09Layer,
-	0x10: DecodePacket10Layer,
-	0x13: DecodePacket13Layer,
-
-	//0x8A: DecodePacket8ALayer,
-	0x82: DecodePacket82Layer,
-	0x93: DecodePacket93Layer,
-	0x91: DecodePacket91Layer,
-	0x92: DecodePacket92Layer,
-	0x90: DecodePacket90Layer,
-	0x8F: DecodePacket8FLayer,
-	0x81: DecodePacket81Layer,
-	0x83: DecodePacket83Layer,
-	0x97: DecodePacket97Layer,
-}
-
-type ActivationCallback func(byte, gopacket.Packet, *CommunicationContext, *PacketLayers)
+type ActivationCallback func(byte, *peer.UDPPacket, *peer.CommunicationContext, *peer.PacketLayers)
 var ActivationCallbacks map[byte]ActivationCallback = map[byte]ActivationCallback{
 	0x05: ShowPacket05,
 	0x06: ShowPacket06,
@@ -96,80 +67,7 @@ var ActivationCallbacks map[byte]ActivationCallback = map[byte]ActivationCallbac
     0x97: ShowPacket97,
 }
 
-func HandleSimple(layer *RakNetLayer, packet gopacket.Packet, context *CommunicationContext, packetViewer *MyPacketListView) {
-	layers := &PacketLayers{}
-	layers.RakNet = layer
-
-	var err error
-	packetType := layer.SimpleLayerID
-	if err != nil {
-		color.Red("Failed to decode simple packet: %s", err.Error())
-		return
-	}
-	decoder := PacketDecoders[packetType]
-	if decoder != nil {
-		layers.Main, err = decoder(layer.Payload, context, packet)
-		if err != nil {
-			color.Red("Failed to decode simple packet %02X: %s", packetType, err.Error())
-			return
-		}
-	}
-	if context.IsValid {
-		packetViewer.AddFullPacket(packetType, packet, context, layers, ActivationCallbacks[packetType])
-	}
-}
-
-func HandleACK(layer *RakNetLayer, packet gopacket.Packet, context *CommunicationContext, packetViewer *MyPacketListView) {
-	for _, ACK := range layer.ACKs {
-		if context.IsValid {
-			packetViewer.AddACK(ACK, packet, context, layer, func() {})
-		}
-	}
-}
-
-func HandleGeneric(layer *RakNetLayer, packet gopacket.Packet, context *CommunicationContext, packetViewer *MyPacketListView) {
-	reliabilityLayer, err := DecodeReliabilityLayer(layer.Payload, context, packet, layer)
-	if err != nil {
-		color.Red("Failed to decode reliable packet: %s", err.Error())
-		return
-	}
-
-	for _, subPacket := range reliabilityLayer.Packets {
-		layers := &PacketLayers{}
-		layers.RakNet = layer
-		layers.Reliability = subPacket
-		if context.IsValid {
-			packetViewer.AddSplitPacket(subPacket.PacketType, packet, context, layers)
-		}
-
-		if subPacket.HasPacketType && !subPacket.HasBeenDecoded {
-			subPacket.HasBeenDecoded = true
-			go func(subPacket *ReliablePacket) {
-				packetType := subPacket.PacketType
-				_, err = subPacket.FullDataReader.ReadByte() // Void first byte, since we can get it the other way
-				if err != nil {
-					color.Red("Failed to decode reliablePacket %02X: %s", packetType, err.Error())
-					return
-				}
-
-				decoder := PacketDecoders[packetType]
-				if decoder != nil {
-					layers.Main, err = decoder(subPacket.FullDataReader, context, packet)
-					if err != nil {
-						color.Red("Failed to decode reliable packet %02X: %s", packetType, err.Error())
-						return
-					}
-				}
-
-				if context.IsValid {
-					packetViewer.BindCallback(packetType, packet, context, layers, ActivationCallbacks[packetType])
-				}
-			}(subPacket)
-		}
-	}
-}
-
-func captureJob(handle *pcap.Handle, useIPv4 bool, stopCaptureJob chan struct{}, packetViewer *MyPacketListView, context *CommunicationContext) {
+func captureJob(handle *pcap.Handle, useIPv4 bool, stopCaptureJob chan struct{}, packetViewer *MyPacketListView, context *peer.CommunicationContext) {
 	handle.SetBPFFilter("udp")
 	var packetSource *gopacket.PacketSource
 	if useIPv4 {
@@ -184,6 +82,28 @@ func captureJob(handle *pcap.Handle, useIPv4 bool, stopCaptureJob chan struct{},
 			packetChannel <- packet
 		}
 	}()
+
+	packetReader := &peer.PacketReader{
+		SimpleHandler: func(packetType byte, packet *peer.UDPPacket, layers *peer.PacketLayers) {
+			if context.IsValid {
+				packetViewer.AddFullPacket(packetType, packet, context, layers, ActivationCallbacks[packetType])
+			}
+		},
+		ReliableHandler: func(packetType byte, packet *peer.UDPPacket, layers *peer.PacketLayers) {
+			if context.IsValid {
+				packetViewer.AddSplitPacket(packetType, packet, context, layers)
+			}
+		},
+		FullReliableHandler: func(packetType byte, packet *peer.UDPPacket, layers *peer.PacketLayers) {
+			if context.IsValid {
+				packetViewer.BindCallback(packetType, packet, context, layers, ActivationCallbacks[packetType])
+			}
+		},
+		ErrorHandler: func(err error) {
+			println(err.Error())
+		},
+		Context: context,
+	}
 
 	for true {
 		select {
@@ -200,40 +120,16 @@ func captureJob(handle *pcap.Handle, useIPv4 bool, stopCaptureJob chan struct{},
 				continue
 			}
 
-			if context.Client == "" && payload[0] != 5 {
-				continue // drop packet because we weren't expecting it
-			}
-
-			if context.Client != "" && !context.PacketFromClient(packet) && !context.PacketFromServer(packet) {
-				continue // drop packet because it doesn't belong to this conversation
-			}
-
-			thisBitstream := &ExtendedReader{bitstream.NewReader(bytes.NewReader(payload))}
-
-			rakNetLayer, err := DecodeRakNetLayer(payload[0], thisBitstream, context, packet)
-			if err != nil {
-				color.Red("Failed to decode RakNet layer: %s", err.Error())
-				continue
-			}
-			if rakNetLayer.IsDuplicate {
-				continue // drop packet because it's duplicate (due to bouncing back from router)
-			}
-
-			if rakNetLayer.IsSimple {
-				HandleSimple(rakNetLayer, packet, context, packetViewer)
-			} else if !rakNetLayer.IsValid {
-				color.New(color.FgRed).Printf("Sent invalid packet (packet header %x)\n", payload[0])
-			} else if rakNetLayer.IsACK {
-				//HandleACK(rakNetLayer, packet, context, packetViewer) // Ignore ACKs, they add clutter to the packet list
-			} else if !rakNetLayer.IsNAK {
-				HandleGeneric(rakNetLayer, packet, context, packetViewer)
+			newPacket := peer.UDPPacketFromGoPacket(packet)
+			if newPacket != nil {
+				packetReader.ReadPacket(payload, newPacket)
 			}
 		}
 	}
 	return
 }
 
-func captureFromFile(filename string, useIPv4 bool, stopCaptureJob chan struct{}, packetViewer *MyPacketListView, context *CommunicationContext) {
+func captureFromFile(filename string, useIPv4 bool, stopCaptureJob chan struct{}, packetViewer *MyPacketListView, context *peer.CommunicationContext) {
 	fmt.Printf("Will capture from file %s\n", filename)
 	handle, err := pcap.OpenOffline(filename)
 	if err != nil {
@@ -243,7 +139,7 @@ func captureFromFile(filename string, useIPv4 bool, stopCaptureJob chan struct{}
 	captureJob(handle, useIPv4, stopCaptureJob, packetViewer, context)
 }
 
-func captureFromLive(livename string, useIPv4 bool, usePromisc bool, stopCaptureJob chan struct{}, packetViewer *MyPacketListView, context *CommunicationContext) {
+func captureFromLive(livename string, useIPv4 bool, usePromisc bool, stopCaptureJob chan struct{}, packetViewer *MyPacketListView, context *peer.CommunicationContext) {
 	fmt.Printf("Will capture from live device %s\n", livename)
 	handle, err := pcap.OpenLive(livename, 2000, usePromisc, 10 * time.Second)
 	if err != nil {

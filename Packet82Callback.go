@@ -1,10 +1,10 @@
 package main
-import "github.com/google/gopacket"
 import "github.com/therecipe/qt/gui"
 import "github.com/therecipe/qt/widgets"
+import "./peer"
 
-func ShowPacket82(packetType byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
-	MainLayer := layers.Main.(Packet82Layer)
+func ShowPacket82(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
+	MainLayer := layers.Main.(peer.Packet82Layer)
 
 	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
 

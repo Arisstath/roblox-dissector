@@ -1,13 +1,16 @@
 package peer
+import "github.com/gskartwii/rbxfile"
 
 type Packet83_01 struct {
-	Object1 Object
+	Instance *rbxfile.Instance
 }
 
 func DecodePacket83_01(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
 	var err error
 	inner := &Packet83_01{}
 	thisBitstream := packet.Stream
-	inner.Object1, err = thisBitstream.ReadObject(false, context)
+    referent, err := thisBitstream.ReadObject(false, context)
+    inner.Instance = context.InstancesByReferent.TryGetInstance(referent)
+
 	return inner, err
 }

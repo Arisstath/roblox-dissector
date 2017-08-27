@@ -1,10 +1,10 @@
 package main
-import "github.com/google/gopacket"
 import "github.com/therecipe/qt/widgets"
 import "github.com/therecipe/qt/gui"
+import "./peer"
 
-func ShowPacket81(packetType byte, packet gopacket.Packet, context *CommunicationContext, layers *PacketLayers) {
-	MainLayer := layers.Main.(Packet81Layer)
+func ShowPacket81(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
+	MainLayer := layers.Main.(peer.Packet81Layer)
 
 	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
 	for i := 0; i < 5; i++ {
@@ -21,7 +21,7 @@ func ShowPacket81(packetType byte, packet gopacket.Packet, context *Communicatio
 	deletedListRootNode := standardModel.InvisibleRootItem()
 	for i := 0; i < len(MainLayer.Items); i++ {
 		unknownInt1Item := NewQStandardItemF("%s", context.StaticSchema.Instances[MainLayer.Items[i].ClassID].Name)
-		unknownStringItem := NewQStandardItemF("%s", MainLayer.Items[i].Object1.Show())
+		unknownStringItem := NewQStandardItemF("%s", MainLayer.Items[i].Instance.Reference)
 		deletedListRootNode.AppendRow([]*gui.QStandardItem{unknownInt1Item, unknownStringItem})
 	}
 
