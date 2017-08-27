@@ -1,6 +1,5 @@
-package main
+package peer
 import "net"
-import "github.com/google/gopacket"
 import "errors"
 import "fmt"
 
@@ -510,7 +509,7 @@ func (b *ExtendedReader) ReadSystemAddress(isJoinData bool, context *Communicati
 	return thisAddress, nil
 }
 
-func (b *ExtendedReader) ReadTypeAndValue(context *CommunicationContext, packet gopacket.Packet) (TypeAndValue, error) {
+func (b *ExtendedReader) ReadTypeAndValue(context *CommunicationContext) (TypeAndValue, error) {
 	var value TypeAndValue
 	schemaIDx, err := b.Bits(0x8)
 	if err != nil {
@@ -520,11 +519,11 @@ func (b *ExtendedReader) ReadTypeAndValue(context *CommunicationContext, packet 
 		return value, errors.New(fmt.Sprintf("type idx %d is higher than %d", schemaIDx, len(context.TypeDescriptor)))
 	}
 	value.Type = context.TypeDescriptor[uint32(schemaIDx)]
-	value.Value, err = decodeEventArgument(b, context, packet, value.Type)
+	value.Value, err = decodeEventArgument(b, context, value.Type)
 	return value, err
 }
 
-func (b *ExtendedReader) ReadTuple(context *CommunicationContext, packet gopacket.Packet) (Tuple, error) {
+func (b *ExtendedReader) ReadTuple(context *CommunicationContext) (Tuple, error) {
 	var tuple Tuple
 	tupleLen, err := b.ReadUint32BE()
 	if err != nil {
@@ -535,7 +534,7 @@ func (b *ExtendedReader) ReadTuple(context *CommunicationContext, packet gopacke
 	}
 	tuple = make(Tuple, tupleLen)
 	for i := 0; i < int(tupleLen); i++ {
-		tuple[i], err = b.ReadTypeAndValue(context, packet)
+		tuple[i], err = b.ReadTypeAndValue(context)
 		if err != nil {
 			return tuple, err
 		}
@@ -544,12 +543,12 @@ func (b *ExtendedReader) ReadTuple(context *CommunicationContext, packet gopacke
 	return tuple, nil
 }
 
-func (b *ExtendedReader) ReadArray(context *CommunicationContext, packet gopacket.Packet) (Array, error) {
-	array, err := b.ReadTuple(context, packet)
+func (b *ExtendedReader) ReadArray(context *CommunicationContext) (Array, error) {
+	array, err := b.ReadTuple(context)
 	return Array(array), err
 }
 
-func (b *ExtendedReader) ReadDictionary(context *CommunicationContext, packet gopacket.Packet) (Dictionary, error) {
+func (b *ExtendedReader) ReadDictionary(context *CommunicationContext) (Dictionary, error) {
 	var dictionary Dictionary
 	dictionaryLen, err := b.ReadUint32BE()
 	if err != nil {
@@ -568,7 +567,7 @@ func (b *ExtendedReader) ReadDictionary(context *CommunicationContext, packet go
 		if err != nil {
 			return dictionary, err
 		}
-		dictionary[key], err = b.ReadTypeAndValue(context, packet)
+		dictionary[key], err = b.ReadTypeAndValue(context)
 		if err != nil {
 			return dictionary, err
 		}
@@ -577,8 +576,8 @@ func (b *ExtendedReader) ReadDictionary(context *CommunicationContext, packet go
 	return dictionary, nil
 }
 
-func (b *ExtendedReader) ReadMap(context *CommunicationContext, packet gopacket.Packet) (Map, error) {
-	thisMap, err := b.ReadDictionary(context, packet)
+func (b *ExtendedReader) ReadMap(context *CommunicationContext) (Map, error) {
+	thisMap, err := b.ReadDictionary(context)
 	return Map(thisMap), err
 }
 

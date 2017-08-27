@@ -1,5 +1,4 @@
-package main
-import "github.com/google/gopacket"
+package peer
 import "github.com/davecgh/go-spew/spew"
 import "errors"
 import "strconv"
@@ -25,23 +24,6 @@ type ReplicationProperty struct {
 	IsDefault bool
 }
 
-type PropertyValue interface {
-	Show() string
-}
-
-func (this *ReplicationProperty) Show() string {
-	if this == nil {
-		return "ERR!! NIL"
-	}
-	if this.IsDefault {
-		return "!DEFAULT"
-	}
-	if this.Value == nil {
-		return "ERR!! NIL"
-	}
-	return this.Value.Show()
-}
-
 const (
 	ROUND_JOINDATA	= iota
 	ROUND_STRINGS	= iota
@@ -49,7 +31,7 @@ const (
 	ROUND_UPDATE	= iota
 )
 
-func (schema *PropertySchemaItem) Decode(round int, thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (*ReplicationProperty, error) {
+func (schema *PropertySchemaItem) Decode(round int, packet *UDPPacket, context *CommunicationContext) (*ReplicationProperty, error) {
 	var err error
 	if !schema.Replicates && round != ROUND_UPDATE {
 		return nil, nil
@@ -274,14 +256,14 @@ func readSerializedValue(isJoinData bool, valueType uint8, thisBitstream *Extend
 	return result, err
 }
 
-func (schema StaticPropertySchema) Decode(round int, thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet, isRebind bool) (*ReplicationProperty, error) {
+func (schema StaticPropertySchema) Decode(round int, packet *UDPPacket, context *CommunicationContext) (*ReplicationProperty, error) {
 	var err error
+	thisBitstream := packet.Stream
 	result := &ReplicationProperty{schema.Name, schema.TypeString, nil, false}
 	isJoinData := round == ROUND_JOINDATA
 	if round != ROUND_UPDATE {
 		result.IsDefault, err = thisBitstream.ReadBool()
 		if result.IsDefault || err != nil {
-			//println(DebugInfo2(context, packet, isJoinData), "Read", schema.Name, "default")
 			return result, err
 		}
 	}

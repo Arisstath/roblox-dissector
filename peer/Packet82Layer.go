@@ -1,6 +1,5 @@
-package main
+package peer
 import "compress/gzip"
-import "github.com/google/gopacket"
 import "github.com/gskartwii/go-bitstream"
 import "errors"
 
@@ -59,14 +58,15 @@ func LearnDictionaryHuffman(decompressedStream *ExtendedReader, ContextDescripto
 	return dictionary, nil
 }
 
-func DecodePacket82Layer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
+func DecodePacket82Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
 	layer := NewPacket82Layer()
+	thisBitstream := packet.Stream
 
 	var err error
 	var decompressedStream *ExtendedReader
 	context.MDescriptor.Lock()
 	defer context.MDescriptor.Unlock() // Do not broadcast if parsing fails
-	if context.PacketFromClient(packet) {
+	if context.IsClient(packet.Source) {
 		decompressedStream = thisBitstream
 
 		layer.ClassDescriptor, err = LearnDictionaryHuffman(decompressedStream, context.ClassDescriptor)

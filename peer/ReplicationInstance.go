@@ -1,7 +1,5 @@
-package main
+package peer
 import "fmt"
-import "github.com/google/gopacket"
-import "github.com/therecipe/qt/gui"
 import "errors"
 
 type ReplicationInstance struct {
@@ -22,40 +20,9 @@ func (this *ReplicationInstance) findName() string {
 	return ""
 }
 
-func (this *ReplicationInstance) Show() []*gui.QStandardItem {
-	rootNameItem := NewQStandardItemF(this.findName())
-	typeItem := NewQStandardItemF(this.ClassName)
-	referentItem := NewQStandardItemF(this.Object1.Show())
-	unknownBoolItem := NewQStandardItemF("%v", this.Bool1)
-	parentItem := NewQStandardItemF(this.Object2.Show())
-
-	for _, property := range this.Properties {
-		nameItem := NewQStandardItemF(property.Name)
-		typeItem := NewQStandardItemF(property.Type)
-		valueItem := NewQStandardItemF(property.Show())
-
-		rootNameItem.AppendRow([]*gui.QStandardItem{
-			nameItem,
-			typeItem,
-			valueItem,
-			nil,
-			nil,
-			nil,
-		})
-	}
-
-	return []*gui.QStandardItem{
-		rootNameItem,
-		typeItem,
-		nil,
-		referentItem,
-		unknownBoolItem,
-		parentItem,
-	}
-}
-
-func DecodeReplicationInstance(isJoinData bool, thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet, instanceSchema []*InstanceSchemaItem) (*ReplicationInstance, error) {
+func DecodeReplicationInstance(isJoinData bool, packet *UDPPacket, context *CommunicationContext, instanceSchema []*InstanceSchemaItem) (*ReplicationInstance, error) {
 	var err error
+	thisBitstream := packet.Stream
 	thisInstance := &ReplicationInstance{}
 	thisInstance.Object1, err = thisBitstream.ReadObject(isJoinData, context)
 	if err != nil {
@@ -72,7 +39,6 @@ func DecodeReplicationInstance(isJoinData bool, thisBitstream *ExtendedReader, c
 			return thisInstance, errors.New(fmt.Sprintf("idx %d is higher than %d", realIDx, len(context.InstanceSchema)))
 		}
 		thisInstance.ClassName = instanceSchema[realIDx].Name
-		println(DebugInfo2(context, packet, isJoinData), "Read referent", thisInstance.Object1.Referent, thisInstance.ClassName)
 
 		thisPropertySchema := instanceSchema[realIDx].PropertySchema
 
@@ -83,7 +49,7 @@ func DecodeReplicationInstance(isJoinData bool, thisBitstream *ExtendedReader, c
 
 		if isJoinData {
 			for _, schema := range thisPropertySchema {
-				property, err := schema.Decode(ROUND_JOINDATA, thisBitstream, context, packet)
+				property, err := schema.Decode(ROUND_JOINDATA, packet, context)
 				if err != nil {
 					return thisInstance, err
 				}
@@ -93,7 +59,7 @@ func DecodeReplicationInstance(isJoinData bool, thisBitstream *ExtendedReader, c
 			}
 		} else {
 			for _, schema := range thisPropertySchema {
-				property, err := schema.Decode(ROUND_STRINGS, thisBitstream, context, packet)
+				property, err := schema.Decode(ROUND_STRINGS, packet, context)
 				if err != nil {
 					return thisInstance, err
 				}
@@ -102,7 +68,7 @@ func DecodeReplicationInstance(isJoinData bool, thisBitstream *ExtendedReader, c
 				}
 			}
 			for _, schema := range thisPropertySchema {
-				property, err := schema.Decode(ROUND_OTHER, thisBitstream, context, packet)
+				property, err := schema.Decode(ROUND_OTHER, packet, context)
 				if err != nil {
 					return thisInstance, err
 				}
@@ -116,7 +82,6 @@ func DecodeReplicationInstance(isJoinData bool, thisBitstream *ExtendedReader, c
 		if err != nil {
 			return thisInstance, err
 		}
-		println(DebugInfo2(context, packet, isJoinData), "Parent referent", thisInstance.Object2.Referent)
 
 		return thisInstance, nil
 	} else {
@@ -136,11 +101,10 @@ func DecodeReplicationInstance(isJoinData bool, thisBitstream *ExtendedReader, c
 
 		thisInstance.ClassName = schema.Name
 		thisInstance.Properties = make([]*ReplicationProperty, len(schema.Properties))
-		//println("Our class:", schema.Name)
 
 		if isJoinData {
 			for i := 0; i < len(thisInstance.Properties); i++ {
-				thisInstance.Properties[i], err = schema.Properties[i].Decode(ROUND_JOINDATA, thisBitstream, context, packet, !wasRebind)
+				thisInstance.Properties[i], err = schema.Properties[i].Decode(ROUND_JOINDATA, packet, context)
 				if err != nil {
 					return thisInstance, err
 				}
@@ -159,7 +123,7 @@ func DecodeReplicationInstance(isJoinData bool, thisBitstream *ExtendedReader, c
 						isStringObject = true
 				}
 				if isStringObject {
-					thisInstance.Properties[i], err = schema.Properties[i].Decode(ROUND_STRINGS, thisBitstream, context, packet, !wasRebind)
+					thisInstance.Properties[i], err = schema.Properties[i].Decode(ROUND_STRINGS, packet, context)
 				}
 			}
 			for i := 0; i < len(thisInstance.Properties); i++ {
@@ -175,7 +139,7 @@ func DecodeReplicationInstance(isJoinData bool, thisBitstream *ExtendedReader, c
 						isStringObject = true
 				}
 				if !isStringObject {
-					thisInstance.Properties[i], err = schema.Properties[i].Decode(ROUND_STRINGS, thisBitstream, context, packet, !wasRebind)
+					thisInstance.Properties[i], err = schema.Properties[i].Decode(ROUND_STRINGS, packet, context)
 				}
 			}
 		}

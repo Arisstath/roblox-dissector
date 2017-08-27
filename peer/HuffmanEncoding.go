@@ -1,5 +1,5 @@
 // Ported from https://github.com/facebookarchive/RakNet/blob/1a169895a900c9fc4841c556e16514182b75faf8/Source/DS_HuffmanEncodingTree.cpp
-package main
+package peer
 import "container/list"
 import "github.com/gskartwii/go-bitstream"
 import "bytes"

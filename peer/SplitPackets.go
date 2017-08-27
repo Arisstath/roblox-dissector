@@ -1,7 +1,6 @@
-package main
+package peer
 import "io"
 import "github.com/gskartwii/go-bitstream"
-import "github.com/google/gopacket"
 
 type SplitPacketBuffer struct {
 	ReliablePackets []*ReliablePacket
@@ -79,7 +78,7 @@ func (context *CommunicationContext) AddSplitPacket(source string, packet *Relia
 	return context.SplitPackets[source][splitPacketId]
 }
 
-func (context *CommunicationContext) HandleSplitPacket(reliablePacket *ReliablePacket, rakNetPacket *RakNetLayer, packet gopacket.Packet) (*ReliablePacket, error) {
+func (context *CommunicationContext) HandleSplitPacket(reliablePacket *ReliablePacket, rakNetPacket *RakNetLayer, packet *UDPPacket) (*ReliablePacket, error) {
 	source := SourceInterfaceFromPacket(packet)
 
 	fullPacket := context.AddSplitPacket(source, reliablePacket, rakNetPacket)

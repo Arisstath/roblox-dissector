@@ -1,5 +1,4 @@
-package main
-import "github.com/google/gopacket"
+package peer
 import "errors"
 
 type Packet81LayerItem struct {
@@ -21,8 +20,9 @@ func NewPacket81Layer() Packet81Layer {
 	return Packet81Layer{}
 }
 
-func DecodePacket81Layer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
+func DecodePacket81Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
 	layer := NewPacket81Layer()
+	thisBitstream := packet.Stream
 	var err error
 
 	for i := 0; i < 5; i++ {

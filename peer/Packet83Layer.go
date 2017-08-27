@@ -1,9 +1,7 @@
-package main
-import "github.com/google/gopacket"
+package peer
 import "errors"
 import "strconv"
 import "io"
-import "github.com/therecipe/qt/widgets"
 
 var Packet83Subpackets map[uint8]string = map[uint8]string{
 	0xFF: "ID_REPLIC_???",
@@ -20,20 +18,10 @@ var Packet83Subpackets map[uint8]string = map[uint8]string{
 	0x11: "ID_REPLIC_STATS",
 }
 
-type packet83Subpacket_ interface {
-	Show() widgets.QWidget_ITF
-}
+type Packet83Subpacket interface{}
 
-type Packet83Subpacket struct {
-	child packet83Subpacket_
-}
-
-func NewPacket83Subpacket(child packet83Subpacket_) Packet83Subpacket {
-	return Packet83Subpacket{child}
-}
-
-func (this Packet83Subpacket) Type() uint8 {
-	switch this.child.(type) {
+func Packet83ToType(this Packet83Subpacket) uint8 {
+	switch this.(type) {
 		case *Packet83_01:
 			return 1
 		case *Packet83_02:
@@ -57,12 +45,8 @@ func (this Packet83Subpacket) Type() uint8 {
 	}
 }
 
-func (this Packet83Subpacket) TypeString() string {
-	return Packet83Subpackets[this.Type()]
-}
-
-func (this Packet83Subpacket) Show() widgets.QWidget_ITF {
-	return this.child.Show()
+func Packet83ToTypeString(this Packet83Subpacket) string {
+	return Packet83Subpackets[Packet83ToType(this)]
 }
 
 type Packet83Layer struct {
@@ -88,27 +72,9 @@ func extractPacketType(stream *ExtendedReader) (uint8, error) {
 	return uint8(ret), err
 }
 
-func DebugInfo(context *CommunicationContext, packet gopacket.Packet) string {
-	str := ""
-	if context.PacketFromClient(packet) {
-		str = "[C->S]"
-	} else {
-		str = "[S->C]"
-	}
-
-	return str
-}
-
-func DebugInfo2(context *CommunicationContext, packet gopacket.Packet, isJoinData bool) string {
-	if isJoinData {
-		return DebugInfo(context, packet) + " J"
-	} else {
-		return DebugInfo(context, packet)
-	}
-}
-
-func DecodePacket83Layer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
+func DecodePacket83Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
 	layer := NewPacket83Layer()
+	thisBitstream := packet.Stream
 
 	packetType, err := extractPacketType(thisBitstream)
 	if err != nil {
@@ -125,37 +91,37 @@ func DecodePacket83Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 	for packetType != 0 {
 		switch packetType {
 		case 0x04:
-			inner, err = DecodePacket83_04(thisBitstream, context, packet)
+			inner, err = DecodePacket83_04(packet, context)
 			break
 		case 0x10:
-			inner, err = DecodePacket83_10(thisBitstream, context, packet)
+			inner, err = DecodePacket83_10(packet, context)
 			break
 		case 0x05:
-			inner, err = DecodePacket83_05(thisBitstream, context, packet)
+			inner, err = DecodePacket83_05(packet, context)
 			break
 		case 0x06:
-			inner, err = DecodePacket83_05(thisBitstream, context, packet) // Yes, I know it's 05
+			inner, err = DecodePacket83_05(packet, context) // Yes, I know it's 05
 			break
 		case 0x11:
-			inner, err = DecodePacket83_11(thisBitstream, context, packet)
+			inner, err = DecodePacket83_11(packet, context)
 			break
 		case 0x0B:
-			inner, err = DecodePacket83_0B(thisBitstream, context, packet, instanceSchema)
+			inner, err = DecodePacket83_0B(packet, context, instanceSchema)
 			break
 		case 0x02:
-			inner, err = DecodePacket83_02(thisBitstream, context, packet, instanceSchema)
+			inner, err = DecodePacket83_02(packet, context, instanceSchema)
 			break
 		case 0x01:
-			inner, err = DecodePacket83_01(thisBitstream, context, packet)
+			inner, err = DecodePacket83_01(packet, context)
 			break
 		case 0x03:
-			inner, err = DecodePacket83_03(thisBitstream, context, packet, context.PropertySchema)
+			inner, err = DecodePacket83_03(packet, context, context.PropertySchema)
 			break
 		case 0x07:
-			inner, err = DecodePacket83_07(thisBitstream, context, packet, context.EventSchema)
+			inner, err = DecodePacket83_07(packet, context, context.EventSchema)
 			break
 		case 0x09:
-			inner, err = DecodePacket83_09(thisBitstream, context, packet)
+			inner, err = DecodePacket83_09(packet, context)
 			break
 		default:
 			return layer, errors.New("don't know how to parse replication subpacket: " + strconv.Itoa(int(packetType)))
@@ -164,7 +130,7 @@ func DecodePacket83Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 			return layer, errors.New("parsing subpacket " + Packet83Subpackets[packetType] + ": " + err.Error())
 		}
 
-		layer.SubPackets = append(layer.SubPackets, NewPacket83Subpacket(inner.(packet83Subpacket_)))
+		layer.SubPackets = append(layer.SubPackets, inner.(Packet83Subpacket))
 
 		packetType, err = extractPacketType(thisBitstream)
 		if err == io.EOF {

@@ -1,5 +1,4 @@
-package main
-import "github.com/google/gopacket"
+package peer
 
 type Packet00Layer struct {
 	SendPingTime uint64
@@ -9,7 +8,7 @@ func NewPacket00Layer() Packet00Layer {
 	return Packet00Layer{}
 }
 
-func DecodePacket00Layer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
+func DecodePacket00Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
 	layer := NewPacket00Layer()
 
 	var err error
@@ -27,7 +26,7 @@ func NewPacket03Layer() Packet03Layer {
 	return Packet03Layer{}
 }
 
-func DecodePacket03Layer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
+func DecodePacket03Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
 	layer := NewPacket03Layer()
 
 	var err error

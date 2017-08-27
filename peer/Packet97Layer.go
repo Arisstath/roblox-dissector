@@ -1,5 +1,4 @@
-package main
-import "github.com/google/gopacket"
+package peer
 import "errors"
 
 const (
@@ -137,8 +136,9 @@ func NewPacket97Layer() Packet97Layer {
 	return Packet97Layer{}
 }
 
-func DecodePacket97Layer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
+func DecodePacket97Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
 	layer := NewPacket97Layer()
+	thisBitstream := packet.Stream
 
 	context.MSchema.Lock()
 	defer context.MSchema.Unlock()

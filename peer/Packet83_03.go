@@ -1,8 +1,6 @@
-package main
-import "github.com/google/gopacket"
+package peer
 import "errors"
 import "fmt"
-import "github.com/therecipe/qt/widgets"
 
 type Packet83_03 struct {
 	Object1 Object
@@ -11,22 +9,10 @@ type Packet83_03 struct {
 	Value *ReplicationProperty
 }
 
-func (this Packet83_03) Show() widgets.QWidget_ITF {
-	widget := widgets.NewQWidget(nil, 0)
-	layout := widgets.NewQVBoxLayout()
-	layout.AddWidget(NewQLabelF("Referent: %s", this.Object1.Show()), 0, 0)
-	layout.AddWidget(NewQLabelF("Unknown bool: %v", this.Bool1), 0, 0)
-	layout.AddWidget(NewQLabelF("Property name: %s", this.PropertyName), 0, 0)
-	layout.AddWidget(NewQLabelF("Property type: %s", this.Value.Type), 0, 0)
-	layout.AddWidget(NewQLabelF("Property value: %s", this.Value.Show()), 0, 0)
-	widget.SetLayout(layout)
-
-	return widget
-}
-
-func DecodePacket83_03(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet, propertySchema []*PropertySchemaItem) (interface{}, error) {
+func DecodePacket83_03(packet *UDPPacket, context *CommunicationContext, propertySchema []*PropertySchemaItem) (interface{}, error) {
 	var err error
 	layer := &Packet83_03{}
+	thisBitstream := packet.Stream
 	layer.Object1, err = thisBitstream.ReadObject(false, context)
 	if err != nil {
 		return layer, err
@@ -45,14 +31,13 @@ func DecodePacket83_03(thisBitstream *ExtendedReader, context *CommunicationCont
 
 		schema := propertySchema[realIDx]
 		layer.PropertyName = schema.Name
-		println(DebugInfo2(context, packet, false), "Our prop: ", layer.PropertyName)
 
 		layer.Bool1, err = thisBitstream.ReadBool()
 		if err != nil {
 			return layer, err
 		}
 
-		layer.Value, err = schema.Decode(ROUND_UPDATE, thisBitstream, context, packet)
+		layer.Value, err = schema.Decode(ROUND_UPDATE, packet, context)
 		return layer, err
 	} else {
 		propertyIDx, err := thisBitstream.ReadUint16BE()
@@ -65,14 +50,13 @@ func DecodePacket83_03(thisBitstream *ExtendedReader, context *CommunicationCont
 		}
 		schema := context.StaticSchema.Properties[propertyIDx]
 		layer.PropertyName = schema.Name
-		//println(DebugInfo2(context, packet, false), "Our prop: ", layer.PropertyName, formatBindable(layer.Object1))
 
 		layer.Bool1, err = thisBitstream.ReadBool()
 		if err != nil {
 			return layer, err
 		}
 
-		layer.Value, err = schema.Decode(ROUND_UPDATE, thisBitstream, context, packet, false)
+		layer.Value, err = schema.Decode(ROUND_UPDATE, packet, context, false)
 		return layer, err
 	}
 }

@@ -1,5 +1,4 @@
-package main
-import "github.com/google/gopacket"
+package peer
 import "net"
 
 type Packet05Layer struct {
@@ -64,8 +63,9 @@ func NewPacket13Layer() Packet13Layer {
 }
 var VoidOfflineMessage []byte = make([]byte, 0x10)
 
-func DecodePacket05Layer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
+func DecodePacket05Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
 	layer := NewPacket05Layer()
+	thisBitstream := packet.Stream
 
 	var err error
 	err = thisBitstream.Bytes(VoidOfflineMessage, 0x10)
@@ -76,8 +76,9 @@ func DecodePacket05Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 	return layer, err
 }
 
-func DecodePacket06Layer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
+func DecodePacket06Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
 	layer := NewPacket06Layer()
+	thisBitstream := packet.Stream
 
 	var err error
 	err = thisBitstream.Bytes(VoidOfflineMessage, 0x10)
@@ -96,8 +97,9 @@ func DecodePacket06Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 	return layer, err
 }
 
-func DecodePacket07Layer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
+func DecodePacket07Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
 	layer := NewPacket07Layer()
+	thisBitstream := packet.Stream
 
 	var err error
 	err = thisBitstream.Bytes(VoidOfflineMessage, 0x10)
@@ -116,8 +118,9 @@ func DecodePacket07Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 	return layer, err
 }
 
-func DecodePacket08Layer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
+func DecodePacket08Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
 	layer := NewPacket08Layer()
+	thisBitstream := packet.Stream
 
 	var err error
 	err = thisBitstream.Bytes(VoidOfflineMessage, 0x10)
@@ -140,8 +143,9 @@ func DecodePacket08Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 	return layer, err
 }
 
-func DecodePacket09Layer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
+func DecodePacket09Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
 	layer := NewPacket09Layer()
+	thisBitstream := packet.Stream
 
 	var err error
 	layer.GUID, err = thisBitstream.ReadUint64BE()
@@ -163,8 +167,9 @@ func DecodePacket09Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 	return layer, err
 }
 
-func DecodePacket10Layer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
+func DecodePacket10Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
 	layer := NewPacket10Layer()
+	thisBitstream := packet.Stream
 
 	var err error
 	layer.IPAddress, err = thisBitstream.ReadAddress()
@@ -189,8 +194,9 @@ func DecodePacket10Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 	return layer, err
 }
 
-func DecodePacket13Layer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
+func DecodePacket13Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
 	layer := NewPacket13Layer()
+	thisBitstream := packet.Stream
 
 	var err error
 	layer.IPAddress, err = thisBitstream.ReadAddress()

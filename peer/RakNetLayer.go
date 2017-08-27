@@ -1,9 +1,7 @@
-package main
-import "github.com/google/gopacket"
-import "github.com/google/gopacket/layers"
-import "strconv"
+package peer
 import "sync"
 import "bytes"
+import "net"
 
 type ACKRange struct {
 	Min uint32
@@ -102,24 +100,11 @@ func (c *CommunicationContext) GetServer() string {
 	return c.Server
 }
 
-func SourceInterfaceFromPacket(packet gopacket.Packet) string {
-	if packet.Layer(layers.LayerTypeIPv4) == nil {
-		return ""
-	}
-	return packet.Layer(layers.LayerTypeIPv4).(*layers.IPv4).SrcIP.String() + ":" + strconv.Itoa(int(packet.Layer(layers.LayerTypeUDP).(*layers.UDP).SrcPort))
+func (c *CommunicationContext) IsClient(peer net.UDPAddr) bool {
+	return peer.String() == c.Client
 }
-func DestInterfaceFromPacket(packet gopacket.Packet) string {
-	if packet.Layer(layers.LayerTypeIPv4) == nil {
-		return ""
-	}
-	return packet.Layer(layers.LayerTypeIPv4).(*layers.IPv4).DstIP.String() + ":" + strconv.Itoa(int(packet.Layer(layers.LayerTypeUDP).(*layers.UDP).DstPort))
-}
-
-func (c *CommunicationContext) PacketFromClient(packet gopacket.Packet) bool {
-	return SourceInterfaceFromPacket(packet) == c.Client
-}
-func (c *CommunicationContext) PacketFromServer(packet gopacket.Packet) bool {
-	return SourceInterfaceFromPacket(packet) == c.Server
+func (c *CommunicationContext) IsServer(peer net.UDPAddr) bool {
+	return peer.String() == c.Server
 }
 
 func (c *CommunicationContext) WaitForDescriptors() {
@@ -148,7 +133,7 @@ func NewRakNetLayer() *RakNetLayer {
 
 var OfflineMessageID = [...]byte{0x00,0xFF,0xFF,0x00,0xFE,0xFE,0xFE,0xFE,0xFD,0xFD,0xFD,0xFD,0x12,0x34,0x56,0x78}
 
-func DecodeRakNetLayer(packetType byte, bitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (*RakNetLayer, error) {
+func DecodeRakNetLayer(packetType byte, bitstream *ExtendedReader, context *CommunicationContext) (*RakNetLayer, error) {
 	layer := NewRakNetLayer()
 
 	var err error

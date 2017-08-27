@@ -1,6 +1,5 @@
-package main
+package peer
 import "github.com/gskartwii/go-bitstream"
-import "github.com/google/gopacket"
 import "bytes"
 import "io"
 
@@ -45,7 +44,7 @@ func NewReliablePacket() *ReliablePacket {
 	return &ReliablePacket{SelfData: make([]byte, 0)}
 }
 
-func DecodeReliabilityLayer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet, rakNetPacket *RakNetLayer) (*ReliabilityLayer, error) {
+func DecodeReliabilityLayer(packet *UDPPacket, context *CommunicationContext, rakNetPacket *RakNetLayer) (*ReliabilityLayer, error) {
 	layer := NewReliabilityLayer()
 
 	var reliability uint64

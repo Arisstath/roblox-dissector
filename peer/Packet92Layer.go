@@ -1,5 +1,4 @@
-package main
-import "github.com/google/gopacket"
+package peer
 
 type Packet92Layer struct {
 	UnknownValue uint32
@@ -9,8 +8,9 @@ func NewPacket92Layer() Packet92Layer {
 	return Packet92Layer{}
 }
 
-func DecodePacket92Layer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
+func DecodePacket92Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
 	layer := NewPacket92Layer()
+	thisBitstream := packet.Stream
 
 	var err error
 	layer.UnknownValue, err = thisBitstream.ReadUint32BE()

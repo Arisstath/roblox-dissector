@@ -1,5 +1,4 @@
-package main
-import "github.com/google/gopacket"
+package peer
 import "compress/gzip"
 import "github.com/gskartwii/go-bitstream"
 import "errors"
@@ -41,7 +40,7 @@ func NewPacket91Layer() Packet91Layer {
 	return Packet91Layer{}
 }
 
-func DecodePacket91Layer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
+func DecodePacket91Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
 	context.WaitForDescriptors()
 	typeDescriptor := context.TypeDescriptor
 	context.MSchema.Lock()
@@ -49,6 +48,7 @@ func DecodePacket91Layer(thisBitstream *ExtendedReader, context *CommunicationCo
 	defer context.FinishDescriptors()
 
 	layer := NewPacket91Layer()
+	thisBitstream := packet.Stream
 
 	_, err := thisBitstream.Bits(32) // Void compressed len
 	if err != nil {

@@ -1,5 +1,4 @@
-package main
-import "github.com/google/gopacket"
+package peer
 import "errors"
 
 type ReplicationEvent struct {
@@ -7,7 +6,7 @@ type ReplicationEvent struct {
 	Arguments []TypeAndValue
 }
 
-func decodeEventArgument(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet, argType string) (PropertyValue, error) {
+func decodeEventArgument(thisBitstream *ExtendedReader, context *CommunicationContext, argType string) (PropertyValue, error) {
 	var argument PropertyValue
 	var err error
 	switch argType {
@@ -108,7 +107,7 @@ func decodeEventArgument(thisBitstream *ExtendedReader, context *CommunicationCo
 	return argument, err
 }
 
-func (schema *EventSchemaItem) Decode(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (*ReplicationEvent, error) {
+func (schema *EventSchemaItem) Decode(thisBitstream *ExtendedReader, context *CommunicationContext) (*ReplicationEvent, error) {
 	var err error
 
 	event := &ReplicationEvent{}
@@ -125,7 +124,7 @@ func (schema *EventSchemaItem) Decode(thisBitstream *ExtendedReader, context *Co
 	return event, nil
 }
 
-func (schema *StaticEventSchema) Decode(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (*ReplicationEvent, error) {
+func (schema *StaticEventSchema) Decode(thisBitstream *ExtendedReader, context *CommunicationContext) (*ReplicationEvent, error) {
 	var err error
 	
 	event := &ReplicationEvent{}

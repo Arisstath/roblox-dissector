@@ -1,5 +1,4 @@
-package main
-import "github.com/google/gopacket"
+package peer
 
 type Packet93Layer struct {
 	UnknownBool1 bool
@@ -11,8 +10,9 @@ func NewPacket93Layer() Packet93Layer {
 	return Packet93Layer{Params: make(map[string]bool)}
 }
 
-func DecodePacket93Layer(thisBitstream *ExtendedReader, context *CommunicationContext, packet gopacket.Packet) (interface{}, error) {
+func DecodePacket93Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
 	layer := NewPacket93Layer()
+	thisBitstream := packet.Stream
 
 	var err error
 	layer.UnknownBool1, err = thisBitstream.ReadBool()
