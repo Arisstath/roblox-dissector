@@ -32,7 +32,7 @@ type ErrorHandler func(error)
 
 type PacketReader struct {
 	SimpleHandler ReceiveHandler
-	ReliableHandler ReceiveHandler 
+	ReliableHandler ReceiveHandler
 	FullReliableHandler ReceiveHandler
 	ErrorHandler ErrorHandler
 	Context *CommunicationContext
@@ -90,7 +90,7 @@ func (this *PacketReader) ReadPacket(payload []byte, packet *UDPPacket) {
 
 			this.ReliableHandler(subPacket.PacketType, packet, layers)
 
-			if subPacket.HasPacketType && !subPacket.HasBeenDecoded {
+			if subPacket.HasPacketType && !subPacket.HasBeenDecoded && subPacket.IsFinal {
 				subPacket.HasBeenDecoded = true
 				go func(subPacket *ReliablePacket) {
 					packetType := subPacket.PacketType

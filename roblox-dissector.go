@@ -75,7 +75,7 @@ func captureJob(handle *pcap.Handle, useIPv4 bool, stopCaptureJob chan struct{},
 	} else {
 		packetSource = gopacket.NewPacketSource(handle, handle.LinkType())
 	}
-	packetChannel := make(chan gopacket.Packet)
+	packetChannel := make(chan gopacket.Packet, 0x100) // Buffer the packets to avoid dropping them
 
 	go func() {
 		for packet := range packetSource.Packets() {

@@ -71,6 +71,7 @@ type CommunicationContext struct {
 	IsValid bool
 
 	SplitPackets SplitPacketList
+	MUniques *sync.Mutex
 	UniqueDatagramsClient map[uint32]struct{}
 	UniqueDatagramsServer map[uint32]struct{}
 }
@@ -91,6 +92,7 @@ func NewCommunicationContext() *CommunicationContext {
 		ESchemaParsed: sync.NewCond(MSchema),
 		IsValid: true,
 
+		MUniques: &sync.Mutex{},
 		UniqueDatagramsClient: make(map[uint32]struct{}),
 		UniqueDatagramsServer: make(map[uint32]struct{}),
         InstancesByReferent: InstanceList{
@@ -228,6 +230,7 @@ func DecodeRakNetLayer(packetType byte, packet *UDPPacket, context *Communicatio
 		bitstream.Align()
 
 		layer.DatagramNumber, _ = bitstream.ReadUint24LE()
+		context.MUniques.Lock()
 		if context.IsClient(packet.Source) {
 			_, layer.IsDuplicate = context.UniqueDatagramsClient[layer.DatagramNumber]
 			context.UniqueDatagramsClient[layer.DatagramNumber] = struct{}{}
@@ -235,6 +238,8 @@ func DecodeRakNetLayer(packetType byte, packet *UDPPacket, context *Communicatio
 			_, layer.IsDuplicate = context.UniqueDatagramsServer[layer.DatagramNumber]
 			context.UniqueDatagramsServer[layer.DatagramNumber] = struct{}{}
 		}
+		context.MUniques.Unlock()
+
 		layer.Payload = bitstream
 		return layer, nil
 	}

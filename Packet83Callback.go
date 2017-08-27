@@ -70,7 +70,7 @@ func showReplicationInstance(this *rbxfile.Instance) []*gui.QStandardItem {
 
 type Packet83Subpacket peer.Packet83Subpacket
 func show83_0B(t peer.Packet83Subpacket) widgets.QWidget_ITF {
-	this := t.(peer.Packet83_0B)
+	this := t.(*peer.Packet83_0B)
 	instanceList := widgets.NewQTreeView(nil)
 	standardModel := NewProperSortModel(nil)
 	standardModel.SetHorizontalHeaderLabels([]string{"Name", "Type", "Value", "Referent", "Parent"})
@@ -86,11 +86,11 @@ func show83_0B(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	return instanceList
 }
 func show83_01(t peer.Packet83Subpacket) widgets.QWidget_ITF {
-	this := t.(peer.Packet83_01)
+	this := t.(*peer.Packet83_01)
 	return NewQLabelF("Init referent: %s", this.Instance.Reference)
 }
 func show83_02(t peer.Packet83Subpacket) widgets.QWidget_ITF {
-	this := t.(peer.Packet83_02)
+	this := t.(*peer.Packet83_02)
 	instanceList := widgets.NewQTreeView(nil)
 	standardModel := NewProperSortModel(nil)
 	standardModel.SetHorizontalHeaderLabels([]string{"Name", "Type", "Value", "Referent", "Parent"})
@@ -104,7 +104,7 @@ func show83_02(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	return instanceList
 }
 func show83_03(t peer.Packet83Subpacket) widgets.QWidget_ITF {
-	this := t.(peer.Packet83_03)
+	this := t.(*peer.Packet83_03)
 	widget := widgets.NewQWidget(nil, 0)
 	layout := widgets.NewQVBoxLayout()
     if this.Instance != nil {
@@ -125,11 +125,11 @@ func show83_03(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	return widget
 }
 func show83_04(t peer.Packet83Subpacket) widgets.QWidget_ITF {
-	this := t.(peer.Packet83_04)
+	this := t.(*peer.Packet83_04)
 	return NewQLabelF("Marker: %d", this.MarkerId)
 }
 func show83_05(t peer.Packet83Subpacket) widgets.QWidget_ITF {
-	this := t.(peer.Packet83_05)
+	this := t.(*peer.Packet83_05)
 	widget := widgets.NewQWidget(nil, 0)
 	layout := widgets.NewQVBoxLayout()
 	layout.AddWidget(NewQLabelF("Unknown bool: %v", this.Bool1), 0, 0)
@@ -141,7 +141,7 @@ func show83_05(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	return widget
 }
 func show83_07(t peer.Packet83Subpacket) widgets.QWidget_ITF {
-	this := t.(peer.Packet83_07)
+	this := t.(*peer.Packet83_07)
 	widget := widgets.NewQWidget(nil, 0)
 	layout := widgets.NewQVBoxLayout()
 	layout.AddWidget(NewQLabelF("Object: %s", this.Instance.Reference), 0, 0)
@@ -170,7 +170,7 @@ func show83_07(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 }
 
 func show83_09_01(t peer.Packet83_09Subpacket) widgets.QWidget_ITF {
-	this := t.(peer.Packet83_09_01)
+	this := t.(*peer.Packet83_09_01)
 	widget := widgets.NewQWidget(nil, 0)
 	layout := widgets.NewQVBoxLayout()
 	layout.AddWidget(NewQLabelF("Int 1: %d", this.Int1), 0, 0)
@@ -183,14 +183,14 @@ func show83_09_01(t peer.Packet83_09Subpacket) widgets.QWidget_ITF {
 	return widget
 }
 func show83_09_05(t peer.Packet83_09Subpacket) widgets.QWidget_ITF {
-	this := t.(peer.Packet83_09_05)
+	this := t.(*peer.Packet83_09_05)
 	return NewQLabelF("Int: %d", this.Int)
 }
 func show83_09_07(t peer.Packet83_09Subpacket) widgets.QWidget_ITF {
 	return NewQLabelF("(no values)")
 }
 func show83_09_default(t peer.Packet83_09Subpacket) widgets.QWidget_ITF {
-	this := t.(peer.Packet83_09_default)
+	this := t.(*peer.Packet83_09_default)
 	widget := widgets.NewQWidget(nil, 0)
 	layout := widgets.NewQVBoxLayout()
 	layout.AddWidget(NewQLabelF("Int 1: %d", this.Int1), 0, 0)
@@ -200,7 +200,7 @@ func show83_09_default(t peer.Packet83_09Subpacket) widgets.QWidget_ITF {
 	return widget
 }
 func show83_09(t peer.Packet83Subpacket) widgets.QWidget_ITF {
-	this := t.(peer.Packet83_09)
+	this := t.(*peer.Packet83_09)
 	widget := widgets.NewQWidget(nil, 0)
 	layout := widgets.NewQVBoxLayout()
 	layout.AddWidget(NewQLabelF("Type: %d", this.Type), 0, 0)
@@ -216,11 +216,11 @@ func show83_09(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	return widget
 }
 func show83_10(t peer.Packet83Subpacket) widgets.QWidget_ITF {
-	this := t.(peer.Packet83_10)
+	this := t.(*peer.Packet83_10)
 	return NewQLabelF("Replication tag: %d", this.TagId)
 }
 func show83_11(t peer.Packet83Subpacket) widgets.QWidget_ITF {
-	this := t.(peer.Packet83_11)
+	this := t.(*peer.Packet83_11)
 	widget := widgets.NewQWidget(nil, 0)
 	layout := widgets.NewQVBoxLayout()
 	layout.AddWidget(NewQLabelF("Skip stat set 1: %v", this.SkipStats1), 0, 0)

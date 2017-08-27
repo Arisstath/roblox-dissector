@@ -112,7 +112,7 @@ func NewMyPacketListView(parent widgets.QWidget_ITF) *MyPacketListView {
 
 func (m *MyPacketListView) Reset() {
 	m.StandardModel.Clear()
-	m.StandardModel.SetHorizontalHeaderLabels([]string{"Index", "Type", "Direction", "Length in Bytes", "Datagram Numbers", "Received Splits"})
+	m.StandardModel.SetHorizontalHeaderLabels([]string{"Index", "Type", "Direction", "Length in Bytes", "Datagram Numbers", "Ordered Splits", "Total Splits"})
 
 	m.CurrentACKSelection = []*gui.QStandardItem{}
 	m.packetRowsByUniqueID = NewTwoWayPacketList()
@@ -128,7 +128,6 @@ func NewQLabelF(format string, args ...interface{}) *widgets.QLabel {
 
 func NewQStandardItemF(format string, args ...interface{}) *gui.QStandardItem {
 	if format == "%d" {
-
 		ret := gui.NewQStandardItem()
 		i, _ := strconv.Atoi(fmt.Sprintf(format, args...)) // hack
 		ret.SetData(core.NewQVariant7(i), 0)
@@ -170,21 +169,6 @@ func NewBasicPacketViewer(packetType byte, packet *peer.UDPPacket, context *peer
 
 	tabWidget := widgets.NewQTabWidget(nil)
 	subWindowLayout.AddWidget(tabWidget, 0, 0)
-	//packetDataLayout := widgets.NewQVBoxLayout()
-	//packetDataWidget := widgets.NewQWidget(nil, 0)
-	//packetDataWidget.SetLayout(packetDataLayout)
-
-	//monospaceFont := gui.NewQFont2("monospace", 10, 50, false)
-
-	//labelForPacketContents := widgets.NewQLabel2("Packet inner layer contents:", nil, 0)
-	//packetContents := widgets.NewQPlainTextEdit2(hex.Dump(data), nil)
-	//packetDataLayout.AddWidget(labelForPacketContents, 0, 0)
-	//packetDataLayout.AddWidget(packetContents, 0, 0)
-	//packetContents.SetReadOnly(true)
-	//packetContents.Document().SetDefaultFont(monospaceFont)
-	//packetContents.SetLineWrapMode(0)
-
-	//tabWidget.AddTab(packetDataWidget, "Raw data")
 
 	subWindow.SetWindowTitle("Packet Window: " + PacketNames[packetType])
 	subWindow.Show()
@@ -218,7 +202,6 @@ func (m *TwoWayPacketList) Add(index uint32, row []*gui.QStandardItem, packet *p
 		panic(errors.New("add not on server or client"))
 	}
 	mutex.Lock()
-	println("add", isClient, isServer, index)
 
 	list[index] = row
 	cond.Broadcast()
@@ -236,7 +219,6 @@ func (m *TwoWayPacketList) Get(index uint32, isClient bool, isServer bool) []*gu
 			m.EClient.Wait()
 			rows, ok = m.Client[index]
 		}
-		println("get", isClient, isServer, index)
 
 		m.MClient.Unlock()
 	} else if isServer {
@@ -247,7 +229,6 @@ func (m *TwoWayPacketList) Get(index uint32, isClient bool, isServer bool) []*gu
 			rows, ok = m.Server[index]
 		}
 
-		println("get", isClient, isServer, index)
 		m.MServer.Unlock()
 	} else {
 		panic(errors.New("get not on server or client"))
@@ -352,6 +333,7 @@ func (m *MyPacketListView) handleSplitPacket(packetType byte, packet *peer.UDPPa
 	row[3].SetData(core.NewQVariant7(int(layers.Reliability.RealLength)), 0)
 	row[4].SetData(core.NewQVariant14(fmt.Sprintf("%d - %d", layers.Reliability.AllRakNetLayers[0].DatagramNumber, layers.RakNet.DatagramNumber)), 0)
 	row[5].SetData(core.NewQVariant14(fmt.Sprintf("%d/%d", layers.Reliability.NumReceivedSplits, layers.Reliability.SplitPacketCount)), 0)
+	row[6].SetData(core.NewQVariant7(len(layers.Reliability.AllRakNetLayers)), 0)
 }
 
 func (m *MyPacketListView) AddFullPacket(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers, activationCallback ActivationCallback) []*gui.QStandardItem {
@@ -418,6 +400,7 @@ func (m *MyPacketListView) AddFullPacket(packetType byte, packet *peer.UDPPacket
 	} else {
 		rootRow = append(rootRow, nil)
 	}
+	rootRow = append(rootRow, NewQStandardItemF("???"))
 
 	if layers.Reliability != nil {
 		m.registerSplitPacketRow(rootRow, packet, context, layers)
@@ -497,7 +480,7 @@ func GUIMain() {
 
 	standardModel := NewProperSortModel(packetViewer)
 	packetViewer.StandardModel = standardModel
-	standardModel.SetHorizontalHeaderLabels([]string{"Index", "Type", "Direction", "Length in Bytes", "Datagram Numbers", "Received Splits"})
+	standardModel.SetHorizontalHeaderLabels([]string{"Index", "Type", "Direction", "Length in Bytes", "Datagram Numbers", "Ordered Splits", "Total Splits"})
 	packetViewer.RootNode = standardModel.InvisibleRootItem()
 	packetViewer.SetModel(standardModel)
 	packetViewer.SetSelectionMode(1)

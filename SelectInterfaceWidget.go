@@ -61,6 +61,9 @@ func NewSelectInterfaceWidget(parent widgets.QWidget_ITF, callback func (string,
 	okButton := widgets.NewQPushButton2("Capture", nil)
 	layout.AddWidget(okButton, 0, 0)
 	okButton.ConnectPressed(func() {
+		if len(interfaces.SelectedIndexes()) < 1 {
+			return
+		}
 		useInterface := standardModel.Item(interfaces.SelectedIndexes()[0].Row(), 0).Data(0).ToString()
 		promisc := usePromisc.CheckState() == core.Qt__Checked
 		window.Destroy(true, true)
