@@ -80,6 +80,7 @@ func DecodePacket81Layer(thisBitstream *ExtendedReader, context *CommunicationCo
             ClassName: className,
             Reference: string(referent),
             Properties: make(map[string]rbxfile.Value, 0),
+			IsService: true,
         }
         context.DataModel.Instances[i] = thisService
         context.InstancesByReferent.AddInstance(referent, thisService)

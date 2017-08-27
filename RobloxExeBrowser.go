@@ -5,7 +5,7 @@ func NewStudioChooser(parent widgets.QWidget_ITF, settings *StudioSettings, call
 	window := widgets.NewQWidget(parent, 1)
 	window.SetWindowTitle("Choose Studio location...")
 	layout := widgets.NewQVBoxLayout()
-	
+
 	fileLabel := NewQLabelF("Studio location:")
 	fileTextBox := widgets.NewQLineEdit2(settings.Location, nil)
 	browseButton := widgets.NewQPushButton2("Browse...", nil)

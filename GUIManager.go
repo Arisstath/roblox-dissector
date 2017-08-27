@@ -488,6 +488,13 @@ func GUIMain() {
 	captureBar := window.MenuBar().AddMenu2("&Capture")
 	captureFileAction := captureBar.AddAction("From &file...")
 	captureLiveAction := captureBar.AddAction("From &live interface...")
+	captureStopAction := captureBar.AddAction("&Stop capture")
+
+	captureStopAction.ConnectTriggered(func(checked bool)() {
+		if packetViewer.IsCapturing {
+			packetViewer.StopCaptureJob <- struct{}{}
+		}
+	})
 
 	captureFileAction.ConnectTriggered(func(checked bool)() {
 		if packetViewer.IsCapturing {
@@ -630,6 +637,13 @@ func GUIMain() {
 				println("while starting process:", err.Error())
 			}
 		})
+	})
+
+	browseAction := window.MenuBar().AddAction("&Browse DataModel")
+	browseAction.ConnectTriggered(func(checked bool)() {
+		if packetViewer.Context != nil {
+			NewDataModelBrowser(packetViewer.Context, packetViewer.Context.DataModel)
+		}
 	})
 
 

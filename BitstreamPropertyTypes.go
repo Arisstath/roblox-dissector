@@ -243,7 +243,11 @@ func formatBindable(obj rbxfile.ValueReference) string {
 	return obj.String()
 }
 func objectToRef(referent string, referentInt uint32) string {
-    return fmt.Sprintf("%d", referentInt)
+	if referentInt == 0 {
+		return "null"
+	} else {
+		return fmt.Sprintf("%d", referentInt)
+	}
 }
 
 func (b *ExtendedReader) ReadObject(isJoinData bool, context *CommunicationContext) (Referent, error) {

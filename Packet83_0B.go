@@ -24,26 +24,29 @@ func getInstanceRow(this *rbxfile.Instance) []*gui.QStandardItem {
         parentItem = NewQStandardItemF("DataModel/NULL")
     }
 
-	for name, property := range this.Properties {
-		nameItem := NewQStandardItemF(name)
-		typeItem := NewQStandardItemF(property.Type().String())
-		var valueItem *gui.QStandardItem
-		if property.Type() == rbxfile.TypeProtectedString {
-			valueItem = NewQStandardItemF("... (len %d)", len(property.String()))
-		} else {
-			valueItem = NewQStandardItemF(property.String())
+	if len(this.Properties) > 0 {
+		propertyRootItem := NewQStandardItemF("%d properties", len(this.Properties))
+		for name, property := range this.Properties {
+			nameItem := NewQStandardItemF(name)
+			typeItem := NewQStandardItemF(property.Type().String())
+			var valueItem *gui.QStandardItem
+			if property.Type() == rbxfile.TypeProtectedString {
+				valueItem = NewQStandardItemF("... (len %d)", len(property.String()))
+			} else {
+				valueItem = NewQStandardItemF(property.String())
+			}
+
+			propertyRootItem.AppendRow([]*gui.QStandardItem{
+				nameItem,
+				typeItem,
+				valueItem,
+				nil,
+				nil,
+				nil,
+			})
 		}
-
-		rootNameItem.AppendRow([]*gui.QStandardItem{
-			nameItem,
-			typeItem,
-			valueItem,
-			nil,
-			nil,
-			nil,
-		})
+		rootNameItem.AppendRow([]*gui.QStandardItem{propertyRootItem,nil,nil,nil,nil,nil})
 	}
-
 	return []*gui.QStandardItem{
 		rootNameItem,
 		typeItem,
@@ -76,7 +79,7 @@ func DecodePacket83_0B(thisBitstream *ExtendedReader, context *CommunicationCont
 	if err != nil {
 		return layer, err
 	}
-	if arrayLen > 0x10000 {
+	if arrayLen > 0x100000 {
 		return layer, errors.New("sanity check: array len too long")
 	}
 
