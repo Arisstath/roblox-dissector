@@ -4,7 +4,7 @@ import "github.com/google/gopacket/pcap"
 import "github.com/google/gopacket/layers"
 import "github.com/fatih/color"
 import "fmt"
-import "./peer"
+import "github.com/gskartwii/roblox-dissector/peer"
 import "time"
 
 const DEBUG bool = false

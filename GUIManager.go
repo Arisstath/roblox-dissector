@@ -2,7 +2,7 @@ package main
 import "github.com/therecipe/qt/widgets"
 import "github.com/therecipe/qt/gui"
 import "github.com/therecipe/qt/core"
-import "./peer"
+import "github.com/gskartwii/roblox-dissector/peer"
 import "os"
 import "os/exec"
 import "fmt"

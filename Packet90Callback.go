@@ -1,5 +1,5 @@
 package main
-import "./peer"
+import "github.com/gskartwii/roblox-dissector/peer"
 
 func ShowPacket90(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
 	MainLayer := layers.Main.(peer.Packet90Layer)

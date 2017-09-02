@@ -4,7 +4,7 @@ import "github.com/therecipe/qt/gui"
 import "github.com/therecipe/qt/core"
 import "github.com/gskartwii/rbxfile"
 import "github.com/gskartwii/rbxfile/bin"
-import "./peer"
+import "github.com/gskartwii/roblox-dissector/peer"
 import "os"
 
 func showChildren(rootNode *gui.QStandardItem, children []*rbxfile.Instance) {

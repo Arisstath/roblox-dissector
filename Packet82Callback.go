@@ -1,7 +1,7 @@
 package main
 import "github.com/therecipe/qt/gui"
 import "github.com/therecipe/qt/widgets"
-import "./peer"
+import "github.com/gskartwii/roblox-dissector/peer"
 
 func ShowPacket82(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
 	MainLayer := layers.Main.(peer.Packet82Layer)
