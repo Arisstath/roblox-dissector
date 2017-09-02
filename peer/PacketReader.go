@@ -86,13 +86,13 @@ func (this *PacketReader) ReadPacket(payload []byte, packet *UDPPacket) {
 		}
 
 		for _, subPacket := range reliabilityLayer.Packets {
-			layers.Reliability = subPacket
+			reliablePacketLayers := &PacketLayers{RakNet: layers.RakNet, Reliability: subPacket}
 
-			this.ReliableHandler(subPacket.PacketType, packet, layers)
+			this.ReliableHandler(subPacket.PacketType, packet, reliablePacketLayers)
 
 			if subPacket.HasPacketType && !subPacket.HasBeenDecoded && subPacket.IsFinal {
 				subPacket.HasBeenDecoded = true
-				go func(subPacket *ReliablePacket) {
+				go func(subPacket *ReliablePacket, reliablePacketLayers *PacketLayers) {
 					packetType := subPacket.PacketType
 					_, err = subPacket.FullDataReader.ReadByte()
 					if err != nil {
@@ -103,16 +103,16 @@ func (this *PacketReader) ReadPacket(payload []byte, packet *UDPPacket) {
 
 					decoder := PacketDecoders[packetType]
 					if decoder != nil {
-						layers.Main, err = decoder(newPacket, context)
+						reliablePacketLayers.Main, err = decoder(newPacket, context)
 
 						if err != nil {
-							this.ErrorHandler(errors.New(fmt.Sprintf("Failed to decode reliable packet %02X: %s", payload[0], err.Error())))
+							this.ErrorHandler(errors.New(fmt.Sprintf("Failed to decode reliable packet %02X: %s", packetType, err.Error())))
 
 							return
 						}
 					}
-					this.FullReliableHandler(subPacket.PacketType, newPacket, layers)
-				}(subPacket)
+					this.FullReliableHandler(subPacket.PacketType, newPacket, reliablePacketLayers)
+				}(subPacket, reliablePacketLayers)
 			}
 		}
 	}
