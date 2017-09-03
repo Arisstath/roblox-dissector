@@ -265,6 +265,37 @@ func DecodePacket10Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	layer.SendPongTime, err = thisBitstream.ReadUint64BE()
 	return layer, err
 }
+func (layer *Packet10Layer) Serialize(stream *ExtendedWriter) error {
+	var err error
+	err = stream.WriteByte(0x10)
+	if err != nil {
+		return err
+	}
+
+	err = stream.WriteAddress(layer.IPAddress)
+	if err != nil {
+		return err
+	}
+	err = stream.WriteUint16BE(layer.SystemIndex)
+	if err != nil {
+		return err
+	}
+	for i := 0; i < 10; i++ {
+		err = stream.WriteAddress(layer.Addresses[i])
+		if err != nil {
+			return err
+		}
+	}
+	err = stream.WriteUint64BE(layer.SendPingTime)
+	if err != nil {
+		return err
+	}
+	err = stream.WriteUint64BE(layer.SendPongTime)
+	if err != nil {
+		return err
+	}
+	return err
+}
 
 func DecodePacket13Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
 	layer := NewPacket13Layer()

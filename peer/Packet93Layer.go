@@ -1,4 +1,5 @@
 package peer
+import "fmt"
 
 type Packet93Layer struct {
 	UnknownBool1 bool
@@ -59,4 +60,51 @@ func DecodePacket93Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	}
 
 	return layer, nil
+}
+
+func (layer *Packet93Layer) Serialize(stream *ExtendedWriter) error {
+	var err error
+	err = stream.WriteByte(0x93)
+	if err != nil {
+		return err
+	}
+
+	err = stream.WriteBool(layer.UnknownBool1)
+	if err != nil {
+		return err
+	}
+	err = stream.WriteBool(layer.UnknownBool2)
+	if err != nil {
+		return err
+	}
+	err = stream.Align()
+	if err != nil {
+		return err
+	}
+	err = stream.WriteUint16BE(uint16(len(layer.Params)))
+	if err != nil {
+		return err
+	}
+
+	for name, value := range layer.Params {
+		err = stream.WriteUint16BE(uint16(len(name)))
+		if err != nil {
+			return err
+		}
+		err = stream.WriteASCII(name)
+		if err != nil {
+			return err
+		}
+		encodedValue := fmt.Sprintf("%v", value)
+		err = stream.WriteUint16BE(uint16(len(encodedValue)))
+		if err != nil {
+			return err
+		}
+		err = stream.WriteASCII(encodedValue)
+		if err != nil {
+			return err
+		}
+	}
+
+	return err
 }

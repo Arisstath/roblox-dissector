@@ -66,10 +66,14 @@ func (b *ExtendedWriter) WriteAddress(value *net.UDPAddr) error {
 	if err != nil {
 		return err
 	}
-	err = b.AllBytes(value.IP)
+	err = b.Bytes(4, value.IP)
 	if err != nil {
 		return err
 	}
 	err = b.WriteUint16BE(uint16(value.Port))
 	return err
+}
+
+func (b *ExtendedWriter) WriteASCII(value string) error {
+	return b.AllBytes([]byte(value))
 }

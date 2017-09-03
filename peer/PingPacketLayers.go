@@ -17,6 +17,15 @@ func DecodePacket00Layer(packet *UDPPacket, context *CommunicationContext) (inte
 
 	return layer, err
 }
+func (layer *Packet00Layer) Serialize(stream *ExtendedWriter) error {
+	var err error
+	err = stream.WriteByte(0)
+	if err != nil {
+		return err
+	}
+	err = stream.WriteUint64BE(layer.SendPingTime)
+	return err
+}
 
 type Packet03Layer struct {
 	SendPingTime uint64
@@ -39,4 +48,18 @@ func DecodePacket03Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	layer.SendPongTime, err = thisBitstream.ReadUint64BE()
 
 	return layer, err
+}
+
+func (layer *Packet03Layer) Serialize(stream *ExtendedWriter) error {
+	var err error
+	err = stream.WriteByte(3)
+	if err != nil {
+		return err
+	}
+	err = stream.WriteUint64BE(layer.SendPingTime)
+	if err != nil {
+		return err
+	}
+	err = stream.WriteUint64BE(layer.SendPongTime)
+	return err
 }
