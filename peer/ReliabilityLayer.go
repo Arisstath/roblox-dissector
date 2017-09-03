@@ -2,6 +2,7 @@ package peer
 import "github.com/gskartwii/go-bitstream"
 import "bytes"
 import "io"
+import "errors"
 
 type ReliablePacket struct {
 	IsFinal bool
@@ -63,6 +64,10 @@ func DecodeReliabilityLayer(packet *UDPPacket, context *CommunicationContext, ra
 		if err != nil {
 			return layer, err
 		}
+		if reliablePacket.LengthInBits == 0 {
+			return layer, errors.New("Invalid length of 0!")
+		}
+
 		reliablePacket.RealLength = uint32((reliablePacket.LengthInBits + 7) / 8)
 		if reliability >= 2 && reliability <= 4 {
 			reliablePacket.ReliableMessageNumber, err = thisBitstream.ReadUint24LE()

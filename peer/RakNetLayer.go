@@ -4,6 +4,7 @@ import "bytes"
 import "net"
 import "github.com/gskartwii/rbxfile"
 import "io/ioutil"
+import "errors"
 
 const DEBUG bool = false
 type RakNetPacket interface {
@@ -208,33 +209,60 @@ func DecodeRakNetLayer(packetType byte, packet *UDPPacket, context *Communicatio
 		return layer, err
 	}
 	if layer.IsACK {
-		layer.HasBAndAS, _ = bitstream.ReadBool()
+		layer.HasBAndAS, err = bitstream.ReadBool()
 		bitstream.Align()
 
-		ackCount, _ := bitstream.ReadUint16BE()
+		ackCount, err := bitstream.ReadUint16BE()
+		if err != nil {
+			return layer, err
+		}
 		var i uint16
 		for i = 0; i < ackCount; i++ {
 			var min, max uint32
 
-			minEqualToMax, _ := bitstream.ReadBoolByte()
-			min, _ = bitstream.ReadUint24LE()
+			minEqualToMax, err := bitstream.ReadBoolByte()
+			if err != nil {
+				return layer, err
+			}
+			min, err = bitstream.ReadUint24LE()
+			if err != nil {
+				return layer, err
+			}
 			if minEqualToMax {
 				max = min
 			} else {
-				max, _ = bitstream.ReadUint24LE()
+				max, err = bitstream.ReadUint24LE()
 			}
 
 			layer.ACKs = append(layer.ACKs, ACKRange{min, max})
 		}
 		return layer, nil
 	} else {
-		layer.IsNAK, _ = bitstream.ReadBool()
-		layer.IsPacketPair, _ = bitstream.ReadBool()
-		layer.IsContinuousSend, _ = bitstream.ReadBool()
-		layer.NeedsBAndAS, _ = bitstream.ReadBool()
+		layer.IsNAK, err = bitstream.ReadBool()
+		if err != nil {
+			return layer, err
+		}
+		if layer.IsNAK {
+			return layer, errors.New("NAKs not implemented!")
+		}
+		layer.IsPacketPair, err = bitstream.ReadBool()
+		if err != nil {
+			return layer, err
+		}
+		layer.IsContinuousSend, err = bitstream.ReadBool()
+		if err != nil {
+			return layer, err
+		}
+		layer.NeedsBAndAS, err = bitstream.ReadBool()
+		if err != nil {
+			return layer, err
+		}
 		bitstream.Align()
 
-		layer.DatagramNumber, _ = bitstream.ReadUint24LE()
+		layer.DatagramNumber, err = bitstream.ReadUint24LE()
+		if err != nil {
+			return layer, err
+		}
 		context.MUniques.Lock()
 		if context.IsClient(packet.Source) {
 			_, layer.IsDuplicate = context.UniqueDatagramsClient[layer.DatagramNumber]

@@ -102,7 +102,7 @@ func StartServer(port uint16) error {
 	buf := make([]byte, 1492)
 
 	for {
-		_, client, err := conn.ReadFromUDP(buf)
+		n, client, err := conn.ReadFromUDP(buf)
 		if err != nil {
 			println("Err:", err.Error())
 			continue
@@ -113,6 +113,6 @@ func StartServer(port uint16) error {
 			thisClient = newClient(client, server)
 			server.Clients[client.String()] = thisClient
 		}
-		thisClient.Receive(buf)
+		thisClient.Receive(buf[:n])
 	}
 }
