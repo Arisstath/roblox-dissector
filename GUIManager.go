@@ -496,6 +496,7 @@ func GUIMain() {
 
 	captureBar := window.MenuBar().AddMenu2("&Capture")
 	captureFileAction := captureBar.AddAction("From &file...")
+	capture4FileAction := captureBar.AddAction("From &RawCap file...")
 	captureLiveAction := captureBar.AddAction("From &live interface...")
 	captureStopAction := captureBar.AddAction("&Stop capture")
 
@@ -519,6 +520,23 @@ func GUIMain() {
 
 		go func() {
 			captureFromFile(file, false, packetViewer.StopCaptureJob, packetViewer, context)
+			packetViewer.IsCapturing = false
+		}()
+	})
+	capture4FileAction.ConnectTriggered(func(checked bool)() {
+		if packetViewer.IsCapturing {
+			packetViewer.StopCaptureJob <- struct{}{}
+		}
+		file := widgets.QFileDialog_GetOpenFileName(window, "Capture from RawCap file", "", "PCAP files (*.pcap)", "", 0)
+		packetViewer.IsCapturing = true
+
+		context := peer.NewCommunicationContext()
+		packetViewer.Context = context
+
+		packetViewer.Reset()
+
+		go func() {
+			captureFromFile(file, true, packetViewer.StopCaptureJob, packetViewer, context)
 			packetViewer.IsCapturing = false
 		}()
 	})
