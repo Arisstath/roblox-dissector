@@ -68,7 +68,6 @@ var ActivationCallbacks map[byte]ActivationCallback = map[byte]ActivationCallbac
 }
 
 func captureJob(handle *pcap.Handle, useIPv4 bool, stopCaptureJob chan struct{}, packetViewer *MyPacketListView, context *peer.CommunicationContext) {
-	println("Starting capture job")
 	handle.SetBPFFilter("udp")
 	var packetSource *gopacket.PacketSource
 	if useIPv4 {
@@ -120,8 +119,14 @@ func captureJob(handle *pcap.Handle, useIPv4 bool, stopCaptureJob chan struct{},
 			if len(payload) == 0 {
 				continue
 			}
-
 			newPacket := peer.UDPPacketFromGoPacket(packet)
+			if context.Client == "" && payload[0] != 5 {
+				return
+			}
+			if context.Client != "" && !context.IsClient(newPacket.Source) && !context.IsServer(newPacket.Source) {
+				return
+			}
+
 			if newPacket != nil {
 				packetReader.ReadPacket(payload, newPacket)
 			}

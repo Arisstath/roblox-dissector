@@ -135,3 +135,67 @@ func DecodeReliabilityLayer(packet *UDPPacket, context *CommunicationContext, ra
 	}
 	return layer, nil
 }
+
+func (layer *ReliabilityLayer) Serialize(outputStream *ExtendedWriter) error {
+	var err error
+	for _, packet := range layer.Packets {
+		reliability := uint64(packet.Reliability)
+		err = outputStream.Bits(3, reliability)
+		if err != nil {
+			return err
+		}
+		err = outputStream.WriteBool(packet.HasSplitPacket)
+		if err != nil {
+			return err
+		}
+		err = outputStream.Align()
+		if err != nil {
+			return err
+		}
+		err = outputStream.WriteUint16BE(packet.LengthInBits)
+		if err != nil {
+			return err
+		}
+		if reliability >= 2 && reliability <= 4 {
+			err = outputStream.WriteUint24LE(packet.ReliableMessageNumber)
+			if err != nil {
+				return err
+			}
+		}
+		if reliability == 1 || reliability == 4 {
+			err = outputStream.WriteUint24LE(packet.SequencingIndex)
+			if err != nil {
+				return err
+			}
+		}
+		if reliability == 1 || reliability == 4 || reliability == 3 || reliability == 7 {
+			err = outputStream.WriteUint24LE(packet.OrderingIndex)
+			if err != nil {
+				return err
+			}
+			err = outputStream.WriteByte(byte(packet.OrderingChannel))
+			if err != nil {
+				return err
+			}
+		}
+		if packet.HasSplitPacket {
+			err = outputStream.WriteUint32BE(packet.SplitPacketCount)
+			if err != nil {
+				return err
+			}
+			err = outputStream.WriteUint16BE(packet.SplitPacketID)
+			if err != nil {
+				return err
+			}
+			err = outputStream.WriteUint32BE(packet.SplitPacketIndex)
+			if err != nil {
+				return err
+			}
+		}
+		err = outputStream.AllBytes(packet.SelfData)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}

@@ -26,7 +26,6 @@ var PacketDecoders = map[byte]DecoderFunc{
 	0x97: DecodePacket97Layer,
 }
 
-
 type ReceiveHandler func(byte, *UDPPacket, *PacketLayers)
 type ErrorHandler func(error)
 
@@ -41,12 +40,6 @@ type PacketReader struct {
 func (this *PacketReader) ReadPacket(payload []byte, packet *UDPPacket) {
 	context := this.Context
 
-	if context.Client == "" && payload[0] != 5 {
-		return
-	}
-	if context.Client != "" && !context.IsClient(packet.Source) && !context.IsServer(packet.Source) {
-		return
-	}
 	packet.Stream = BufferToStream(payload)
 	rakNetLayer, err := DecodeRakNetLayer(payload[0], packet, context)
 	if err != nil {

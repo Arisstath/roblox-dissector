@@ -76,6 +76,20 @@ func DecodePacket05Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	return layer, err
 }
 
+func (layer *Packet05Layer) Serialize(stream *ExtendedWriter) error {
+	err := stream.AllBytes(OfflineMessageID)
+	if err != nil {
+		return err
+	}
+	err = stream.WriteByte(byte(layer.ProtocolVersion))
+	if err != nil {
+		return err
+	}
+	empty := make([]byte, 1492 - 0x10 - 1)
+	err = stream.AllBytes(empty)
+	return err
+}
+
 func DecodePacket06Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
 	layer := NewPacket06Layer()
 	thisBitstream := packet.Stream
@@ -97,6 +111,24 @@ func DecodePacket06Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	return layer, err
 }
 
+func (layer *Packet06Layer) Serialize(stream *ExtendedWriter) error {
+	var err error
+	err = stream.AllBytes(OfflineMessageID)
+	if err != nil {
+		return err
+	}
+	err = stream.WriteUint64BE(layer.GUID)
+	if err != nil {
+		return err
+	}
+	err = stream.WriteBoolByte(layer.UseSecurity)
+	if err != nil {
+		return err
+	}
+	err = stream.WriteUint16BE(layer.MTU)
+	return err
+}
+
 func DecodePacket07Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
 	layer := NewPacket07Layer()
 	thisBitstream := packet.Stream
@@ -116,6 +148,24 @@ func DecodePacket07Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	}
 	layer.GUID, err = thisBitstream.ReadUint64BE()
 	return layer, err
+}
+
+func (layer *Packet07Layer) Serialize(stream *ExtendedWriter) error {
+	var err error
+	err = stream.AllBytes(OfflineMessageID)
+	if err != nil {
+		return err
+	}
+	err = stream.WriteAddress(layer.IPAddress)
+	if err != nil {
+		return err
+	}
+	err = stream.WriteUint16BE(layer.MTU)
+	if err != nil {
+		return err
+	}
+	err = stream.WriteUint64BE(layer.GUID)
+	return err
 }
 
 func DecodePacket08Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
@@ -141,6 +191,28 @@ func DecodePacket08Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	}
 	layer.UseSecurity, err = thisBitstream.ReadBoolByte()
 	return layer, err
+}
+
+func (layer *Packet08Layer) Serialize(stream *ExtendedWriter) error {
+	var err error
+	err = stream.AllBytes(OfflineMessageID)
+	if err != nil {
+		return err
+	}
+	err = stream.WriteUint64BE(layer.GUID)
+	if err != nil {
+		return err
+	}
+	err = stream.WriteAddress(layer.IPAddress)
+	if err != nil {
+		return err
+	}
+	err = stream.WriteUint16BE(layer.MTU)
+	if err != nil {
+		return err
+	}
+	err = stream.WriteBoolByte(layer.UseSecurity)
+	return err
 }
 
 func DecodePacket09Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {

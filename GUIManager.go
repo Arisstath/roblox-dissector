@@ -655,6 +655,11 @@ func GUIMain() {
 		}
 	})
 
+	peersBar := window.MenuBar().AddMenu2("&Peers...")
+	startSelfServer := peersBar.AddAction("Start self &server")
+	startSelfServer.ConnectTriggered(func(checked bool)() {
+		go peer.StartServer(53640)
+	})
 
 	window.Show()
 

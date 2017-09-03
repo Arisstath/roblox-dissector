@@ -3,8 +3,13 @@ import "sync"
 import "bytes"
 import "net"
 import "github.com/gskartwii/rbxfile"
+import "io/ioutil"
 
 const DEBUG bool = false
+type RakNetPacket interface {
+	Serialize(*ExtendedWriter) error
+}
+
 type PacketLayers struct {
 	RakNet *RakNetLayer
 	Reliability *ReliablePacket
@@ -147,7 +152,7 @@ func NewRakNetLayer() *RakNetLayer {
 	return &RakNetLayer{}
 }
 
-var OfflineMessageID = [...]byte{0x00,0xFF,0xFF,0x00,0xFE,0xFE,0xFE,0xFE,0xFD,0xFD,0xFD,0xFD,0x12,0x34,0x56,0x78}
+var OfflineMessageID = []byte{0x00,0xFF,0xFF,0x00,0xFE,0xFE,0xFE,0xFE,0xFD,0xFD,0xFD,0xFD,0x12,0x34,0x56,0x78}
 
 func DecodeRakNetLayer(packetType byte, packet *UDPPacket, context *CommunicationContext) (*RakNetLayer, error) {
 	layer := NewRakNetLayer()
@@ -165,7 +170,7 @@ func DecodeRakNetLayer(packetType byte, packet *UDPPacket, context *Communicatio
 			return layer, err
 		}
 
-		if bytes.Compare(thisOfflineMessage, OfflineMessageID[:]) != 0 {
+		if bytes.Compare(thisOfflineMessage, OfflineMessageID) != 0 {
 			return layer, nil
 		}
 
@@ -243,4 +248,93 @@ func DecodeRakNetLayer(packetType byte, packet *UDPPacket, context *Communicatio
 		layer.Payload = bitstream
 		return layer, nil
 	}
+}
+
+func (layer *RakNetLayer) Serialize(outStream *ExtendedWriter) (error) {
+	var err error
+	err = outStream.WriteBool(layer.IsValid)
+	if err != nil {
+		return err
+	}
+	err = outStream.WriteBool(layer.IsACK)
+	if err != nil {
+		return err
+	}
+	if layer.IsACK {
+		err = outStream.WriteBool(layer.HasBAndAS)
+		if err != nil {
+			return err
+		}
+		err = outStream.Align()
+		if err != nil {
+			return err
+		}
+
+		err = outStream.WriteUint16BE(uint16(len(layer.ACKs)))
+		if err != nil {
+			return err
+		}
+
+		for _, ack := range layer.ACKs {
+			if ack.Min == ack.Max {
+				err = outStream.WriteBoolByte(true)
+				if err != nil {
+					return err
+				}
+				err = outStream.WriteUint24LE(ack.Min)
+				if err != nil {
+					return err
+				}
+			} else {
+				err = outStream.WriteBoolByte(false)
+				if err != nil {
+					return err
+				}
+				err = outStream.WriteUint24LE(ack.Min)
+				if err != nil {
+					return err
+				}
+				err = outStream.WriteUint24LE(ack.Max)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	} else {
+		err = outStream.WriteBool(layer.IsNAK)
+		if err != nil {
+			return err
+		}
+		err = outStream.WriteBool(layer.IsPacketPair)
+		if err != nil {
+			return err
+		}
+		err = outStream.WriteBool(layer.IsContinuousSend)
+		if err != nil {
+			return err
+		}
+		err = outStream.WriteBool(layer.NeedsBAndAS)
+		if err != nil {
+			return err
+		}
+		err = outStream.Align()
+		if err != nil {
+			return err
+		}
+
+		err = outStream.WriteUint24LE(layer.DatagramNumber)
+		if err != nil {
+			return err
+		}
+		
+		content, err := ioutil.ReadAll(layer.Payload.GetReader())
+		if err != nil {
+			return err
+		}
+		err = outStream.AllBytes(content)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
