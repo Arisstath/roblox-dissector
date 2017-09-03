@@ -2,6 +2,7 @@ package main
 import "github.com/therecipe/qt/widgets"
 import "github.com/therecipe/qt/gui"
 import "github.com/gskartwii/roblox-dissector/peer"
+import "os"
 
 func ShowPacket97(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
 	MainLayer := layers.Main.(peer.Packet97Layer)
@@ -76,4 +77,28 @@ func ShowPacket97(packetType byte, packet *peer.UDPPacket, context *peer.Communi
 	instanceSchemaList.SetSelectionMode(0)
 	instanceSchemaList.SetSortingEnabled(true)
 	layerLayout.AddWidget(instanceSchemaList, 0, 0)
+
+	dumpButton := widgets.NewQPushButton2("Dump...", nil)
+	dumpButton.ConnectPressed(func() {
+		iLocation := widgets.QFileDialog_GetSaveFileName(dumpButton, "Save instance schema...", "", "GOB files (*.gob)", "", 0)
+		instances, err := os.OpenFile(iLocation, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+		if err != nil {
+			println("while opening file:", err.Error())
+			return
+		}
+
+		eLocation := widgets.QFileDialog_GetSaveFileName(dumpButton, "Save enum schema...", "", "GOB files (*.gob)", "", 0)
+		enums, err := os.OpenFile(eLocation, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+		if err != nil {
+			println("while opening file:", err.Error())
+			return
+		}
+
+		err = MainLayer.Schema.Dump(instances, enums)
+		if err != nil {
+			println("while encoding:", err.Error())
+		}
+
+	})
+	layerLayout.AddWidget(dumpButton, 0, 0)
 }

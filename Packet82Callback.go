@@ -2,6 +2,8 @@ package main
 import "github.com/therecipe/qt/gui"
 import "github.com/therecipe/qt/widgets"
 import "github.com/gskartwii/roblox-dissector/peer"
+import "os"
+import "encoding/gob"
 
 func ShowPacket82(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
 	MainLayer := layers.Main.(peer.Packet82Layer)
@@ -60,5 +62,21 @@ func ShowPacket82(packetType byte, packet *peer.UDPPacket, context *peer.Communi
 	descriptorView.SetSelectionMode(0)
 	descriptorView.SetSortingEnabled(true)
 
+	dumpButton := widgets.NewQPushButton2("Dump...", nil)
+	dumpButton.ConnectPressed(func() {
+		location := widgets.QFileDialog_GetSaveFileName(dumpButton, "Save dictionaries...", "", "GOB files (*.gob)", "", 0)
+		writer, err := os.OpenFile(location, os.O_RDWR|os.O_CREATE, 0666)
+		if err != nil {
+			println("while opening file:", err.Error())
+			return
+		}
+
+		err = gob.NewEncoder(writer).Encode(MainLayer)
+		if err != nil {
+			println("while encoding:", err.Error())
+		}
+	})
+
 	layerLayout.AddWidget(descriptorView, 0, 0)
+	layerLayout.AddWidget(dumpButton, 0, 0)
 }

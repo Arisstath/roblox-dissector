@@ -117,9 +117,11 @@ func captureJob(handle *pcap.Handle, useIPv4 bool, stopCaptureJob chan struct{},
 			}
 			payload := packet.ApplicationLayer().Payload()
 			if len(payload) == 0 {
+				println("Ignoring 0 payload")
 				continue
 			}
 			if context.Client == "" && payload[0] != 5 {
+				println("Ignoring non5")
 				continue
 			}
 			newPacket := peer.UDPPacketFromGoPacket(packet)

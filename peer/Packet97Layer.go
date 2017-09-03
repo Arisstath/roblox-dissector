@@ -94,6 +94,7 @@ var TypeNames = map[uint8]string{
 type StaticArgumentSchema struct {
 	Type uint8
 	TypeString string
+	Unknown uint16
 }
 
 type StaticEnumSchema struct {
@@ -111,11 +112,13 @@ type StaticPropertySchema struct {
 	Name string
 	Type uint8
 	TypeString string
+	Unknown uint16
 	InstanceSchema *StaticInstanceSchema
 }
 
 type StaticInstanceSchema struct {
 	Name string
+	Unknown uint16
 	Properties []StaticPropertySchema
 	Events []StaticEventSchema
 }
