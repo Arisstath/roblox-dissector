@@ -85,7 +85,7 @@ func (layer *Packet05Layer) Serialize(stream *ExtendedWriter) error {
 	if err != nil {
 		return err
 	}
-	empty := make([]byte, 1492 - 0x10 - 1)
+	empty := make([]byte, 1492 - 0x10 - 1 - 0x1C)
 	err = stream.AllBytes(empty)
 	return err
 }

@@ -97,7 +97,8 @@ func (this *PacketWriter) WriteGeneric(packetType byte, generic RakNetPacket, re
 		Reliability: reliability,
 		RealLength: uint32(realLen),
 	}
-	estHeaderLength := 4 // RakNet
+	estHeaderLength := 0x1C // UDP
+	estHeaderLength += 4 // RakNet
 	estHeaderLength += 1 // Reliability, has split
 	estHeaderLength += 2 // len
 
@@ -115,14 +116,14 @@ func (this *PacketWriter) WriteGeneric(packetType byte, generic RakNetPacket, re
 		packet.OrderingChannel = 0
 		packet.OrderingIndex = this.OrderingIndex
 		this.OrderingIndex++
-		estHeaderLength += 4
+		estHeaderLength += 7
 	}
 
 	if realLen <= 1492 - estHeaderLength { // Don't need to split
 		println("Writing normal packet")
 		packet.SelfData = result
 		packet.LengthInBits = uint16(realLen * 8)
-		
+
 		this.WriteReliable(&ReliabilityLayer{[]*ReliablePacket{packet}})
 	} else {
 		packet.HasSplitPacket = true
@@ -131,7 +132,7 @@ func (this *PacketWriter) WriteGeneric(packetType byte, generic RakNetPacket, re
 		packet.SplitPacketIndex = 0
 		estHeaderLength += 10
 
-		splitBandwidth := 1492 - estHeaderLength
+		splitBandwidth := 1472 - estHeaderLength
 		requiredSplits := (realLen + splitBandwidth - 1) / splitBandwidth
 		packet.SplitPacketCount = uint32(requiredSplits)
 		println("Writing split", 0, "/", requiredSplits)
@@ -141,7 +142,7 @@ func (this *PacketWriter) WriteGeneric(packetType byte, generic RakNetPacket, re
 		for i := 1; i < requiredSplits; i++ {
 			println("Writing split", i, "/", requiredSplits)
 			packet.SplitPacketIndex = uint32(i)
-			packet.SelfData = result[splitBandwidth*i:min(uint(realLen), uint(splitBandwidth*(i + 1) - 1))]
+			packet.SelfData = result[splitBandwidth*i:min(uint(realLen), uint(splitBandwidth*(i + 1)))]
 			this.WriteReliable(&ReliabilityLayer{[]*ReliablePacket{packet}})
 		}
 	}

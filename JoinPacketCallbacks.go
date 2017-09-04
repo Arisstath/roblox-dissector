@@ -88,7 +88,7 @@ func ShowPacket10(packetType byte, packet *peer.UDPPacket, context *peer.Communi
 
 	labelForIPAddressList := NewQLabelF("Remote IP addresses:")
 	layerLayout.AddWidget(labelForIPAddressList, 0, 0)
-	
+
 	systemIndexLabel := NewQLabelF("System index: %d", MainLayer.SystemIndex)
 	layerLayout.AddWidget(systemIndexLabel, 0, 0)
 
@@ -97,7 +97,7 @@ func ShowPacket10(packetType byte, packet *peer.UDPPacket, context *peer.Communi
 	standardModel.SetHorizontalHeaderLabels([]string{"IP address"})
 	ipAddressList.SetModel(standardModel)
 	ipAddressList.SetSelectionMode(0)
-	
+
 	ipAddressStrings := make([]string, 10)
 	for i, address := range MainLayer.Addresses {
 		ipAddressStrings[i] = address.String()
@@ -119,7 +119,7 @@ func ShowPacket13(packetType byte, packet *peer.UDPPacket, context *peer.Communi
 
 	addressLabel := NewQLabelF("IP address: %s", MainLayer.IPAddress.String())
 	layerLayout.AddWidget(addressLabel, 0, 0)
-	
+
 	labelForIPAddressList := NewQLabelF("Remote IP addresses:")
 	layerLayout.AddWidget(labelForIPAddressList, 0, 0)
 
@@ -128,7 +128,7 @@ func ShowPacket13(packetType byte, packet *peer.UDPPacket, context *peer.Communi
 	standardModel.SetHorizontalHeaderLabels([]string{"IP address"})
 	ipAddressList.SetModel(standardModel)
 	ipAddressList.SetSelectionMode(0)
-	
+
 	ipAddressStrings := make([]string, 10)
 	for i, address := range MainLayer.Addresses {
 		ipAddressStrings[i] = address.String()

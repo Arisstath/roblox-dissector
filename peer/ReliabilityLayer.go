@@ -157,6 +157,7 @@ func (layer *ReliabilityLayer) Serialize(outputStream *ExtendedWriter) error {
 		if err != nil {
 			return err
 		}
+        packet.LengthInBits = uint16(len(packet.SelfData) * 8)
 		err = outputStream.WriteUint16BE(packet.LengthInBits)
 		if err != nil {
 			return err

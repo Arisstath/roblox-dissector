@@ -2,6 +2,7 @@ package peer
 import "compress/gzip"
 import "github.com/gskartwii/go-bitstream"
 import "errors"
+import "bytes"
 
 type DescriptorItem struct {
 	IDx uint32
@@ -38,6 +39,33 @@ func LearnDictionary(decompressedStream *ExtendedReader, ContextDescriptor map[u
 		ContextDescriptor[IDx] = string(name)
 	}
 	return dictionary, nil
+}
+
+func TeachDictionary(stream *ExtendedWriter, descriptor []*DescriptorItem) error {
+    err := stream.WriteUint32BE(uint32(len(descriptor)))
+    if err != nil {
+        return err
+    }
+
+    for _, item := range descriptor {
+        err = stream.WriteUint32BE(item.IDx)
+        if err != nil {
+            return err
+        }
+        err = stream.WriteUint16BE(uint16(len(item.Name)))
+        if err != nil {
+            return err
+        }
+        err = stream.WriteASCII(item.Name)
+        if err != nil {
+            return err
+        }
+        err = stream.WriteUint32BE(item.OtherID)
+        if err != nil {
+            return err
+        }
+    }
+    return nil
 }
 
 func LearnDictionaryHuffman(decompressedStream *ExtendedReader, ContextDescriptor map[uint32]string) ([]*DescriptorItem, error) {
@@ -122,4 +150,48 @@ func DecodePacket82Layer(packet *UDPPacket, context *CommunicationContext) (inte
 		context.EDescriptorsParsed.Broadcast()
 		return layer, nil
 	}
+}
+
+func (layer *Packet82Layer) Serialize(stream *ExtendedWriter) error {
+    var err error
+    // FIXME: Assume this peer is always a server
+
+    err = stream.WriteByte(0x82)
+    if err != nil {
+        return err
+    }
+    gzipBuf := bytes.NewBuffer([]byte{})
+    middleStream := gzip.NewWriter(gzipBuf)
+    defer middleStream.Close()
+    gzipStream := &ExtendedWriter{bitstream.NewWriter(middleStream)}
+    err = TeachDictionary(gzipStream, layer.ClassDescriptor)
+    if err != nil {
+        return err
+    }
+    err = TeachDictionary(gzipStream, layer.PropertyDescriptor)
+    if err != nil {
+        return err
+    }
+    err = TeachDictionary(gzipStream, layer.EventDescriptor)
+    if err != nil {
+        return err
+    }
+    err = TeachDictionary(gzipStream, layer.TypeDescriptor)
+    if err != nil {
+        return err
+    }
+    err = gzipStream.Flush(bitstream.Zero)
+    if err != nil {
+        return err
+    }
+    err = middleStream.Flush()
+    if err != nil {
+        return err
+    }
+    err = stream.WriteUint32BE(uint32(gzipBuf.Len()))
+    if err != nil {
+        return err
+    }
+    err = stream.AllBytes(gzipBuf.Bytes())
+    return err
 }

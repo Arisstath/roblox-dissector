@@ -158,7 +158,11 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 				}
 
 				client.Writer.WriteGeneric(0x93, response, 3)
-			}
+			} else if packetType == 0x82 {
+                response := server.Dictionaries
+
+                client.Writer.WriteGeneric(0x82, response, 3)
+            }
 		},
 		ErrorHandler: func(err error) {
 			println(err.Error())

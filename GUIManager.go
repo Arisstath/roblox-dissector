@@ -708,10 +708,14 @@ func GUIMain() {
                 println("while parsing dict:", err.Error())
                 return
             }
-            var dictionaries *peer.Packet82Layer
-            err = gob.NewDecoder(dictfile).Decode(dictionaries)
+            var dictionaries peer.Packet82Layer
+            err = gob.NewDecoder(dictfile).Decode(&dictionaries)
+            if err != nil {
+                println("while parsing dict:", err.Error())
+                return
+            }
 
-            go peer.StartServer(uint16(port), dictionaries, &schema)
+            go peer.StartServer(uint16(port), &dictionaries, &schema)
         })
 	})
 
