@@ -19,6 +19,8 @@ type ServerPeer struct {
 	Clients map[string]*Client
 	Address *net.UDPAddr
 	GUID uint64
+    Dictionaries *Packet82Layer
+    Schema *StaticSchema
 }
 
 func (client *Client) SendACKs() {
@@ -193,7 +195,7 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 	return client
 }
 
-func StartServer(port uint16) error {
+func StartServer(port uint16, dictionaries *Packet82Layer, schema *StaticSchema) error {
 	server := &ServerPeer{Clients: make(map[string]*Client)}
 
 	var err error
@@ -209,6 +211,8 @@ func StartServer(port uint16) error {
 	}
 	server.Connection = conn
 	server.GUID = rand.Uint64()
+    server.Dictionaries = dictionaries
+    server.Schema = schema
 
 	buf := make([]byte, 1492)
 

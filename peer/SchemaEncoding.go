@@ -3,6 +3,7 @@ import "bufio"
 import "fmt"
 import "regexp"
 import "strconv"
+import "io"
 
 func mustAtoi(x string) (int) {
 	result, err := strconv.Atoi(x)
@@ -17,12 +18,12 @@ func ParseSchema(ifile io.Reader, efile io.Reader) (StaticSchema, error) {
 	instances := bufio.NewReader(ifile)
 	schema := StaticSchema{}
 	var totalEnums int
-	_, err := fmt.Fscanf(enums, "%d", &enums)
+	_, err := fmt.Fscanf(enums, "%d\n", &totalEnums)
 	if err != nil {
 		return schema, err
 	}
 
-	enumExp := regexp.MustCompile(`"\s*([a-zA-Z0-9 _]+)"\s*\d+\s*"`)
+	enumExp := regexp.MustCompile(`\s*"([a-zA-Z0-9 _]+)"\s*(\d+)\s*`)
 	schema.Enums = make([]StaticEnumSchema, totalEnums)
 	for i := 0; i < totalEnums; i++ {
 		line, err := enums.ReadString('\n')
@@ -32,7 +33,7 @@ func ParseSchema(ifile io.Reader, efile io.Reader) (StaticSchema, error) {
 		enum := enumExp.FindStringSubmatch(line)
 		schema.Enums[i] = StaticEnumSchema{
 			Name: enum[1],
-			Unknown: MustAtoi(enum[2]),
+			BitSize: uint8(mustAtoi(enum[2])),
 		}
 	}
 
@@ -42,10 +43,10 @@ func ParseSchema(ifile io.Reader, efile io.Reader) (StaticSchema, error) {
 
 	instanceExp := enumExp
 	eventExp := enumExp
-	propertyExp := regexp.MustCompile(`"\s*([a-zA-Z0-9 _]+)"\s*(\d+)\s*(\d+)\s*"`)
-	err = fmt.Scanf(instances, "%d %d %d", &totalInstances, totalProperties, totalEvents)
+	propertyExp := regexp.MustCompile(`\s*"([a-zA-Z0-9 _\-\(\)/]+)"\s*(\d+)\s*(\d+)\s*`)
+	_, err = fmt.Fscanf(instances, "%d %d %d\n", &totalInstances, &totalProperties, &totalEvents)
 	if err != nil {
-		return err
+		return schema, err
 	}
 	schema.Instances = make([]StaticInstanceSchema, totalInstances)
 	schema.Properties = make([]StaticPropertySchema, totalProperties)
@@ -60,11 +61,11 @@ func ParseSchema(ifile io.Reader, efile io.Reader) (StaticSchema, error) {
 		instance := instanceExp.FindStringSubmatch(line)
 		thisInstance := StaticInstanceSchema{
 			Name: instance[1],
-			Unknown: MustAtoi(instance[2]),
+			Unknown: uint16(mustAtoi(instance[2])),
 		}
 
 		var countProperties int
-		_, err = fmt.Fscanf(instances, "%d", &countProperties)
+		_, err = fmt.Fscanf(instances, "%d\n", &countProperties)
 		if err != nil {
 			return schema, err
 		}
@@ -79,10 +80,10 @@ func ParseSchema(ifile io.Reader, efile io.Reader) (StaticSchema, error) {
 			property := propertyExp.FindStringSubmatch(line)
 			thisProperty := StaticPropertySchema{
 				Name: property[1],
-				Type: MustAtoi(property[2]),
-				Unknown: MustAtoi(property[3]),
-				TypeString: TypeNames[MustAtoi(property[2])],
-				InstanceSchema: thisInstance,
+				Type: uint8(mustAtoi(property[2])),
+				Unknown: uint16(mustAtoi(property[3])),
+				TypeString: TypeNames[uint8(mustAtoi(property[2]))],
+				InstanceSchema: &thisInstance,
 			}
 			thisInstance.Properties[j] = thisProperty
 			schema.Properties[propertyGlobalIndex] = thisProperty
@@ -91,11 +92,11 @@ func ParseSchema(ifile io.Reader, efile io.Reader) (StaticSchema, error) {
 		}
 
 		var countEvents int
-		_, err = fmt.Fscanf(instances, "%d", &countEvents)
+		_, err = fmt.Fscanf(instances, "%d\n", &countEvents)
 		if err != nil {
 			return schema, err
 		}
-		thisInstance.Properties = make([]StaticEventSchema, countEvents)
+		thisInstance.Events = make([]StaticEventSchema, countEvents)
 		for j := 0; j < countEvents; j++ {
 			line, err = instances.ReadString('\n')
 			if err != nil {
@@ -104,20 +105,23 @@ func ParseSchema(ifile io.Reader, efile io.Reader) (StaticSchema, error) {
 
 			event := eventExp.FindStringSubmatch(line)
 			thisEvent := StaticEventSchema{
-				Name: property[1],
-				InstanceSchema: thisInstance,
+				Name: event[1],
+				InstanceSchema: &thisInstance,
 			}
-			countArguments := MustAtoi(property[2])
+			countArguments := mustAtoi(event[2])
 			thisEvent.Arguments = make([]StaticArgumentSchema, countArguments)
 			for k := 0; k < countArguments; k++ {
 				var argType int
 				var argUnk int
 
-				fmt.Fscanf(instances, "%d %d", &argType, &argUnk)
+                _, err = fmt.Fscanf(instances, "%d %d\n", &argType, &argUnk)
+                if err != nil {
+                    return schema, err
+                }
 				thisArgument := StaticArgumentSchema{
-					Type: argType,
-					TypeString: TypeNames[argType],
-					Unknown: argUnk,
+					Type: uint8(argType),
+					TypeString: TypeNames[uint8(argType)],
+					Unknown: uint16(argUnk),
 				}
 
 				thisEvent.Arguments[k] = thisArgument
@@ -131,6 +135,7 @@ func ParseSchema(ifile io.Reader, efile io.Reader) (StaticSchema, error) {
 
 		schema.Instances[i] = thisInstance
 	}
+    return schema, nil
 }
 
 func (schema *StaticSchema) Dump(instances io.Writer, enums io.Writer) error {

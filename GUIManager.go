@@ -13,6 +13,7 @@ import "net/http"
 import "io/ioutil"
 import "strings"
 import "errors"
+import "encoding/gob"
 
 var window *widgets.QMainWindow
 
@@ -43,6 +44,13 @@ type PlayerSettings struct {
 	AuthTicket string
 }
 
+type ServerSettings struct {
+    Port string
+    EnumSchemaLocation string
+    InstanceSchemaLocation string
+    DictionaryLocation string
+}
+
 type SelectionHandlerList map[uint64](func ())
 type MyPacketListView struct {
 	*widgets.QTreeView
@@ -66,6 +74,7 @@ type MyPacketListView struct {
 
 	StudioSettings *StudioSettings
 	PlayerSettings *PlayerSettings
+    ServerSettings *ServerSettings
 	Context *peer.CommunicationContext
 }
 
@@ -105,6 +114,7 @@ func NewMyPacketListView(parent widgets.QWidget_ITF) *MyPacketListView {
 
 		&StudioSettings{},
 		&PlayerSettings{},
+        &ServerSettings{},
 		nil,
 	}
 	return new
@@ -676,7 +686,33 @@ func GUIMain() {
 	peersBar := window.MenuBar().AddMenu2("&Peers...")
 	startSelfServer := peersBar.AddAction("Start self &server")
 	startSelfServer.ConnectTriggered(func(checked bool)() {
-		go peer.StartServer(53640)
+        NewServerStartWidget(window, packetViewer.ServerSettings, func(settings *ServerSettings) {
+            port, _ := strconv.Atoi(settings.Port)
+            enums, err := os.Open(settings.EnumSchemaLocation)
+            if err != nil {
+                println("while parsing schema:", err.Error())
+                return
+            }
+            instances, err := os.Open(settings.InstanceSchemaLocation)
+            if err != nil {
+                println("while parsing schema:", err.Error())
+                return
+            }
+            schema, err := peer.ParseSchema(instances, enums)
+            if err != nil {
+                println("while parsing schema:", err.Error())
+                return
+            }
+            dictfile, err := os.Open(settings.DictionaryLocation)
+            if err != nil {
+                println("while parsing dict:", err.Error())
+                return
+            }
+            var dictionaries *peer.Packet82Layer
+            err = gob.NewDecoder(dictfile).Decode(dictionaries)
+
+            go peer.StartServer(uint16(port), dictionaries, &schema)
+        })
 	})
 
 	window.Show()
