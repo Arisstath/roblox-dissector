@@ -32,7 +32,7 @@ func (this *PacketWriter) WriteSimple(packetType byte, packet RakNetPacket) {
 		this.ErrorHandler(err)
 		return
 	}
-	err = packet.Serialize(stream)
+	err = packet.Serialize(nil, stream)
 	if err != nil {
 		this.ErrorHandler(err)
 		return
@@ -45,7 +45,7 @@ func (this *PacketWriter) WriteRakNet(packet *RakNetLayer) {
 	output := make([]byte, 0, 1492)
 	buffer := bytes.NewBuffer(output)
 	stream := &ExtendedWriter{bitstream.NewWriter(buffer)}
-	err := packet.Serialize(stream)
+	err := packet.Serialize(nil, stream)
 	if err != nil {
 		this.ErrorHandler(err)
 		return
@@ -58,7 +58,7 @@ func (this *PacketWriter) WriteReliable(packet *ReliabilityLayer) {
 	output := make([]byte, 0, 1492)
 	buffer := bytes.NewBuffer(output)
 	stream := &ExtendedWriter{bitstream.NewWriter(buffer)}
-	err := packet.Serialize(stream)
+	err := packet.Serialize(nil, stream)
 	if err != nil {
 		this.ErrorHandler(err)
 		return
@@ -77,11 +77,11 @@ func (this *PacketWriter) WriteReliable(packet *ReliabilityLayer) {
 	this.WriteRakNet(raknet)
 }
 
-func (this *PacketWriter) WriteGeneric(packetType byte, generic RakNetPacket, reliability uint32) {
+func (this *PacketWriter) WriteGeneric(context *CommunicationContext, packetType byte, generic RakNetPacket, reliability uint32) {
 	output := make([]byte, 0, 1492)
 	buffer := bytes.NewBuffer(output) // Will allocate more if needed
 	stream := &ExtendedWriter{bitstream.NewWriter(buffer)}
-	err := generic.Serialize(stream)
+	err := generic.Serialize(context, stream)
 	if err != nil {
 		this.ErrorHandler(err)
 		return

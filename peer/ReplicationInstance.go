@@ -3,7 +3,7 @@ import "fmt"
 import "errors"
 import "github.com/gskartwii/rbxfile"
 
-func DecodeReplicationInstance(isJoinData bool, packet *UDPPacket, context *CommunicationContext, instanceSchema []*InstanceSchemaItem) (*rbxfile.Instance, error) {
+func DecodeReplicationInstance(isJoinData bool, packet *UDPPacket, context *CommunicationContext) (*rbxfile.Instance, error) {
 	var err error
 	thisBitstream := packet.Stream
 

@@ -62,7 +62,7 @@ func DecodePacket93Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	return layer, nil
 }
 
-func (layer *Packet93Layer) Serialize(stream *ExtendedWriter) error {
+func (layer *Packet93Layer) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
 	var err error
 	err = stream.WriteByte(0x93)
 	if err != nil {

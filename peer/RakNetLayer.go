@@ -8,7 +8,7 @@ import "errors"
 
 const DEBUG bool = false
 type RakNetPacket interface {
-	Serialize(*ExtendedWriter) error
+	Serialize(*CommunicationContext, *ExtendedWriter) error
 }
 
 type PacketLayers struct {
@@ -38,7 +38,7 @@ type RakNetLayer struct {
 	DatagramNumber uint32
 }
 
-type Descriptor map[uint32]string
+type Descriptor map[string]uint32
 type Cache [0x80]interface{}
 
 type CommunicationContext struct {
@@ -48,10 +48,6 @@ type CommunicationContext struct {
 	PropertyDescriptor Descriptor
 	EventDescriptor Descriptor
 	TypeDescriptor Descriptor
-	EnumSchema map[string]EnumSchemaItem
-	InstanceSchema []*InstanceSchemaItem
-	PropertySchema []*PropertySchemaItem
-	EventSchema []*EventSchemaItem
 	ReplicatorStringCache Cache
 	ReplicatorObjectCache Cache
 	ReplicatorContentCache Cache
@@ -61,6 +57,7 @@ type CommunicationContext struct {
 
 	DataModel *rbxfile.Root
     InstancesByReferent InstanceList
+    RefStringsByReferent map[string]string
 
 	MDescriptor *sync.Mutex
 	MSchema *sync.Mutex
@@ -86,10 +83,10 @@ func NewCommunicationContext() *CommunicationContext {
 	MDescriptor := &sync.Mutex{}
 	MSchema := &sync.Mutex{}
 	return &CommunicationContext{
-		ClassDescriptor: make(map[uint32]string),
-		PropertyDescriptor: make(map[uint32]string),
-		EventDescriptor: make(map[uint32]string),
-		TypeDescriptor: make(map[uint32]string),
+		ClassDescriptor: make(Descriptor),
+		PropertyDescriptor: make(Descriptor),
+		EventDescriptor: make(Descriptor),
+		TypeDescriptor: make(Descriptor),
 
 		MDescriptor: MDescriptor,
 		MSchema: MSchema,
@@ -137,7 +134,7 @@ func (c *CommunicationContext) WaitForDescriptors() {
 }
 func (c *CommunicationContext) WaitForSchema() {
 	c.MSchema.Lock()
-	for len(c.InstanceSchema) == 0 && c.StaticSchema == nil {
+	for c.StaticSchema == nil {
 		c.ESchemaParsed.Wait()
 	}
 }
@@ -278,7 +275,7 @@ func DecodeRakNetLayer(packetType byte, packet *UDPPacket, context *Communicatio
 	}
 }
 
-func (layer *RakNetLayer) Serialize(outStream *ExtendedWriter) (error) {
+func (layer *RakNetLayer) Serialize(context *CommunicationContext, outStream *ExtendedWriter) (error) {
 	var err error
 	err = outStream.WriteBool(layer.IsValid)
 	if err != nil {

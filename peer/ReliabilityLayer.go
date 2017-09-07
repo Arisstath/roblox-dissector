@@ -141,7 +141,7 @@ func DecodeReliabilityLayer(packet *UDPPacket, context *CommunicationContext, ra
 	return layer, nil
 }
 
-func (layer *ReliabilityLayer) Serialize(outputStream *ExtendedWriter) error {
+func (layer *ReliabilityLayer) Serialize(context *CommunicationContext, outputStream *ExtendedWriter) error {
 	var err error
 	for _, packet := range layer.Packets {
 		reliability := uint64(packet.Reliability)

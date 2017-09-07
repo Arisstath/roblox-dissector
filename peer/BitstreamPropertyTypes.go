@@ -268,6 +268,7 @@ func (b *ExtendedReader) ReadObject(isJoinData bool, context *CommunicationConte
 	}
 
     serialized := objectToRef(referent, referentInt)
+    context.RefStringsByReferent[referent] = referent
 
 	return Referent(serialized), err
 }

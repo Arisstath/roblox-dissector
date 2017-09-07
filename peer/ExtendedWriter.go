@@ -2,6 +2,7 @@ package peer
 import "github.com/gskartwii/go-bitstream"
 import "encoding/binary"
 import "net"
+import "github.com/gskartwii/rbxfile"
 
 type ExtendedWriter struct {
 	*bitstream.BitWriter
@@ -40,6 +41,11 @@ func (b *ExtendedWriter) WriteUint32BE(value uint32) error {
 	binary.BigEndian.PutUint32(dest, value)
 	return b.Bytes(4, dest)
 }
+func (b *ExtendedWriter) WriteUint32LE(value uint32) error {
+	dest := make([]byte, 4)
+	binary.LittleEndian.PutUint32(dest, value)
+	return b.Bytes(4, dest)
+}
 
 func (b *ExtendedWriter) WriteUint64BE(value uint64) error {
 	dest := make([]byte, 8)
@@ -76,4 +82,50 @@ func (b *ExtendedWriter) WriteAddress(value *net.UDPAddr) error {
 
 func (b *ExtendedWriter) WriteASCII(value string) error {
 	return b.AllBytes([]byte(value))
+}
+
+func (b *ExtendedWriter) WriteUintUTF8(value int) error {
+    for value != 0 {
+        nextValue := value >> 7
+        if nextValue != 0 {
+            err := b.WriteByte(byte(value&0x7F|0x80))
+            if err != nil {
+                return err
+            }
+        } else {
+            err := b.WriteByte(byte(value&0x7F))
+            if err != nil {
+                return err
+            }
+        }
+        value = nextValue
+    }
+    return nil
+}
+
+func (b *ExtendedWriter) WriteObject(object *rbxfile.Instance, isJoinData bool, context *CommunicationContext) error {
+    var err error
+    referent := object.Reference
+    referentString := context.RefStringsByReferent[referent]
+
+    if isJoinData {
+        if referentString == "NULL2" {
+            err = b.WriteByte(0)
+            return err
+        } else if referentString != "NULL" {
+            err = b.WriteByte(uint8(len(referentString)))
+            if err != nil {
+                return err
+            }
+            err = b.WriteASCII(referentString)
+        } else {
+            err = b.WriteByte(0xFF)
+        }
+        if err != nil {
+            return err
+        }
+
+        return b.WriteUint32LE(uint32(mustAtoi(referent)))
+    }
+    return nil
 }

@@ -1,5 +1,8 @@
 package peer
 import "errors"
+import "bytes"
+import "compress/gzip"
+import "github.com/gskartwii/go-bitstream"
 
 const (
 	PROP_TYPE_INVALID uint8 = iota
@@ -173,7 +176,7 @@ func DecodePacket97Layer(packet *UDPPacket, context *CommunicationContext) (inte
 			return layer, err
 		}
 	}
-	
+
 	classArrayLen, err := stream.ReadUintUTF8()
 	if err != nil {
 		return layer, err
@@ -238,7 +241,7 @@ func DecodePacket97Layer(packet *UDPPacket, context *CommunicationContext) (inte
 			thisProperty.TypeString = TypeNames[thisProperty.Type]
 
             if thisProperty.Type == 7 {
-                _, err = stream.ReadUint16BE()
+                thisProperty.Unknown, err = stream.ReadUint16BE()
                 if err != nil {
                     return layer, err
                 }
@@ -254,7 +257,7 @@ func DecodePacket97Layer(packet *UDPPacket, context *CommunicationContext) (inte
             propertyGlobalIndex++
 		}
 
-		_, err = stream.ReadUint16BE()
+		thisInstance.Unknown, err = stream.ReadUint16BE()
 		if err != nil {
 			return layer, err
 		}
@@ -298,7 +301,7 @@ func DecodePacket97Layer(packet *UDPPacket, context *CommunicationContext) (inte
 					return layer, err
 				}
 				thisArgument.TypeString = TypeNames[thisArgument.Type]
-				_, err = stream.ReadUint16BE()
+                thisArgument.Unknown, err = stream.ReadUint16BE()
 				if err != nil {
 					return layer, err
 				}
@@ -315,4 +318,125 @@ func DecodePacket97Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	context.ESchemaParsed.Broadcast()
 
 	return layer, err
+}
+
+func (layer *Packet97Layer) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
+    var err error
+
+    err = stream.WriteByte(0x97)
+    if err != nil {
+        return err
+    }
+    gzipBuf := bytes.NewBuffer([]byte{})
+    middleStream := gzip.NewWriter(gzipBuf)
+    defer middleStream.Close()
+    gzipStream := &ExtendedWriter{bitstream.NewWriter(middleStream)}
+
+    schema := layer.Schema
+    err = gzipStream.WriteUintUTF8(len(schema.Enums))
+    if err != nil {
+        return err
+    }
+    for _, enum := range schema.Enums {
+        err = gzipStream.WriteUintUTF8(len(enum.Name))
+        err = gzipStream.WriteASCII(enum.Name)
+        err = gzipStream.WriteByte(enum.BitSize)
+    }
+
+    err = gzipStream.WriteUintUTF8(len(schema.Instances))
+    if err != nil {
+        return err
+    }
+    err = gzipStream.WriteUintUTF8(len(schema.Properties))
+    if err != nil {
+        return err
+    }
+    err = gzipStream.WriteUintUTF8(len(schema.Events))
+    if err != nil {
+        return err
+    }
+    for _, instance := range schema.Instances {
+        err = gzipStream.WriteUintUTF8(len(instance.Name))
+        if err != nil {
+            return err
+        }
+        err = gzipStream.WriteASCII(instance.Name)
+        if err != nil {
+            return err
+        }
+        err = gzipStream.WriteUintUTF8(len(instance.Properties))
+        if err != nil {
+            return err
+        }
+
+        for _, property := range instance.Properties {
+            err = gzipStream.WriteUintUTF8(len(property.Name))
+            if err != nil {
+                return err
+            }
+            err = gzipStream.WriteASCII(property.Name)
+            if err != nil {
+                return err
+            }
+            err = gzipStream.WriteByte(property.Type)
+            if err != nil {
+                return err
+            }
+            if property.Type == 7 {
+                err = gzipStream.WriteUint16BE(property.Unknown)
+                if err != nil {
+                    return err
+                }
+            }
+        }
+
+        err = gzipStream.WriteUint16BE(instance.Unknown)
+        if err != nil {
+            return err
+        }
+        err = gzipStream.WriteUintUTF8(len(instance.Events))
+        if err != nil {
+            return err
+        }
+        for _, event := range instance.Events {
+            err = gzipStream.WriteUintUTF8(len(event.Name))
+            if err != nil {
+                return err
+            }
+            err = gzipStream.WriteASCII(event.Name)
+            if err != nil {
+                return err
+            }
+
+            err = gzipStream.WriteUintUTF8(len(event.Arguments))
+            if err != nil {
+                return err
+            }
+            for _, argument := range event.Arguments {
+                err = gzipStream.WriteByte(argument.Type)
+                if err != nil {
+                    return err
+                }
+                err = gzipStream.WriteUint16BE(argument.Unknown)
+                if err != nil {
+                    return err
+                }
+            }
+        }
+    }
+
+    err = gzipStream.Flush(bitstream.Zero)
+    if err != nil {
+        return err
+    }
+    err = middleStream.Flush()
+    if err != nil {
+        return err
+    }
+    err = stream.WriteUint32BE(uint32(gzipBuf.Len()))
+    if err != nil {
+        return err
+    }
+    err = stream.AllBytes(gzipBuf.Bytes())
+    return err
 }

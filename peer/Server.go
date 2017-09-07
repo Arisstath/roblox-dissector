@@ -4,6 +4,34 @@ import "fmt"
 import "math/rand"
 import "time"
 import "sort"
+import "github.com/gskartwii/rbxfile"
+import "strconv"
+
+var services = []string{
+    "AdService",
+    "BadgeService",
+    "CSGDictionaryService",
+    "Chat",
+    "FriendService",
+    "InsertService",
+    "JointsService",
+    "Lighting",
+    "LocalizationService",
+    "LogService",
+    "MarketPlaceService",
+    "Players",
+    "PointsService",
+    "ReplicatedFirst",
+    "ReplicatedStorage",
+    "RobloxReplicatedStorage",
+    "SoundService",
+    "StarterGui",
+    "StarterPack",
+    "StarterPlayer",
+    "Teams",
+    "TestService",
+    "Workspace",
+}
 
 type Client struct {
 	Context *CommunicationContext
@@ -12,6 +40,7 @@ type Client struct {
 	Writer *PacketWriter
 	Server *ServerPeer
 	MustACK []int
+    InstanceID uint32
 }
 
 type ServerPeer struct {
@@ -27,27 +56,27 @@ func (client *Client) SendACKs() {
 	if len(client.MustACK) == 0 {
 		return
 	}
-	println("Sending acks")
 	acks := client.MustACK
 	client.MustACK = []int{}
 	var ackStructure []ACKRange
 	sort.Ints(acks)
 
 	for _, ack := range acks {
-		println("Must ack", ack)
 		if len(ackStructure) == 0 {
 			ackStructure = append(ackStructure, ACKRange{uint32(ack), uint32(ack)})
 			continue
 		}
 
 		inserted := false
-		for _, ackRange := range ackStructure {
+		for i, ackRange := range ackStructure {
 			if int(ackRange.Max) == ack {
 				inserted = true
+                break
 			}
 			if int(ackRange.Max + 1) == ack {
-				ackRange.Max++
+				ackStructure[i].Max++
 				inserted = true
+                break
 			}
 		}
 		if inserted {
@@ -110,12 +139,12 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 					SendPongTime: mainLayer.SendPingTime + 10,
 				}
 
-				client.Writer.WriteGeneric(3, response, 2)
+				client.Writer.WriteGeneric(context, 3, response, 2)
 
 				response2 := &Packet00Layer{
 					SendPingTime: mainLayer.SendPingTime + 10,
 				}
-				client.Writer.WriteGeneric(0, response2, 2)
+				client.Writer.WriteGeneric(context, 0, response2, 2)
 			} else if packetType == 0x9 {
 				mainLayer := layers.Main.(Packet09Layer)
 				incomingTimestamp := mainLayer.Timestamp
@@ -141,7 +170,7 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 					},
 				}
 
-				client.Writer.WriteGeneric(0x10, response, 2)
+				client.Writer.WriteGeneric(context, 0x10, response, 2)
 			} else if packetType == 0x90 {
 				response := &Packet93Layer{
 					UnknownBool1: true,
@@ -157,11 +186,48 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 					},
 				}
 
-				client.Writer.WriteGeneric(0x93, response, 3)
+				client.Writer.WriteGeneric(context, 0x93, response, 3)
 			} else if packetType == 0x82 {
                 response := server.Dictionaries
 
-                client.Writer.WriteGeneric(0x82, response, 3)
+                client.Writer.WriteGeneric(context, 0x82, response, 3)
+
+                response2 := &Packet97Layer{*server.Schema}
+                context.StaticSchema = server.Schema
+                context.ESchemaParsed.Broadcast()
+
+                client.Writer.WriteGeneric(context, 0x97, response2, 3)
+
+                dataModel := &rbxfile.Root{}
+                context.DataModel = dataModel
+
+                initInstances := &Packet81Layer{
+                    Items: make([]*Packet81LayerItem, len(services)),
+                    Bools: [5]bool{true, false, false, false, true},
+                    Int1: 0,
+                    Int2: 0,
+                    String1: []byte("RBX0123456789ABCDEF"),
+                }
+                for i, className := range services {
+                    classID := context.ClassDescriptor[className]
+                    instance := &rbxfile.Instance{
+                        ClassName: className,
+                        Reference: strconv.Itoa(int(client.InstanceID)),
+                        IsService: true,
+                        Properties: make(map[string]rbxfile.Value),
+                    }
+                    client.InstanceID++
+
+                    item := &Packet81LayerItem{
+                        ClassID: uint16(classID),
+                        Instance: instance,
+                        Bool1: false,
+                        Bool2: false,
+                    }
+                    initInstances.Items[i] = item
+                }
+
+                client.Writer.WriteGeneric(context, 0x81, initInstances, 3)
             }
 		},
 		ErrorHandler: func(err error) {
@@ -174,7 +240,6 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 		println(err.Error())
 	}
 	packetWriter.OutputHandler = func(payload []byte) {
-		println("Write", payload[0])
 		num, err := server.Connection.WriteToUDP(payload, addr)
 		if err != nil {
 			fmt.Printf("Wrote %d bytes, err: %s", num, err.Error())
@@ -187,6 +252,7 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 		Context: context,
 		Address: addr,
 		Server: server,
+        InstanceID: 1000,
 	}
 
 	ackTicker := time.NewTicker(17)

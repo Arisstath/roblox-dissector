@@ -9,7 +9,7 @@ type Packet83_07 struct {
 	Event *ReplicationEvent
 }
 
-func DecodePacket83_07(packet *UDPPacket, context *CommunicationContext, eventSchema []*EventSchemaItem) (interface{}, error) {
+func DecodePacket83_07(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
 	var err error
 	layer := &Packet83_07{}
 	thisBitstream := packet.Stream

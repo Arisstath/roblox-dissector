@@ -10,7 +10,7 @@ func NewPacket83_0BLayer(length int) *Packet83_0B {
 	return &Packet83_0B{make([]*rbxfile.Instance, length)}
 }
 
-func DecodePacket83_0B(packet *UDPPacket, context *CommunicationContext, instanceSchema []*InstanceSchemaItem) (interface{}, error) {
+func DecodePacket83_0B(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
 	var layer *Packet83_0B
 	thisBitstream := packet.Stream
 	thisBitstream.Align()
@@ -33,7 +33,7 @@ func DecodePacket83_0B(packet *UDPPacket, context *CommunicationContext, instanc
 
 	var i uint32
 	for i = 0; i < arrayLen; i++ {
-		layer.Instances[i], err = DecodeReplicationInstance(true, newPacket, context, instanceSchema)
+		layer.Instances[i], err = DecodeReplicationInstance(true, newPacket, context)
 		if err != nil {
 			return layer, err
 		}

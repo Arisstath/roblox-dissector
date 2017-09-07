@@ -10,7 +10,7 @@ type Packet83_03 struct {
 	Value rbxfile.Value
 }
 
-func DecodePacket83_03(packet *UDPPacket, context *CommunicationContext, propertySchema []*PropertySchemaItem) (interface{}, error) {
+func DecodePacket83_03(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
 	var err error
 	layer := &Packet83_03{}
 	thisBitstream := packet.Stream

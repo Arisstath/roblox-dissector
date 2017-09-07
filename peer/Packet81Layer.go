@@ -98,3 +98,49 @@ func DecodePacket81Layer(packet *UDPPacket, context *CommunicationContext) (inte
     }
     return layer, nil
 }
+
+func (layer *Packet81Layer) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
+    var err error
+    err = stream.WriteByte(0x81)
+    if err != nil {
+        return err
+    }
+
+    for i := 0; i < 5; i++ {
+        err = stream.WriteBool(layer.Bools[i])
+        if err != nil {
+            return err
+        }
+    }
+    err = stream.WriteUint32BE(uint32(len(layer.String1)))
+    if err != nil {
+        return err
+    }
+    err = stream.AllBytes(layer.String1)
+    if err != nil {
+        return err
+    }
+
+    // FIXME: assumes Studio
+
+    err = stream.WriteUintUTF8(len(layer.Items))
+    for _, item := range layer.Items {
+        err = stream.WriteObject(item.Instance, true, context)
+        if err != nil {
+            return err
+        }
+        err = stream.WriteUint16BE(item.ClassID)
+        if err != nil {
+            return err
+        }
+        err = stream.WriteBool(item.Bool1)
+        if err != nil {
+            return err
+        }
+        err = stream.WriteBool(item.Bool2)
+        if err != nil {
+            return err
+        }
+    }
+    return nil
+}

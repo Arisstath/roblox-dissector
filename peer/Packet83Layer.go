@@ -82,7 +82,6 @@ func DecodePacket83Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	}
 	context.WaitForSchema()
 	defer context.FinishSchema()
-	instanceSchema := context.InstanceSchema
 
 	var inner interface{}
 
@@ -104,19 +103,19 @@ func DecodePacket83Layer(packet *UDPPacket, context *CommunicationContext) (inte
 			inner, err = DecodePacket83_11(packet, context)
 			break
 		case 0x0B:
-			inner, err = DecodePacket83_0B(packet, context, instanceSchema)
+			inner, err = DecodePacket83_0B(packet, context)
 			break
 		case 0x02:
-			inner, err = DecodePacket83_02(packet, context, instanceSchema)
+			inner, err = DecodePacket83_02(packet, context)
 			break
 		case 0x01:
 			inner, err = DecodePacket83_01(packet, context)
 			break
 		case 0x03:
-			inner, err = DecodePacket83_03(packet, context, context.PropertySchema)
+			inner, err = DecodePacket83_03(packet, context)
 			break
 		case 0x07:
-			inner, err = DecodePacket83_07(packet, context, context.EventSchema)
+			inner, err = DecodePacket83_07(packet, context)
 			break
 		case 0x09:
 			inner, err = DecodePacket83_09(packet, context)

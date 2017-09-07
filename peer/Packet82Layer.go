@@ -21,7 +21,7 @@ func NewPacket82Layer() Packet82Layer {
 	return Packet82Layer{}
 }
 
-func LearnDictionary(decompressedStream *ExtendedReader, ContextDescriptor map[uint32]string) ([]*DescriptorItem, error) {
+func LearnDictionary(decompressedStream *ExtendedReader, ContextDescriptor map[string]uint32) ([]*DescriptorItem, error) {
 	var dictionary []*DescriptorItem
 	dictionaryLength, _ := decompressedStream.ReadUint32BE()
 	if dictionaryLength > 0x1000 {
@@ -36,7 +36,7 @@ func LearnDictionary(decompressedStream *ExtendedReader, ContextDescriptor map[u
 		otherID, _ := decompressedStream.ReadUint32BE()
 
 		dictionary[i] = &DescriptorItem{IDx, otherID, string(name)}
-		ContextDescriptor[IDx] = string(name)
+		ContextDescriptor[string(name)] = IDx
 	}
 	return dictionary, nil
 }
@@ -68,7 +68,7 @@ func TeachDictionary(stream *ExtendedWriter, descriptor []*DescriptorItem) error
     return nil
 }
 
-func LearnDictionaryHuffman(decompressedStream *ExtendedReader, ContextDescriptor map[uint32]string) ([]*DescriptorItem, error) {
+func LearnDictionaryHuffman(decompressedStream *ExtendedReader, ContextDescriptor map[string]uint32) ([]*DescriptorItem, error) {
 	var dictionary []*DescriptorItem
 	dictionaryLength, _ := decompressedStream.ReadUint32BE()
 	if dictionaryLength > 0x1000 {
@@ -81,7 +81,7 @@ func LearnDictionaryHuffman(decompressedStream *ExtendedReader, ContextDescripto
 		name, _ := decompressedStream.ReadHuffman()
 
 		dictionary[i] = &DescriptorItem{IDx, 0, string(name)}
-		ContextDescriptor[IDx] = string(name)
+		ContextDescriptor[string(name)] = IDx
 	}
 	return dictionary, nil
 }
@@ -152,7 +152,7 @@ func DecodePacket82Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	}
 }
 
-func (layer *Packet82Layer) Serialize(stream *ExtendedWriter) error {
+func (layer *Packet82Layer) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
     var err error
     // FIXME: Assume this peer is always a server
 
