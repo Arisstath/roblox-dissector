@@ -110,3 +110,7 @@ func DecodePacket83_11(packet *UDPPacket, context *CommunicationContext) (interf
 
 	return inner, nil
 }
+
+func (layer *Packet83_11) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
+    return nil
+}

@@ -116,7 +116,7 @@ func (schema StaticPropertySchema) Decode(round int, packet *UDPPacket, context 
 			if DEBUG && round != ROUND_JOINDATA {
 				println("Read", schema.Name, "default")
 			}
-			return nil, err
+			return rbxfile.DefaultValue, err
 		}
 	}
 
@@ -128,4 +128,13 @@ func (schema StaticPropertySchema) Decode(round int, packet *UDPPacket, context 
         return val, errors.New("while parsing " + schema.Name + ": " + err.Error())
     }
     return val, nil
+}
+
+func (schema StaticPropertySchema) Serialize(value rbxfile.Value, round int, context *CommunicationContext, stream *ExtendedWriter) error {
+    if round != ROUND_UPDATE {
+        if value == rbxfile.DefaultValue {
+            return stream.WriteBool(true)
+        }
+    }
+    return nil
 }

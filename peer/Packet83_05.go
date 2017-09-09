@@ -32,3 +32,21 @@ func DecodePacket83_05(packet *UDPPacket, context *CommunicationContext) (interf
 
 	return inner, err
 }
+
+func (layer *Packet83_05) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
+    var err error
+    err = stream.WriteBool(layer.Bool1)
+    if err != nil {
+        return err
+    }
+    err = stream.Bits(64, layer.Int1)
+    if err != nil {
+        return err
+    }
+    err = stream.WriteUint32BE(layer.Int2)
+    if err != nil {
+        return err
+    }
+    err = stream.WriteUint32BE(layer.Int3)
+    return err
+}

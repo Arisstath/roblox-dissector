@@ -131,6 +131,10 @@ type StaticSchema struct {
 	Properties []StaticPropertySchema
 	Events []StaticEventSchema
 	Enums []StaticEnumSchema
+    ClassesByName map[string]int
+    PropertiesByName map[string]int
+    EventsByName map[string]int
+    EnumsByName map[string]int
 }
 
 
@@ -162,6 +166,7 @@ func DecodePacket97Layer(packet *UDPPacket, context *CommunicationContext) (inte
 		return layer, errors.New("sanity check: exceeded maximum enum array len")
 	}
 	layer.Schema.Enums = make([]StaticEnumSchema, enumArrayLen)
+    layer.Schema.EnumsByName = make(map[string]int, enumArrayLen)
 	for i := 0; i < int(enumArrayLen); i++ {
 		stringLen, err := stream.ReadUintUTF8()
 		if err != nil {
@@ -175,6 +180,7 @@ func DecodePacket97Layer(packet *UDPPacket, context *CommunicationContext) (inte
 		if err != nil {
 			return layer, err
 		}
+        layer.Schema.EnumsByName[layer.Schema.Enums[i].Name] = i
 	}
 
 	classArrayLen, err := stream.ReadUintUTF8()
@@ -201,6 +207,9 @@ func DecodePacket97Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	layer.Schema.Instances = make([]StaticInstanceSchema, classArrayLen)
 	layer.Schema.Properties = make([]StaticPropertySchema, propertyArrayLen)
 	layer.Schema.Events = make([]StaticEventSchema, eventArrayLen)
+    layer.Schema.ClassesByName = make(map[string]int, classArrayLen)
+    layer.Schema.PropertiesByName = make(map[string]int, propertyArrayLen)
+    layer.Schema.EventsByName = make(map[string]int, eventArrayLen)
     propertyGlobalIndex := 0
     classGlobalIndex := 0
     eventGlobalIndex := 0
@@ -214,6 +223,8 @@ func DecodePacket97Layer(packet *UDPPacket, context *CommunicationContext) (inte
 		if err != nil {
 			return layer, err
 		}
+        layer.Schema.ClassesByName[thisInstance.Name] = i
+
 		propertyCount, err := stream.ReadUintUTF8()
 		if err != nil {
 			return layer, err
@@ -233,6 +244,11 @@ func DecodePacket97Layer(packet *UDPPacket, context *CommunicationContext) (inte
 			if err != nil {
 				return layer, err
 			}
+            propertyGlobalName := make([]byte, propNameLen + 1 + classNameLen)
+            copy(propertyGlobalName, thisInstance.Name)
+            propertyGlobalName[classNameLen] = byte('.')
+            copy(propertyGlobalName[classNameLen+1:], thisProperty.Name)
+            layer.Schema.PropertiesByName[string(propertyGlobalName)] = propertyGlobalIndex
 
 			thisProperty.Type, err = stream.ReadUint8()
 			if err != nil {
@@ -284,6 +300,11 @@ func DecodePacket97Layer(packet *UDPPacket, context *CommunicationContext) (inte
 			if err != nil {
 				return layer, err
 			}
+            eventGlobalName := make([]byte, eventNameLen + 1 + classNameLen)
+            copy(eventGlobalName, thisInstance.Name)
+            eventGlobalName[classNameLen] = byte('.')
+            copy(eventGlobalName[classNameLen+1:], thisEvent.Name)
+            layer.Schema.EventsByName[string(eventGlobalName)] = eventGlobalIndex
 
 			countArguments, err := stream.ReadUintUTF8()
 			if err != nil {

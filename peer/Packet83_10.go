@@ -15,3 +15,7 @@ func DecodePacket83_10(packet *UDPPacket, context *CommunicationContext) (interf
 
 	return inner, err
 }
+
+func (layer *Packet83_10) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
+    return stream.WriteUint32BE(layer.TagId)
+}

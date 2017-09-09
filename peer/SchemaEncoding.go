@@ -51,6 +51,9 @@ func ParseSchema(ifile io.Reader, efile io.Reader) (StaticSchema, error) {
 	schema.Instances = make([]StaticInstanceSchema, totalInstances)
 	schema.Properties = make([]StaticPropertySchema, totalProperties)
 	schema.Events = make([]StaticEventSchema, totalEvents)
+    schema.ClassesByName = make(map[string]int, totalInstances)
+    schema.PropertiesByName = make(map[string]int, totalProperties)
+    schema.EventsByName = make(map[string]int, totalEvents)
 	propertyGlobalIndex := 0
 	eventGlobalIndex := 0
 	for i := 0; i < totalInstances; i++ {
@@ -63,6 +66,7 @@ func ParseSchema(ifile io.Reader, efile io.Reader) (StaticSchema, error) {
 			Name: instance[1],
 			Unknown: uint16(mustAtoi(instance[2])),
 		}
+        schema.ClassesByName[thisInstance.Name] = i
 
 		var countProperties int
 		_, err = fmt.Fscanf(instances, "%d\n", &countProperties)
@@ -87,6 +91,7 @@ func ParseSchema(ifile io.Reader, efile io.Reader) (StaticSchema, error) {
 			}
 			thisInstance.Properties[j] = thisProperty
 			schema.Properties[propertyGlobalIndex] = thisProperty
+            schema.PropertiesByName[thisInstance.Name+"."+thisProperty.Name] = propertyGlobalIndex
 
 			propertyGlobalIndex++
 		}
@@ -129,6 +134,7 @@ func ParseSchema(ifile io.Reader, efile io.Reader) (StaticSchema, error) {
 
 			thisInstance.Events[j] = thisEvent
 			schema.Events[eventGlobalIndex] = thisEvent
+            schema.EventsByName[thisInstance.Name+"."+thisEvent.Name] = eventGlobalIndex
 
 			eventGlobalIndex++
 		}

@@ -25,7 +25,8 @@ func stripInvalidTypes(instances []*rbxfile.Instance) {
 			thisType := property.Type()
 			if thisType >= rbxfile.TypeNumberSequenceKeypoint || 
 			   thisType == rbxfile.TypeVector2int16 ||
-			   thisType == rbxfile.TypeUDim { 
+			   thisType == rbxfile.TypeUDim ||
+               thisType == rbxfile.TypeDefault { 
 				println("stripping property", name, thisType.String())
 				delete(instance.Properties, name)
 			}

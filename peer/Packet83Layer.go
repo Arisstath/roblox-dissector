@@ -18,7 +18,9 @@ var Packet83Subpackets map[uint8]string = map[uint8]string{
 	0x11: "ID_REPLIC_STATS",
 }
 
-type Packet83Subpacket interface{}
+type Packet83Subpacket interface{
+    Serialize(*CommunicationContext, *ExtendedWriter) error
+}
 
 func Packet83ToType(this Packet83Subpacket) uint8 {
 	switch this.(type) {
@@ -138,4 +140,32 @@ func DecodePacket83Layer(packet *UDPPacket, context *CommunicationContext) (inte
 		}
 	}
 	return layer, nil
+}
+
+func (layer *Packet83Layer) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
+    var err error
+    err = stream.WriteByte(0x83)
+    if err != nil {
+        return err
+    }
+    for _, subpacket := range layer.SubPackets {
+        thisType := Packet83ToType(subpacket)
+        if thisType < 4 {
+            err = stream.Bits(2, uint64(thisType))
+        } else {
+            err = stream.Bits(2, 0)
+            if err != nil {
+                return err
+            }
+            err = stream.Bits(5, uint64(thisType))
+        }
+        if err != nil {
+            return err
+        }
+        err = subpacket.Serialize(context, stream)
+        if err != nil {
+            return err
+        }
+    }
+    return stream.Bits(2, 0)
 }

@@ -85,6 +85,9 @@ func (b *ExtendedWriter) WriteASCII(value string) error {
 }
 
 func (b *ExtendedWriter) WriteUintUTF8(value int) error {
+    if value == 0 {
+        return b.WriteByte(0)
+    }
     for value != 0 {
         nextValue := value >> 7
         if nextValue != 0 {
@@ -105,6 +108,9 @@ func (b *ExtendedWriter) WriteUintUTF8(value int) error {
 
 func (b *ExtendedWriter) WriteObject(object *rbxfile.Instance, isJoinData bool, context *CommunicationContext) error {
     var err error
+    if object == nil {
+        return b.WriteByte(0)
+    }
     referent := object.Reference
     referentString := context.RefStringsByReferent[referent]
 

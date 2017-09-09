@@ -1,6 +1,7 @@
 package peer
 import "errors"
 import "github.com/gskartwii/rbxfile"
+import "fmt"
 
 type Packet81LayerItem struct {
 	ClassID uint16
@@ -75,6 +76,11 @@ func DecodePacket81Layer(packet *UDPPacket, context *CommunicationContext) (inte
         if err != nil {
             return layer, err
         }
+
+        if int(thisItem.ClassID) > len(context.StaticSchema.Instances) {
+            return layer, errors.New(fmt.Sprintf("class idx %d is higher than %d", thisItem.ClassID, len(context.StaticSchema.Instances)))
+        }
+
         className := context.StaticSchema.Instances[thisItem.ClassID].Name
         thisService := &rbxfile.Instance{
             ClassName: className,

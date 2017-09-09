@@ -1,6 +1,9 @@
 package peer
 import "errors"
 import "github.com/gskartwii/rbxfile"
+import "bytes"
+import "compress/gzip"
+import "github.com/gskartwii/go-bitstream"
 
 type Packet83_0B struct {
 	Instances []*rbxfile.Instance
@@ -41,4 +44,44 @@ func DecodePacket83_0B(packet *UDPPacket, context *CommunicationContext) (interf
 		gzipStream.Align()
 	}
 	return layer, nil
+}
+
+func (layer *Packet83_0B) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
+    var err error
+    err = stream.Align()
+    if err != nil {
+        return err
+    }
+
+    err = stream.WriteUint32BE(uint32(len(layer.Instances)))
+    gzipBuf := bytes.NewBuffer([]byte{})
+    middleStream := gzip.NewWriter(gzipBuf)
+    defer middleStream.Close()
+    gzipStream := &ExtendedWriter{bitstream.NewWriter(middleStream)}
+
+    for i := 0; i < len(layer.Instances); i++ {
+        err = SerializeReplicationInstance(layer.Instances[i], true, context, gzipStream)
+        if err != nil {
+            return err
+        }
+        err = gzipStream.Align()
+        if err != nil {
+            return err
+        }
+    }
+
+    err = gzipStream.Flush(bitstream.Zero)
+    if err != nil {
+        return err
+    }
+    err = middleStream.Flush()
+    if err != nil {
+        return err
+    }
+    err = stream.WriteUint32BE(uint32(gzipBuf.Len()))
+    if err != nil {
+        return err
+    }
+    err = stream.AllBytes(gzipBuf.Bytes())
+    return err
 }

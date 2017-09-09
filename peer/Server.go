@@ -18,7 +18,7 @@ var services = []string{
     "Lighting",
     "LocalizationService",
     "LogService",
-    "MarketPlaceService",
+    "MarketplaceService",
     "Players",
     "PointsService",
     "ReplicatedFirst",
@@ -200,6 +200,12 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 
                 dataModel := &rbxfile.Root{}
                 context.DataModel = dataModel
+                child := &rbxfile.Instance{
+                    ClassName: "Part",
+                    Reference: strconv.Itoa(int(client.InstanceID)),
+                    IsService: true,
+                    Properties: make(map[string]rbxfile.Value),
+                }
 
                 initInstances := &Packet81Layer{
                     Items: make([]*Packet81LayerItem, len(services)),
@@ -209,7 +215,7 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
                     String1: []byte("RBX0123456789ABCDEF"),
                 }
                 for i, className := range services {
-                    classID := context.ClassDescriptor[className]
+                    classID := context.StaticSchema.ClassesByName[className]
                     instance := &rbxfile.Instance{
                         ClassName: className,
                         Reference: strconv.Itoa(int(client.InstanceID)),
@@ -224,10 +230,41 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
                         Bool1: false,
                         Bool2: false,
                     }
+                    if className == "Workspace" {
+                        instance.AddChild(child)
+                    }
+
                     initInstances.Items[i] = item
+                    context.RefStringsByReferent[instance.Reference] = "RBX0123456789ABCDEF"
                 }
 
                 client.Writer.WriteGeneric(context, 0x81, initInstances, 3)
+
+                replicationResponse := &Packet83Layer{
+                    SubPackets: []Packet83Subpacket{
+                        &Packet83_10{
+                            TagId: 12,
+                        },
+                        &Packet83_0B{
+                        },
+                        &Packet83_05{
+                            false,
+                            294470000,
+                            0,
+                            0,
+                        },
+                        &Packet83_10{
+                            TagId: 13,
+                        },
+                    },
+                }
+
+                for _, item := range initInstances.Items {
+                    replicationResponse.SubPackets[1].(*Packet83_0B).Instances = append(replicationResponse.SubPackets[1].(*Packet83_0B).Instances, item.Instance)
+                }
+                replicationResponse.SubPackets[1].(*Packet83_0B).Instances = append(replicationResponse.SubPackets[1].(*Packet83_0B).Instances, child)
+
+                client.Writer.WriteGeneric(context, 0x83, replicationResponse, 3)
             }
 		},
 		ErrorHandler: func(err error) {

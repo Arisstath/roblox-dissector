@@ -99,3 +99,41 @@ func DecodeReplicationInstance(isJoinData bool, packet *UDPPacket, context *Comm
 
     return thisInstance, err
 }
+
+func SerializeReplicationInstance(instance *rbxfile.Instance, isJoinData bool, context *CommunicationContext, stream *ExtendedWriter) error {
+    var err error
+    err = stream.WriteObject(instance, isJoinData, context)
+    if err != nil {
+        return err
+    }
+
+    schemaIdx := uint16(context.StaticSchema.ClassesByName[instance.ClassName])
+    err = stream.WriteUint16BE(schemaIdx)
+    if err != nil {
+        return err
+    }
+    err = stream.WriteBool(false) // ???
+    if err != nil {
+        return err
+    }
+
+    schema := context.StaticSchema.Instances[schemaIdx]
+    if isJoinData {
+        for i := 0; i < len(schema.Properties); i++ {
+            value := instance.Get(schema.Properties[i].Name)
+            if value == nil {
+                value = rbxfile.DefaultValue
+            }
+            err = schema.Properties[i].Serialize(value, ROUND_JOINDATA, context, stream)
+            if err != nil {
+                return err
+            }
+        }
+    }
+
+    err = stream.WriteObject(instance.Parent(), isJoinData, context)
+    if err != nil {
+        return err
+    }
+    return nil
+}
