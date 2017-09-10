@@ -188,6 +188,10 @@ func (layer *Packet82Layer) Serialize(context *CommunicationContext, stream *Ext
     if err != nil {
         return err
     }
+	err = middleStream.Close()
+	if err != nil {
+		return err
+	}
     err = stream.WriteUint32BE(uint32(gzipBuf.Len()))
     if err != nil {
         return err

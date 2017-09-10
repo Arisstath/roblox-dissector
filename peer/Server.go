@@ -7,6 +7,15 @@ import "sort"
 import "github.com/gskartwii/rbxfile"
 import "strconv"
 
+var empty = struct{}{}
+var noLocalDefaults = map[string]struct{}{
+	"JointsService": empty,
+	"Players": empty,
+	"StarterGui": empty,
+	"StarterPack": empty,
+	"Workspace": empty,
+}
+
 var services = []string{
     "AdService",
     "BadgeService",
@@ -200,12 +209,6 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 
                 dataModel := &rbxfile.Root{}
                 context.DataModel = dataModel
-                child := &rbxfile.Instance{
-                    ClassName: "Part",
-                    Reference: strconv.Itoa(int(client.InstanceID)),
-                    IsService: true,
-                    Properties: make(map[string]rbxfile.Value),
-                }
 
                 initInstances := &Packet81Layer{
                     Items: make([]*Packet81LayerItem, len(services)),
@@ -230,9 +233,6 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
                         Bool1: false,
                         Bool2: false,
                     }
-                    if className == "Workspace" {
-                        instance.AddChild(child)
-                    }
 
                     initInstances.Items[i] = item
                     context.RefStringsByReferent[instance.Reference] = "RBX0123456789ABCDEF"
@@ -240,13 +240,13 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 
                 client.Writer.WriteGeneric(context, 0x81, initInstances, 3)
 
+				joinData := &Packet83_0B{make([]*rbxfile.Instance, 0, len(services) + 1)}
                 replicationResponse := &Packet83Layer{
                     SubPackets: []Packet83Subpacket{
                         &Packet83_10{
                             TagId: 12,
                         },
-                        &Packet83_0B{
-                        },
+						joinData,
                         &Packet83_05{
                             false,
                             294470000,
@@ -260,9 +260,12 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
                 }
 
                 for _, item := range initInstances.Items {
-                    replicationResponse.SubPackets[1].(*Packet83_0B).Instances = append(replicationResponse.SubPackets[1].(*Packet83_0B).Instances, item.Instance)
+					
+					if _, ok := noLocalDefaults[item.Instance.ClassName]; ok {
+						continue
+					}
+					joinData.Instances = append(joinData.Instances, item.Instance)
                 }
-                replicationResponse.SubPackets[1].(*Packet83_0B).Instances = append(replicationResponse.SubPackets[1].(*Packet83_0B).Instances, child)
 
                 client.Writer.WriteGeneric(context, 0x83, replicationResponse, 3)
             }

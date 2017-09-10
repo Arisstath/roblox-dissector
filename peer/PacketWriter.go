@@ -142,6 +142,11 @@ func (this *PacketWriter) WriteGeneric(context *CommunicationContext, packetType
 		for i := 1; i < requiredSplits; i++ {
 			println("Writing split", i, "/", requiredSplits)
 			packet.SplitPacketIndex = uint32(i)
+			if reliability >= 2 && reliability <= 4 {
+				packet.ReliableMessageNumber = this.ReliableNumber
+				this.ReliableNumber++
+			}
+
 			packet.SelfData = result[splitBandwidth*i:min(uint(realLen), uint(splitBandwidth*(i + 1)))]
 			this.WriteReliable(&ReliabilityLayer{[]*ReliablePacket{packet}})
 		}

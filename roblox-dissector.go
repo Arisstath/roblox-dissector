@@ -124,6 +124,9 @@ func captureJob(handle *pcap.Handle, useIPv4 bool, stopCaptureJob chan struct{},
 				continue
 			}
 			newPacket := peer.UDPPacketFromGoPacket(packet)
+			if newPacket == nil {
+				continue
+			}
 			if context.Client != "" && !context.IsClient(newPacket.Source) && !context.IsServer(newPacket.Source) {
 				continue
 			}
