@@ -324,6 +324,7 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
                 context.DataModel = dataModel
 
 				var workspace *rbxfile.Instance
+				var replicatedStorage *rbxfile.Instance
 
                 initInstances := &Packet81Layer{
                     Items: make([]*Packet81LayerItem, len(services)),
@@ -350,6 +351,8 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
                     }
 					if className == "Workspace" {
 						workspace = instance
+					} else if className == "ReplicatedStorage" {
+						replicatedStorage = instance
 					}
 
                     initInstances.Items[i] = item
@@ -387,7 +390,7 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 
                 client.Writer.WriteGeneric(context, 0x83, replicationResponse, 3)
 
-				/*onlyWorkspaceJoinData := &Packet83_0B{make([]*rbxfile.Instance, 0)}
+				onlyWorkspaceJoinData := &Packet83_0B{make([]*rbxfile.Instance, 0)}
 				InputObject := &rbxfile.Instance{
 					ClassName: "InputObject",
 					Reference: strconv.Itoa(int(client.InstanceID)),
@@ -456,9 +459,9 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 
 				client.Writer.WriteGeneric(context, 0x83, &Packet83Layer{
 					[]Packet83Subpacket{onlyWorkspaceJoinData},
-				}, 3)*/
+				}, 3)
 
-				/*allDefaultsJoinData := &Packet83_0B{make([]*rbxfile.Instance, 0, len(context.StaticSchema.Instances))}
+				allDefaultsJoinData := &Packet83_0B{make([]*rbxfile.Instance, 0, len(context.StaticSchema.Instances))}
 
 				humanoid := &rbxfile.Instance{
 					ClassName: "Humanoid",
@@ -469,7 +472,7 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 				client.InstanceID++
 				allDefaultsJoinData.Instances = append(allDefaultsJoinData.Instances, humanoid)
 				context.RefStringsByReferent[humanoid.Reference] = "RBX0123456789ABCDEF"
-				workspace.AddChild(humanoid)
+				replicatedStorage.AddChild(humanoid)
 				animator := &rbxfile.Instance{
 					ClassName: "Animator",
 					Reference: strconv.Itoa(int(client.InstanceID)),
@@ -490,7 +493,7 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 				client.InstanceID++
 				allDefaultsJoinData.Instances = append(allDefaultsJoinData.Instances, part)
 				context.RefStringsByReferent[part.Reference] = "RBX0123456789ABCDEF"
-				workspace.AddChild(part)
+				replicatedStorage.AddChild(part)
 				attachment := &rbxfile.Instance{
 					ClassName: "Attachment",
 					Reference: strconv.Itoa(int(client.InstanceID)),
@@ -522,12 +525,12 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 					allDefaultsJoinData.Instances = append(allDefaultsJoinData.Instances, instance)
                     context.RefStringsByReferent[instance.Reference] = "RBX0123456789ABCDEF"
 
-					workspace.AddChild(instance)
+					replicatedStorage.AddChild(instance)
 				}
 
 				client.Writer.WriteGeneric(context, 0x83, &Packet83Layer{
 					[]Packet83Subpacket{allDefaultsJoinData},
-				}, 3)*/
+				}, 3)
             }
 		},
 		ErrorHandler: func(err error) {
