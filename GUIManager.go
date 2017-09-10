@@ -645,7 +645,7 @@ func GUIMain() {
 			}
 
 			flags := []string{}
-			script := fmt.Sprintf(`game:GetService'NetworkClient':PlayerConnect(0, %q, %d)`, settings.Address, port)
+			script := fmt.Sprintf(`workspace.ChildAdded:connect(function(x) if x:IsA"Explosion" then print(x.BlastPressure, x.BlastRadius, x.DestroyJointRadiusPercent, x.ExplosionType, x.Position, x.Visible, x.Archivable, x.ClassName, x.Name) end end) game:GetService'NetworkClient':PlayerConnect(0, %q, %d)`, settings.Address, port)
 			flags = append(flags, strings.Split(settings.Flags, " ")...)
 			flags = append(flags, "-script", script)
 			err = exec.Command(settings.Location, flags...).Start()
