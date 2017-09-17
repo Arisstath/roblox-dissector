@@ -82,27 +82,26 @@ func captureJob(handle *pcap.Handle, useIPv4 bool, stopCaptureJob chan struct{},
 		}
 	}()
 
-	packetReader := &peer.PacketReader{
-		SimpleHandler: func(packetType byte, packet *peer.UDPPacket, layers *peer.PacketLayers) {
-			if context.IsValid {
-				packetViewer.AddFullPacket(packetType, packet, context, layers, ActivationCallbacks[packetType])
-			}
-		},
-		ReliableHandler: func(packetType byte, packet *peer.UDPPacket, layers *peer.PacketLayers) {
-			if context.IsValid {
-				packetViewer.AddSplitPacket(packetType, packet, context, layers)
-			}
-		},
-		FullReliableHandler: func(packetType byte, packet *peer.UDPPacket, layers *peer.PacketLayers) {
-			if context.IsValid {
-				packetViewer.BindCallback(packetType, packet, context, layers, ActivationCallbacks[packetType])
-			}
-		},
-		ErrorHandler: func(err error) {
-			println(err.Error())
-		},
-		Context: context,
+	packetReader := peer.NewPacketReader()
+	packetReader.SimpleHandler = func(packetType byte, packet *peer.UDPPacket, layers *peer.PacketLayers) {
+		if context.IsValid {
+			packetViewer.AddFullPacket(packetType, packet, context, layers, ActivationCallbacks[packetType])
+		}
 	}
+	packetReader.ReliableHandler = func(packetType byte, packet *peer.UDPPacket, layers *peer.PacketLayers) {
+		if context.IsValid {
+			packetViewer.AddSplitPacket(packetType, packet, context, layers)
+		}
+	}
+	packetReader.FullReliableHandler = func(packetType byte, packet *peer.UDPPacket, layers *peer.PacketLayers) {
+		if context.IsValid {
+			packetViewer.BindCallback(packetType, packet, context, layers, ActivationCallbacks[packetType])
+		}
+	}
+	packetReader.ErrorHandler = func(err error) {
+		println(err.Error())
+	}
+	packetReader.Context = context
 
 	for true {
 		select {

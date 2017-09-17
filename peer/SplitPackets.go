@@ -102,6 +102,7 @@ func (context *CommunicationContext) HandleSplitPacket(reliablePacket *ReliableP
 		fullPacket.IsFinal = true
 	}
 	fullPacket.NumReceivedSplits = expectedPacket
+	fullPacket.ReliableMessageNumber = reliablePacket.ReliableMessageNumber
 
 	if reliablePacket.HasPacketType {
 		fullPacket.HasPacketType = true
