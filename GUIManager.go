@@ -3,6 +3,7 @@ import "github.com/therecipe/qt/widgets"
 import "github.com/therecipe/qt/gui"
 import "github.com/therecipe/qt/core"
 import "github.com/gskartwii/roblox-dissector/peer"
+import "github.com/gskartwii/rbxfile"
 import "os"
 import "os/exec"
 import "fmt"
@@ -16,6 +17,7 @@ import "errors"
 import "encoding/gob"
 
 var window *widgets.QMainWindow
+type DefaultValues map[string](map[string]rbxfile.Value)
 
 type PacketList map[uint32]([]*gui.QStandardItem)
 type TwoWayPacketList struct {
@@ -51,6 +53,10 @@ type ServerSettings struct {
     DictionaryLocation string
 }
 
+type DefaultsSettings struct {
+	Files []string
+}
+
 type SelectionHandlerList map[uint64](func ())
 type MyPacketListView struct {
 	*widgets.QTreeView
@@ -71,10 +77,12 @@ type MyPacketListView struct {
 
 	StudioVersion string
 	PlayerVersion string
+	DefaultValues DefaultValues
 
 	StudioSettings *StudioSettings
 	PlayerSettings *PlayerSettings
     ServerSettings *ServerSettings
+	DefaultsSettings *DefaultsSettings
 	Context *peer.CommunicationContext
 }
 
@@ -111,10 +119,12 @@ func NewMyPacketListView(parent widgets.QWidget_ITF) *MyPacketListView {
 
 		"",
 		"",
+		nil,
 
 		&StudioSettings{},
 		&PlayerSettings{},
         &ServerSettings{},
+		&DefaultsSettings{},
 		nil,
 	}
 	return new
@@ -676,11 +686,20 @@ func GUIMain() {
 		})
 	})
 
-	browseAction := window.MenuBar().AddAction("&Browse DataModel")
+	toolsBar := window.MenuBar().AddMenu2("&Tools")
+
+	browseAction := toolsBar.AddAction("&Browse DataModel...")
 	browseAction.ConnectTriggered(func(checked bool)() {
 		if packetViewer.Context != nil {
-			NewDataModelBrowser(packetViewer.Context, packetViewer.Context.DataModel)
+			NewDataModelBrowser(packetViewer.Context, packetViewer.Context.DataModel, packetViewer.DefaultValues)
 		}
+	})
+
+	readDefaults := toolsBar.AddAction("Parse &default values...")
+	readDefaults.ConnectTriggered(func(checked bool)() {
+		NewFindDefaultsWidget(window, packetViewer.DefaultsSettings, func(settings *DefaultsSettings)() {
+			packetViewer.DefaultValues = ParseDefaultValues(settings.Files)
+		})
 	})
 
 	peersBar := window.MenuBar().AddMenu2("&Peers...")

@@ -70,7 +70,6 @@ func (this *PacketReader) ReadPacket(payload []byte, packet *UDPPacket) {
 	} else if rakNetLayer.IsACK {
 		// nop
 	} else if !rakNetLayer.IsNAK {
-		println("Receive RakNet", rakNetLayer.DatagramNumber)
 		packet.Stream = rakNetLayer.Payload
 		reliabilityLayer, err := DecodeReliabilityLayer(packet, context, rakNetLayer)
 		if err != nil {

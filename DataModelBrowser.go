@@ -19,24 +19,48 @@ func showChildren(rootNode *gui.QStandardItem, children []*rbxfile.Instance) {
 	}
 }
 
-func stripInvalidTypes(instances []*rbxfile.Instance) {
+func stripInvalidTypes(instances []*rbxfile.Instance, defaultValues DefaultValues) {
 	for _, instance := range instances {
+		color, ok := instance.Properties["Color3uint8"]
+		if ok {
+			if _, ok = color.(rbxfile.ValueDefault); !ok {
+				col := color.(rbxfile.ValueColor3uint8)
+				instance.Properties["Color"] = rbxfile.ValueColor3{
+					R: float32(col.R) / 255,
+					G: float32(col.R) / 255,
+					B: float32(col.B) / 255,
+				}
+			}
+		}
+
 		for name, property := range instance.Properties {
 			thisType := property.Type()
 			if thisType == rbxfile.TypeDefault {
-
-			} else if thisType >= rbxfile.TypeNumberSequenceKeypoint || 
-			   thisType == rbxfile.TypeVector2int16 ||
-               { 
-				println("stripping property", name, thisType.String())
+				class, ok := defaultValues[instance.ClassName]
+				if !ok {
+					println("stripping instance", instance.ClassName)
+					delete(instance.Properties, name)
+					continue
+				}
+				value, ok := class[name]
+				if !ok {
+					println("stripping because nodef", instance.ClassName, name)
+					delete(instance.Properties, name)
+					continue
+				}
+				instance.Properties[name] = value
+			} else if thisType >= rbxfile.TypeNumberSequenceKeypoint ||
+			   thisType == rbxfile.TypeVector2int16 {
+				println("stripping property", instance.ClassName, name, thisType.String())
 				delete(instance.Properties, name)
+				continue
 			}
 		}
-		stripInvalidTypes(instance.Children)
+		stripInvalidTypes(instance.Children, defaultValues)
 	}
 }
 
-func NewDataModelBrowser(context *peer.CommunicationContext, dataModel *rbxfile.Root) {
+func NewDataModelBrowser(context *peer.CommunicationContext, dataModel *rbxfile.Root, defaultValues DefaultValues) {
 	subWindow := widgets.NewQWidget(window, core.Qt__Window)
 	subWindowLayout := widgets.NewQVBoxLayout2(subWindow)
 
@@ -56,7 +80,7 @@ func NewDataModelBrowser(context *peer.CommunicationContext, dataModel *rbxfile.
 		}
 
 		writableClone := children.Copy()
-		stripInvalidTypes(writableClone.Instances)
+		stripInvalidTypes(writableClone.Instances, defaultValues)
 
 		err = bin.SerializePlace(writer, nil, writableClone)
 		if err != nil {

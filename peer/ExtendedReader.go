@@ -283,7 +283,7 @@ func (b *ExtendedReader) ReadFloat16BE(floatMin float32, floatMax float32) (floa
 		return 0.0, err
 	}
 
-	outFloat := float32(scale) / 65535.0 * (floatMax - floatMin)
+	outFloat := float32(scale) / 65535.0 * (floatMax - floatMin) + floatMin
 	if outFloat < floatMin {
 		return floatMin, nil
 	} else if outFloat > floatMax {

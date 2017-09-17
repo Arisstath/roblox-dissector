@@ -3,6 +3,7 @@ import "net"
 import "errors"
 import "github.com/gskartwii/rbxfile"
 import "fmt"
+import "math"
 
 type Referent string
 
@@ -141,7 +142,7 @@ func (b *ExtendedReader) ReadVector3() (rbxfile.ValueVector3, error) {
 		if err != nil {
 			return val, err
 		}
-		x_short := uint16(((x & 0xFFF8) >> 3) | ((x & 7) << 8))
+		x_short := uint16((x >> 3) | ((x & 7) << 8))
 		if x_short & 0x400 != 0 {
 			x_short |= 0xFC00
 		}
@@ -150,20 +151,21 @@ func (b *ExtendedReader) ReadVector3() (rbxfile.ValueVector3, error) {
 		if err != nil {
 			return val, err
 		}
+		y_short := uint16((y >> 3) | ((y & 7) << 8))
 
 		z, err := b.Bits(11)
 		if err != nil {
 			return val, err
 		}
 
-		z_short := uint16(((z & 0xFFF8) >> 3) | ((z & 7) << 8))
+		z_short := uint16((z >> 3) | ((z & 7) << 8))
 		if z_short & 0x400 != 0 {
 			z_short |= 0xFC00
 		}
 
-		val.X = float32(int16(x_short))
-		val.Y = float32(y)
-		val.Z = float32(int16(z_short))
+		val.X = float32(int16(x_short)) * 0.5
+		val.Y = float32(y_short) * 0.1
+		val.Z = float32(int16(z_short)) * 0.5
 		return val, err
 	}
 }
@@ -336,7 +338,7 @@ func quaternionToRotMatrix(q [4]float32) [9]float32 {
     YZ := ZS * Y
     ZZ := ZS * Z
 
-    return [9]float32{
+	midresult := [9]float32{
         1-(YY+ZZ),
         XY-WZ,
         XZ+WY,
@@ -347,6 +349,37 @@ func quaternionToRotMatrix(q [4]float32) [9]float32 {
         YZ+WX,
         1-(XX+YY),
     }
+
+	xScaleFactor := float32(1.0/math.Sqrt(float64(midresult[0]*midresult[0] + midresult[3]*midresult[3] + midresult[6]*midresult[6])))
+
+	result := [9]float32{
+		xScaleFactor * midresult[0], 0, 0,
+		xScaleFactor * midresult[3], 0, 0,
+		xScaleFactor * midresult[6], 0, 0,
+	}
+
+	sx_ySum := result[0]*midresult[1] + result[3]*midresult[4] + result[6]*midresult[7]
+	trueR01 := midresult[1] - result[0]*sx_ySum
+	trueR11 := midresult[4] - result[3]*sx_ySum
+	trueR21 := midresult[7] - result[6]*sx_ySum
+
+	yScaleFactor := float32(1.0/math.Sqrt(float64(trueR01*trueR01 + trueR11*trueR11 + trueR21*trueR21)))
+	result[1] = trueR01 * yScaleFactor
+	result[4] = trueR11 * yScaleFactor
+	result[7] = trueR21 * yScaleFactor
+
+	sy_zSum := result[1]*midresult[2] + result[4]*midresult[5] + result[7]*midresult[8]
+	sx_zSum := result[0]*midresult[2] + result[3]*midresult[5] + result[6]*midresult[8]
+	trueR02 := midresult[2] - result[0]*sx_zSum - result[1]*sy_zSum
+	trueR12 := midresult[5] - result[3]*sx_zSum - result[4]*sy_zSum
+	trueR22 := midresult[8] - result[6]*sx_zSum - result[7]*sy_zSum
+
+	zScaleFactor := float32(1.0/math.Sqrt(float64(trueR02*trueR02 + trueR12*trueR12 + trueR22*trueR22)))
+	result[2] = trueR02 * zScaleFactor
+	result[5] = trueR12 * zScaleFactor
+	result[8] = trueR22 * zScaleFactor
+
+	return result
 }
 
 var specialRows = [6][3]float32{
@@ -363,15 +396,21 @@ func lookupRotMatrix(special uint64) [9]float32 {
     specialRowMod6 := specialRows[special%6]
 
     ret := [9]float32{
-        specialRowDiv6[0],specialRowDiv6[1],specialRowDiv6[2],
-        specialRowMod6[0],specialRowMod6[1],specialRowMod6[2],
         0,0,0,
+        specialRowMod6[0],specialRowMod6[1],specialRowMod6[2],
+        specialRowDiv6[0],specialRowDiv6[1],specialRowDiv6[2],
     }
-    ret[6] = ret[2*3+1]*ret[1*3+2] - ret[2*3+2]*ret[1*3+1]
-    ret[7] = ret[1*3+0]*ret[2*3+2] - ret[2*3+0]*ret[1*3+2]
-    ret[8] = ret[2*3+0]*ret[1*3+1] - ret[1*3+0]*ret[2*3+0]
+    ret[0] = ret[2*3+1]*ret[1*3+2] - ret[2*3+2]*ret[1*3+1]
+    ret[1] = ret[1*3+0]*ret[2*3+2] - ret[2*3+0]*ret[1*3+2]
+    ret[2] = ret[2*3+0]*ret[1*3+1] - ret[1*3+0]*ret[2*3+1]
 
-    return ret
+	trueRet := [9]float32{
+		ret[6], ret[7], ret[8],
+		ret[3], ret[4], ret[5],
+		ret[0], ret[1], ret[2],
+	}
+
+    return trueRet
 }
 
 func (b *ExtendedReader) ReadCFrame() (rbxfile.ValueCFrame, error) {
