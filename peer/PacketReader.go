@@ -182,6 +182,20 @@ func (this *PacketReader) ReadSimple(packetType uint8, layers *PacketLayers, pac
 
 func (this *PacketReader) ReadGeneric(packetType uint8, layers *PacketLayers, packet *UDPPacket) {
 	var err error
+	if packetType == 0x1B { // ID_TIMESTAMP
+		_, err := packet.Stream.ReadString(9)
+		if err != nil {
+			this.ErrorHandler(errors.New(fmt.Sprintf("Failed to decode timestamped packet: %s", err.Error())))
+			return
+		}
+
+		packetType, err = packet.Stream.ReadByte()
+		if err != nil {
+			this.ErrorHandler(errors.New(fmt.Sprintf("Failed to decode timestamped packet: %s", err.Error())))
+			return
+		}
+	}
+
 	decoder := PacketDecoders[packetType]
 	if decoder != nil {
 		layers.Main, err = decoder(packet, this.Context)

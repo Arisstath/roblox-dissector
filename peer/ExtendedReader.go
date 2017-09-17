@@ -293,7 +293,7 @@ func (b *ExtendedReader) ReadFloat16BE(floatMin float32, floatMax float32) (floa
 }
 
 type CacheReadCallback func(*ExtendedReader)(interface{}, error)
-func (b *ExtendedReader) readWithCache(cache Cache, readCallback CacheReadCallback) (interface{}, error) {
+func (b *ExtendedReader) readWithCache(cache *Cache, readCallback CacheReadCallback) (interface{}, error) {
 	var result interface{}
 	var err error
 	cacheIndex, err := b.ReadUint8()
@@ -311,7 +311,7 @@ func (b *ExtendedReader) readWithCache(cache Cache, readCallback CacheReadCallba
 		if err != nil {
 			return "", err
 		}
-		cache[cacheIndex - 0x80] = result
+		cache[cacheIndex & 0x7F] = result
 	}
 
 	if result == nil {
@@ -330,22 +330,22 @@ func (b *ExtendedReader) ReadUint32AndString() (interface{}, error) {
 }
 
 func (b *ExtendedReader) ReadCached(context *CommunicationContext) (string, error) {
-	thisString, err := b.readWithCache(context.ReplicatorStringCache, (*ExtendedReader).ReadUint32AndString)
+	thisString, err := b.readWithCache(&context.ReplicatorStringCache, (*ExtendedReader).ReadUint32AndString)
 	return thisString.(string), err
 }
 
 func (b *ExtendedReader) ReadCachedObject(context *CommunicationContext) (string, error) {
-	thisString, err := b.readWithCache(context.ReplicatorObjectCache, (*ExtendedReader).ReadUint32AndString)
+	thisString, err := b.readWithCache(&context.ReplicatorObjectCache, (*ExtendedReader).ReadUint32AndString)
 	return thisString.(string), err
 }
 
 func (b *ExtendedReader) ReadCachedContent(context *CommunicationContext) (string, error) {
-	thisString, err := b.readWithCache(context.ReplicatorContentCache, (*ExtendedReader).ReadUint32AndString)
+	thisString, err := b.readWithCache(&context.ReplicatorContentCache, (*ExtendedReader).ReadUint32AndString)
 	return thisString.(string), err
 }
 
 func (b *ExtendedReader) ReadCachedProtectedString(context *CommunicationContext) ([]byte, error) {
-	thisString, err := b.readWithCache(context.ReplicatorStringCache, func(b *ExtendedReader)(interface{}, error) {
+	thisString, err := b.readWithCache(&context.ReplicatorStringCache, func(b *ExtendedReader)(interface{}, error) {
 		b.Align()
 		stringLen, err := b.ReadUint32BE()
 		if err != nil {
@@ -361,7 +361,7 @@ func (b *ExtendedReader) ReadCachedProtectedString(context *CommunicationContext
 }
 
 func (b *ExtendedReader) ReadNewCachedProtectedString(context *CommunicationContext) ([]byte, error) {
-	thisString, err := b.readWithCache(context.ReplicatorProtectedStringCache, func(b *ExtendedReader)(interface{}, error) {
+	thisString, err := b.readWithCache(&context.ReplicatorProtectedStringCache, func(b *ExtendedReader)(interface{}, error) {
 		stringLen, err := b.ReadUint32BE()
 		if err != nil {
 			return []byte{}, err
@@ -376,7 +376,7 @@ func (b *ExtendedReader) ReadNewCachedProtectedString(context *CommunicationCont
 }
 
 func (b *ExtendedReader) ReadCachedNewProtectedString(context *CommunicationContext) ([]byte, error) {
-	thisString, err := b.readWithCache(context.ReplicatorStringCache, func(b *ExtendedReader)(interface{}, error) {
+	thisString, err := b.readWithCache(&context.ReplicatorStringCache, func(b *ExtendedReader)(interface{}, error) {
 		stringLen, err := b.ReadUint32BE()
 		if err != nil {
 			return []byte{}, err
