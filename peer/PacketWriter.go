@@ -1,6 +1,7 @@
 package peer
 import "github.com/gskartwii/go-bitstream"
 import "bytes"
+import "net"
 
 func min(x, y uint) uint {
 	if x < y {
@@ -11,7 +12,7 @@ func min(x, y uint) uint {
 
 type PacketWriter struct {
 	ErrorHandler func(error)
-	OutputHandler func([]byte)
+	OutputHandler func([]byte, *net.UDPAddr)
 	OrderingIndex uint32
 	SequencingIndex uint32
 	SplitPacketID uint16
@@ -23,7 +24,7 @@ func NewPacketWriter() *PacketWriter {
 	return &PacketWriter{}
 }
 
-func (this *PacketWriter) WriteSimple(packetType byte, packet RakNetPacket) {
+func (this *PacketWriter) WriteSimple(packetType byte, packet RakNetPacket, dest *net.UDPAddr) {
 	output := make([]byte, 0, 1492)
 	buffer := bytes.NewBuffer(output)
 	stream := &ExtendedWriter{bitstream.NewWriter(buffer)}
@@ -39,9 +40,9 @@ func (this *PacketWriter) WriteSimple(packetType byte, packet RakNetPacket) {
 	}
 
 	stream.Flush(bitstream.Bit(false))
-	this.OutputHandler(buffer.Bytes())
+	this.OutputHandler(buffer.Bytes(), dest)
 }
-func (this *PacketWriter) WriteRakNet(packet *RakNetLayer) {
+func (this *PacketWriter) WriteRakNet(packet *RakNetLayer, dest *net.UDPAddr) {
 	output := make([]byte, 0, 1492)
 	buffer := bytes.NewBuffer(output)
 	stream := &ExtendedWriter{bitstream.NewWriter(buffer)}
@@ -52,9 +53,9 @@ func (this *PacketWriter) WriteRakNet(packet *RakNetLayer) {
 	}
 
 	stream.Flush(bitstream.Bit(false))
-	this.OutputHandler(buffer.Bytes())
+	this.OutputHandler(buffer.Bytes(), dest)
 }
-func (this *PacketWriter) WriteReliable(packet *ReliabilityLayer) {
+func (this *PacketWriter) WriteReliable(packet *ReliabilityLayer, dest *net.UDPAddr) {
 	output := make([]byte, 0, 1492)
 	buffer := bytes.NewBuffer(output)
 	stream := &ExtendedWriter{bitstream.NewWriter(buffer)}
@@ -74,10 +75,10 @@ func (this *PacketWriter) WriteReliable(packet *ReliabilityLayer) {
 	}
 	this.DatagramNumber++
 
-	this.WriteRakNet(raknet)
+	this.WriteRakNet(raknet, dest)
 }
 
-func (this *PacketWriter) WriteGeneric(context *CommunicationContext, packetType byte, generic RakNetPacket, reliability uint32) {
+func (this *PacketWriter) WriteGeneric(context *CommunicationContext, packetType byte, generic RakNetPacket, reliability uint32, dest *net.UDPAddr) {
 	output := make([]byte, 0, 1492)
 	buffer := bytes.NewBuffer(output) // Will allocate more if needed
 	stream := &ExtendedWriter{bitstream.NewWriter(buffer)}
@@ -124,7 +125,7 @@ func (this *PacketWriter) WriteGeneric(context *CommunicationContext, packetType
 		packet.SelfData = result
 		packet.LengthInBits = uint16(realLen * 8)
 
-		this.WriteReliable(&ReliabilityLayer{[]*ReliablePacket{packet}})
+		this.WriteReliable(&ReliabilityLayer{[]*ReliablePacket{packet}}, dest)
 	} else {
 		packet.HasSplitPacket = true
 		packet.SplitPacketID = this.SplitPacketID
@@ -137,7 +138,7 @@ func (this *PacketWriter) WriteGeneric(context *CommunicationContext, packetType
 		packet.SplitPacketCount = uint32(requiredSplits)
 		println("Writing split", 0, "/", requiredSplits)
 		packet.SelfData = result[:splitBandwidth]
-		this.WriteReliable(&ReliabilityLayer{[]*ReliablePacket{packet}})
+		this.WriteReliable(&ReliabilityLayer{[]*ReliablePacket{packet}}, dest)
 
 		for i := 1; i < requiredSplits; i++ {
 			println("Writing split", i, "/", requiredSplits)
@@ -148,7 +149,7 @@ func (this *PacketWriter) WriteGeneric(context *CommunicationContext, packetType
 			}
 
 			packet.SelfData = result[splitBandwidth*i:min(uint(realLen), uint(splitBandwidth*(i + 1)))]
-			this.WriteReliable(&ReliabilityLayer{[]*ReliablePacket{packet}})
+			this.WriteReliable(&ReliabilityLayer{[]*ReliablePacket{packet}}, dest)
 		}
 	}
 }

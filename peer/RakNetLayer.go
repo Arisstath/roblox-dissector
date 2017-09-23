@@ -11,6 +11,7 @@ type RakNetPacket interface {
 type PacketLayers struct {
 	RakNet *RakNetLayer
 	Reliability *ReliablePacket
+	Timestamp *Packet1BLayer
 	Main interface{}
 }
 

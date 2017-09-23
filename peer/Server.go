@@ -214,7 +214,7 @@ func (client *Client) SendACKs() {
 		ACKs: ackStructure,
 	}
 
-	client.Writer.WriteRakNet(result)
+	client.Writer.WriteRakNet(result, client.Address)
 }
 
 func (client *Client) Receive(buf []byte) {
@@ -238,7 +238,7 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 					MTU: 1492,
 				}
 
-				client.Writer.WriteSimple(6, response)
+				client.Writer.WriteSimple(6, response, addr)
 			} else if packetType == 0x7 {
 				response := &Packet08Layer{
 					MTU: 1492,
@@ -246,7 +246,7 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 					IPAddress: addr,
 				}
 
-				client.Writer.WriteSimple(8, response)
+				client.Writer.WriteSimple(8, response, addr)
 			}
 		},
 		ReliableHandler: func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
@@ -261,12 +261,12 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 					SendPongTime: mainLayer.SendPingTime + 10,
 				}
 
-				client.Writer.WriteGeneric(context, 3, response, 2)
+				client.Writer.WriteGeneric(context, 3, response, 2, addr)
 
 				response2 := &Packet00Layer{
 					SendPingTime: mainLayer.SendPingTime + 10,
 				}
-				client.Writer.WriteGeneric(context, 0, response2, 2)
+				client.Writer.WriteGeneric(context, 0, response2, 2, addr)
 			} else if packetType == 0x9 {
 				mainLayer := layers.Main.(Packet09Layer)
 				incomingTimestamp := mainLayer.Timestamp
@@ -292,7 +292,7 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 					},
 				}
 
-				client.Writer.WriteGeneric(context, 0x10, response, 2)
+				client.Writer.WriteGeneric(context, 0x10, response, 2, addr)
 			} else if packetType == 0x90 {
 				response := &Packet93Layer{
 					UnknownBool1: true,
@@ -308,17 +308,17 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 					},
 				}
 
-				client.Writer.WriteGeneric(context, 0x93, response, 3)
+				client.Writer.WriteGeneric(context, 0x93, response, 3, addr)
 			} else if packetType == 0x82 {
                 response := server.Dictionaries
 
-                client.Writer.WriteGeneric(context, 0x82, response, 3)
+                client.Writer.WriteGeneric(context, 0x82, response, 3, addr)
 
                 response2 := &Packet97Layer{*server.Schema}
                 context.StaticSchema = server.Schema
                 context.ESchemaParsed.Broadcast()
 
-                client.Writer.WriteGeneric(context, 0x97, response2, 3)
+                client.Writer.WriteGeneric(context, 0x97, response2, 3, addr)
 
                 dataModel := &rbxfile.Root{}
                 context.DataModel = dataModel
@@ -359,7 +359,7 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
                     context.RefStringsByReferent[instance.Reference] = "RBX0123456789ABCDEF"
                 }
 
-                client.Writer.WriteGeneric(context, 0x81, initInstances, 3)
+                client.Writer.WriteGeneric(context, 0x81, initInstances, 3, addr)
 
 				joinData := &Packet83_0B{make([]*rbxfile.Instance, 0, len(services) + 1)}
                 replicationResponse := &Packet83Layer{
@@ -388,7 +388,7 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 					joinData.Instances = append(joinData.Instances, item.Instance)
                 }
 
-                client.Writer.WriteGeneric(context, 0x83, replicationResponse, 3)
+                client.Writer.WriteGeneric(context, 0x83, replicationResponse, 3, addr)
 
 				onlyWorkspaceJoinData := &Packet83_0B{make([]*rbxfile.Instance, 0)}
 				InputObject := &rbxfile.Instance{
@@ -459,7 +459,7 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 
 				client.Writer.WriteGeneric(context, 0x83, &Packet83Layer{
 					[]Packet83Subpacket{onlyWorkspaceJoinData},
-				}, 3)
+				}, 3, addr)
 
 				allDefaultsJoinData := &Packet83_0B{make([]*rbxfile.Instance, 0, len(context.StaticSchema.Instances))}
 
@@ -530,7 +530,7 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 
 				client.Writer.WriteGeneric(context, 0x83, &Packet83Layer{
 					[]Packet83Subpacket{allDefaultsJoinData},
-				}, 3)
+				}, 3, addr)
             }
 		},
 		ErrorHandler: func(err error) {
@@ -542,8 +542,8 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 	packetWriter.ErrorHandler = func(err error) {
 		println(err.Error())
 	}
-	packetWriter.OutputHandler = func(payload []byte) {
-		num, err := server.Connection.WriteToUDP(payload, addr)
+	packetWriter.OutputHandler = func(payload []byte, dest *net.UDPAddr) {
+		num, err := server.Connection.WriteToUDP(payload, dest)
 		if err != nil {
 			fmt.Printf("Wrote %d bytes, err: %s", num, err.Error())
 		}

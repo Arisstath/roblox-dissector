@@ -15,13 +15,14 @@ var PacketDecoders = map[byte]DecoderFunc{
 	0x13: DecodePacket13Layer,
 
 	//0x8A: DecodePacket8ALayer,
-	0x82: DecodePacket82Layer,
-	0x93: DecodePacket93Layer,
-	0x92: DecodePacket92Layer,
-	0x90: DecodePacket90Layer,
-	0x8F: DecodePacket8FLayer,
 	0x81: DecodePacket81Layer,
+	0x82: DecodePacket82Layer,
 	0x83: DecodePacket83Layer,
+	0x85: DecodePacket85Layer,
+	0x8F: DecodePacket8FLayer,
+	0x90: DecodePacket90Layer,
+	0x92: DecodePacket92Layer,
+	0x93: DecodePacket93Layer,
 	0x97: DecodePacket97Layer,
 }
 
@@ -183,17 +184,19 @@ func (this *PacketReader) ReadSimple(packetType uint8, layers *PacketLayers, pac
 func (this *PacketReader) ReadGeneric(packetType uint8, layers *PacketLayers, packet *UDPPacket) {
 	var err error
 	if packetType == 0x1B { // ID_TIMESTAMP
-		_, err := packet.Stream.ReadString(9)
+		println("Receiving timestamped packet", packetType)
+		tsLayer, err := DecodePacket1BLayer(packet, this.Context)
 		if err != nil {
 			this.ErrorHandler(errors.New(fmt.Sprintf("Failed to decode timestamped packet: %s", err.Error())))
 			return
 		}
-
+		layers.Timestamp = tsLayer.(*Packet1BLayer)
 		packetType, err = packet.Stream.ReadByte()
 		if err != nil {
 			this.ErrorHandler(errors.New(fmt.Sprintf("Failed to decode timestamped packet: %s", err.Error())))
 			return
 		}
+		layers.Reliability.PacketType = packetType
 	}
 
 	decoder := PacketDecoders[packetType]

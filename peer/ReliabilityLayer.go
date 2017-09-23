@@ -112,9 +112,6 @@ func DecodeReliabilityLayer(packet *UDPPacket, context *CommunicationContext, ra
 		if reliablePacket.SplitPacketIndex == 0 {
 			reliablePacket.HasPacketType = true
 			reliablePacket.PacketType = reliablePacket.SelfData[0]
-			if reliablePacket.PacketType == 0x1B {
-				reliablePacket.PacketType = reliablePacket.SelfData[9]
-			}
 		} else if !reliablePacket.HasPacketType {
 			reliablePacket.PacketType = 0xFF
 		}
