@@ -87,7 +87,7 @@ func show83_0B(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 }
 func show83_01(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_01)
-	return NewQLabelF("Init referent: %s", this.Instance.Reference)
+	return NewQLabelF("Delete instance: %s", this.Instance.Reference)
 }
 func show83_02(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_02)
