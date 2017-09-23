@@ -6,7 +6,7 @@ import "io"
 var Packet83Subpackets map[uint8]string = map[uint8]string{
 	0xFF: "ID_REPLIC_???",
 	0x00: "ID_REPLIC_END",
-	0x01: "ID_REPLIC_INIT_REFERENT",
+	0x01: "ID_REPLIC_DELETE_INSTANCE",
 	0x02: "ID_REPLIC_NEW_INSTANCE",
 	0x03: "ID_REPLIC_PROP",
 	0x04: "ID_REPLIC_MARKER",

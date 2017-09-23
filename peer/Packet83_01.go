@@ -11,6 +11,7 @@ func DecodePacket83_01(packet *UDPPacket, context *CommunicationContext) (interf
 	thisBitstream := packet.Stream
     referent, err := thisBitstream.ReadObject(false, context)
     inner.Instance = context.InstancesByReferent.TryGetInstance(referent)
+	inner.Instance.SetParent(nil)
 
 	return inner, err
 }
