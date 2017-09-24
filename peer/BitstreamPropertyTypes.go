@@ -845,7 +845,6 @@ func (b *ExtendedReader) ReadPhysicsCoords() (rbxfile.ValueVector3, error) {
 	if err != nil {
 		return val, err
 	}
-	println("choosing mode", mode)
 
 	switch mode {
 	case 0:
@@ -943,7 +942,6 @@ func (b *ExtendedReader) ReadPhysicsMatrix() ([9]float32, error) {
 	if err != nil {
 		return val, err
 	}
-	println("choosing mode", mode)
 
 	switch mode {
 	case 0:
@@ -980,30 +978,25 @@ func (b *ExtendedReader) ReadPhysicsMotor() (PhysicsMotor, error) {
 		hasCoords2, err := b.ReadBool()
 		if hasCoords1 {
 			motor.Coords1, err = b.ReadPhysicsCoords()
-			println("coords1", motor.Coords1.String())
 			if err != nil {
 				return motor, err
 			}
 		}
 		if hasCoords2 {
 			motor.Coords2, err = b.ReadCoordsMode1()
-			println("coords2", motor.Coords2.String())
 			if err != nil {
 				return motor, err
 			}
 		} else {
-			println("noangle")
 			return motor, nil
 		}
 	}
 	motor.Angle, err = b.ReadByte()
-	println("angle", motor.Angle)
 	return motor, err
 }
 
 func (b *ExtendedReader) ReadMotors() ([]PhysicsMotor, error) {
 	countMotors, err := b.ReadByte()
-	println("Reading", countMotors, "motors")
 	if err != nil {
 		return nil, err
 	}

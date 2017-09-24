@@ -22,6 +22,7 @@ type ReliablePacket struct {
 	NumReceivedSplits uint32
 	AllRakNetLayers []*RakNetLayer
 	AllReliablePackets []*ReliablePacket
+	Timestamp uint64
 
 	HasBeenDecoded bool
 
@@ -110,11 +111,13 @@ func DecodeReliabilityLayer(packet *UDPPacket, context *CommunicationContext, ra
 			return layer, err
 		}
 		if reliablePacket.SplitPacketIndex == 0 {
-			reliablePacket.HasPacketType = true
 			reliablePacket.PacketType = reliablePacket.SelfData[0]
-		} else if !reliablePacket.HasPacketType {
+			reliablePacket.HasPacketType = true
+		}
+		if !reliablePacket.HasPacketType {
 			reliablePacket.PacketType = 0xFF
 		}
+
 		reliablePacket.UniqueID = context.UniqueID
 		context.UniqueID++
 

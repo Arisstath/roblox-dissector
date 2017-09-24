@@ -327,6 +327,11 @@ func (m *MyPacketListView) BindCallback(packetType byte, packet *peer.UDPPacket,
 		}
 	}
 	m.MSelectionHandlers.Unlock()
+	packetName := PacketNames[packetType]
+	if packetName == "" {
+		packetName = fmt.Sprintf("0x%02X", packetType)
+	}
+	row[1].SetData(core.NewQVariant14(packetName), 0)
 
 	for _, item := range row {
 		item.SetBackground(gui.NewQBrush2(core.Qt__NoBrush))

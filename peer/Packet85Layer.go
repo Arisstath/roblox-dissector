@@ -29,7 +29,6 @@ func DecodePacket85Layer(packet *UDPPacket, context *CommunicationContext) (inte
 		if err != nil {
 			return layer, err
 		}
-		println("phys ref:", referent)
 		if referent == "null" {
 			break
 		}
@@ -45,22 +44,18 @@ func DecodePacket85Layer(packet *UDPPacket, context *CommunicationContext) (inte
 				return layer, err
 			}
 		}
-		println("phys int:", subpacket.UnknownInt)
 		subpacket.CFrame, err = thisBitstream.ReadPhysicsCFrame()
 		if err != nil {
 			return layer, err
 		}
-		println("phys cframe:", subpacket.CFrame.String())
 		subpacket.Pos1, err = thisBitstream.ReadCoordsMode1()
 		if err != nil {
 			return layer, err
 		}
-		println("phys pos1:", subpacket.Pos1.String())
 		subpacket.Pos2, err = thisBitstream.ReadCoordsMode1()
 		if err != nil {
 			return layer, err
 		}
-		println("phys pos2:", subpacket.Pos2.String())
 		subpacket.Motors, err = thisBitstream.ReadMotors()
 		if err != nil {
 			return layer, err
@@ -74,13 +69,11 @@ func DecodePacket85Layer(packet *UDPPacket, context *CommunicationContext) (inte
 			for {
 				child := Packet85LayerSubpacket{}
 				referent, err := thisBitstream.ReadObject(false, context)
-				println("phys child ref:", referent)
 				if err != nil {
 					return layer, err
 				}
 				child.Instance = context.InstancesByReferent.TryGetInstance(referent)
 				child.CFrame, err = thisBitstream.ReadPhysicsCFrame()
-				println("phys child cframe:", child.CFrame.String())
 				if err != nil {
 					return layer, err
 				}
@@ -88,12 +81,10 @@ func DecodePacket85Layer(packet *UDPPacket, context *CommunicationContext) (inte
 				if err != nil {
 					return layer, err
 				}
-				println("child pos1:", child.Pos1.String())
 				child.Pos2, err = thisBitstream.ReadCoordsMode1()
 				if err != nil {
 					return layer, err
 				}
-				println("child pos2:", child.Pos2.String())
 				child.Motors, err = thisBitstream.ReadMotors()
 				if err != nil {
 					return layer, err
