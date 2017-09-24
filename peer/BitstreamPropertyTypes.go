@@ -479,7 +479,7 @@ func (b *ExtendedReader) ReadContent(isJoinData bool, context *CommunicationCont
 }
 
 func (b *ExtendedReader) ReadSystemAddress(isJoinData bool, context *CommunicationContext) (rbxfile.ValueSystemAddress, error) {
-	var thisAddress rbxfile.ValueSystemAddress
+	thisAddress := rbxfile.ValueSystemAddress("0.0.0.0:0")
 	var err error
 	var cacheIndex uint8
 	if !isJoinData {
@@ -494,7 +494,7 @@ func (b *ExtendedReader) ReadSystemAddress(isJoinData bool, context *Communicati
 		if cacheIndex < 0x80 {
 			result := context.ReplicatorSystemAddressCache[cacheIndex]
 			if result == nil {
-                return rbxfile.ValueSystemAddress("0.0.0.0:0"), nil
+                return thisAddress, nil
 			}
 			return result.(rbxfile.ValueSystemAddress), nil
 		}
