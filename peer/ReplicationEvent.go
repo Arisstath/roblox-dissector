@@ -2,7 +2,6 @@ package peer
 import "github.com/gskartwii/rbxfile"
 
 type ReplicationEvent struct {
-	UnknownInt uint32
 	Arguments []rbxfile.Value
 }
 

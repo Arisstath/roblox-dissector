@@ -12,7 +12,7 @@ type Packet81LayerItem struct {
 
 type Packet81Layer struct {
 	Bools [5]bool
-	String1 []byte
+	ReferentString []byte
 	Int1 uint32
 	Int2 uint32
 	Items []*Packet81LayerItem
@@ -37,7 +37,7 @@ func DecodePacket81Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	if err != nil {
 		return layer, err
 	}
-	layer.String1, err = thisBitstream.ReadString(int(stringLen))
+	layer.ReferentString, err = thisBitstream.ReadString(int(stringLen))
 	if err != nil {
 		return layer, err
 	}
@@ -118,11 +118,11 @@ func (layer *Packet81Layer) Serialize(context *CommunicationContext, stream *Ext
             return err
         }
     }
-    err = stream.WriteUint32BE(uint32(len(layer.String1)))
+    err = stream.WriteUint32BE(uint32(len(layer.ReferentString)))
     if err != nil {
         return err
     }
-    err = stream.AllBytes(layer.String1)
+    err = stream.AllBytes(layer.ReferentString)
     if err != nil {
         return err
     }

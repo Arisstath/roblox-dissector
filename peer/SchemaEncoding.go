@@ -85,7 +85,7 @@ func ParseSchema(ifile io.Reader, efile io.Reader) (StaticSchema, error) {
 			thisProperty := StaticPropertySchema{
 				Name: property[1],
 				Type: uint8(mustAtoi(property[2])),
-				Unknown: uint16(mustAtoi(property[3])),
+				EnumID: uint16(mustAtoi(property[3])),
 				TypeString: TypeNames[uint8(mustAtoi(property[2]))],
 				InstanceSchema: &thisInstance,
 			}
@@ -126,7 +126,7 @@ func ParseSchema(ifile io.Reader, efile io.Reader) (StaticSchema, error) {
 				thisArgument := StaticArgumentSchema{
 					Type: uint8(argType),
 					TypeString: TypeNames[uint8(argType)],
-					Unknown: uint16(argUnk),
+					EnumID: uint16(argUnk),
 				}
 
 				thisEvent.Arguments[k] = thisArgument
@@ -176,7 +176,7 @@ func (schema *StaticSchema) Dump(instances io.Writer, enums io.Writer) error {
 			return err
 		}
 		for _, property := range instance.Properties {
-			_, err = instances.Write([]byte(fmt.Sprintf("\t%q %d %d\n", property.Name, property.Type, property.Unknown)))
+			_, err = instances.Write([]byte(fmt.Sprintf("\t%q %d %d\n", property.Name, property.Type, property.EnumID)))
 			if err != nil {
 				return err
 			}
@@ -192,7 +192,7 @@ func (schema *StaticSchema) Dump(instances io.Writer, enums io.Writer) error {
 				return err
 			}
 			for _, argument := range event.Arguments {
-				_, err = instances.Write([]byte(fmt.Sprintf("\t\t%d %d\n", argument.Type, argument.Unknown)))
+				_, err = instances.Write([]byte(fmt.Sprintf("\t\t%d %d\n", argument.Type, argument.EnumID)))
 				if err != nil {
 					return err
 				}
