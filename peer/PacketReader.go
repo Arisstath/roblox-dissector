@@ -19,6 +19,7 @@ var PacketDecoders = map[byte]DecoderFunc{
 	0x82: DecodePacket82Layer,
 	0x83: DecodePacket83Layer,
 	0x85: DecodePacket85Layer,
+	0x86: DecodePacket86Layer,
 	0x8F: DecodePacket8FLayer,
 	0x90: DecodePacket90Layer,
 	0x92: DecodePacket92Layer,

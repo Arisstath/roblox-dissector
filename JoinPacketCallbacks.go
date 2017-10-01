@@ -142,4 +142,3 @@ func ShowPacket13(packetType byte, packet *peer.UDPPacket, context *peer.Communi
 	layerLayout.AddWidget(sendPingTimeLabel, 0, 0)
 	layerLayout.AddWidget(sendPongTimeLabel, 0, 0)
 }
-

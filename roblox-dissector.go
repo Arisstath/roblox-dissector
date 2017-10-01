@@ -31,6 +31,7 @@ var PacketNames map[byte]string = map[byte]string{
 	0x82: "ID_ROBLOX_DICTIONARIES",
 	0x83: "ID_ROBLOX_REPLICATION",
 	0x85: "ID_ROBLOX_PHYSICS",
+	0x86: "ID_ROBLOX_TOUCH",
 	0x89: "ID_ROBLOX_REPORT_ABUSE",
 	0x8A: "ID_ROBLOX_AUTH",
 	0x8E: "ID_ROBLOX_PROTOCOL_MISMATCH",
@@ -66,6 +67,7 @@ var ActivationCallbacks map[byte]ActivationCallback = map[byte]ActivationCallbac
 	0x83: ShowPacket83,
     0x97: ShowPacket97,
 	0x85: ShowPacket85,
+	0x86: ShowPacket86,
 }
 
 func captureJob(handle *pcap.Handle, useIPv4 bool, stopCaptureJob chan struct{}, packetViewer *MyPacketListView, context *peer.CommunicationContext) {
