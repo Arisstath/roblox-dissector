@@ -10,7 +10,7 @@ const (
 	ROUND_UPDATE	= iota
 )
 
-func readSerializedValue(isJoinData bool, valueType uint8, thisBitstream *ExtendedReader, context *CommunicationContext) (rbxfile.Value, error) {
+func readSerializedValue(isJoinData bool, enumId uint16, valueType uint8, thisBitstream *ExtendedReader, context *CommunicationContext) (rbxfile.Value, error) {
 	var err error
 	var result rbxfile.Value
 	switch valueType {
@@ -27,7 +27,7 @@ func readSerializedValue(isJoinData bool, valueType uint8, thisBitstream *Extend
 	case PROP_TYPE_PROTECTEDSTRING_3:
 		result, err = thisBitstream.ReadNewProtectedString(isJoinData, context)
 	case PROP_TYPE_ENUM:
-		result, err = thisBitstream.ReadNewEnumValue()
+		result, err = thisBitstream.ReadNewEnumValue(enumId, context)
 	case PROP_TYPE_BINARYSTRING:
 		result, err = thisBitstream.ReadNewBinaryString()
 	case PROP_TYPE_PBOOL:
@@ -120,7 +120,7 @@ func (schema StaticPropertySchema) Decode(round int, packet *UDPPacket, context 
 		}
 	}
 
-    val, err := readSerializedValue(isJoinData, schema.Type, thisBitstream, context)
+    val, err := readSerializedValue(isJoinData, schema.Unknown, schema.Type, thisBitstream, context)
     if val.Type().String() != "ProtectedString" && round != ROUND_JOINDATA && DEBUG {
         println("Read", schema.Name, val.String())
     }

@@ -279,47 +279,6 @@ func (b *ExtendedReader) ReadObject(isJoinData bool, context *CommunicationConte
 
 	return Referent(serialized), err
 }
-func (b *ExtendedReader) ReadEnumValue(bitSize uint32) (rbxfile.ValueToken, error) {
-	val, err := b.Bits(int(bitSize + 1))
-	return rbxfile.ValueToken(val), err
-}
-func (b *ExtendedReader) ReadPString(isJoinData bool, context *CommunicationContext) (rbxfile.ValueString, error) {
-	if !isJoinData {
-		val, err := b.ReadCached(context)
-		return rbxfile.ValueString(val), err
-	}
-	stringLen, err := b.ReadUint32BE()
-	if err != nil {
-		return rbxfile.ValueString(""), err
-	}
-	val, err := b.ReadASCII(int(stringLen))
-	return rbxfile.ValueString(val), err
-}
-func (b *ExtendedReader) ReadProtectedString(isJoinData bool, context *CommunicationContext) (rbxfile.ValueProtectedString, error) {
-	if !isJoinData {
-		val, err := b.ReadCachedProtectedString(context)
-		return rbxfile.ValueProtectedString(val), err
-	}
-	b.Align() // BitStream::operator>>(BinaryString) does implicit alignment. why?
-	var result []byte
-	stringLen, err := b.ReadUint32BE()
-	if err != nil {
-		return result, err
-	}
-	val, err := b.ReadString(int(stringLen))
-	return rbxfile.ValueProtectedString(val), err
-}
-func (b *ExtendedReader) ReadBinaryString() (rbxfile.ValueBinaryString, error) {
-	b.Align() // BitStream::operator>>(BinaryString) does implicit alignment. why?
-	var result []byte
-	stringLen, err := b.ReadUint32BE()
-	if err != nil {
-		return result, err
-	}
-	val, err := b.ReadString(int(stringLen))
-	return rbxfile.ValueBinaryString(val), err
-}
-
 func (b *ExtendedReader) ReadCFrameSimple() (rbxfile.ValueCFrame, error) {
 	return rbxfile.ValueCFrame{}, nil // nop for now, since nothing uses this
 }
@@ -365,7 +324,7 @@ func transformQuaternionToMatrix(q [4]float32) [9]float32 {
 		xScaleFactor * midresult[0], 0, 0,
 		xScaleFactor * midresult[3], 0, 0,
 		xScaleFactor * midresult[6], 0, 0,
-	}
+	} // X has been normalized
 
 	sx_ySum := result[0]*midresult[1] + result[3]*midresult[4] + result[6]*midresult[7]
 	trueR01 := midresult[1] - result[0]*sx_ySum
@@ -570,9 +529,14 @@ func (b *ExtendedReader) ReadNewBinaryString() (rbxfile.ValueBinaryString, error
 	return rbxfile.ValueBinaryString(res), err
 }
 
-func (b *ExtendedReader) ReadNewEnumValue() (rbxfile.ValueToken, error) {
+func (b *ExtendedReader) ReadNewEnumValue(enumID uint16, context *CommunicationContext) (rbxfile.ValueToken, error) {
 	val, err := b.ReadUintUTF8()
-	return rbxfile.ValueToken(val), err
+	token := rbxfile.ValueToken{
+		Value: val,
+		ID: enumID,
+		Name: getEnumName(context, enumID),
+	}
+	return token, err
 }
 
 func (b *ExtendedReader) ReadNewPSint() (rbxfile.ValueInt, error) {
@@ -580,17 +544,26 @@ func (b *ExtendedReader) ReadNewPSint() (rbxfile.ValueInt, error) {
 	return rbxfile.ValueInt(val), err
 }
 
+func getEnumName(context *CommunicationContext, id uint16) string {
+	return context.StaticSchema.Enums[id].Name
+}
+
 func (b *ExtendedReader) ReadNewTypeAndValue(isJoinData bool, context *CommunicationContext) (rbxfile.Value, error) {
     var val rbxfile.Value
 	thisType, err := b.ReadUint8()
+	if err != nil {
+		return val, err
+	}
+
+	var enumID uint16
 	if thisType == 7 {
-		_, err = b.ReadUint16BE()
+		enumID, err = b.ReadUint16BE()
 		if err != nil {
 			return val, err
 		}
 	}
 
-	val, err = readSerializedValue(isJoinData, thisType, b, context)
+	val, err = readSerializedValue(isJoinData, enumID, thisType, b, context)
 	return val, err
 }
 

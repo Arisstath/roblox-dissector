@@ -35,6 +35,7 @@ func DecodePacket83_03(packet *UDPPacket, context *CommunicationContext) (interf
         instance := context.InstancesByReferent.TryGetInstance(referent)
 		result := rbxfile.ValueReference{instance}
 		layer.Value = result
+		layer.PropertyName = "Parent"
 
 		context.InstancesByReferent.OnAddInstance(referent, func(instance *rbxfile.Instance) {
 			result.AddChild(instance)
@@ -64,5 +65,25 @@ func DecodePacket83_03(packet *UDPPacket, context *CommunicationContext) (interf
 }
 
 func (layer *Packet83_03) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
-    return nil
+	err := stream.WriteObject(layer.Instance, false, context)
+	if err != nil {
+		return err
+	}
+
+	if layer.PropertyName == "Parent" {
+		err = stream.WriteUint16BE(uint16(len(context.StaticSchema.Properties)))
+	} else {
+		err = stream.WriteUint16BE(uint16(context.StaticSchema.PropertiesByName[layer.PropertyName]))
+	}
+	if err != nil {
+		return err
+	}
+
+	err = stream.WriteBool(layer.Bool1)
+	if err != nil {
+		return err
+	}
+
+	err = context.StaticSchema.Properties[context.StaticSchema.PropertiesByName[layer.PropertyName]].Serialize(layer.Value, ROUND_UPDATE, context, stream)
+	return err
 }

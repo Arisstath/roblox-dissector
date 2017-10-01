@@ -11,5 +11,5 @@ func DecodePacket83_02(packet *UDPPacket, context *CommunicationContext) (interf
 }
 
 func (layer *Packet83_02) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
-    return nil
+    return SerializeReplicationInstance(layer.Child, false, context, stream)
 }
