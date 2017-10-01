@@ -14,7 +14,7 @@ func (schema *StaticEventSchema) Decode(packet *UDPPacket, context *Communicatio
 	event := &ReplicationEvent{}
 	event.Arguments = make([]rbxfile.Value, len(schema.Arguments))
 	for i, argSchema := range schema.Arguments {
-		thisVal, err = readSerializedValue(false, argSchema.Type, thisBitstream, context)
+		thisVal, err = readSerializedValue(false, argSchema.Unknown, argSchema.Type, thisBitstream, context)
 		event.Arguments[i] = thisVal
 		if err != nil {
 			return event, err

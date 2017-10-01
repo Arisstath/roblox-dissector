@@ -3,6 +3,7 @@ import "github.com/gskartwii/go-bitstream"
 import "encoding/binary"
 import "net"
 import "github.com/gskartwii/rbxfile"
+import "math"
 
 type ExtendedWriter struct {
 	*bitstream.BitWriter
@@ -59,6 +60,18 @@ func (b *ExtendedWriter) WriteUint24LE(value uint32) error {
 	return b.Bytes(3, dest)
 }
 
+func (b *ExtendedWriter) WriteFloat32BE(value float32) error {
+	return b.WriteUint32BE(math.Float32bits(value))
+}
+
+func (b *ExtendedWriter) WriteFloat64BE(value float64) error {
+	return b.Bits(64, math.Float64bits(value))
+}
+
+func (b *ExtendedWriter) WriteFloat16BE(value float32, min float32, max float32) error {
+	return b.WriteUint16BE(uint16(value / (max - min) * 65535.0))
+}
+
 func (b *ExtendedWriter) WriteBoolByte(value bool) error {
 	if value {
 		return b.WriteByte(1)
@@ -104,6 +117,60 @@ func (b *ExtendedWriter) WriteUintUTF8(value int) error {
         value = nextValue
     }
     return nil
+}
+
+type CacheWriteCallback func(*ExtendedWriter, interface{})(error)
+func (b *ExtendedWriter) writeWithCache(value interface{}, cache Cache, writeCallback CacheWriteCallback) error {
+	if value == nil {
+		return b.WriteByte(0x00)
+	}
+	var matchedIndex byte = 0
+	var i byte
+	for i = 0; i < 0x80; i++ {
+		equal, existed := cache.Equal(i, value)
+		if !existed {
+			break
+		}
+		if equal {
+			matchedIndex = i
+			break
+		}
+	}
+	if matchedIndex == 0 {
+		cache.Put(value, cache.LastWrite() % 0x7F + 1)
+		return b.WriteByte(cache.LastWrite())
+	} else {
+		return b.WriteByte(0x80 | matchedIndex)
+	}
+}
+
+func (b *ExtendedWriter) WriteUint32AndString(val interface{}) error {
+	str := val.(string)
+	err := b.WriteUint32BE(uint32(len(str)))
+	if err != nil {
+		return err
+	}
+	return b.WriteASCII(str)
+}
+
+func (b *ExtendedWriter) WriteCached(val string, context *CommunicationContext) error {
+	return b.writeWithCache(val, context.ReplicatorStringCache, (*ExtendedWriter).WriteUint32AndString)
+}
+func (b *ExtendedWriter) WriteCachedObject(val string, context *CommunicationContext) error {
+	return b.writeWithCache(val, context.ReplicatorObjectCache, (*ExtendedWriter).WriteUint32AndString)
+}
+func (b *ExtendedWriter) WriteCachedContent(val string, context *CommunicationContext) error {
+	return b.writeWithCache(val, context.ReplicatorContentCache, (*ExtendedWriter).WriteUint32AndString)
+}
+func (b *ExtendedWriter) WriteNewCachedProtectedString(val string, context *CommunicationContext) error {
+	return b.writeWithCache(val, context.ReplicatorContentCache, func(b *ExtendedWriter, val interface{})(error) {
+		str := val.([]byte)
+		err := b.WriteUint32BE(uint32(len(str)))
+		if err != nil {
+			return err
+		}
+		return b.AllBytes(val)
+	})
 }
 
 func (b *ExtendedWriter) WriteObject(object *rbxfile.Instance, isJoinData bool, context *CommunicationContext) error {

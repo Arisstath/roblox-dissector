@@ -13,21 +13,6 @@ type ProxyWriter struct {
 
 func NewProxyWriter() *ProxyWriter {
 	proxy := &ProxyWriter{}
-	reader := NewPacketReader()
-	reader.ErrorHandler = func(err error) {
-		proxy.ErrorHandler(err)
-	}
-	reader.SimpleHandler = func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
-		writer.WriteSimple(packetType, layers.Simple, packet.Destination)
-		proxy.SimpleHandler(packetType, packet, layers)
-	}
-	reader.ReliableHandler = func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
-		writer.WriteReliable(layers.Reliability, packet.Destination)
-		proxy.ReliableHandler(packetType, packet, layers)
-	}
-	reader.FullReliableHandler = func(packetType byte, packet *UDPAddr, layers *PacketReader) {
-		proxy.FullReliableHandler(packetType, packet, layers)
-	}
 
 	writer := NewPacketWriter()
 	writer.ErrorHandler = func(err error) {
@@ -35,6 +20,22 @@ func NewProxyWriter() *ProxyWriter {
 	}
 	writer.OutputHandler = func(payload []byte, addr *net.UDPAddr) {
 		proxy.OutputHandler(payload, addr)
+	}
+
+	reader := NewPacketReader()
+
+	reader.ErrorHandler = func(err error) {
+		proxy.ErrorHandler(err)
+	}
+	reader.SimpleHandler = func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
+		writer.WriteSimple(packetType, layers.Main.(RakNetPacket), &packet.Destination)
+		proxy.SimpleHandler(packetType, packet, layers)
+	}
+	reader.ReliableHandler = func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
+		proxy.ReliableHandler(packetType, packet, layers)
+	}
+	reader.FullReliableHandler = func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
+		proxy.FullReliableHandler(packetType, packet, layers)
 	}
 
 	proxy.Reader = reader

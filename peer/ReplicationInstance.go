@@ -144,7 +144,8 @@ func SerializeReplicationInstance(instance *rbxfile.Instance, isJoinData bool, c
             }
             if isStringObject {
                 propertyName := schema.Properties[i].Name
-				err = schema.Properties[i].Serialize(value, ROUND_STRINGS, packet, context)
+				value := instance.Get(schema.Properties[i].Name)
+				err = schema.Properties[i].Serialize(value, ROUND_STRINGS, context, stream)
 				if err != nil {
 					return err
 				}
@@ -164,7 +165,8 @@ func SerializeReplicationInstance(instance *rbxfile.Instance, isJoinData bool, c
             }
             if !isStringObject {
                 propertyName := schema.Properties[i].Name
-				err := schema.Properties[i].Decode(value, ROUND_OTHER, packet, context)
+				value := instance.Get(schema.Properties[i].Name)
+				err := schema.Properties[i].Serialize(value, ROUND_OTHER, context, stream)
 				if err != nil {
 					return err
 				}

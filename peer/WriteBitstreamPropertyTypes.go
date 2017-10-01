@@ -82,9 +82,9 @@ func (b *ExtendedWriter) WriteVector3Simple(val rbxfile.ValueVector3) error {
 	return b.WriteFloat32BE(val.Z)
 }
 func (b *ExtendedWriter) WriteVector3(val rbxfile.ValueVector3) error {
-	if val.X % 0.5 != 0 ||
-	   val.Y % 0.1 != 0 ||
-	   val.Z % 0.5 != 0 ||
+	if math.Mod(float64(val.X), 0.5) != 0 ||
+	   math.Mod(float64(val.Y), 0.1) != 0 ||
+	   math.Mod(float64(val.Z), 0.5) != 0 ||
 	   val.X >  511.5	||
 	   val.X < -511.5	||
 	   val.Y >  204.7	||
@@ -108,49 +108,49 @@ func (b *ExtendedWriter) WriteVector3(val rbxfile.ValueVector3) error {
 		x_scaled = (x_scaled >> 8 & 7) | ((x_scaled & 0xFF) << 3)
 		y_scaled = (y_scaled >> 8 & 7) | ((y_scaled & 0xFF) << 3)
 		z_scaled = (z_scaled >> 8 & 7) | ((z_scaled & 0xFF) << 3)
-		err = b.Bits(11, x_scaled)
+		err = b.Bits(11, uint64(x_scaled))
 		if err != nil {
 			return err
 		}
-		err = b.Bits(11, y_scaled)
+		err = b.Bits(11, uint64(y_scaled))
 		if err != nil {
 			return err
 		}
-		err = b.Bits(11, z_scaled)
+		err = b.Bits(11, uint64(z_scaled))
 		return err
 	}
 }
 
 func (b *ExtendedWriter) WriteVector2int16(val rbxfile.ValueVector2int16) error {
-	err := b.WriteUint16BE(val.X)
+	err := b.WriteUint16BE(uint16(val.X))
 	if err != nil {
 		return err
 	}
-	return b.WriteUint16BE(val.Y)
+	return b.WriteUint16BE(uint16(val.Y))
 }
 func (b *ExtendedWriter) WriteVector3int16(val rbxfile.ValueVector3int16) error {
-	err := b.WriteUint16BE(val.X)
+	err := b.WriteUint16BE(uint16(val.X))
 	if err != nil {
 		return err
 	}
-	err = b.WriteUint16BE(val.Y)
+	err = b.WriteUint16BE(uint16(val.Y))
 	if err != nil {
 		return err
 	}
-	return b.WriteUint16BE(val.Z)
+	return b.WriteUint16BE(uint16(val.Z))
 }
 
 func (b *ExtendedWriter) WritePBool(val rbxfile.ValueBool) error {
-	return b.WriteBool(val)
+	return b.WriteBool(bool(val))
 }
 func (b *ExtendedWriter) WritePSint(val rbxfile.ValueInt) error {
-	return b.WriteUint32BE(val)
+	return b.WriteUint32BE(uint32(val))
 }
 func (b *ExtendedWriter) WritePFloat(val rbxfile.ValueFloat) error {
-	return b.WriteFloat32BE(val)
+	return b.WriteFloat32BE(float32(val))
 }
 func (b *ExtendedWriter) WritePDouble(val rbxfile.ValueDouble) error {
-	return b.WriteFloat64BE(val)
+	return b.WriteFloat64BE(float64(val))
 }
 
 func (b *ExtendedWriter) WriteAxes(val rbxfile.ValueAxes) error {
@@ -190,22 +190,39 @@ func (b *ExtendedWriter) WriteFaces(val rbxfile.ValueFaces) error {
 }
 
 func (b *ExtendedWriter) WriteBrickColor(val rbxfile.ValueBrickColor) error {
-	return b.Bits(7, val)
+	return b.Bits(7, uint64(val))
 }
 
 func (b *ExtendedWriter) WriteNewPString(val rbxfile.ValueString, isJoinData bool, context *CommunicationContext) (error) {
 	if !isJoinData {
-		return b.WriteCached(val, context)
+		return b.WriteCached(string(val), context)
 	}
 	err := b.WriteUintUTF8(len(val))
 	if err != nil {
 		return err
 	}
-	return b.WriteASCII(val)
+	return b.WriteASCII(string(val))
+}
+
+func (b *ExtendedWriter) WriteNewProtectedString(val rbxfile.ValueProtectedString, isJoinData bool, context *CommunicationContext) error {
+	if !isJoinData {
+		return b.WriteNewCachedProtectedString(string(val), context)
+	}
+	return b.WriteNewPString(rbxfile.ValueString(val), true, context)
+}
+func (b *ExtendedWriter) WriteNewBinaryString(val rbxfile.ValueBinaryString) error {
+	return b.WriteNewPString(rbxfile.ValueString(val), true, nil)
+}
+func (b *ExtendedWriter) WriteNewContent(val rbxfile.ValueContent) error {
+	return b.WriteNewPString(rbxfile.ValueString(val), true, nil)
+}
+
+func (b *ExtendedWriter) WriteCFrameSimple(val rbxfile.ValueCFrame) error {
+	return nil
 }
 
 func rotMatrixToQuaternion(r [9]float32) [4]float32 {
-	q := math.Sqrt(1 + r[0*3+0] + r[1*3+1] + r[2*3+2])/2
+	q := float32(math.Sqrt(float64(1 + r[0*3+0] + r[1*3+1] + r[2*3+2]))/2)
 	return [4]float32{
 		(r[2*3+1]-r[1*3+2])/(4*q),
 		(r[0*3+2]-r[2*3+0])/(4*q),
@@ -213,7 +230,6 @@ func rotMatrixToQuaternion(r [9]float32) [4]float32 {
 		q,
 	}
 } // So nice to not have to worry about normalization on this side!
-
 func (b *ExtendedWriter) WriteCFrame(val rbxfile.ValueCFrame) error {
 	err := b.WriteVector3(val.Position)
 	if err != nil {
@@ -236,10 +252,10 @@ func (b *ExtendedWriter) WriteCFrame(val rbxfile.ValueCFrame) error {
 }
 
 func (b *ExtendedWriter) WriteSintUTF8(val int32) error {
-	return b.WriteUintUTF8(val << 1 ^ -(val >> 31))
+	return b.WriteUintUTF8(int(uint32(val) << 1 ^ -(uint32(val) >> 31)))
 }
 func (b *ExtendedWriter) WriteNewPSint(val rbxfile.ValueInt) error {
-	return b.WriteSintUTF8(val)
+	return b.WriteSintUTF8(int32(val))
 }
 
 var typeToNetworkConvTable = map[rbxfile.Type]uint8{
@@ -279,103 +295,100 @@ var typeToNetworkConvTable = map[rbxfile.Type]uint8{
 	rbxfile.TypeArray: PROP_TYPE_ARRAY,
 	rbxfile.TypeTuple: PROP_TYPE_TUPLE,
 }
-
 func typeToNetwork(val rbxfile.Value) uint8 {
 	return typeToNetworkConvTable[val.Type()]
 }
-
 func (b *ExtendedWriter) writeSerializedValue(val rbxfile.Value, isJoinData bool, valueType uint8, context *CommunicationContext) error {
 	var err error
 	var result rbxfile.Value
 	switch valueType {
 	case PROP_TYPE_STRING:
-		err = thisBitstream.WriteNewPString(val, isJoinData, context)
+		err = b.WriteNewPString(val.(rbxfile.ValueString), isJoinData, context)
 	case PROP_TYPE_STRING_NO_CACHE:
-		err = thisBitstream.WriteNewPString(valtrue, context)
+		err = b.WriteNewPString(val.(rbxfile.ValueString), true, context)
 	case PROP_TYPE_PROTECTEDSTRING_0:
-		err = thisBitstream.WriteNewProtectedString(val, isJoinData, context)
+		err = b.WriteNewProtectedString(val.(rbxfile.ValueProtectedString), isJoinData, context)
 	case PROP_TYPE_PROTECTEDSTRING_1:
-		err = thisBitstream.WriteNewProtectedString(val, isJoinData, context)
+		err = b.WriteNewProtectedString(val.(rbxfile.ValueProtectedString), isJoinData, context)
 	case PROP_TYPE_PROTECTEDSTRING_2:
-		err = thisBitstream.WriteNewProtectedString(val, isJoinData, context)
+		err = b.WriteNewProtectedString(val.(rbxfile.ValueProtectedString), isJoinData, context)
 	case PROP_TYPE_PROTECTEDSTRING_3:
-		err = thisBitstream.WriteNewProtectedString(val, isJoinData, context)
+		err = b.WriteNewProtectedString(val.(rbxfile.ValueProtectedString), isJoinData, context)
 	case PROP_TYPE_ENUM:
-		err = thisBitstream.WriteNewEnumValue(val)
+		err = b.WriteNewEnumValue(val.(rbxfile.ValueToken))
 	case PROP_TYPE_BINARYSTRING:
-		err = thisBitstream.WriteNewBinaryString(val)
+		err = b.WriteNewBinaryString(val.(rbxfile.ValueBinaryString))
 	case PROP_TYPE_PBOOL:
-		err = thisBitstream.WritePBool(val)
+		err = b.WritePBool(val.(rbxfile.ValueBool))
 	case PROP_TYPE_PSINT:
-		err = thisBitstream.WriteNewPSint(val)
+		err = b.WriteNewPSint(val.(rbxfile.ValueInt))
 	case PROP_TYPE_PFLOAT:
-		err = thisBitstream.WritePFloat(val)
+		err = b.WritePFloat(val.(rbxfile.ValueFloat))
 	case PROP_TYPE_PDOUBLE:
-		err = thisBitstream.WritePDouble(val)
+		err = b.WritePDouble(val.(rbxfile.ValueDouble))
 	case PROP_TYPE_UDIM:
-		err = thisBitstream.WriteUDim(val)
+		err = b.WriteUDim(val.(rbxfile.ValueUDim))
 	case PROP_TYPE_UDIM2:
-		err = thisBitstream.WriteUDim2(val)
+		err = b.WriteUDim2(val.(rbxfile.ValueUDim2))
 	case PROP_TYPE_RAY:
-		err = thisBitstream.WriteRay(val)
+		err = b.WriteRay(val.(rbxfile.ValueRay))
 	case PROP_TYPE_FACES:
-		err = thisBitstream.WriteFaces(val)
+		err = b.WriteFaces(val.(rbxfile.ValueFaces))
 	case PROP_TYPE_AXES:
-		err = thisBitstream.WriteAxes(val)
+		err = b.WriteAxes(val.(rbxfile.ValueAxes))
 	case PROP_TYPE_BRICKCOLOR:
-		err = thisBitstream.WriteBrickColor(val)
+		err = b.WriteBrickColor(val.(rbxfile.ValueBrickColor))
 	case PROP_TYPE_COLOR3:
-		err = thisBitstream.WriteColor3(val)
+		err = b.WriteColor3(val.(rbxfile.ValueColor3))
 	case PROP_TYPE_COLOR3UINT8:
-		err = thisBitstream.WriteColor3uint8(val)
+		err = b.WriteColor3uint8(val.(rbxfile.ValueColor3uint8))
 	case PROP_TYPE_VECTOR2:
-		err = thisBitstream.WriteVector2(val)
+		err = b.WriteVector2(val.(rbxfile.ValueVector2))
 	case PROP_TYPE_VECTOR3_SIMPLE:
-		err = thisBitstream.WriteVector3Simple(val)
+		err = b.WriteVector3Simple(val.(rbxfile.ValueVector3))
 	case PROP_TYPE_VECTOR3_COMPLICATED:
-		err = thisBitstream.WriteVector3(val)
+		err = b.WriteVector3(val.(rbxfile.ValueVector3))
 	case PROP_TYPE_VECTOR2UINT16:
-		err = thisBitstream.WriteVector2int16(val)
+		err = b.WriteVector2int16(val.(rbxfile.ValueVector2int16))
 	case PROP_TYPE_VECTOR3UINT16:
-		err = thisBitstream.WriteVector3int16(val)
+		err = b.WriteVector3int16(val.(rbxfile.ValueVector3int16))
 	case PROP_TYPE_CFRAME_SIMPLE:
-		err = thisBitstream.WriteCFrameSimple(val)
+		err = b.WriteCFrameSimple(val.(rbxfile.ValueCFrame))
 	case PROP_TYPE_CFRAME_COMPLICATED:
-		err = thisBitstream.WriteCFrame(val)
+		err = b.WriteCFrame(val.(rbxfile.ValueCFrame))
 	case PROP_TYPE_INSTANCE:
-        err = thisBitstream.WriteObject(val, isJoinData, context)
+        err = b.WriteObject(val.(rbxfile.ValueReference), isJoinData, context)
 	case PROP_TYPE_CONTENT:
-		err = thisBitstream.WriteNewContent(val, isJoinData, context)
+		err = b.WriteNewContent(val.(rbxfile.ValueContent), isJoinData, context)
 	case PROP_TYPE_SYSTEMADDRESS:
-		err = thisBitstream.WriteSystemAddress(val, isJoinData, context)
+		err = b.WriteSystemAddress(val.(rbxfile.ValueSystemAddress), isJoinData, context)
 	case PROP_TYPE_TUPLE:
-		err = thisBitstream.WriteNewTuple(val, isJoinData, context)
+		err = b.WriteNewTuple(val.(rbxfile.ValueTuple), isJoinData, context)
 	case PROP_TYPE_ARRAY:
-		err = thisBitstream.WriteNewArray(val, isJoinData, context)
+		err = b.WriteNewArray(val.(rbxfile.ValueArray), isJoinData, context)
 	case PROP_TYPE_DICTIONARY:
-		err = thisBitstream.WriteNewDictionary(val, isJoinData, context)
+		err = b.WriteNewDictionary(val.(rbxfile.ValueDictionary), isJoinData, context)
 	case PROP_TYPE_MAP:
-		err = thisBitstream.WriteNewMap(val, isJoinData, context)
+		err = b.WriteNewMap(val.(rbxfile.ValueMap), isJoinData, context)
 	case PROP_TYPE_NUMBERSEQUENCE:
-		err = thisBitstream.WriteNumberSequence(val)
+		err = b.WriteNumberSequence(val.(rbxfile.ValueNumberSequence))
 	case PROP_TYPE_NUMBERSEQUENCEKEYPOINT:
-		err = thisBitstream.WriteNumberSequenceKeypoint(val)
+		err = b.WriteNumberSequenceKeypoint(val.(rbxfile.ValueNumberSequenceKeypoint))
 	case PROP_TYPE_NUMBERRANGE:
-		err = thisBitstream.WriteNumberRange(val)
+		err = b.WriteNumberRange(val.(rbxfile.ValueNumberRange))
 	case PROP_TYPE_COLORSEQUENCE:
-		err = thisBitstream.WriteColorSequence(val)
+		err = b.WriteColorSequence(val.(rbxfile.ValueColorSequence))
 	case PROP_TYPE_COLORSEQUENCEKEYPOINT:
-		err = thisBitstream.WriteColorSequenceKeypoint(val)
+		err = b.WriteColorSequenceKeypoint(val.(rbxfile.ValueColorSequenceKeypoint))
 	case PROP_TYPE_RECT2D:
-		err = thisBitstream.WriteRect2D(val)
+		err = b.WriteRect2D(val.(rbxfile.ValueRect2D))
 	case PROP_TYPE_PHYSICALPROPERTIES:
-		err = thisBitstream.WritePhysicalProperties(val)
+		err = b.WritePhysicalProperties(val.(rbxfile.ValuePhysicalProperties))
 	default:
 		return nil, errors.New("Unsupported property type: " + strconv.Itoa(int(valueType)))
 	}
 	return result, err
 }
-
 func (b *ExtendedWriter) WriteNewTypeAndValue(val rbxfile.Value, isJoinData bool, context *CommunicationContext) error {
 	var err error
 	valueType := typeToNetwork(val)
@@ -426,7 +439,32 @@ func (b *ExtendedWriter) WriteNewDictionary(val rbxfile.ValueDictionary, isJoinD
 	}
 	return nil
 }
-
 func (b *ExtendedWriter) WriteNewMap(val rbxfile.ValueMap, isJoinData bool, context *CommunicationContext) error {
 	return b.WriteNewDictionary(rbxfile.ValueDictionary(val), isJoinData, context)
+}
+
+func (b *ExtendedWriter) WriteNumberSequenceKeypoint(val rbxfile.ValueNumberSequenceKeypoint) error {
+	err := b.WriteFloat32BE(val.Time)
+	if err != nil {
+		return err
+	}
+	err = b.WriteFloat32BE(val.Value)
+	if err != nil {
+		return err
+	}
+	err = b.WriteFloat32BE(val.Envelope)
+	return err
+}
+func (b *ExtendedWriter) WriteNumberSequence(val rbxfile.ValueNumberSequence) error {
+	err := b.WriteUint32BE(uint32(len(val)))
+	if err != nil {
+		return err
+	}
+	for i := 0; i < len(val); i++ {
+		err = b.WriteNumberSequenceKeypoint(val[i])
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
