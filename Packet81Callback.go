@@ -11,8 +11,8 @@ func ShowPacket81(packetType byte, packet *peer.UDPPacket, context *peer.Communi
 		thisLabel := NewQLabelF("Unknown boolean %d: %v", i, MainLayer.Bools[i])
 		layerLayout.AddWidget(thisLabel, 0, 0)
 	}
-	string1Label := NewQLabelF("Unknown string: %s", MainLayer.String1)
-	layerLayout.AddWidget(string1Label, 0, 0)
+	referentStringLabel := NewQLabelF("Unknown string: %s", MainLayer.ReferentString)
+	layerLayout.AddWidget(referentStringLabel, 0, 0)
 
 	deletedList := widgets.NewQTreeView(nil)
 	standardModel := NewProperSortModel(nil)
@@ -20,9 +20,9 @@ func ShowPacket81(packetType byte, packet *peer.UDPPacket, context *peer.Communi
 
 	deletedListRootNode := standardModel.InvisibleRootItem()
 	for i := 0; i < len(MainLayer.Items); i++ {
-		unknownInt1Item := NewQStandardItemF("%s", context.StaticSchema.Instances[MainLayer.Items[i].ClassID].Name)
-		unknownStringItem := NewQStandardItemF("%s", MainLayer.Items[i].Instance.Reference)
-		deletedListRootNode.AppendRow([]*gui.QStandardItem{unknownInt1Item, unknownStringItem})
+		classNameItem := NewQStandardItemF("%s", context.StaticSchema.Instances[MainLayer.Items[i].ClassID].Name)
+		referenceItem := NewQStandardItemF("%s", MainLayer.Items[i].Instance.Reference)
+		deletedListRootNode.AppendRow([]*gui.QStandardItem{classNameItem, referenceItem})
 	}
 
 	deletedList.SetModel(standardModel)
