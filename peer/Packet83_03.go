@@ -73,7 +73,7 @@ func (layer *Packet83_03) Serialize(context *CommunicationContext, stream *Exten
 	if layer.PropertyName == "Parent" {
 		err = stream.WriteUint16BE(uint16(len(context.StaticSchema.Properties)))
 	} else {
-		err = stream.WriteUint16BE(uint16(context.StaticSchema.PropertiesByName[layer.PropertyName]))
+		err = stream.WriteUint16BE(uint16(context.StaticSchema.PropertiesByName[layer.Instance.ClassName + "." + layer.PropertyName]))
 	}
 	if err != nil {
 		return err

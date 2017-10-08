@@ -1,6 +1,9 @@
 package peer
 import "math"
 import "github.com/gskartwii/rbxfile"
+import "errors"
+import "strconv"
+import "net"
 
 func (b *ExtendedWriter) WriteUDim(val rbxfile.ValueUDim) error {
 	err := b.WriteFloat32BE(val.Scale)
@@ -213,8 +216,8 @@ func (b *ExtendedWriter) WriteNewProtectedString(val rbxfile.ValueProtectedStrin
 func (b *ExtendedWriter) WriteNewBinaryString(val rbxfile.ValueBinaryString) error {
 	return b.WriteNewPString(rbxfile.ValueString(val), true, nil)
 }
-func (b *ExtendedWriter) WriteNewContent(val rbxfile.ValueContent) error {
-	return b.WriteNewPString(rbxfile.ValueString(val), true, nil)
+func (b *ExtendedWriter) WriteNewContent(val rbxfile.ValueContent, isJoinData bool, context *CommunicationContext) error {
+	return b.WriteNewPString(rbxfile.ValueString(val), isJoinData, context)
 }
 
 func (b *ExtendedWriter) WriteCFrameSimple(val rbxfile.ValueCFrame) error {
@@ -300,7 +303,6 @@ func typeToNetwork(val rbxfile.Value) uint8 {
 }
 func (b *ExtendedWriter) writeSerializedValue(val rbxfile.Value, isJoinData bool, valueType uint8, context *CommunicationContext) error {
 	var err error
-	var result rbxfile.Value
 	switch valueType {
 	case PROP_TYPE_STRING:
 		err = b.WriteNewPString(val.(rbxfile.ValueString), isJoinData, context)
@@ -357,7 +359,7 @@ func (b *ExtendedWriter) writeSerializedValue(val rbxfile.Value, isJoinData bool
 	case PROP_TYPE_CFRAME_COMPLICATED:
 		err = b.WriteCFrame(val.(rbxfile.ValueCFrame))
 	case PROP_TYPE_INSTANCE:
-        err = b.WriteObject(val.(rbxfile.ValueReference), isJoinData, context)
+        err = b.WriteObject(val.(rbxfile.ValueReference).Instance, isJoinData, context)
 	case PROP_TYPE_CONTENT:
 		err = b.WriteNewContent(val.(rbxfile.ValueContent), isJoinData, context)
 	case PROP_TYPE_SYSTEMADDRESS:
@@ -385,9 +387,9 @@ func (b *ExtendedWriter) writeSerializedValue(val rbxfile.Value, isJoinData bool
 	case PROP_TYPE_PHYSICALPROPERTIES:
 		err = b.WritePhysicalProperties(val.(rbxfile.ValuePhysicalProperties))
 	default:
-		return nil, errors.New("Unsupported property type: " + strconv.Itoa(int(valueType)))
+		return errors.New("Unsupported property type: " + strconv.Itoa(int(valueType)))
 	}
-	return result, err
+	return err
 }
 func (b *ExtendedWriter) WriteNewTypeAndValue(val rbxfile.Value, isJoinData bool, context *CommunicationContext) error {
 	var err error
@@ -462,6 +464,277 @@ func (b *ExtendedWriter) WriteNumberSequence(val rbxfile.ValueNumberSequence) er
 	}
 	for i := 0; i < len(val); i++ {
 		err = b.WriteNumberSequenceKeypoint(val[i])
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+func (b *ExtendedWriter) WriteNumberRange(val rbxfile.ValueNumberRange) error {
+	err := b.WriteFloat32BE(val.Min)
+	if err != nil {
+		return err
+	}
+	return b.WriteFloat32BE(val.Max)
+}
+
+func (b *ExtendedWriter) WriteColorSequenceKeypoint(val rbxfile.ValueColorSequenceKeypoint) error {
+	err := b.WriteFloat32BE(val.Time)
+	if err != nil {
+		return err
+	}
+	err = b.WriteColor3(val.Value)
+	if err != nil {
+		return err
+	}
+	return b.WriteFloat32BE(val.Envelope)
+}
+func (b *ExtendedWriter) WriteColorSequence(val rbxfile.ValueColorSequence) error {
+	err := b.WriteUint32BE(uint32(len(val)))
+	if err != nil {
+		return err
+	}
+	for i := 0; i < len(val); i++ {
+		err = b.WriteColorSequenceKeypoint(val[i])
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (b *ExtendedWriter) WriteNewEnumValue(val rbxfile.ValueToken) error {
+	return b.WriteUintUTF8(int(val.Value))
+}
+
+func (b *ExtendedWriter) WriteSystemAddress(val rbxfile.ValueSystemAddress, isJoinData bool, context *CommunicationContext) error {
+	if !isJoinData {
+		return b.WriteCachedSystemAddress(val, context)
+	}
+	addr, err := net.ResolveUDPAddr("udp", string(val))
+	if err != nil {
+		return err
+	}
+	err = b.Bytes(4, addr.IP)
+	if err != nil {
+		return err
+	}
+	return b.WriteUint16BE(uint16(addr.Port))
+}
+
+func (b *ExtendedWriter) WriteRect2D(val rbxfile.ValueRect2D) error {
+	err := b.WriteFloat32BE(val.Min.X)
+	if err != nil {
+		return err
+	}
+	err = b.WriteFloat32BE(val.Min.Y)
+	if err != nil {
+		return err
+	}
+	err = b.WriteFloat32BE(val.Max.X)
+	if err != nil {
+		return err
+	}
+	err = b.WriteFloat32BE(val.Max.Y)
+	return err
+}
+
+func (b *ExtendedWriter) WritePhysicalProperties(val rbxfile.ValuePhysicalProperties) error {
+	err := b.WriteBool(val.CustomPhysics)
+	if err != nil {
+		return err
+	}
+	if val.CustomPhysics {
+		err := b.WriteFloat32BE(val.Density)
+		if err != nil {
+			return err
+		}
+		err = b.WriteFloat32BE(val.Friction)
+		if err != nil {
+			return err
+		}
+		err = b.WriteFloat32BE(val.Elasticity)
+		if err != nil {
+			return err
+		}
+		err = b.WriteFloat32BE(val.FrictionWeight)
+		if err != nil {
+			return err
+		}
+		err = b.WriteFloat32BE(val.ElasticityWeight)
+	}
+	return err
+}
+
+func (b *ExtendedWriter) WriteCoordsMode0(val rbxfile.ValueVector3) error {
+	return b.WriteVector3Simple(val)
+}
+func (b *ExtendedWriter) WriteCoordsMode1(val rbxfile.ValueVector3) error {
+	valRange := float32(math.Max(math.Max(math.Abs(float64(val.X)), math.Abs(float64(val.Y))), math.Abs(float64(val.Z))))
+	err := b.WriteFloat32BE(valRange)
+	if err != nil {
+		return err
+	}
+	if valRange <= 0.0000099999997 {
+		return nil
+	}
+	err = b.WriteUint16BE(uint16(val.X / valRange * 32767.0 + 32767.0))
+	if err != nil {
+		return err
+	}
+	err = b.WriteUint16BE(uint16(val.Y / valRange * 32767.0 + 32767.0))
+	if err != nil {
+		return err
+	}
+	err = b.WriteUint16BE(uint16(val.Z / valRange * 32767.0 + 32767.0))
+	return err
+}
+func (b *ExtendedWriter) WriteCoordsMode2(val rbxfile.ValueVector3) error {
+	x_short := uint16((val.X + 1024.0) * 16.0)
+	y_short := uint16((val.Y + 1024.0) * 16.0)
+	z_short := uint16((val.Z + 1024.0) * 16.0)
+
+	err := b.WriteUint16BE((x_short & 0x7F) << 7 | (x_short >> 8))
+	if err != nil {
+		return err
+	}
+	err = b.WriteUint16BE((y_short & 0x7F) << 7 | (y_short >> 8))
+	if err != nil {
+		return err
+	}
+	err = b.WriteUint16BE((z_short & 0x7F) << 7 | (z_short >> 8))
+	return err
+}
+func (b *ExtendedWriter) WritePhysicsCoords(val rbxfile.ValueVector3) error {
+	mode := 0
+	if	val.X < 1024.0 &&
+		val.X > -1024.0 &&
+		val.Y < 512.0 &&
+		val.Y > -512.0 &&
+		val.X < 1024.0 &&
+		val.Z > -1024.0 &&
+		math.Mod(float64(val.X), 0.0625) == 0 &&
+		math.Mod(float64(val.Y), 0.0625) == 0 &&
+		math.Mod(float64(val.Z), 0.0625) == 0 {
+		mode = 2
+	} else if val.X < 256.0 && val.X > -256.0 &&
+			  val.Y < 256.0 && val.Y > -256.0 &&
+			  val.Z < 256.0 && val.Z > -256.0 {
+		mode = 1
+	}
+	err := b.Bits(2, uint64(mode))
+	if err != nil {
+		return err
+	}
+	switch mode {
+	case 0:
+		return b.WriteCoordsMode0(val)
+	case 1:
+		return b.WriteCoordsMode1(val)
+	case 2:
+		return b.WriteCoordsMode2(val)
+	}
+	return nil
+}
+
+func (b *ExtendedWriter) WriteMatrixMode0(val [9]float32) error {
+	var err error
+	q := rotMatrixToQuaternion(val)
+	b.WriteFloat32BE(q[3])
+	for i := 0; i < 3; i++ {
+		err = b.WriteFloat32BE(q[i])
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+func (b *ExtendedWriter) WriteMatrixMode1(val [9]float32) error {
+	q := rotMatrixToQuaternion(val)
+	err := b.WriteBool(q[3] < 0) // sqrt doesn't return negative numbers
+	if err != nil {
+		return err
+	}
+	for i := 0; i < 3; i++ {
+		err = b.WriteBool(q[i] < 0)
+		if err != nil {
+			return err
+		}
+	}
+	for i := 0; i < 3; i++ {
+		err = b.WriteUint16LE(uint16(math.Abs(float64(q[i]))))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+func (b *ExtendedWriter) WriteMatrixMode2(val [9]float32) error {
+	return b.WriteMatrixMode1(val)
+}
+func (b *ExtendedWriter) WritePhysicsMatrix(val [9]float32) error {
+	mode := 0
+	// Let's just never use modes 1/2. It will be okay.
+	err := b.Bits(2, uint64(mode))
+	if err != nil {
+		return err
+	}
+	switch mode {
+	case 0:
+		return b.WriteMatrixMode0(val)
+	case 1:
+		return b.WriteMatrixMode1(val)
+	case 2:
+		return b.WriteMatrixMode2(val)
+	}
+	return nil
+}
+func (b *ExtendedWriter) WritePhysicsCFrame(val rbxfile.ValueCFrame) error {
+	err := b.WritePhysicsCoords(val.Position)
+	if err != nil {
+		return err
+	}
+	return b.WritePhysicsMatrix(val.Rotation)
+}
+
+func (b *ExtendedWriter) WriteMotor(motor PhysicsMotor) error {
+	err := b.WriteBool(!motor.HasCoords1 && motor.HasCoords2)
+	if err != nil {
+		return err
+	}
+	if motor.HasCoords1 || motor.HasCoords2 {
+		err = b.WriteBool(motor.HasCoords1)
+		if err != nil {
+			return err
+		}
+		err = b.WriteBool(motor.HasCoords2)
+		if err != nil {
+			return err
+		}
+
+		if motor.HasCoords1 {
+			err = b.WritePhysicsCoords(motor.Coords1)
+			if err != nil {
+				return err
+			}
+		}
+		if motor.HasCoords2 {
+			err = b.WriteCoordsMode1(motor.Coords2)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return b.WriteByte(motor.Angle)
+}
+
+func (b *ExtendedWriter) WriteMotors(val []PhysicsMotor) error {
+	err := b.WriteByte(uint8(len(val))) // causes issues. Roblox plsfix
+	if err != nil {
+		return err
+	}
+	for i := 0; i < len(val); i++ {
+		err = b.WriteMotor(val[i])
 		if err != nil {
 			return err
 		}

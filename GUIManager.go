@@ -219,7 +219,7 @@ func (m *TwoWayPacketList) Add(index uint32, row []*gui.QStandardItem, packet *p
 		list = m.Server
 		cond = m.EServer
 	} else {
-		panic(errors.New("add not on server or client"))
+		panic(errors.New("add not on server or client: " + packet.Source.String() + " - " + context.Client + " - " + context.Server))
 	}
 	mutex.Lock()
 
@@ -523,6 +523,7 @@ func GUIMain() {
 	captureFileAction := captureBar.AddAction("From &file...")
 	capture4FileAction := captureBar.AddAction("From &RawCap file...")
 	captureLiveAction := captureBar.AddAction("From &live interface...")
+	captureProxyAction := captureBar.AddAction("From &proxy...")
 	captureStopAction := captureBar.AddAction("&Stop capture")
 
 	captureStopAction.ConnectTriggered(func(checked bool)() {
@@ -584,6 +585,25 @@ func GUIMain() {
 			}()
 		})
 	})
+	captureProxyAction.ConnectTriggered(func(checked bool)() {
+		if packetViewer.IsCapturing {
+			packetViewer.StopCaptureJob <- struct{}{}
+		}
+
+		NewProxyCaptureWidget(packetViewer, func(srcport uint16, dstport uint16) {
+			packetViewer.IsCapturing = true
+
+			context := peer.NewCommunicationContext()
+			packetViewer.Context = context
+
+			packetViewer.Reset()
+
+			go func() {
+				captureFromProxy(srcport, dstport, packetViewer.StopCaptureJob, packetViewer, context)
+				packetViewer.IsCapturing = false
+			}()
+		})
+	})
 
 	resp, err := http.Get("http://setup.roblox.com/versionQTStudio")
 	if err != nil {
@@ -621,7 +641,7 @@ func GUIMain() {
 		resp.Body.Close()
 	}
 
-	packetViewer.StudioSettings.Flags = `-testMode`
+	packetViewer.StudioSettings.Flags = ``
 	packetViewer.StudioSettings.Port = "53640"
 	packetViewer.PlayerSettings.Flags = `--play -a https://www.roblox.com/Login/Negotiate.ashx --launchtime=1503226579241`
 	packetViewer.PlayerSettings.AuthTicket = `Guest%3A-306579839`
@@ -634,16 +654,10 @@ func GUIMain() {
 	startServerAction.ConnectTriggered(func(checked bool)() {
 		NewStudioChooser(packetViewer, packetViewer.StudioSettings, func(settings *StudioSettings) {
 			packetViewer.StudioSettings = settings
-			port, err := strconv.Atoi(settings.Port)
-			if err != nil {
-				println("while converting port:", err.Error())
-				return
-			}
 
-			flags := []string{"-fileLocation", settings.RBXL}
-			script := fmt.Sprintf(`game:GetService'NetworkServer':Start(%d)`, port)
-			flags = append(flags, strings.Split(settings.Flags, " ")...)
-			flags = append(flags, "-script", script)
+			flags := []string{}
+			flags = append(flags, "-task", "StartServer")
+			flags = append(flags, "-port", settings.Port, "-creatorId", "0", "-creatorType", "0", "-placeVersion")
 			err = exec.Command(settings.Location, flags...).Start()
 			if err != nil {
 				println("while starting process:", err.Error())
@@ -653,16 +667,10 @@ func GUIMain() {
 	startClientAction.ConnectTriggered(func(checked bool)() {
 		NewStudioChooser(packetViewer, packetViewer.StudioSettings, func(settings *StudioSettings) {
 			packetViewer.StudioSettings = settings
-			port, err := strconv.Atoi(settings.Port)
-			if err != nil {
-				println("while converting port:", err.Error())
-				return
-			}
 
 			flags := []string{}
-			script := fmt.Sprintf(`game:GetService'NetworkClient':PlayerConnect(0, %q, %d)`, settings.Address, port)
-			flags = append(flags, strings.Split(settings.Flags, " ")...)
-			flags = append(flags, "-script", script)
+			flags = append(flags, "-task", "StartClient")
+			flags = append(flags, "-port", settings.Port)
 			err = exec.Command(settings.Location, flags...).Start()
 			if err != nil {
 				println("while starting process:", err.Error())

@@ -45,5 +45,20 @@ func DecodePacket86Layer(packet *UDPPacket, context *CommunicationContext) (inte
 }
 
 func (layer *Packet86Layer) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
-	return nil
+	for i := 0; i < len(layer.SubPackets); i++ {
+		subpacket := layer.SubPackets[i]
+		err := stream.WriteObject(subpacket.Instance1, false, context)
+		if err != nil {
+			return err
+		}
+		err = stream.WriteObject(subpacket.Instance2, false, context)
+		if err != nil {
+			return err
+		}
+		err = stream.WriteBool(subpacket.IsTouch)
+		if err != nil {
+			return err
+		}
+	}
+	return stream.WriteByte(0x00) // referent to NULL instance; terminator
 }

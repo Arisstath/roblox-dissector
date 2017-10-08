@@ -1,4 +1,5 @@
 package peer
+import "errors"
 
 type Packet83_09Subpacket interface{}
 
@@ -87,5 +88,5 @@ func DecodePacket83_09(packet *UDPPacket, context *CommunicationContext) (interf
 }
 
 func (layer *Packet83_09) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
-    return nil
+    return errors.New("packet 83_09 not implemented!")
 }

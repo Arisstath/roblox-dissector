@@ -1,4 +1,5 @@
 package peer
+import "errors"
 
 type Packet8FLayer struct {
 	SpawnName string
@@ -16,4 +17,9 @@ func DecodePacket8FLayer(packet *UDPPacket, context *CommunicationContext) (inte
 	spawnName, err := thisBitstream.ReadHuffman()
 	layer.SpawnName = string(spawnName)
 	return layer, err
+}
+
+func (layer *Packet8FLayer) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
+	//return stream.WriteHuffman(layer.SpawnName)
+	return errors.New("packet 8F not implemented!")
 }

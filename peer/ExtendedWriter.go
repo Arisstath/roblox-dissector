@@ -36,6 +36,11 @@ func (b *ExtendedWriter) WriteUint16BE(value uint16) error {
 	binary.BigEndian.PutUint16(dest, value)
 	return b.Bytes(2, dest)
 }
+func (b *ExtendedWriter) WriteUint16LE(value uint16) error {
+	dest := make([]byte, 2)
+	binary.LittleEndian.PutUint16(dest, value)
+	return b.Bytes(2, dest)
+}
 
 func (b *ExtendedWriter) WriteUint32BE(value uint32) error {
 	dest := make([]byte, 4)
@@ -154,22 +159,27 @@ func (b *ExtendedWriter) WriteUint32AndString(val interface{}) error {
 }
 
 func (b *ExtendedWriter) WriteCached(val string, context *CommunicationContext) error {
-	return b.writeWithCache(val, context.ReplicatorStringCache, (*ExtendedWriter).WriteUint32AndString)
+	return b.writeWithCache(val, &context.ReplicatorStringCache, (*ExtendedWriter).WriteUint32AndString)
 }
 func (b *ExtendedWriter) WriteCachedObject(val string, context *CommunicationContext) error {
-	return b.writeWithCache(val, context.ReplicatorObjectCache, (*ExtendedWriter).WriteUint32AndString)
+	return b.writeWithCache(val, &context.ReplicatorObjectCache, (*ExtendedWriter).WriteUint32AndString)
 }
 func (b *ExtendedWriter) WriteCachedContent(val string, context *CommunicationContext) error {
-	return b.writeWithCache(val, context.ReplicatorContentCache, (*ExtendedWriter).WriteUint32AndString)
+	return b.writeWithCache(val, &context.ReplicatorContentCache, (*ExtendedWriter).WriteUint32AndString)
 }
 func (b *ExtendedWriter) WriteNewCachedProtectedString(val string, context *CommunicationContext) error {
-	return b.writeWithCache(val, context.ReplicatorContentCache, func(b *ExtendedWriter, val interface{})(error) {
+	return b.writeWithCache(val, &context.ReplicatorContentCache, func(b *ExtendedWriter, val interface{})(error) {
 		str := val.([]byte)
 		err := b.WriteUint32BE(uint32(len(str)))
 		if err != nil {
 			return err
 		}
-		return b.AllBytes(val)
+		return b.AllBytes(val.([]byte))
+	})
+}
+func (b *ExtendedWriter) WriteCachedSystemAddress(val rbxfile.ValueSystemAddress, context *CommunicationContext) error {
+	return b.writeWithCache(val, &context.ReplicatorSystemAddressCache, func(b *ExtendedWriter, val interface{})(error) {
+		return b.WriteSystemAddress(val.(rbxfile.ValueSystemAddress), true, nil)
 	})
 }
 

@@ -92,6 +92,7 @@ func DecodeReplicationInstance(isJoinData bool, packet *UDPPacket, context *Comm
     if err != nil {
         return thisInstance, errors.New("while parsing parent: " + err.Error())
     }
+	println("parent:", referent)
 
     context.InstancesByReferent.AddInstance(Referent(thisInstance.Reference), thisInstance)
     parent := context.InstancesByReferent.TryGetInstance(referent)
@@ -143,7 +144,6 @@ func SerializeReplicationInstance(instance *rbxfile.Instance, isJoinData bool, c
                     isStringObject = true
             }
             if isStringObject {
-                propertyName := schema.Properties[i].Name
 				value := instance.Get(schema.Properties[i].Name)
 				err = schema.Properties[i].Serialize(value, ROUND_STRINGS, context, stream)
 				if err != nil {
@@ -164,7 +164,6 @@ func SerializeReplicationInstance(instance *rbxfile.Instance, isJoinData bool, c
                     isStringObject = true
             }
             if !isStringObject {
-                propertyName := schema.Properties[i].Name
 				value := instance.Get(schema.Properties[i].Name)
 				err := schema.Properties[i].Serialize(value, ROUND_OTHER, context, stream)
 				if err != nil {

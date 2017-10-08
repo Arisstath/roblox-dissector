@@ -331,7 +331,7 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
                     Bools: [5]bool{true, false, false, false, true},
                     Int1: 0,
                     Int2: 0,
-                    String1: []byte("RBX0123456789ABCDEF"),
+                    ReferentString: []byte("RBX0123456789ABCDEF"),
                 }
                 for i, className := range services {
                     classID := context.StaticSchema.ClassesByName[className]

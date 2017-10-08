@@ -65,7 +65,7 @@ func DecodeReliabilityLayer(packet *UDPPacket, context *CommunicationContext, ra
 		if err != nil {
 			return layer, err
 		}
-		if reliablePacket.LengthInBits == 0 {
+		if reliablePacket.LengthInBits < 8 {
 			return layer, errors.New("Invalid length of 0!")
 		}
 

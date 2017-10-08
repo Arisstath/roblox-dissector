@@ -7,7 +7,9 @@ import "math"
 
 type Referent string
 type PhysicsMotor struct {
+	HasCoords1 bool
 	Coords1 rbxfile.ValueVector3
+	HasCoords2 bool
 	Coords2 rbxfile.ValueVector3
 	Angle uint8
 }
@@ -253,7 +255,7 @@ func objectToRef(referent string, referentInt uint32) string {
 	if referentInt == 0 {
 		return "null"
 	} else {
-		return fmt.Sprintf("%d", referentInt)
+		return fmt.Sprintf("%s_%d", referent, referentInt)
 	}
 }
 
@@ -946,16 +948,22 @@ func (b *ExtendedReader) ReadPhysicsMotor() (PhysicsMotor, error) {
 	if err != nil {
 		return motor, err
 	}
-	if hasCoords {
-		hasCoords1, err := b.ReadBool()
-		hasCoords2, err := b.ReadBool()
-		if hasCoords1 {
+	if !hasCoords {
+		motor.HasCoords1, err = b.ReadBool()
+		if err != nil {
+			return motor, err
+		}
+		motor.HasCoords2, err = b.ReadBool()
+		if err != nil {
+			return motor, err
+		}
+		if motor.HasCoords1 {
 			motor.Coords1, err = b.ReadPhysicsCoords()
 			if err != nil {
 				return motor, err
 			}
 		}
-		if hasCoords2 {
+		if motor.HasCoords2 {
 			motor.Coords2, err = b.ReadCoordsMode1()
 			if err != nil {
 				return motor, err

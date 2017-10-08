@@ -37,5 +37,16 @@ func DecodePacket83_07(packet *UDPPacket, context *CommunicationContext) (interf
 }
 
 func (layer *Packet83_07) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
-    return nil
+	err := stream.WriteObject(layer.Instance, false, context)
+	if err != nil {
+		return err
+	}
+
+	eventSchemaID := uint16(context.StaticSchema.EventsByName[layer.Instance.ClassName + "." + layer.EventName])
+	err = stream.WriteUint16BE(eventSchemaID)
+	if err != nil {
+		return err
+	}
+
+	return context.StaticSchema.Events[eventSchemaID].Serialize(layer.Event, context, stream)
 }

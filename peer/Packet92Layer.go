@@ -16,3 +16,7 @@ func DecodePacket92Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	layer.UnknownValue, err = thisBitstream.ReadUint32BE()
 	return layer, err
 }
+
+func (layer *Packet92Layer) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
+	return stream.WriteUint32BE(layer.UnknownValue)
+}
