@@ -122,6 +122,7 @@ type PacketReader struct {
 	ReliableHandler ReceiveHandler
 	FullReliableHandler ReceiveHandler
 	ACKHandler func(*UDPPacket, *RakNetLayer)
+	ReliabilityLayerHandler func(*UDPPacket, *ReliabilityLayer, *RakNetLayer)
 	ErrorHandler ErrorHandler
 	Context *CommunicationContext
 
@@ -247,6 +248,7 @@ func (this *PacketReader) ReadReliable(layers *PacketLayers, packet *UDPPacket) 
 		queues = this.ServerQueues
 	}
 
+	this.ReliabilityLayerHandler(packet, reliabilityLayer, layers.RakNet)
 	for _, subPacket := range reliabilityLayer.Packets {
 		reliablePacketLayers := &PacketLayers{RakNet: layers.RakNet, Reliability: subPacket}
 		this.ReliableHandler(subPacket.PacketType, packet, reliablePacketLayers)

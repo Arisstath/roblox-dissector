@@ -104,6 +104,12 @@ func captureJob(handle *pcap.Handle, useIPv4 bool, stopCaptureJob chan struct{},
 			packetViewer.BindCallback(packetType, packet, context, layers, ActivationCallbacks[packetType])
 		}
 	}
+	packetReader.ReliabilityLayerHandler = func(p *peer.UDPPacket, re *peer.ReliabilityLayer, ra *peer.RakNetLayer) {
+		// nop
+	}
+	packetReader.ACKHandler = func(p *peer.UDPPacket, ra *peer.RakNetLayer) {
+		// nop
+	}
 	packetReader.ErrorHandler = func(err error) {
 		println(err.Error())
 	}

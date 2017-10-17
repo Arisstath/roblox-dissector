@@ -10,6 +10,7 @@ type ConnectedPeer struct {
 	FullReliableHandler ReceiveHandler
 	SimpleHandler ReceiveHandler
 	ACKHandler func(*UDPPacket, *RakNetLayer)
+	ReliabilityLayerHandler func(*UDPPacket, *ReliabilityLayer, *RakNetLayer)
 }
 
 func NewConnectedPeer(context *CommunicationContext) *ConnectedPeer {
@@ -39,6 +40,9 @@ func NewConnectedPeer(context *CommunicationContext) *ConnectedPeer {
 	}
 	reader.ACKHandler = func(p *UDPPacket, r *RakNetLayer) {
 		proxy.ACKHandler(p, r)
+	}
+	reader.ReliabilityLayerHandler = func(p *UDPPacket, re *ReliabilityLayer, ra *RakNetLayer) {
+		proxy.ReliabilityLayerHandler(p, re, ra)
 	}
 	reader.Context = context
 
@@ -114,22 +118,18 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 		clientHalf.Writer.WriteSimple(packetType, layers.Main.(RakNetPacket), writer.ClientAddr)
 	}
 
-	clientHalf.ReliableHandler = func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
+	clientHalf.ReliabilityLayerHandler = func(packet *UDPPacket, reliabilityLayer *ReliabilityLayer, rakNetLayer *RakNetLayer) {
 		serverHalf.Writer.WriteReliableWithDN(
-			&ReliabilityLayer{
-				[]*ReliablePacket{layers.Reliability},
-			},
+			reliabilityLayer,
 			writer.ServerAddr,
-			clientHalf.RotateDN(layers.RakNet.DatagramNumber),
+			clientHalf.RotateDN(rakNetLayer.DatagramNumber),
 		)
 	}
-	serverHalf.ReliableHandler = func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
+	serverHalf.ReliabilityLayerHandler = func(packet *UDPPacket, reliabilityLayer *ReliabilityLayer, rakNetLayer *RakNetLayer) {
 		clientHalf.Writer.WriteReliableWithDN(
-			&ReliabilityLayer{
-				[]*ReliablePacket{layers.Reliability},
-			},
+			reliabilityLayer,
 			writer.ClientAddr,
-			serverHalf.RotateDN(layers.RakNet.DatagramNumber),
+			serverHalf.RotateDN(rakNetLayer.DatagramNumber),
 		)
 	}
 
@@ -138,6 +138,12 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 	}
 	serverHalf.FullReliableHandler = func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
 		println("server recv", packetType)
+	}
+	clientHalf.ReliableHandler = func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
+		// nop
+	}
+	serverHalf.ReliableHandler = func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
+		// nop
 	}
 
 	clientHalf.ErrorHandler = func(err error) {
