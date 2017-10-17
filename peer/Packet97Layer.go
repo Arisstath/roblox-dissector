@@ -142,8 +142,8 @@ type Packet97Layer struct {
 	Schema StaticSchema
 }
 
-func NewPacket97Layer() Packet97Layer {
-	return Packet97Layer{}
+func NewPacket97Layer() *Packet97Layer {
+	return &Packet97Layer{}
 }
 
 func DecodePacket97Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {

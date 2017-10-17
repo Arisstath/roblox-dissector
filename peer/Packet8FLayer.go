@@ -5,8 +5,8 @@ type Packet8FLayer struct {
 	SpawnName string
 }
 
-func NewPacket8FLayer() Packet8FLayer {
-	return Packet8FLayer{}
+func NewPacket8FLayer() *Packet8FLayer {
+	return &Packet8FLayer{}
 }
 
 func DecodePacket8FLayer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {

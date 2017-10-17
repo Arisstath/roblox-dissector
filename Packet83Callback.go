@@ -254,7 +254,7 @@ func showPacket83Subpacket(this Packet83Subpacket) widgets.QWidget_ITF {
 
 
 func ShowPacket83(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
-	MainLayer := layers.Main.(peer.Packet83Layer)
+	MainLayer := layers.Main.(*peer.Packet83Layer)
 
 	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
 

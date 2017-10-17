@@ -18,8 +18,8 @@ type Packet81Layer struct {
 	Items []*Packet81LayerItem
 }
 
-func NewPacket81Layer() Packet81Layer {
-	return Packet81Layer{}
+func NewPacket81Layer() *Packet81Layer {
+	return &Packet81Layer{}
 }
 
 func DecodePacket81Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {

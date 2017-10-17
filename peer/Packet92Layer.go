@@ -4,8 +4,8 @@ type Packet92Layer struct {
 	UnknownValue uint32
 }
 
-func NewPacket92Layer() Packet92Layer {
-	return Packet92Layer{}
+func NewPacket92Layer() *Packet92Layer {
+	return &Packet92Layer{}
 }
 
 func DecodePacket92Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {

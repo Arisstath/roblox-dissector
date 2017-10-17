@@ -188,8 +188,7 @@ func (b *ExtendedWriter) WriteObject(object *rbxfile.Instance, isJoinData bool, 
     if object == nil {
         return b.WriteByte(0)
     }
-    referent := object.Reference
-    referentString := context.RefStringsByReferent[referent]
+    referentString, referent := refToObject(object.Reference)
 
     if isJoinData {
         if referentString == "NULL2" {
@@ -208,7 +207,7 @@ func (b *ExtendedWriter) WriteObject(object *rbxfile.Instance, isJoinData bool, 
             return err
         }
 
-        return b.WriteUint32LE(uint32(mustAtoi(referent)))
+        return b.WriteUint32LE(referent)
     }
     return nil
 }

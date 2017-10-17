@@ -6,7 +6,7 @@ import "os"
 import "encoding/gob"
 
 func ShowPacket82(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
-	MainLayer := layers.Main.(peer.Packet82Layer)
+	MainLayer := layers.Main.(*peer.Packet82Layer)
 
 	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
 

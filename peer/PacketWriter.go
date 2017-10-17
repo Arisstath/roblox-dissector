@@ -77,6 +77,30 @@ func (this *PacketWriter) WriteReliable(packet *ReliabilityLayer, dest *net.UDPA
 
 	this.WriteRakNet(raknet, dest)
 }
+func (this *PacketWriter) WriteReliableWithDN(packet *ReliabilityLayer, dest *net.UDPAddr, dn uint32) {
+	output := make([]byte, 0, 1492)
+	buffer := bytes.NewBuffer(output)
+	stream := &ExtendedWriter{bitstream.NewWriter(buffer)}
+	err := packet.Serialize(nil, stream)
+	if err != nil {
+		this.ErrorHandler(err)
+		return
+	}
+
+	stream.Flush(bitstream.Bit(false))
+
+	payload := buffer.Bytes()
+	raknet := &RakNetLayer{
+		Payload: BufferToStream(payload),
+		IsValid: true,
+		DatagramNumber: dn,
+	}
+	if dn > this.DatagramNumber {
+		this.DatagramNumber = dn
+	}
+
+	this.WriteRakNet(raknet, dest)
+}
 
 func (this *PacketWriter) WriteGeneric(context *CommunicationContext, packetType byte, generic RakNetPacket, reliability uint32, dest *net.UDPAddr) {
 	output := make([]byte, 0, 1492)

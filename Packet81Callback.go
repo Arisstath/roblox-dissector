@@ -4,7 +4,7 @@ import "github.com/therecipe/qt/gui"
 import "github.com/gskartwii/roblox-dissector/peer"
 
 func ShowPacket81(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
-	MainLayer := layers.Main.(peer.Packet81Layer)
+	MainLayer := layers.Main.(*peer.Packet81Layer)
 
 	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
 	for i := 0; i < 5; i++ {

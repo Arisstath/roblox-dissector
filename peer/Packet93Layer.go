@@ -7,8 +7,8 @@ type Packet93Layer struct {
 	Params map[string]bool
 }
 
-func NewPacket93Layer() Packet93Layer {
-	return Packet93Layer{Params: make(map[string]bool)}
+func NewPacket93Layer() *Packet93Layer {
+	return &Packet93Layer{Params: make(map[string]bool)}
 }
 
 func DecodePacket93Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {

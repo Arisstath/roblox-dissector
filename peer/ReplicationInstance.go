@@ -92,7 +92,6 @@ func DecodeReplicationInstance(isJoinData bool, packet *UDPPacket, context *Comm
     if err != nil {
         return thisInstance, errors.New("while parsing parent: " + err.Error())
     }
-	println("parent:", referent)
 
     context.InstancesByReferent.AddInstance(Referent(thisInstance.Reference), thisInstance)
     parent := context.InstancesByReferent.TryGetInstance(referent)

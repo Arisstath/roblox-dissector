@@ -88,7 +88,6 @@ type CommunicationContext struct {
 
 	DataModel *rbxfile.Root
     InstancesByReferent InstanceList
-    RefStringsByReferent map[string]string
 
 	MDescriptor *sync.Mutex
 	MSchema *sync.Mutex
@@ -134,7 +133,6 @@ func NewCommunicationContext() *CommunicationContext {
             EAddReferent: sync.NewCond(MSchema),
             Instances: make(map[string]*rbxfile.Instance),
         },
-        RefStringsByReferent: make(map[string]string),
 	}
 }
 

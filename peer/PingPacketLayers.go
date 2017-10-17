@@ -4,8 +4,8 @@ type Packet00Layer struct {
 	SendPingTime uint64
 }
 
-func NewPacket00Layer() Packet00Layer {
-	return Packet00Layer{}
+func NewPacket00Layer() *Packet00Layer {
+	return &Packet00Layer{}
 }
 
 func DecodePacket00Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
@@ -32,8 +32,8 @@ type Packet03Layer struct {
 	SendPongTime uint64
 }
 
-func NewPacket03Layer() Packet03Layer {
-	return Packet03Layer{}
+func NewPacket03Layer() *Packet03Layer {
+	return &Packet03Layer{}
 }
 
 func DecodePacket03Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {

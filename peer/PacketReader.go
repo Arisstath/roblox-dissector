@@ -121,6 +121,7 @@ type PacketReader struct {
 	SimpleHandler ReceiveHandler
 	ReliableHandler ReceiveHandler
 	FullReliableHandler ReceiveHandler
+	ACKHandler func(*UDPPacket, *RakNetLayer)
 	ErrorHandler ErrorHandler
 	Context *CommunicationContext
 
@@ -286,9 +287,9 @@ func (this *PacketReader) ReadPacket(payload []byte, packet *UDPPacket) {
 	} else if !rakNetLayer.IsValid {
 		this.ErrorHandler(errors.New(fmt.Sprintf("Sent invalid packet (packet header %x)", payload[0])))
 		return
-	} else if rakNetLayer.IsACK {
-		// nop
-	} else if !rakNetLayer.IsNAK {
+	} else if rakNetLayer.IsACK || rakNetLayer.IsNAK {
+		this.ACKHandler(packet, rakNetLayer)
+	} else {
 		this.ReadReliable(layers, packet)
 		return
 	}

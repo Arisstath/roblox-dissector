@@ -40,39 +40,34 @@ type Packet13Layer struct {
 	SendPongTime uint64
 }
 
-func NewPacket05Layer() Packet05Layer {
-	return Packet05Layer{}
+func NewPacket05Layer() *Packet05Layer {
+	return &Packet05Layer{}
 }
-func NewPacket06Layer() Packet06Layer {
-	return Packet06Layer{}
+func NewPacket06Layer() *Packet06Layer {
+	return &Packet06Layer{}
 }
-func NewPacket07Layer() Packet07Layer {
-	return Packet07Layer{}
+func NewPacket07Layer() *Packet07Layer {
+	return &Packet07Layer{}
 }
-func NewPacket08Layer() Packet08Layer {
-	return Packet08Layer{}
+func NewPacket08Layer() *Packet08Layer {
+	return &Packet08Layer{}
 }
-func NewPacket09Layer() Packet09Layer {
-	return Packet09Layer{}
+func NewPacket09Layer() *Packet09Layer {
+	return &Packet09Layer{}
 }
-func NewPacket10Layer() Packet10Layer {
-	return Packet10Layer{}
+func NewPacket10Layer() *Packet10Layer {
+	return &Packet10Layer{}
 }
-func NewPacket13Layer() Packet13Layer {
-	return Packet13Layer{}
+func NewPacket13Layer() *Packet13Layer {
+	return &Packet13Layer{}
 }
 var VoidOfflineMessage []byte = make([]byte, 0x10)
 
 func DecodePacket05Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
+	var err error
 	layer := NewPacket05Layer()
 	thisBitstream := packet.Stream
-
-	var err error
-	err = thisBitstream.Bytes(VoidOfflineMessage, 0x10)
-	if err != nil {
-		return layer, err
-	}
-	layer.ProtocolVersion, err = thisBitstream.ReadUint8()
+	layer.ProtocolVersion, err = thisBitstream.ReadUint8() // !! RakNetLayer will have read the offline message !!
 	return layer, err
 }
 

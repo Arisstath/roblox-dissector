@@ -4,6 +4,7 @@ import "errors"
 import "github.com/gskartwii/rbxfile"
 import "fmt"
 import "math"
+import "strings"
 
 type Referent string
 type PhysicsMotor struct {
@@ -258,6 +259,13 @@ func objectToRef(referent string, referentInt uint32) string {
 		return fmt.Sprintf("%s_%d", referent, referentInt)
 	}
 }
+func refToObject(refString string) (string, uint32) {
+	if refString == "null" {
+		return "NULL2", 0
+	}
+	components := strings.Split(refString, "_")
+	return components[0], uint32(mustAtoi(components[1]))
+}
 
 func (b *ExtendedReader) ReadObject(isJoinData bool, context *CommunicationContext) (Referent, error) {
 	var err error
@@ -277,7 +285,6 @@ func (b *ExtendedReader) ReadObject(isJoinData bool, context *CommunicationConte
 	}
 
     serialized := objectToRef(referent, referentInt)
-    context.RefStringsByReferent[referent] = referent
 
 	return Referent(serialized), err
 }

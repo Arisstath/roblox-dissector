@@ -168,7 +168,6 @@ type ProxiedPacket struct {
 	Packet *peer.UDPPacket
 	Payload []byte
 }
-
 func captureFromProxy(srcport uint16, dstport uint16, stopCaptureJob chan struct{}, packetViewer *MyPacketListView, context *peer.CommunicationContext) {
 	fmt.Printf("Will capture from proxy %d -> %d\n", srcport, dstport)
 
@@ -265,6 +264,100 @@ func captureFromProxy(srcport uint16, dstport uint16, stopCaptureJob chan struct
 		select {
 		case newPacket := <- packetChan:
 			packetReader.ReadPacket(newPacket.Payload, newPacket.Packet)
+		case _ = <- stopCaptureJob:
+			return
+		}
+	}
+	return
+}
+
+func captureFromInjectionProxy(srcport uint16, dstport uint16, stopCaptureJob chan struct{}, packetViewer *MyPacketListView, context *peer.CommunicationContext) {
+	fmt.Printf("Will capture from injproxy %d -> %d\n", srcport, dstport)
+
+	srcAddr, _ := net.ResolveUDPAddr("udp", "127.0.0.1:" + strconv.Itoa(int(srcport)))
+	dstAddr, _ := net.ResolveUDPAddr("udp", "127.0.0.1:" + strconv.Itoa(int(dstport)))
+	conn, err := net.ListenUDP("udp", srcAddr)
+	if err != nil {
+		fmt.Printf("Failed to start proxy: %s", err.Error())
+		return
+	}
+	dstConn, err := net.DialUDP("udp", nil, dstAddr)
+	if err != nil {
+		fmt.Printf("Failed to start proxy: %s", err.Error())
+		return
+	}
+
+	context.Client = srcAddr.String()
+	context.Server = dstAddr.String()
+	proxyWriter := peer.NewProxyWriter(context)
+	proxyWriter.ServerAddr = dstAddr
+
+	proxyWriter.ClientHalf.OutputHandler = func(p []byte, d *net.UDPAddr) {
+		_, err := conn.WriteToUDP(p, d)
+		if err != nil {
+			fmt.Println("write fail: %s", err.Error())
+			return
+		}
+	}
+	proxyWriter.ServerHalf.OutputHandler = func(p []byte, d *net.UDPAddr) {
+		_, err := dstConn.Write(p)
+		if err != nil {
+			fmt.Println("write fail: %s", err.Error())
+			return
+		}
+	}
+
+	var n int
+	packetChan := make(chan ProxiedPacket, 100)
+
+	go func() {
+		for {
+			payload := make([]byte, 1500)
+			n, proxyWriter.ClientAddr, err = conn.ReadFromUDP(payload)
+			if err != nil {
+				fmt.Println("readfromudp fail: %s", err.Error())
+				continue
+			}
+			newPacket := peer.UDPPacket{
+				peer.BufferToStream(payload[:n]),
+				*srcAddr,
+				*dstAddr,
+			}
+			if payload[0] > 0x8 {
+				packetChan <- ProxiedPacket{Packet: &newPacket, Payload: payload[:n]}
+			} else { // Need priority for join packets
+				proxyWriter.ProxyClient(payload[:n], &newPacket)
+			}
+		}
+	}()
+	go func() {
+		for {
+			payload := make([]byte, 1500)
+			n, _, err := dstConn.ReadFromUDP(payload)
+			if err != nil {
+				fmt.Println("readfromudp fail: %s", err.Error())
+				continue
+			}
+			newPacket := peer.UDPPacket{
+				peer.BufferToStream(payload[:n]),
+				*dstAddr,
+				*srcAddr,
+			}
+			if payload[0] > 0x8 {
+				packetChan <- ProxiedPacket{Packet: &newPacket, Payload: payload[:n]}
+			} else { // Need priority for join packets
+				proxyWriter.ProxyServer(payload[:n], &newPacket)
+			}
+		}
+	}()
+	for {
+		select {
+		case newPacket := <- packetChan:
+			if newPacket.Packet.Source.String() == srcAddr.String() {
+				proxyWriter.ProxyClient(newPacket.Payload, newPacket.Packet)
+			} else {
+				proxyWriter.ProxyServer(newPacket.Payload, newPacket.Packet)
+			}
 		case _ = <- stopCaptureJob:
 			return
 		}

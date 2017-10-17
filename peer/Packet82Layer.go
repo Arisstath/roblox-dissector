@@ -17,8 +17,8 @@ type Packet82Layer struct {
 	TypeDescriptor []*DescriptorItem
 }
 
-func NewPacket82Layer() Packet82Layer {
-	return Packet82Layer{}
+func NewPacket82Layer() *Packet82Layer {
+	return &Packet82Layer{}
 }
 
 func LearnDictionary(decompressedStream *ExtendedReader, ContextDescriptor map[string]uint32) ([]*DescriptorItem, error) {

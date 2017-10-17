@@ -524,6 +524,7 @@ func GUIMain() {
 	capture4FileAction := captureBar.AddAction("From &RawCap file...")
 	captureLiveAction := captureBar.AddAction("From &live interface...")
 	captureProxyAction := captureBar.AddAction("From &proxy...")
+	captureInjectAction := captureBar.AddAction("From &injection proxy...")
 	captureStopAction := captureBar.AddAction("&Stop capture")
 
 	captureStopAction.ConnectTriggered(func(checked bool)() {
@@ -600,6 +601,25 @@ func GUIMain() {
 
 			go func() {
 				captureFromProxy(srcport, dstport, packetViewer.StopCaptureJob, packetViewer, context)
+				packetViewer.IsCapturing = false
+			}()
+		})
+	})
+	captureInjectAction.ConnectTriggered(func(checked bool)() {
+		if packetViewer.IsCapturing {
+			packetViewer.StopCaptureJob <- struct{}{}
+		}
+
+		NewProxyCaptureWidget(packetViewer, func(srcport uint16, dstport uint16) {
+			packetViewer.IsCapturing = true
+
+			context := peer.NewCommunicationContext()
+			packetViewer.Context = context
+
+			packetViewer.Reset()
+
+			go func() {
+				captureFromInjectionProxy(srcport, dstport, packetViewer.StopCaptureJob, packetViewer, context)
 				packetViewer.IsCapturing = false
 			}()
 		})

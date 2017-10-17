@@ -2,7 +2,7 @@ package main
 import "github.com/gskartwii/roblox-dissector/peer"
 
 func ShowPacket00(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
-	MainLayer := layers.Main.(peer.Packet00Layer)
+	MainLayer := layers.Main.(*peer.Packet00Layer)
 
 	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
 
@@ -11,7 +11,7 @@ func ShowPacket00(packetType byte, packet *peer.UDPPacket, context *peer.Communi
 }
 
 func ShowPacket03(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
-	MainLayer := layers.Main.(peer.Packet03Layer)
+	MainLayer := layers.Main.(*peer.Packet03Layer)
 
 	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
 

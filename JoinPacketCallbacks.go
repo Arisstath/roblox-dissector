@@ -4,7 +4,7 @@ import "github.com/therecipe/qt/gui"
 import "github.com/gskartwii/roblox-dissector/peer"
 
 func ShowPacket05(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
-	MainLayer := layers.Main.(peer.Packet05Layer)
+	MainLayer := layers.Main.(*peer.Packet05Layer)
 
 	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
 
@@ -13,7 +13,7 @@ func ShowPacket05(packetType byte, packet *peer.UDPPacket, context *peer.Communi
 }
 
 func ShowPacket06(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
-	MainLayer := layers.Main.(peer.Packet06Layer)
+	MainLayer := layers.Main.(*peer.Packet06Layer)
 
 	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
 
@@ -28,7 +28,7 @@ func ShowPacket06(packetType byte, packet *peer.UDPPacket, context *peer.Communi
 }
 
 func ShowPacket07(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
-	MainLayer := layers.Main.(peer.Packet07Layer)
+	MainLayer := layers.Main.(*peer.Packet07Layer)
 
 	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
 
@@ -43,7 +43,7 @@ func ShowPacket07(packetType byte, packet *peer.UDPPacket, context *peer.Communi
 }
 
 func ShowPacket08(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
-	MainLayer := layers.Main.(peer.Packet08Layer)
+	MainLayer := layers.Main.(*peer.Packet08Layer)
 
 	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
 
@@ -61,7 +61,7 @@ func ShowPacket08(packetType byte, packet *peer.UDPPacket, context *peer.Communi
 }
 
 func ShowPacket09(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
-	MainLayer := layers.Main.(peer.Packet09Layer)
+	MainLayer := layers.Main.(*peer.Packet09Layer)
 
 	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
 
@@ -79,7 +79,7 @@ func ShowPacket09(packetType byte, packet *peer.UDPPacket, context *peer.Communi
 }
 
 func ShowPacket10(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
-	MainLayer := layers.Main.(peer.Packet10Layer)
+	MainLayer := layers.Main.(*peer.Packet10Layer)
 
 	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
 
@@ -113,7 +113,7 @@ func ShowPacket10(packetType byte, packet *peer.UDPPacket, context *peer.Communi
 }
 
 func ShowPacket13(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
-	MainLayer := layers.Main.(peer.Packet13Layer)
+	MainLayer := layers.Main.(*peer.Packet13Layer)
 
 	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
 

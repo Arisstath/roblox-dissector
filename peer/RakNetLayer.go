@@ -1,9 +1,8 @@
 package peer
 import "bytes"
 import "io/ioutil"
-import "errors"
 
-const DEBUG bool = true
+const DEBUG bool = false
 type RakNetPacket interface {
 	Serialize(*CommunicationContext, *ExtendedWriter) error
 }
@@ -95,7 +94,14 @@ func DecodeRakNetLayer(packetType byte, packet *UDPPacket, context *Communicatio
 	if err != nil {
 		return layer, err
 	}
-	if layer.IsACK {
+	if !layer.IsACK {
+		layer.IsNAK, err = bitstream.ReadBool()
+		if err != nil {
+			return layer, err
+		}
+	}
+
+	if layer.IsACK || layer.IsNAK {
 		layer.HasBAndAS, err = bitstream.ReadBool()
 		bitstream.Align()
 
@@ -125,13 +131,6 @@ func DecodeRakNetLayer(packetType byte, packet *UDPPacket, context *Communicatio
 		}
 		return layer, nil
 	} else {
-		layer.IsNAK, err = bitstream.ReadBool()
-		if err != nil {
-			return layer, err
-		}
-		if layer.IsNAK {
-			return layer, errors.New("NAKs not implemented!")
-		}
 		layer.IsPacketPair, err = bitstream.ReadBool()
 		if err != nil {
 			return layer, err
@@ -175,7 +174,14 @@ func (layer *RakNetLayer) Serialize(context *CommunicationContext, outStream *Ex
 	if err != nil {
 		return err
 	}
-	if layer.IsACK {
+	if !layer.IsACK {
+		err = outStream.WriteBool(layer.IsNAK)
+		if err != nil {
+			return err
+		}
+	}
+
+	if layer.IsACK || layer.IsNAK {
 		err = outStream.WriteBool(layer.HasBAndAS)
 		if err != nil {
 			return err
@@ -216,10 +222,6 @@ func (layer *RakNetLayer) Serialize(context *CommunicationContext, outStream *Ex
 			}
 		}
 	} else {
-		err = outStream.WriteBool(layer.IsNAK)
-		if err != nil {
-			return err
-		}
 		err = outStream.WriteBool(layer.IsPacketPair)
 		if err != nil {
 			return err

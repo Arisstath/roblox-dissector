@@ -4,8 +4,8 @@ type Packet90Layer struct {
 	SchemaVersion uint32
 }
 
-func NewPacket90Layer() Packet90Layer {
-	return Packet90Layer{}
+func NewPacket90Layer() *Packet90Layer {
+	return &Packet90Layer{}
 }
 
 func DecodePacket90Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {

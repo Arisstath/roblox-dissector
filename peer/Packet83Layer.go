@@ -55,8 +55,8 @@ type Packet83Layer struct {
 	SubPackets []Packet83Subpacket
 }
 
-func NewPacket83Layer() Packet83Layer {
-	return Packet83Layer{}
+func NewPacket83Layer() *Packet83Layer {
+	return &Packet83Layer{}
 }
 
 func extractPacketType(stream *ExtendedReader) (uint8, error) {
