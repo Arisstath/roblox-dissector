@@ -12,9 +12,11 @@ type Packet83_03 struct {
 
 func DecodePacket83_03(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
 	var err error
+	isClient := context.IsClient(packet.Source)
+
 	layer := &Packet83_03{}
 	thisBitstream := packet.Stream
-    referent, err := thisBitstream.ReadObject(false, context)
+    referent, err := thisBitstream.ReadObject(isClient, false, context)
 	if err != nil {
 		return layer, err
 	}
@@ -31,7 +33,7 @@ func DecodePacket83_03(packet *UDPPacket, context *CommunicationContext) (interf
 		}
 
         var referent Referent
-        referent, err = thisBitstream.ReadObject(false, context)
+        referent, err = thisBitstream.ReadObject(isClient, false, context)
         instance := context.InstancesByReferent.TryGetInstance(referent)
 		result := rbxfile.ValueReference{instance}
 		layer.Value = result
@@ -54,7 +56,7 @@ func DecodePacket83_03(packet *UDPPacket, context *CommunicationContext) (interf
         return layer, err
     }
 
-    layer.Value, err = schema.Decode(ROUND_UPDATE, packet, context)
+    layer.Value, err = schema.Decode(isClient, ROUND_UPDATE, packet, context)
 
     context.InstancesByReferent.OnAddInstance(referent, func(instance *rbxfile.Instance) {
         layer.Instance = instance
@@ -64,8 +66,8 @@ func DecodePacket83_03(packet *UDPPacket, context *CommunicationContext) (interf
     return layer, err
 }
 
-func (layer *Packet83_03) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
-	err := stream.WriteObject(layer.Instance, false, context)
+func (layer *Packet83_03) Serialize(isClient bool, context *CommunicationContext, stream *ExtendedWriter) error {
+	err := stream.WriteObject(isClient, layer.Instance, false, context)
 	if err != nil {
 		return err
 	}
@@ -84,6 +86,6 @@ func (layer *Packet83_03) Serialize(context *CommunicationContext, stream *Exten
 		return err
 	}
 
-	err = context.StaticSchema.Properties[context.StaticSchema.PropertiesByName[layer.PropertyName]].Serialize(layer.Value, ROUND_UPDATE, context, stream)
+	err = context.StaticSchema.Properties[context.StaticSchema.PropertiesByName[layer.PropertyName]].Serialize(isClient, layer.Value, ROUND_UPDATE, context, stream)
 	return err
 }

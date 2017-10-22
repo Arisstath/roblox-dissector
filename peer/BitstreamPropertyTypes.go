@@ -267,15 +267,15 @@ func refToObject(refString string) (string, uint32) {
 	return components[0], uint32(mustAtoi(components[1]))
 }
 
-func (b *ExtendedReader) ReadObject(isJoinData bool, context *CommunicationContext) (Referent, error) {
+func (b *ExtendedReader) ReadObject(isClient bool, isJoinData bool, context *CommunicationContext) (Referent, error) {
 	var err error
     var referent string
     var referentInt uint32
     var Object Referent
 	if isJoinData {
-		referent, referentInt, err = b.ReadJoinReferent()
+		referent, referentInt, err = b.ReadJoinReferent(context)
 	} else {
-		referent, err = b.ReadCachedObject(context)
+		referent, err = b.ReadCachedObject(isClient, context)
 		if err != nil {
 			return Object, err
 		}
@@ -432,9 +432,9 @@ func (b *ExtendedReader) ReadCFrame() (rbxfile.ValueCFrame, error) {
 	return val, nil
 }
 
-func (b *ExtendedReader) ReadContent(isJoinData bool, context *CommunicationContext) (rbxfile.ValueContent, error) {
+func (b *ExtendedReader) ReadContent(isClient bool, isJoinData bool, context *CommunicationContext) (rbxfile.ValueContent, error) {
 	if !isJoinData {
-		val, err := b.ReadCachedContent(context)
+		val, err := b.ReadCachedContent(isClient, context)
 		return rbxfile.ValueContent(val), err
 	}
 	var result string
@@ -446,7 +446,15 @@ func (b *ExtendedReader) ReadContent(isJoinData bool, context *CommunicationCont
 	return rbxfile.ValueContent(result), err
 }
 
-func (b *ExtendedReader) ReadSystemAddress(isJoinData bool, context *CommunicationContext) (rbxfile.ValueSystemAddress, error) {
+func (b *ExtendedReader) ReadSystemAddress(isClient bool, isJoinData bool, context *CommunicationContext) (rbxfile.ValueSystemAddress, error) {
+	var cache *SysAddrCache
+
+	if isClient {
+		cache = &context.ClientCaches.SystemAddress
+	} else {
+		cache = &context.ServerCaches.SystemAddress
+	}
+
 	thisAddress := rbxfile.ValueSystemAddress("0.0.0.0:0")
 	var err error
 	var cacheIndex uint8
@@ -460,7 +468,7 @@ func (b *ExtendedReader) ReadSystemAddress(isJoinData bool, context *Communicati
 		}
 
 		if cacheIndex < 0x80 {
-			result, ok := context.ReplicatorSystemAddressCache.Get(cacheIndex)
+			result, ok := cache.Get(cacheIndex)
 			if !ok {
                 return thisAddress, nil
 			}
@@ -480,7 +488,7 @@ func (b *ExtendedReader) ReadSystemAddress(isJoinData bool, context *Communicati
 	}
 
 	if !isJoinData {
-		context.ReplicatorSystemAddressCache.Put(thisAddress, cacheIndex - 0x80)
+		cache.Put(thisAddress, cacheIndex - 0x80)
 	}
 
 	return rbxfile.ValueSystemAddress(thisAddr.String()), nil
@@ -505,9 +513,9 @@ func (b *ExtendedReader) ReadSintUTF8() (int32, error) {
 	return int32((res >> 1) ^ -(res & 1)), err
 }
 
-func (b *ExtendedReader) ReadNewPString(isJoinData bool, context *CommunicationContext) (rbxfile.ValueString, error) {
+func (b *ExtendedReader) ReadNewPString(isClient bool, isJoinData bool, context *CommunicationContext) (rbxfile.ValueString, error) {
 	if !isJoinData {
-		val, err := b.ReadCached(context)
+		val, err := b.ReadCached(isClient, context)
 		return rbxfile.ValueString(val), err
 	}
 	stringLen, err := b.ReadUintUTF8()
@@ -517,24 +525,24 @@ func (b *ExtendedReader) ReadNewPString(isJoinData bool, context *CommunicationC
 	val, err := b.ReadASCII(int(stringLen))
 	return rbxfile.ValueString(val), err
 }
-func (b *ExtendedReader) ReadNewProtectedString(isJoinData bool, context *CommunicationContext) (rbxfile.ValueProtectedString, error) {
+func (b *ExtendedReader) ReadNewProtectedString(isClient bool, isJoinData bool, context *CommunicationContext) (rbxfile.ValueProtectedString, error) {
 	if !isJoinData {
-		res, err := b.ReadNewCachedProtectedString(context)
+		res, err := b.ReadNewCachedProtectedString(isClient, context)
 		return rbxfile.ValueProtectedString(res), err
 	}
-	res, err := b.ReadNewPString(true, context)
+	res, err := b.ReadNewPString(isClient, true, context)
 	return rbxfile.ValueProtectedString(res), err
 }
-func (b *ExtendedReader) ReadNewContent(isJoinData bool, context *CommunicationContext) (rbxfile.ValueContent, error) {
+func (b *ExtendedReader) ReadNewContent(isClient bool, isJoinData bool, context *CommunicationContext) (rbxfile.ValueContent, error) {
 	if !isJoinData {
-		res, err := b.ReadCachedContent(context)
+		res, err := b.ReadCachedContent(isClient, context)
 		return rbxfile.ValueContent(res), err
 	}
-	res, err := b.ReadNewPString(true, context)
+	res, err := b.ReadNewPString(isClient, true, context)
 	return rbxfile.ValueContent(res), err
 }
 func (b *ExtendedReader) ReadNewBinaryString() (rbxfile.ValueBinaryString, error) {
-	res, err := b.ReadNewPString(true, nil)
+	res, err := b.ReadNewPString(false, true, nil) // hack: isClient doesn't matter because caching isn't used
 	return rbxfile.ValueBinaryString(res), err
 }
 
@@ -557,7 +565,7 @@ func getEnumName(context *CommunicationContext, id uint16) string {
 	return context.StaticSchema.Enums[id].Name
 }
 
-func (b *ExtendedReader) ReadNewTypeAndValue(isJoinData bool, context *CommunicationContext) (rbxfile.Value, error) {
+func (b *ExtendedReader) ReadNewTypeAndValue(isClient bool, isJoinData bool, context *CommunicationContext) (rbxfile.Value, error) {
     var val rbxfile.Value
 	thisType, err := b.ReadUint8()
 	if err != nil {
@@ -572,11 +580,11 @@ func (b *ExtendedReader) ReadNewTypeAndValue(isJoinData bool, context *Communica
 		}
 	}
 
-	val, err = readSerializedValue(isJoinData, enumID, thisType, b, context)
+	val, err = readSerializedValue(isClient, isJoinData, enumID, thisType, b, context)
 	return val, err
 }
 
-func (b *ExtendedReader) ReadNewTuple(isJoinData bool, context *CommunicationContext) (rbxfile.ValueTuple, error) {
+func (b *ExtendedReader) ReadNewTuple(isClient bool, isJoinData bool, context *CommunicationContext) (rbxfile.ValueTuple, error) {
 	var tuple rbxfile.ValueTuple
 	tupleLen, err := b.ReadUintUTF8()
 	if err != nil {
@@ -587,7 +595,7 @@ func (b *ExtendedReader) ReadNewTuple(isJoinData bool, context *CommunicationCon
 	}
 	tuple = make(rbxfile.ValueTuple, tupleLen)
 	for i := 0; i < int(tupleLen); i++ {
-		val, err := b.ReadNewTypeAndValue(isJoinData, context)
+		val, err := b.ReadNewTypeAndValue(isClient, isJoinData, context)
 		if err != nil {
 			return tuple, err
 		}
@@ -597,12 +605,12 @@ func (b *ExtendedReader) ReadNewTuple(isJoinData bool, context *CommunicationCon
 	return tuple, nil
 }
 
-func (b *ExtendedReader) ReadNewArray(isJoinData bool, context *CommunicationContext) (rbxfile.ValueArray, error) {
-	array, err := b.ReadNewTuple(isJoinData, context)
+func (b *ExtendedReader) ReadNewArray(isClient bool, isJoinData bool, context *CommunicationContext) (rbxfile.ValueArray, error) {
+	array, err := b.ReadNewTuple(isClient, isJoinData, context)
 	return rbxfile.ValueArray(array), err
 }
 
-func (b *ExtendedReader) ReadNewDictionary(isJoinData bool, context *CommunicationContext) (rbxfile.ValueDictionary, error) {
+func (b *ExtendedReader) ReadNewDictionary(isClient bool, isJoinData bool, context *CommunicationContext) (rbxfile.ValueDictionary, error) {
 	var dictionary rbxfile.ValueDictionary
 	dictionaryLen, err := b.ReadUintUTF8()
 	if err != nil {
@@ -621,7 +629,7 @@ func (b *ExtendedReader) ReadNewDictionary(isJoinData bool, context *Communicati
 		if err != nil {
 			return dictionary, err
 		}
-		dictionary[key], err = b.ReadNewTypeAndValue(isJoinData, context)
+		dictionary[key], err = b.ReadNewTypeAndValue(isClient, isJoinData, context)
 		if err != nil {
 			return dictionary, err
 		}
@@ -630,8 +638,8 @@ func (b *ExtendedReader) ReadNewDictionary(isJoinData bool, context *Communicati
 	return dictionary, nil
 }
 
-func (b *ExtendedReader) ReadNewMap(isJoinData bool, context *CommunicationContext) (rbxfile.ValueMap, error) {
-	thisMap, err := b.ReadNewDictionary(isJoinData, context)
+func (b *ExtendedReader) ReadNewMap(isClient bool, isJoinData bool, context *CommunicationContext) (rbxfile.ValueMap, error) {
+	thisMap, err := b.ReadNewDictionary(isClient, isJoinData, context)
 	return rbxfile.ValueMap(thisMap), err
 }
 

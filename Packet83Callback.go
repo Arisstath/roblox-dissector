@@ -144,7 +144,11 @@ func show83_07(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_07)
 	widget := widgets.NewQWidget(nil, 0)
 	layout := widgets.NewQVBoxLayout()
-	layout.AddWidget(NewQLabelF("Object: %s", this.Instance.Reference), 0, 0)
+    if this.Instance != nil {
+        layout.AddWidget(NewQLabelF("Object: %s", this.Instance.Reference), 0, 0)
+    } else {
+        layout.AddWidget(NewQLabelF("Object: nil"), 0, 0)
+    }
 	layout.AddWidget(NewQLabelF("Event name: %s", this.EventName), 0, 0)
 	layout.AddWidget(NewQLabelF("Arguments:"), 0, 0)
 

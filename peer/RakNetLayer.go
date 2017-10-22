@@ -4,7 +4,7 @@ import "io/ioutil"
 
 const DEBUG bool = false
 type RakNetPacket interface {
-	Serialize(*CommunicationContext, *ExtendedWriter) error
+	Serialize(bool, *CommunicationContext, *ExtendedWriter) error
 }
 
 type PacketLayers struct {
@@ -164,7 +164,7 @@ func DecodeRakNetLayer(packetType byte, packet *UDPPacket, context *Communicatio
 	}
 }
 
-func (layer *RakNetLayer) Serialize(context *CommunicationContext, outStream *ExtendedWriter) (error) {
+func (layer *RakNetLayer) Serialize(isClient bool, context *CommunicationContext, outStream *ExtendedWriter) (error) {
 	var err error
 	err = outStream.WriteBool(layer.IsValid)
 	if err != nil {

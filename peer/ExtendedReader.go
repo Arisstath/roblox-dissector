@@ -253,7 +253,7 @@ func (b *ExtendedReader) RegionToGZipStream() (*ExtendedReader, error) {
 	return &ExtendedReader{bitstream.NewReader(gzipStream)}, err
 }
 
-func (b *ExtendedReader) ReadJoinReferent() (string, uint32, error) {
+func (b *ExtendedReader) ReadJoinReferent(context *CommunicationContext) (string, uint32, error) {
 	stringLen, err := b.ReadUint8()
 	if err != nil {
 		return "", 0, err
@@ -261,12 +261,14 @@ func (b *ExtendedReader) ReadJoinReferent() (string, uint32, error) {
 	if stringLen == 0x00 {
 		return "NULL2", 0, err
 	}
-	ref := "NULL"
+	var ref string
 	if stringLen != 0xFF {
 		ref, err = b.ReadASCII(int(stringLen))
 		if err != nil {
 			return "", 0, err
 		}
+	} else {
+		ref = context.InstanceTopScope
 	}
 
 	intVal, err := b.ReadUint32LE()
@@ -329,23 +331,51 @@ func (b *ExtendedReader) ReadUint32AndString() (interface{}, error) {
 	return b.ReadASCII(int(stringLen))
 }
 
-func (b *ExtendedReader) ReadCached(context *CommunicationContext) (string, error) {
-	thisString, err := b.readWithCache(&context.ReplicatorStringCache, (*ExtendedReader).ReadUint32AndString)
+func (b *ExtendedReader) ReadCached(isClient bool, context *CommunicationContext) (string, error) {
+	var cache Cache
+	if isClient {
+		cache = &context.ClientCaches.String
+	} else {
+		cache = &context.ServerCaches.String
+	}
+
+	thisString, err := b.readWithCache(cache, (*ExtendedReader).ReadUint32AndString)
 	return thisString.(string), err
 }
 
-func (b *ExtendedReader) ReadCachedObject(context *CommunicationContext) (string, error) {
-	thisString, err := b.readWithCache(&context.ReplicatorObjectCache, (*ExtendedReader).ReadUint32AndString)
+func (b *ExtendedReader) ReadCachedObject(isClient bool, context *CommunicationContext) (string, error) {
+	var cache Cache
+	if isClient {
+		cache = &context.ClientCaches.Object
+	} else {
+		cache = &context.ServerCaches.Object
+	}
+
+	thisString, err := b.readWithCache(cache, (*ExtendedReader).ReadUint32AndString)
 	return thisString.(string), err
 }
 
-func (b *ExtendedReader) ReadCachedContent(context *CommunicationContext) (string, error) {
-	thisString, err := b.readWithCache(&context.ReplicatorContentCache, (*ExtendedReader).ReadUint32AndString)
+func (b *ExtendedReader) ReadCachedContent(isClient bool, context *CommunicationContext) (string, error) {
+	var cache Cache
+	if isClient {
+		cache = &context.ClientCaches.Content
+	} else {
+		cache = &context.ServerCaches.Content
+	}
+
+	thisString, err := b.readWithCache(cache, (*ExtendedReader).ReadUint32AndString)
 	return thisString.(string), err
 }
 
-func (b *ExtendedReader) ReadNewCachedProtectedString(context *CommunicationContext) ([]byte, error) {
-	thisString, err := b.readWithCache(&context.ReplicatorProtectedStringCache, func(b *ExtendedReader)(interface{}, error) {
+func (b *ExtendedReader) ReadNewCachedProtectedString(isClient bool, context *CommunicationContext) ([]byte, error) {
+	var cache Cache
+	if isClient {
+		cache = &context.ClientCaches.ProtectedString
+	} else {
+		cache = &context.ServerCaches.ProtectedString
+	}
+
+	thisString, err := b.readWithCache(cache, func(b *ExtendedReader)(interface{}, error) {
 		stringLen, err := b.ReadUint32BE()
 		if err != nil {
 			return []byte{}, err

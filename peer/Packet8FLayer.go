@@ -19,7 +19,7 @@ func DecodePacket8FLayer(packet *UDPPacket, context *CommunicationContext) (inte
 	return layer, err
 }
 
-func (layer *Packet8FLayer) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
+func (layer *Packet8FLayer) Serialize(isClient bool,context *CommunicationContext, stream *ExtendedWriter) error {
 	//return stream.WriteHuffman(layer.SpawnName)
 	return errors.New("packet 8F not implemented!")
 }

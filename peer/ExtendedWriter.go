@@ -143,9 +143,14 @@ func (b *ExtendedWriter) writeWithCache(value interface{}, cache Cache, writeCal
 	}
 	if matchedIndex == 0 {
 		cache.Put(value, cache.LastWrite() % 0x7F + 1)
-		return b.WriteByte(cache.LastWrite())
+		println("Writing new value to cache: ", cache.LastWrite())
+		err := b.WriteByte(cache.LastWrite() | 0x80)
+		if err != nil {
+			return err
+		}
+		return writeCallback(b, value)
 	} else {
-		return b.WriteByte(0x80 | matchedIndex)
+		return b.WriteByte(matchedIndex)
 	}
 }
 
@@ -158,17 +163,45 @@ func (b *ExtendedWriter) WriteUint32AndString(val interface{}) error {
 	return b.WriteASCII(str)
 }
 
-func (b *ExtendedWriter) WriteCached(val string, context *CommunicationContext) error {
-	return b.writeWithCache(val, &context.ReplicatorStringCache, (*ExtendedWriter).WriteUint32AndString)
+func (b *ExtendedWriter) WriteCached(isClient bool, val string, context *CommunicationContext) error {
+	var cache Cache
+	if isClient {
+		cache = &context.ClientCaches.String
+	} else {
+		cache = &context.ServerCaches.String
+	}
+
+	return b.writeWithCache(val, cache, (*ExtendedWriter).WriteUint32AndString)
 }
-func (b *ExtendedWriter) WriteCachedObject(val string, context *CommunicationContext) error {
-	return b.writeWithCache(val, &context.ReplicatorObjectCache, (*ExtendedWriter).WriteUint32AndString)
+func (b *ExtendedWriter) WriteCachedObject(isClient bool, val string, context *CommunicationContext) error {
+	var cache Cache
+	if isClient {
+		cache = &context.ClientCaches.Object
+	} else {
+		cache = &context.ServerCaches.Object
+	}
+
+	return b.writeWithCache(val, cache, (*ExtendedWriter).WriteUint32AndString)
 }
-func (b *ExtendedWriter) WriteCachedContent(val string, context *CommunicationContext) error {
-	return b.writeWithCache(val, &context.ReplicatorContentCache, (*ExtendedWriter).WriteUint32AndString)
+func (b *ExtendedWriter) WriteCachedContent(isClient bool, val string, context *CommunicationContext) error {
+	var cache Cache
+	if isClient {
+		cache = &context.ClientCaches.Content
+	} else {
+		cache = &context.ServerCaches.Content
+	}
+
+	return b.writeWithCache(val, cache, (*ExtendedWriter).WriteUint32AndString)
 }
-func (b *ExtendedWriter) WriteNewCachedProtectedString(val string, context *CommunicationContext) error {
-	return b.writeWithCache(val, &context.ReplicatorContentCache, func(b *ExtendedWriter, val interface{})(error) {
+func (b *ExtendedWriter) WriteNewCachedProtectedString(isClient bool, val string, context *CommunicationContext) error {
+	var cache Cache
+	if isClient {
+		cache = &context.ClientCaches.ProtectedString
+	} else {
+		cache = &context.ServerCaches.ProtectedString
+	}
+
+	return b.writeWithCache(val, cache, func(b *ExtendedWriter, val interface{})(error) {
 		str := val.([]byte)
 		err := b.WriteUint32BE(uint32(len(str)))
 		if err != nil {
@@ -177,37 +210,53 @@ func (b *ExtendedWriter) WriteNewCachedProtectedString(val string, context *Comm
 		return b.AllBytes(val.([]byte))
 	})
 }
-func (b *ExtendedWriter) WriteCachedSystemAddress(val rbxfile.ValueSystemAddress, context *CommunicationContext) error {
-	return b.writeWithCache(val, &context.ReplicatorSystemAddressCache, func(b *ExtendedWriter, val interface{})(error) {
-		return b.WriteSystemAddress(val.(rbxfile.ValueSystemAddress), true, nil)
+func (b *ExtendedWriter) WriteCachedSystemAddress(isClient bool, val rbxfile.ValueSystemAddress, context *CommunicationContext) error {
+	var cache Cache
+	if isClient {
+		cache = &context.ClientCaches.SystemAddress
+	} else {
+		cache = &context.ServerCaches.SystemAddress
+	}
+
+	return b.writeWithCache(val, cache, func(b *ExtendedWriter, val interface{})(error) {
+		return b.WriteSystemAddress(isClient, val.(rbxfile.ValueSystemAddress), true, nil)
 	})
 }
 
-func (b *ExtendedWriter) WriteObject(object *rbxfile.Instance, isJoinData bool, context *CommunicationContext) error {
+func (b *ExtendedWriter) WriteObject(isClient bool, object *rbxfile.Instance, isJoinData bool, context *CommunicationContext) error {
     var err error
     if object == nil {
         return b.WriteByte(0)
     }
-    referentString, referent := refToObject(object.Reference)
 
+	referentString, referent := refToObject(object.Reference)
     if isJoinData {
         if referentString == "NULL2" {
             err = b.WriteByte(0)
             return err
-        } else if referentString != "NULL" {
+		} else if referentString == context.InstanceTopScope {
+            err = b.WriteByte(0xFF)
+        } else {
             err = b.WriteByte(uint8(len(referentString)))
             if err != nil {
                 return err
             }
             err = b.WriteASCII(referentString)
-        } else {
-            err = b.WriteByte(0xFF)
-        }
-        if err != nil {
+		}
+		if err != nil {
             return err
         }
 
         return b.WriteUint32LE(referent)
-    }
+    } else {
+		if referentString == "NULL2" || referentString == "null" {
+			return b.WriteByte(0x00)
+		}
+		err = b.WriteCachedObject(isClient, referentString, context)
+		if err != nil {
+			return err
+		}
+		return b.WriteUint32LE(referent)
+	}
     return nil
 }

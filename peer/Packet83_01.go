@@ -9,13 +9,13 @@ func DecodePacket83_01(packet *UDPPacket, context *CommunicationContext) (interf
 	var err error
 	inner := &Packet83_01{}
 	thisBitstream := packet.Stream
-    referent, err := thisBitstream.ReadObject(false, context)
+    referent, err := thisBitstream.ReadObject(context.IsClient(packet.Source), false, context)
     inner.Instance = context.InstancesByReferent.TryGetInstance(referent)
 	inner.Instance.SetParent(nil)
 
 	return inner, err
 }
 
-func (layer *Packet83_01) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
-    return stream.WriteObject(layer.Instance, false, context)
+func (layer *Packet83_01) Serialize(isClient bool, context *CommunicationContext, stream *ExtendedWriter) error {
+    return stream.WriteObject(isClient, layer.Instance, false, context)
 }

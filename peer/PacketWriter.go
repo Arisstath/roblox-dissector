@@ -18,6 +18,7 @@ type PacketWriter struct {
 	SplitPacketID uint16
 	ReliableNumber uint32
 	DatagramNumber uint32
+	ToClient bool
 }
 
 func NewPacketWriter() *PacketWriter {
@@ -33,7 +34,7 @@ func (this *PacketWriter) WriteSimple(packetType byte, packet RakNetPacket, dest
 		this.ErrorHandler(err)
 		return
 	}
-	err = packet.Serialize(nil, stream)
+	err = packet.Serialize(this.ToClient, nil, stream)
 	if err != nil {
 		this.ErrorHandler(err)
 		return
@@ -46,7 +47,7 @@ func (this *PacketWriter) WriteRakNet(packet *RakNetLayer, dest *net.UDPAddr) {
 	output := make([]byte, 0, 1492)
 	buffer := bytes.NewBuffer(output)
 	stream := &ExtendedWriter{bitstream.NewWriter(buffer)}
-	err := packet.Serialize(nil, stream)
+	err := packet.Serialize(this.ToClient, nil, stream)
 	if err != nil {
 		this.ErrorHandler(err)
 		return
@@ -59,7 +60,7 @@ func (this *PacketWriter) WriteReliable(packet *ReliabilityLayer, dest *net.UDPA
 	output := make([]byte, 0, 1492)
 	buffer := bytes.NewBuffer(output)
 	stream := &ExtendedWriter{bitstream.NewWriter(buffer)}
-	err := packet.Serialize(nil, stream)
+	err := packet.Serialize(this.ToClient, nil, stream)
 	if err != nil {
 		this.ErrorHandler(err)
 		return
@@ -81,7 +82,7 @@ func (this *PacketWriter) WriteReliableWithDN(packet *ReliabilityLayer, dest *ne
 	output := make([]byte, 0, 1492)
 	buffer := bytes.NewBuffer(output)
 	stream := &ExtendedWriter{bitstream.NewWriter(buffer)}
-	err := packet.Serialize(nil, stream)
+	err := packet.Serialize(this.ToClient, nil, stream)
 	if err != nil {
 		this.ErrorHandler(err)
 		return
@@ -95,8 +96,8 @@ func (this *PacketWriter) WriteReliableWithDN(packet *ReliabilityLayer, dest *ne
 		IsValid: true,
 		DatagramNumber: dn,
 	}
-	if dn > this.DatagramNumber {
-		this.DatagramNumber = dn
+	if dn >= this.DatagramNumber {
+		this.DatagramNumber = dn + 1
 	}
 
 	this.WriteRakNet(raknet, dest)
@@ -106,7 +107,7 @@ func (this *PacketWriter) WriteGeneric(context *CommunicationContext, packetType
 	output := make([]byte, 0, 1492)
 	buffer := bytes.NewBuffer(output) // Will allocate more if needed
 	stream := &ExtendedWriter{bitstream.NewWriter(buffer)}
-	err := generic.Serialize(context, stream)
+	err := generic.Serialize(this.ToClient, context, stream)
 	if err != nil {
 		this.ErrorHandler(err)
 		return

@@ -122,22 +122,20 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 		serverHalf.Writer.WriteReliableWithDN(
 			reliabilityLayer,
 			writer.ServerAddr,
-			clientHalf.RotateDN(rakNetLayer.DatagramNumber),
+			serverHalf.RotateDN(rakNetLayer.DatagramNumber),
 		)
 	}
 	serverHalf.ReliabilityLayerHandler = func(packet *UDPPacket, reliabilityLayer *ReliabilityLayer, rakNetLayer *RakNetLayer) {
 		clientHalf.Writer.WriteReliableWithDN(
 			reliabilityLayer,
 			writer.ClientAddr,
-			serverHalf.RotateDN(rakNetLayer.DatagramNumber),
+			clientHalf.RotateDN(rakNetLayer.DatagramNumber),
 		)
 	}
 
 	clientHalf.FullReliableHandler = func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
-		println("client recv", packetType)
 	}
 	serverHalf.FullReliableHandler = func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
-		println("server recv", packetType)
 	}
 	clientHalf.ReliableHandler = func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
 		// nop
@@ -156,23 +154,20 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 	clientHalf.ACKHandler = func(packet *UDPPacket, layer *RakNetLayer) {
 		drop, newacks := serverHalf.RotateACKs(layer.ACKs)
 		if !drop {
-			println("client rotated acks:", newacks[0].Min, newacks[0].Max)
 			layer.ACKs = newacks
 			serverHalf.Writer.WriteRakNet(layer, writer.ServerAddr)
-		} else {
-			println("dropping ack")
 		}
 	}
 	serverHalf.ACKHandler = func(packet *UDPPacket, layer *RakNetLayer) {
 		drop, newacks := clientHalf.RotateACKs(layer.ACKs)
 		if !drop {
-			println("server rotated acks:", newacks[0].Min, newacks[0].Max)
 			layer.ACKs = newacks
 			clientHalf.Writer.WriteRakNet(layer, writer.ClientAddr)
-		} else {
-			println("dropping ack")
-		}
+		} 
 	}
+
+	clientHalf.Writer.ToClient = false // doesn't write TO client!
+	serverHalf.Writer.ToClient = true // writes TO client!
 
 	writer.ClientHalf = clientHalf
 	writer.ServerHalf = serverHalf
@@ -184,4 +179,18 @@ func (writer *ProxyWriter) ProxyClient(payload []byte, packet *UDPPacket) {
 }
 func (writer *ProxyWriter) ProxyServer(payload []byte, packet *UDPPacket) {
 	writer.ServerHalf.Reader.ReadPacket(payload, packet)
+}
+func (writer *ProxyWriter) InjectServer(packet RakNetPacket) {
+	olddn := writer.ServerHalf.Writer.DatagramNumber
+	writer.ServerHalf.Writer.WriteGeneric(
+		writer.ServerHalf.Reader.Context,
+		0x83,
+		packet,
+		0,
+		writer.ServerAddr,
+	) // Unreliable packets, might improve this sometime
+	for i := olddn; i < writer.ServerHalf.Writer.DatagramNumber; i++ {
+		println("adding fakepacket", i)
+		writer.ServerHalf.FakePackets = append(writer.ServerHalf.FakePackets, i)
+	}
 }

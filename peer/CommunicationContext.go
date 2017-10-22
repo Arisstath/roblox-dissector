@@ -27,6 +27,9 @@ func (c *StringCache) Put(val interface{}, index uint8) {
 }
 func (c *StringCache) Equal(index uint8, val interface{}) (bool, bool) {
 	val1 := c.Values[index]
+	if val1 == nil || val == nil {
+		return val1 == val, val1 == nil
+	}
 	return val1.(string) == val.(string), val1 != nil
 }
 func (c *StringCache) LastWrite() uint8 {
@@ -47,6 +50,9 @@ func (c *SysAddrCache) Put(val interface{}, index uint8) {
 }
 func (c *SysAddrCache) Equal(index uint8, val interface{}) (bool, bool) {
 	val1 := c.Values[index]
+	if val1 == nil || val == nil {
+		return val1 == val, val1 == nil
+	}
 	return val1.(rbxfile.ValueSystemAddress).String() == val.(rbxfile.ValueSystemAddress).String(), val1 != nil
 }
 func (c *SysAddrCache) LastWrite() uint8 {
@@ -67,10 +73,21 @@ func (c *ByteSliceCache) Put(val interface{}, index uint8) {
 }
 func (c *ByteSliceCache) Equal(index uint8, val interface{}) (bool, bool) {
 	val1 := c.Values[index]
+	if val1 == nil || val == nil {
+		return val1 == val, val1 == nil
+	}
 	return bytes.Compare(val1.([]byte), val.([]byte)) == 0, val1 != nil
 }
 func (c *ByteSliceCache) LastWrite() uint8 {
 	return c.lastWrite
+}
+
+type Caches struct {
+	String StringCache
+	Object StringCache
+	Content StringCache
+	SystemAddress SysAddrCache
+	ProtectedString ByteSliceCache
 }
 
 type CommunicationContext struct {
@@ -80,11 +97,11 @@ type CommunicationContext struct {
 	PropertyDescriptor Descriptor
 	EventDescriptor Descriptor
 	TypeDescriptor Descriptor
-	ReplicatorStringCache StringCache
-	ReplicatorObjectCache StringCache
-	ReplicatorContentCache StringCache
-	ReplicatorSystemAddressCache SysAddrCache
-	ReplicatorProtectedStringCache ByteSliceCache
+
+	ClientCaches Caches
+	ServerCaches Caches
+	
+	InstanceTopScope string
 
 	DataModel *rbxfile.Root
     InstancesByReferent InstanceList
@@ -133,6 +150,7 @@ func NewCommunicationContext() *CommunicationContext {
             EAddReferent: sync.NewCond(MSchema),
             Instances: make(map[string]*rbxfile.Instance),
         },
+		InstanceTopScope: "WARNING_UNASSIGNED_TOP_SCOPE",
 	}
 }
 

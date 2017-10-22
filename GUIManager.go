@@ -57,6 +57,11 @@ type DefaultsSettings struct {
 	Files []string
 }
 
+type PlayerProxySettings struct {
+	Certfile string
+	Keyfile string
+}
+
 type SelectionHandlerList map[uint64](func ())
 type MyPacketListView struct {
 	*widgets.QTreeView
@@ -74,6 +79,7 @@ type MyPacketListView struct {
 
 	IsCapturing bool
 	StopCaptureJob chan struct{}
+	InjectPacket chan peer.RakNetPacket
 
 	StudioVersion string
 	PlayerVersion string
@@ -83,6 +89,7 @@ type MyPacketListView struct {
 	PlayerSettings *PlayerSettings
     ServerSettings *ServerSettings
 	DefaultsSettings *DefaultsSettings
+	PlayerProxySettings *PlayerProxySettings
 	Context *peer.CommunicationContext
 }
 
@@ -116,6 +123,7 @@ func NewMyPacketListView(parent widgets.QWidget_ITF) *MyPacketListView {
 		
 		false,
 		make(chan struct{}),
+		make(chan peer.RakNetPacket),
 
 		"",
 		"",
@@ -125,6 +133,7 @@ func NewMyPacketListView(parent widgets.QWidget_ITF) *MyPacketListView {
 		&PlayerSettings{},
         &ServerSettings{},
 		&DefaultsSettings{},
+		&PlayerProxySettings{},
 		nil,
 	}
 	return new
@@ -525,6 +534,7 @@ func GUIMain() {
 	captureLiveAction := captureBar.AddAction("From &live interface...")
 	captureProxyAction := captureBar.AddAction("From &proxy...")
 	captureInjectAction := captureBar.AddAction("From &injection proxy...")
+	capturePlayerProxyAction := captureBar.AddAction("From &player injection proxy...")
 	captureStopAction := captureBar.AddAction("&Stop capture")
 
 	captureStopAction.ConnectTriggered(func(checked bool)() {
@@ -591,7 +601,7 @@ func GUIMain() {
 			packetViewer.StopCaptureJob <- struct{}{}
 		}
 
-		NewProxyCaptureWidget(packetViewer, func(srcport uint16, dstport uint16) {
+		NewProxyCaptureWidget(packetViewer, func(src string, dst string) {
 			packetViewer.IsCapturing = true
 
 			context := peer.NewCommunicationContext()
@@ -600,7 +610,7 @@ func GUIMain() {
 			packetViewer.Reset()
 
 			go func() {
-				captureFromProxy(srcport, dstport, packetViewer.StopCaptureJob, packetViewer, context)
+				captureFromProxy(src, dst, packetViewer.StopCaptureJob, packetViewer, context)
 				packetViewer.IsCapturing = false
 			}()
 		})
@@ -610,7 +620,7 @@ func GUIMain() {
 			packetViewer.StopCaptureJob <- struct{}{}
 		}
 
-		NewProxyCaptureWidget(packetViewer, func(srcport uint16, dstport uint16) {
+		NewProxyCaptureWidget(packetViewer, func(src string, dst string) {
 			packetViewer.IsCapturing = true
 
 			context := peer.NewCommunicationContext()
@@ -619,7 +629,27 @@ func GUIMain() {
 			packetViewer.Reset()
 
 			go func() {
-				captureFromInjectionProxy(srcport, dstport, packetViewer.StopCaptureJob, packetViewer, context)
+				captureFromInjectionProxy(src, dst, packetViewer.StopCaptureJob, packetViewer.InjectPacket, packetViewer, context)
+				packetViewer.IsCapturing = false
+			}()
+		})
+	})
+	capturePlayerProxyAction.ConnectTriggered(func(checked bool)() {
+		if packetViewer.IsCapturing {
+			packetViewer.StopCaptureJob <- struct{}{}
+		}
+
+		NewPlayerProxyWidget(packetViewer, packetViewer.PlayerProxySettings, func(settings *PlayerProxySettings) {
+			packetViewer.PlayerProxySettings = settings
+			packetViewer.IsCapturing = true
+
+			context := peer.NewCommunicationContext()
+			packetViewer.Context = context
+
+			packetViewer.Reset()
+
+			go func() {
+				captureFromPlayerProxy(settings, packetViewer.StopCaptureJob, packetViewer.InjectPacket, packetViewer, context)
 				packetViewer.IsCapturing = false
 			}()
 		})
@@ -733,6 +763,52 @@ func GUIMain() {
 		NewFindDefaultsWidget(window, packetViewer.DefaultsSettings, func(settings *DefaultsSettings)() {
 			packetViewer.DefaultValues = ParseDefaultValues(settings.Files)
 		})
+	})
+
+	viewCache := toolsBar.AddAction("&View string cache...")
+	viewCache.ConnectTriggered(func(checked bool)() {
+		NewViewCacheWidget(packetViewer, packetViewer.Context)
+	})
+
+	injectChat := toolsBar.AddAction("Inject &chat message...")
+	injectChat.ConnectTriggered(func(checked bool)() {
+		if packetViewer.Context == nil {
+			println("context is nil!")
+			return
+		} else if packetViewer.Context.DataModel == nil {
+			println("datamodel instances is nil!")
+			return
+		}
+
+		dataModel := packetViewer.Context.DataModel.Instances
+		var players, replicatedStorage *rbxfile.Instance
+		for i := 0; i < len(dataModel); i++ {
+			if dataModel[i].ClassName == "Players" {
+				players = dataModel[i]
+			} else if dataModel[i].ClassName == "ReplicatedStorage" {
+				replicatedStorage = dataModel[i]
+			}
+		}
+		player := players.Children[0]
+		println("chose player", player.Name())
+		chatEvent := replicatedStorage.FindFirstChild("DefaultChatSystemChatEvents", false).FindFirstChild("SayMessageRequest", false)
+		subpacket := &peer.Packet83_07{
+			Instance: chatEvent,
+			EventName: "OnServerEvent",
+			Event: &peer.ReplicationEvent{
+				Arguments: []rbxfile.Value{
+					rbxfile.ValueReference{Instance: player},
+					rbxfile.ValueTuple{
+						rbxfile.ValueString("Hello, this is a hacked message"),
+						rbxfile.ValueString("All"),
+					},
+				},
+			},
+		}
+
+		packetViewer.InjectPacket <- &peer.Packet83Layer{
+			SubPackets: []peer.Packet83Subpacket{subpacket},
+		}
 	})
 
 	peersBar := window.MenuBar().AddMenu2("&Peers...")

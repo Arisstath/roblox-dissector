@@ -6,8 +6,15 @@ import "github.com/fatih/color"
 import "fmt"
 import "github.com/gskartwii/roblox-dissector/peer"
 import "time"
-import "strconv"
 import "net"
+import "net/http"
+import "io"
+import "io/ioutil"
+import "crypto/tls"
+import "compress/gzip"
+import "regexp"
+import "bytes"
+import "strconv"
 
 const DEBUG bool = false
 
@@ -174,11 +181,11 @@ type ProxiedPacket struct {
 	Packet *peer.UDPPacket
 	Payload []byte
 }
-func captureFromProxy(srcport uint16, dstport uint16, stopCaptureJob chan struct{}, packetViewer *MyPacketListView, context *peer.CommunicationContext) {
-	fmt.Printf("Will capture from proxy %d -> %d\n", srcport, dstport)
+func captureFromProxy(src string, dst string, stopCaptureJob chan struct{}, packetViewer *MyPacketListView, context *peer.CommunicationContext) {
+	fmt.Printf("Will capture from proxy %s -> %s\n", src, dst)
 
-	srcAddr, _ := net.ResolveUDPAddr("udp", "127.0.0.1:" + strconv.Itoa(int(srcport)))
-	dstAddr, _ := net.ResolveUDPAddr("udp", "127.0.0.1:" + strconv.Itoa(int(dstport)))
+	srcAddr, _ := net.ResolveUDPAddr("udp", src)
+	dstAddr, _ := net.ResolveUDPAddr("udp", dst)
 	conn, err := net.ListenUDP("udp", srcAddr)
 	if err != nil {
 		fmt.Printf("Failed to start proxy: %s", err.Error())
@@ -205,6 +212,12 @@ func captureFromProxy(srcport uint16, dstport uint16, stopCaptureJob chan struct
 		if context.IsValid {
 			packetViewer.BindCallback(packetType, packet, context, layers, ActivationCallbacks[packetType])
 		}
+	}
+	packetReader.ReliabilityLayerHandler = func(p *peer.UDPPacket, re *peer.ReliabilityLayer, ra *peer.RakNetLayer) {
+		// nop
+	}
+	packetReader.ACKHandler = func(p *peer.UDPPacket, ra *peer.RakNetLayer) {
+		// nop
 	}
 	packetReader.ErrorHandler = func(err error) {
 		println(err.Error())
@@ -277,11 +290,11 @@ func captureFromProxy(srcport uint16, dstport uint16, stopCaptureJob chan struct
 	return
 }
 
-func captureFromInjectionProxy(srcport uint16, dstport uint16, stopCaptureJob chan struct{}, packetViewer *MyPacketListView, context *peer.CommunicationContext) {
-	fmt.Printf("Will capture from injproxy %d -> %d\n", srcport, dstport)
+func captureFromInjectionProxy(src string, dst string, stopCaptureJob chan struct{}, injectPacket chan peer.RakNetPacket, packetViewer *MyPacketListView, context *peer.CommunicationContext) {
+	fmt.Printf("Will capture from injproxy %s -> %s\n", src, dst)
 
-	srcAddr, _ := net.ResolveUDPAddr("udp", "127.0.0.1:" + strconv.Itoa(int(srcport)))
-	dstAddr, _ := net.ResolveUDPAddr("udp", "127.0.0.1:" + strconv.Itoa(int(dstport)))
+	srcAddr, _ := net.ResolveUDPAddr("udp", src)
+	dstAddr, _ := net.ResolveUDPAddr("udp", dst)
 	conn, err := net.ListenUDP("udp", srcAddr)
 	if err != nil {
 		fmt.Printf("Failed to start proxy: %s", err.Error())
@@ -364,11 +377,83 @@ func captureFromInjectionProxy(srcport uint16, dstport uint16, stopCaptureJob ch
 			} else {
 				proxyWriter.ProxyServer(newPacket.Payload, newPacket.Packet)
 			}
+		case injectedPacket := <- injectPacket:
+			proxyWriter.InjectServer(injectedPacket)
 		case _ = <- stopCaptureJob:
 			return
 		}
 	}
 	return
+}
+
+func captureFromPlayerProxy(settings *PlayerProxySettings, stopCaptureJob chan struct{}, injectPacket chan peer.RakNetPacket, packetViewer *MyPacketListView, context *peer.CommunicationContext) {
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
+		fmt.Printf("Request: %s/%s %s %v\n", req.Host, req.URL.String(), req.Method, req.Header)
+		req.URL.Host = "8.42.96.30"
+		req.URL.Scheme = "https"
+
+		if req.URL.Path == "/Game/Join.ashx" {
+			println("patching join.ashx gzip")
+			req.Header.Set("Accept-Encoding", "none")
+		}
+
+		resp, err := transport.RoundTrip(req)
+		if err != nil {
+			println("error:", err.Error())
+			return
+		}
+		defer resp.Body.Close()
+
+		for k, vv := range resp.Header {
+			for _, v := range vv {
+				w.Header().Add(k, v)
+			}
+		}
+
+		if req.URL.Path == "/Game/Join.ashx" {
+			w.Header().Set("Content-Encoding", "gzip")			
+			response, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				println("joinashx err:", err.Error())
+				return
+			}
+
+			newBuffer := bytes.NewBuffer(make([]byte, 0, len(response)))
+			result := regexp.MustCompile(`MachineAddress":"\d+.\d+.\d+.\d+","ServerPort":\d+`).ReplaceAll(response, []byte(`MachineAddress":"127.0.0.1","ServerPort":53640`))
+
+			args := regexp.MustCompile(`MachineAddress":"(\d+.\d+.\d+.\d+)","ServerPort":(\d+)`).FindSubmatch(response)
+
+			serverAddr := string(args[1]) + ":" + string(args[2])
+			go captureFromInjectionProxy("127.0.0.1:53640", serverAddr, stopCaptureJob, injectPacket, packetViewer, context)
+
+			compressStream := gzip.NewWriter(newBuffer)
+
+			_, err = compressStream.Write(result)
+			if err != nil {
+				println("joinashx gz w err:", err.Error())
+				return
+			}
+			err = compressStream.Close()
+			if err != nil {
+				println("joinashx gz close err:", err.Error())
+				return
+			}
+			w.Header().Set("Content-Length", strconv.Itoa(newBuffer.Len()))
+			w.WriteHeader(resp.StatusCode)
+
+			w.Write(newBuffer.Bytes())
+		} else {
+			io.Copy(w, resp.Body)
+		}
+	})
+	err := http.ListenAndServeTLS(":443", settings.Certfile, settings.Keyfile, nil)
+	if err != nil {
+		println("listen err:", err.Error())
+		return
+	}
 }
 
 func main() {

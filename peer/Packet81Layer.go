@@ -41,6 +41,7 @@ func DecodePacket81Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	if err != nil {
 		return layer, err
 	}
+	context.InstanceTopScope = string(layer.ReferentString)
 	if !context.IsStudio {
 		layer.Int1, err = thisBitstream.ReadUint32BE()
 		if err != nil {
@@ -67,7 +68,7 @@ func DecodePacket81Layer(packet *UDPPacket, context *CommunicationContext) (inte
     layer.Items = make([]*Packet81LayerItem, arrayLen)
     for i := 0; i < int(arrayLen); i++ {
         thisItem := &Packet81LayerItem{}
-        referent, err := thisBitstream.ReadObject(true, context)
+        referent, err := thisBitstream.ReadObject(context.IsClient(packet.Source), true, context)
         if err != nil {
             return layer, err
         }
@@ -105,7 +106,7 @@ func DecodePacket81Layer(packet *UDPPacket, context *CommunicationContext) (inte
     return layer, nil
 }
 
-func (layer *Packet81Layer) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
+func (layer *Packet81Layer) Serialize(isClient bool,context *CommunicationContext, stream *ExtendedWriter) error {
     var err error
     err = stream.WriteByte(0x81)
     if err != nil {
@@ -131,7 +132,7 @@ func (layer *Packet81Layer) Serialize(context *CommunicationContext, stream *Ext
 
     err = stream.WriteUintUTF8(len(layer.Items))
     for _, item := range layer.Items {
-        err = stream.WriteObject(item.Instance, true, context)
+        err = stream.WriteObject(isClient, item.Instance, true, context)
         if err != nil {
             return err
         }

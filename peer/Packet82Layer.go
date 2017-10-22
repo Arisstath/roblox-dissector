@@ -152,7 +152,7 @@ func DecodePacket82Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	}
 }
 
-func (layer *Packet82Layer) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
+func (layer *Packet82Layer) Serialize(isClient bool, context *CommunicationContext, stream *ExtendedWriter) error {
     var err error
     // FIXME: Assume this peer is always a server
 

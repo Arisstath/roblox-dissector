@@ -17,11 +17,12 @@ func NewPacket86Layer() *Packet86Layer {
 
 func DecodePacket86Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
 	thisBitstream := packet.Stream
+	isClient := context.IsClient(packet.Source)
 
 	layer := NewPacket86Layer()
 	for {
 		subpacket := &Packet86LayerSubpacket{}
-		referent, err := thisBitstream.ReadObject(false, context)
+		referent, err := thisBitstream.ReadObject(isClient, false, context)
 		if err != nil {
 			return layer, err
 		}
@@ -29,7 +30,7 @@ func DecodePacket86Layer(packet *UDPPacket, context *CommunicationContext) (inte
 			break
 		}
 		subpacket.Instance1 = context.InstancesByReferent.TryGetInstance(referent)
-		referent, err = thisBitstream.ReadObject(false, context)
+		referent, err = thisBitstream.ReadObject(isClient, false, context)
 		if err != nil {
 			return layer, err
 		}
@@ -44,14 +45,14 @@ func DecodePacket86Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	return layer, nil
 }
 
-func (layer *Packet86Layer) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
+func (layer *Packet86Layer) Serialize(isClient bool, context *CommunicationContext, stream *ExtendedWriter) error {
 	for i := 0; i < len(layer.SubPackets); i++ {
 		subpacket := layer.SubPackets[i]
-		err := stream.WriteObject(subpacket.Instance1, false, context)
+		err := stream.WriteObject(isClient, subpacket.Instance1, false, context)
 		if err != nil {
 			return err
 		}
-		err = stream.WriteObject(subpacket.Instance2, false, context)
+		err = stream.WriteObject(isClient, subpacket.Instance2, false, context)
 		if err != nil {
 			return err
 		}

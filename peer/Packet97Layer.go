@@ -328,6 +328,7 @@ func DecodePacket97Layer(packet *UDPPacket, context *CommunicationContext) (inte
 				}
                 thisEvent.Arguments[k] = thisArgument
 			}
+			thisEvent.InstanceSchema = &thisInstance
             layer.Schema.Events[eventGlobalIndex] = thisEvent
             thisInstance.Events[j] = thisEvent
             eventGlobalIndex++
@@ -341,7 +342,7 @@ func DecodePacket97Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	return layer, err
 }
 
-func (layer *Packet97Layer) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
+func (layer *Packet97Layer) Serialize(isClient bool,context *CommunicationContext, stream *ExtendedWriter) error {
     var err error
 
     err = stream.WriteByte(0x97)

@@ -17,6 +17,6 @@ func DecodePacket90Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	return layer, err
 }
 
-func (layer *Packet90Layer) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
+func (layer *Packet90Layer) Serialize(isClient bool,context *CommunicationContext, stream *ExtendedWriter) error {
 	return stream.WriteUint32BE(layer.SchemaVersion)
 }

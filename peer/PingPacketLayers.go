@@ -17,7 +17,7 @@ func DecodePacket00Layer(packet *UDPPacket, context *CommunicationContext) (inte
 
 	return layer, err
 }
-func (layer *Packet00Layer) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
+func (layer *Packet00Layer) Serialize(isClient bool,context *CommunicationContext, stream *ExtendedWriter) error {
 	var err error
 	err = stream.WriteByte(0)
 	if err != nil {
@@ -50,7 +50,7 @@ func DecodePacket03Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	return layer, err
 }
 
-func (layer *Packet03Layer) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
+func (layer *Packet03Layer) Serialize(isClient bool,context *CommunicationContext, stream *ExtendedWriter) error {
 	var err error
 	err = stream.WriteByte(3)
 	if err != nil {

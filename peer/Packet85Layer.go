@@ -25,7 +25,7 @@ func DecodePacket85Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	layer := NewPacket85Layer()
 	for {
 		subpacket := &Packet85LayerSubpacket{}
-		referent, err := thisBitstream.ReadObject(false, context)
+		referent, err := thisBitstream.ReadObject(context.IsClient(packet.Source), false, context)
 		if err != nil {
 			return layer, err
 		}
@@ -68,7 +68,7 @@ func DecodePacket85Layer(packet *UDPPacket, context *CommunicationContext) (inte
 		if !isSolo {
 			for {
 				child := Packet85LayerSubpacket{}
-				referent, err := thisBitstream.ReadObject(false, context)
+				referent, err := thisBitstream.ReadObject(context.IsClient(packet.Source), false, context)
 				if err != nil {
 					return layer, err
 				}
@@ -101,10 +101,10 @@ func DecodePacket85Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	return layer, nil
 }
 
-func (layer *Packet85Layer) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
+func (layer *Packet85Layer) Serialize(isClient bool, context *CommunicationContext, stream *ExtendedWriter) error {
 	for i := 0; i < len(layer.SubPackets); i++ {
 		subpacket := layer.SubPackets[i]
-		err := stream.WriteObject(subpacket.Instance, false, context)
+		err := stream.WriteObject(isClient, subpacket.Instance, false, context)
 		if err != nil {
 			return err
 		}
@@ -142,7 +142,7 @@ func (layer *Packet85Layer) Serialize(context *CommunicationContext, stream *Ext
 			if err != nil {
 				return err
 			}
-			err = stream.WriteObject(child.Instance, false, context)
+			err = stream.WriteObject(isClient, child.Instance, false, context)
 			if err != nil {
 				return err
 			}

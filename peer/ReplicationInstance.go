@@ -3,11 +3,11 @@ import "fmt"
 import "errors"
 import "github.com/gskartwii/rbxfile"
 
-func DecodeReplicationInstance(isJoinData bool, packet *UDPPacket, context *CommunicationContext) (*rbxfile.Instance, error) {
+func DecodeReplicationInstance(isClient bool, isJoinData bool, packet *UDPPacket, context *CommunicationContext) (*rbxfile.Instance, error) {
 	var err error
 	thisBitstream := packet.Stream
 
-    referent, err := thisBitstream.ReadObject(isJoinData, context)
+    referent, err := thisBitstream.ReadObject(isClient, isJoinData, context)
 	if err != nil {
         return nil, errors.New("while parsing self: " + err.Error())
 	}
@@ -19,7 +19,7 @@ func DecodeReplicationInstance(isJoinData bool, packet *UDPPacket, context *Comm
     }
     schema := context.StaticSchema.Instances[schemaIDx]
     thisInstance.ClassName = schema.Name
-	if DEBUG {
+	if DEBUG && isJoinData {
 		println("will parse", referent, schema.Name, isJoinData, len(schema.Properties))
 	}
 
@@ -32,7 +32,7 @@ func DecodeReplicationInstance(isJoinData bool, packet *UDPPacket, context *Comm
     if isJoinData {
         for i := 0; i < len(schema.Properties); i++ {
             propertyName := schema.Properties[i].Name
-			value, err := schema.Properties[i].Decode(ROUND_JOINDATA, packet, context)
+			value, err := schema.Properties[i].Decode(isClient, ROUND_JOINDATA, packet, context)
 			if err != nil {
 				return thisInstance, err
 			}
@@ -55,7 +55,7 @@ func DecodeReplicationInstance(isJoinData bool, packet *UDPPacket, context *Comm
             }
             if isStringObject {
                 propertyName := schema.Properties[i].Name
-				value, err := schema.Properties[i].Decode(ROUND_STRINGS, packet, context)
+				value, err := schema.Properties[i].Decode(isClient, ROUND_STRINGS, packet, context)
 				if err != nil {
 					return thisInstance, err
 				}
@@ -78,7 +78,7 @@ func DecodeReplicationInstance(isJoinData bool, packet *UDPPacket, context *Comm
             }
             if !isStringObject {
                 propertyName := schema.Properties[i].Name
-				value, err := schema.Properties[i].Decode(ROUND_OTHER, packet, context)
+				value, err := schema.Properties[i].Decode(isClient, ROUND_OTHER, packet, context)
 				if err != nil {
 					return thisInstance, err
 				}
@@ -88,10 +88,17 @@ func DecodeReplicationInstance(isJoinData bool, packet *UDPPacket, context *Comm
             }
         }
     }
-    referent, err = thisBitstream.ReadObject(isJoinData, context)
+    referent, err = thisBitstream.ReadObject(isClient, isJoinData, context)
     if err != nil {
         return thisInstance, errors.New("while parsing parent: " + err.Error())
     }
+	if DEBUG && isJoinData {
+		if len(referent) > 0x50 {
+			println("Parent: (invalid), ", len(referent), len(thisInstance.Get("Source").(rbxfile.ValueProtectedString)))
+		} else {
+			println("Parent: ", referent)
+		}
+	}
 
     context.InstancesByReferent.AddInstance(Referent(thisInstance.Reference), thisInstance)
     parent := context.InstancesByReferent.TryGetInstance(referent)
@@ -100,9 +107,9 @@ func DecodeReplicationInstance(isJoinData bool, packet *UDPPacket, context *Comm
     return thisInstance, err
 }
 
-func SerializeReplicationInstance(instance *rbxfile.Instance, isJoinData bool, context *CommunicationContext, stream *ExtendedWriter) error {
+func SerializeReplicationInstance(isClient bool, instance *rbxfile.Instance, isJoinData bool, context *CommunicationContext, stream *ExtendedWriter) error {
     var err error
-    err = stream.WriteObject(instance, isJoinData, context)
+    err = stream.WriteObject(isClient, instance, isJoinData, context)
     if err != nil {
         return err
     }
@@ -124,7 +131,7 @@ func SerializeReplicationInstance(instance *rbxfile.Instance, isJoinData bool, c
             if value == nil {
                 value = rbxfile.DefaultValue
             }
-            err = schema.Properties[i].Serialize(value, ROUND_JOINDATA, context, stream)
+            err = schema.Properties[i].Serialize(isClient, value, ROUND_JOINDATA, context, stream)
             if err != nil {
                 return err
             }
@@ -144,7 +151,7 @@ func SerializeReplicationInstance(instance *rbxfile.Instance, isJoinData bool, c
             }
             if isStringObject {
 				value := instance.Get(schema.Properties[i].Name)
-				err = schema.Properties[i].Serialize(value, ROUND_STRINGS, context, stream)
+				err = schema.Properties[i].Serialize(isClient, value, ROUND_STRINGS, context, stream)
 				if err != nil {
 					return err
 				}
@@ -164,7 +171,7 @@ func SerializeReplicationInstance(instance *rbxfile.Instance, isJoinData bool, c
             }
             if !isStringObject {
 				value := instance.Get(schema.Properties[i].Name)
-				err := schema.Properties[i].Serialize(value, ROUND_OTHER, context, stream)
+				err := schema.Properties[i].Serialize(isClient, value, ROUND_OTHER, context, stream)
 				if err != nil {
 					return err
 				}
@@ -172,7 +179,7 @@ func SerializeReplicationInstance(instance *rbxfile.Instance, isJoinData bool, c
         }
 	}
 
-    err = stream.WriteObject(instance.Parent(), isJoinData, context)
+    err = stream.WriteObject(isClient, instance.Parent(), isJoinData, context)
     if err != nil {
         return err
     }

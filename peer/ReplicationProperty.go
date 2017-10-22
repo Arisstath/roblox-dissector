@@ -10,22 +10,22 @@ const (
 	ROUND_UPDATE	= iota
 )
 
-func readSerializedValue(isJoinData bool, enumId uint16, valueType uint8, thisBitstream *ExtendedReader, context *CommunicationContext) (rbxfile.Value, error) {
+func readSerializedValue(isClient bool, isJoinData bool, enumId uint16, valueType uint8, thisBitstream *ExtendedReader, context *CommunicationContext) (rbxfile.Value, error) {
 	var err error
 	var result rbxfile.Value
 	switch valueType {
 	case PROP_TYPE_STRING:
-		result, err = thisBitstream.ReadNewPString(isJoinData, context)
+		result, err = thisBitstream.ReadNewPString(isClient, isJoinData, context)
 	case PROP_TYPE_STRING_NO_CACHE:
-		result, err = thisBitstream.ReadNewPString(true, context)
+		result, err = thisBitstream.ReadNewPString(isClient, true, context)
 	case PROP_TYPE_PROTECTEDSTRING_0:
-		result, err = thisBitstream.ReadNewProtectedString(isJoinData, context)
+		result, err = thisBitstream.ReadNewProtectedString(isClient, isJoinData, context)
 	case PROP_TYPE_PROTECTEDSTRING_1:
-		result, err = thisBitstream.ReadNewProtectedString(isJoinData, context)
+		result, err = thisBitstream.ReadNewProtectedString(isClient, isJoinData, context)
 	case PROP_TYPE_PROTECTEDSTRING_2:
-		result, err = thisBitstream.ReadNewProtectedString(isJoinData, context)
+		result, err = thisBitstream.ReadNewProtectedString(isClient, isJoinData, context)
 	case PROP_TYPE_PROTECTEDSTRING_3:
-		result, err = thisBitstream.ReadNewProtectedString(isJoinData, context)
+		result, err = thisBitstream.ReadNewProtectedString(isClient, isJoinData, context)
 	case PROP_TYPE_ENUM:
 		result, err = thisBitstream.ReadNewEnumValue(enumId, context)
 	case PROP_TYPE_BINARYSTRING:
@@ -70,21 +70,21 @@ func readSerializedValue(isJoinData bool, enumId uint16, valueType uint8, thisBi
 		result, err = thisBitstream.ReadCFrame()
 	case PROP_TYPE_INSTANCE:
         var referent Referent
-        referent, err = thisBitstream.ReadObject(isJoinData, context)
+        referent, err = thisBitstream.ReadObject(isClient, isJoinData, context)
         instance := context.InstancesByReferent.TryGetInstance(referent)
         result = rbxfile.ValueReference{instance}
 	case PROP_TYPE_CONTENT:
-		result, err = thisBitstream.ReadNewContent(isJoinData, context)
+		result, err = thisBitstream.ReadNewContent(isClient, isJoinData, context)
 	case PROP_TYPE_SYSTEMADDRESS:
-		result, err = thisBitstream.ReadSystemAddress(isJoinData, context)
+		result, err = thisBitstream.ReadSystemAddress(isClient, isJoinData, context)
 	case PROP_TYPE_TUPLE:
-		result, err = thisBitstream.ReadNewTuple(isJoinData, context)
+		result, err = thisBitstream.ReadNewTuple(isClient, isJoinData, context)
 	case PROP_TYPE_ARRAY:
-		result, err = thisBitstream.ReadNewArray(isJoinData, context)
+		result, err = thisBitstream.ReadNewArray(isClient, isJoinData, context)
 	case PROP_TYPE_DICTIONARY:
-		result, err = thisBitstream.ReadNewDictionary(isJoinData, context)
+		result, err = thisBitstream.ReadNewDictionary(isClient, isJoinData, context)
 	case PROP_TYPE_MAP:
-		result, err = thisBitstream.ReadNewMap(isJoinData, context)
+		result, err = thisBitstream.ReadNewMap(isClient, isJoinData, context)
 	case PROP_TYPE_NUMBERSEQUENCE:
 		result, err = thisBitstream.ReadNumberSequence()
 	case PROP_TYPE_NUMBERSEQUENCEKEYPOINT:
@@ -105,7 +105,7 @@ func readSerializedValue(isJoinData bool, enumId uint16, valueType uint8, thisBi
 	return result, err
 }
 
-func (schema StaticPropertySchema) Decode(round int, packet *UDPPacket, context *CommunicationContext) (rbxfile.Value, error) {
+func (schema StaticPropertySchema) Decode(isClient bool, round int, packet *UDPPacket, context *CommunicationContext) (rbxfile.Value, error) {
 	var err error
 	thisBitstream := packet.Stream
 	isJoinData := round == ROUND_JOINDATA
@@ -113,15 +113,15 @@ func (schema StaticPropertySchema) Decode(round int, packet *UDPPacket, context 
         var isDefault bool
         isDefault, err = thisBitstream.ReadBool()
 		if isDefault || err != nil {
-			if DEBUG && round != ROUND_JOINDATA {
+			if DEBUG && round == ROUND_JOINDATA {
 				//println("Read", schema.Name, "default")
 			}
 			return rbxfile.DefaultValue, err
 		}
 	}
 
-    val, err := readSerializedValue(isJoinData, schema.EnumID, schema.Type, thisBitstream, context)
-    if val.Type().String() != "ProtectedString" && round != ROUND_JOINDATA && DEBUG {
+    val, err := readSerializedValue(isClient, isJoinData, schema.EnumID, schema.Type, thisBitstream, context)
+    if val.Type().String() != "ProtectedString" && round == ROUND_JOINDATA && DEBUG {
         //println("Read", schema.Name, val.String())
     }
     if err != nil {
@@ -130,7 +130,7 @@ func (schema StaticPropertySchema) Decode(round int, packet *UDPPacket, context 
     return val, nil
 }
 
-func (schema StaticPropertySchema) Serialize(value rbxfile.Value, round int, context *CommunicationContext, stream *ExtendedWriter) error {
+func (schema StaticPropertySchema) Serialize(isClient bool, value rbxfile.Value, round int, context *CommunicationContext, stream *ExtendedWriter) error {
     if round != ROUND_UPDATE {
         if value == rbxfile.DefaultValue {
             return stream.WriteBool(true)

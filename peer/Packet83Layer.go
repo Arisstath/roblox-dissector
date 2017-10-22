@@ -19,7 +19,7 @@ var Packet83Subpackets map[uint8]string = map[uint8]string{
 }
 
 type Packet83Subpacket interface{
-    Serialize(*CommunicationContext, *ExtendedWriter) error
+    Serialize(bool, *CommunicationContext, *ExtendedWriter) error
 }
 
 func Packet83ToType(this Packet83Subpacket) uint8 {
@@ -142,7 +142,7 @@ func DecodePacket83Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	return layer, nil
 }
 
-func (layer *Packet83Layer) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
+func (layer *Packet83Layer) Serialize(isClient bool, context *CommunicationContext, stream *ExtendedWriter) error {
     var err error
     err = stream.WriteByte(0x83)
     if err != nil {
@@ -162,7 +162,7 @@ func (layer *Packet83Layer) Serialize(context *CommunicationContext, stream *Ext
         if err != nil {
             return err
         }
-        err = subpacket.Serialize(context, stream)
+        err = subpacket.Serialize(isClient, context, stream)
         if err != nil {
             return err
         }

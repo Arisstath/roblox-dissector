@@ -196,9 +196,9 @@ func (b *ExtendedWriter) WriteBrickColor(val rbxfile.ValueBrickColor) error {
 	return b.Bits(7, uint64(val))
 }
 
-func (b *ExtendedWriter) WriteNewPString(val rbxfile.ValueString, isJoinData bool, context *CommunicationContext) (error) {
+func (b *ExtendedWriter) WriteNewPString(isClient bool, val rbxfile.ValueString, isJoinData bool, context *CommunicationContext) (error) {
 	if !isJoinData {
-		return b.WriteCached(string(val), context)
+		return b.WriteCached(isClient, string(val), context)
 	}
 	err := b.WriteUintUTF8(len(val))
 	if err != nil {
@@ -207,17 +207,17 @@ func (b *ExtendedWriter) WriteNewPString(val rbxfile.ValueString, isJoinData boo
 	return b.WriteASCII(string(val))
 }
 
-func (b *ExtendedWriter) WriteNewProtectedString(val rbxfile.ValueProtectedString, isJoinData bool, context *CommunicationContext) error {
+func (b *ExtendedWriter) WriteNewProtectedString(isClient bool, val rbxfile.ValueProtectedString, isJoinData bool, context *CommunicationContext) error {
 	if !isJoinData {
-		return b.WriteNewCachedProtectedString(string(val), context)
+		return b.WriteNewCachedProtectedString(isClient, string(val), context)
 	}
-	return b.WriteNewPString(rbxfile.ValueString(val), true, context)
+	return b.WriteNewPString(isClient, rbxfile.ValueString(val), true, context)
 }
 func (b *ExtendedWriter) WriteNewBinaryString(val rbxfile.ValueBinaryString) error {
-	return b.WriteNewPString(rbxfile.ValueString(val), true, nil)
+	return b.WriteNewPString(false, rbxfile.ValueString(val), true, nil) // hack: isClient doesn't matter because cache isn't used
 }
-func (b *ExtendedWriter) WriteNewContent(val rbxfile.ValueContent, isJoinData bool, context *CommunicationContext) error {
-	return b.WriteNewPString(rbxfile.ValueString(val), isJoinData, context)
+func (b *ExtendedWriter) WriteNewContent(isClient bool, val rbxfile.ValueContent, isJoinData bool, context *CommunicationContext) error {
+	return b.WriteNewPString(isClient, rbxfile.ValueString(val), isJoinData, context)
 }
 
 func (b *ExtendedWriter) WriteCFrameSimple(val rbxfile.ValueCFrame) error {
@@ -301,21 +301,21 @@ var typeToNetworkConvTable = map[rbxfile.Type]uint8{
 func typeToNetwork(val rbxfile.Value) uint8 {
 	return typeToNetworkConvTable[val.Type()]
 }
-func (b *ExtendedWriter) writeSerializedValue(val rbxfile.Value, isJoinData bool, valueType uint8, context *CommunicationContext) error {
+func (b *ExtendedWriter) writeSerializedValue(isClient bool, val rbxfile.Value, isJoinData bool, valueType uint8, context *CommunicationContext) error {
 	var err error
 	switch valueType {
 	case PROP_TYPE_STRING:
-		err = b.WriteNewPString(val.(rbxfile.ValueString), isJoinData, context)
+		err = b.WriteNewPString(isClient, val.(rbxfile.ValueString), isJoinData, context)
 	case PROP_TYPE_STRING_NO_CACHE:
-		err = b.WriteNewPString(val.(rbxfile.ValueString), true, context)
+		err = b.WriteNewPString(isClient, val.(rbxfile.ValueString), true, context)
 	case PROP_TYPE_PROTECTEDSTRING_0:
-		err = b.WriteNewProtectedString(val.(rbxfile.ValueProtectedString), isJoinData, context)
+		err = b.WriteNewProtectedString(isClient, val.(rbxfile.ValueProtectedString), isJoinData, context)
 	case PROP_TYPE_PROTECTEDSTRING_1:
-		err = b.WriteNewProtectedString(val.(rbxfile.ValueProtectedString), isJoinData, context)
+		err = b.WriteNewProtectedString(isClient, val.(rbxfile.ValueProtectedString), isJoinData, context)
 	case PROP_TYPE_PROTECTEDSTRING_2:
-		err = b.WriteNewProtectedString(val.(rbxfile.ValueProtectedString), isJoinData, context)
+		err = b.WriteNewProtectedString(isClient, val.(rbxfile.ValueProtectedString), isJoinData, context)
 	case PROP_TYPE_PROTECTEDSTRING_3:
-		err = b.WriteNewProtectedString(val.(rbxfile.ValueProtectedString), isJoinData, context)
+		err = b.WriteNewProtectedString(isClient, val.(rbxfile.ValueProtectedString), isJoinData, context)
 	case PROP_TYPE_ENUM:
 		err = b.WriteNewEnumValue(val.(rbxfile.ValueToken))
 	case PROP_TYPE_BINARYSTRING:
@@ -359,19 +359,19 @@ func (b *ExtendedWriter) writeSerializedValue(val rbxfile.Value, isJoinData bool
 	case PROP_TYPE_CFRAME_COMPLICATED:
 		err = b.WriteCFrame(val.(rbxfile.ValueCFrame))
 	case PROP_TYPE_INSTANCE:
-        err = b.WriteObject(val.(rbxfile.ValueReference).Instance, isJoinData, context)
+        err = b.WriteObject(isClient, val.(rbxfile.ValueReference).Instance, isJoinData, context)
 	case PROP_TYPE_CONTENT:
-		err = b.WriteNewContent(val.(rbxfile.ValueContent), isJoinData, context)
+		err = b.WriteNewContent(isClient, val.(rbxfile.ValueContent), isJoinData, context)
 	case PROP_TYPE_SYSTEMADDRESS:
-		err = b.WriteSystemAddress(val.(rbxfile.ValueSystemAddress), isJoinData, context)
+		err = b.WriteSystemAddress(isClient, val.(rbxfile.ValueSystemAddress), isJoinData, context)
 	case PROP_TYPE_TUPLE:
-		err = b.WriteNewTuple(val.(rbxfile.ValueTuple), isJoinData, context)
+		err = b.WriteNewTuple(isClient, val.(rbxfile.ValueTuple), isJoinData, context)
 	case PROP_TYPE_ARRAY:
-		err = b.WriteNewArray(val.(rbxfile.ValueArray), isJoinData, context)
+		err = b.WriteNewArray(isClient, val.(rbxfile.ValueArray), isJoinData, context)
 	case PROP_TYPE_DICTIONARY:
-		err = b.WriteNewDictionary(val.(rbxfile.ValueDictionary), isJoinData, context)
+		err = b.WriteNewDictionary(isClient, val.(rbxfile.ValueDictionary), isJoinData, context)
 	case PROP_TYPE_MAP:
-		err = b.WriteNewMap(val.(rbxfile.ValueMap), isJoinData, context)
+		err = b.WriteNewMap(isClient, val.(rbxfile.ValueMap), isJoinData, context)
 	case PROP_TYPE_NUMBERSEQUENCE:
 		err = b.WriteNumberSequence(val.(rbxfile.ValueNumberSequence))
 	case PROP_TYPE_NUMBERSEQUENCEKEYPOINT:
@@ -391,36 +391,38 @@ func (b *ExtendedWriter) writeSerializedValue(val rbxfile.Value, isJoinData bool
 	}
 	return err
 }
-func (b *ExtendedWriter) WriteNewTypeAndValue(val rbxfile.Value, isJoinData bool, context *CommunicationContext) error {
+func (b *ExtendedWriter) WriteNewTypeAndValue(isClient bool, val rbxfile.Value, isJoinData bool, context *CommunicationContext) error {
 	var err error
 	valueType := typeToNetwork(val)
+	println("Writing typeandvalue", valueType)
+	err = b.WriteByte(uint8(valueType))
 	if valueType == 7 {
 		err = b.WriteUint16BE(val.(rbxfile.ValueToken).ID)
 		if err != nil {
 			return err
 		}
 	}
-	return b.writeSerializedValue(val, isJoinData, valueType, context)
+	return b.writeSerializedValue(isClient, val, isJoinData, valueType, context)
 }
 
-func (b *ExtendedWriter) WriteNewTuple(val rbxfile.ValueTuple, isJoinData bool, context *CommunicationContext) error {
+func (b *ExtendedWriter) WriteNewTuple(isClient bool, val rbxfile.ValueTuple, isJoinData bool, context *CommunicationContext) error {
 	err := b.WriteUintUTF8(len(val))
 	if err != nil {
 		return err
 	}
 	for i := 0; i < len(val); i++ {
-		err = b.WriteNewTypeAndValue(val[i], isJoinData, context)
+		err = b.WriteNewTypeAndValue(isClient, val[i], isJoinData, context)
 		if err != nil {
 			return err
 		}
 	}
 	return nil
 }
-func (b *ExtendedWriter) WriteNewArray(val rbxfile.ValueArray, isJoinData bool, context *CommunicationContext) error {
-	return b.WriteNewTuple(rbxfile.ValueTuple(val), isJoinData, context)
+func (b *ExtendedWriter) WriteNewArray(isClient bool, val rbxfile.ValueArray, isJoinData bool, context *CommunicationContext) error {
+	return b.WriteNewTuple(isClient, rbxfile.ValueTuple(val), isJoinData, context)
 }
 
-func (b *ExtendedWriter) WriteNewDictionary(val rbxfile.ValueDictionary, isJoinData bool, context *CommunicationContext) error {
+func (b *ExtendedWriter) WriteNewDictionary(isClient bool, val rbxfile.ValueDictionary, isJoinData bool, context *CommunicationContext) error {
 	err := b.WriteUintUTF8(len(val))
 	if err != nil {
 		return err
@@ -434,15 +436,15 @@ func (b *ExtendedWriter) WriteNewDictionary(val rbxfile.ValueDictionary, isJoinD
 		if err != nil {
 			return err
 		}
-		err = b.WriteNewTypeAndValue(value, isJoinData, context)
+		err = b.WriteNewTypeAndValue(isClient, value, isJoinData, context)
 		if err != nil {
 			return err
 		}
 	}
 	return nil
 }
-func (b *ExtendedWriter) WriteNewMap(val rbxfile.ValueMap, isJoinData bool, context *CommunicationContext) error {
-	return b.WriteNewDictionary(rbxfile.ValueDictionary(val), isJoinData, context)
+func (b *ExtendedWriter) WriteNewMap(isClient bool, val rbxfile.ValueMap, isJoinData bool, context *CommunicationContext) error {
+	return b.WriteNewDictionary(isClient, rbxfile.ValueDictionary(val), isJoinData, context)
 }
 
 func (b *ExtendedWriter) WriteNumberSequenceKeypoint(val rbxfile.ValueNumberSequenceKeypoint) error {
@@ -507,9 +509,9 @@ func (b *ExtendedWriter) WriteNewEnumValue(val rbxfile.ValueToken) error {
 	return b.WriteUintUTF8(int(val.Value))
 }
 
-func (b *ExtendedWriter) WriteSystemAddress(val rbxfile.ValueSystemAddress, isJoinData bool, context *CommunicationContext) error {
+func (b *ExtendedWriter) WriteSystemAddress(isClient bool, val rbxfile.ValueSystemAddress, isJoinData bool, context *CommunicationContext) error {
 	if !isJoinData {
-		return b.WriteCachedSystemAddress(val, context)
+		return b.WriteCachedSystemAddress(isClient, val, context)
 	}
 	addr, err := net.ResolveUDPAddr("udp", string(val))
 	if err != nil {
