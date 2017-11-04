@@ -534,7 +534,6 @@ func GUIMain() {
 	captureLiveAction := captureBar.AddAction("From &live interface...")
 	captureProxyAction := captureBar.AddAction("From &proxy...")
 	captureInjectAction := captureBar.AddAction("From &injection proxy...")
-	capturePlayerProxyAction := captureBar.AddAction("From &player injection proxy...")
 	captureStopAction := captureBar.AddAction("&Stop capture")
 
 	captureStopAction.ConnectTriggered(func(checked bool)() {

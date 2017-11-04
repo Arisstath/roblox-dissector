@@ -17,9 +17,9 @@ func ShowPacket86(packetType byte, packet *peer.UDPPacket, context *peer.Communi
 
 	rootNode := standardModel.InvisibleRootItem()
 	for _, item := range MainLayer.SubPackets {
-		name1Item := NewQStandardItemF(item.Instance1.Name())
+		name1Item := NewQStandardItemF(item.Instance1.GetFullName())
 		reference1Item := NewQStandardItemF(item.Instance1.Reference)
-		name2Item := NewQStandardItemF(item.Instance2.Name())
+		name2Item := NewQStandardItemF(item.Instance2.GetFullName())
 		reference2Item := NewQStandardItemF(item.Instance2.Reference)
 		var typeItem *gui.QStandardItem
 		if item.IsTouch {

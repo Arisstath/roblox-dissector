@@ -35,6 +35,7 @@ func showReplicationInstance(this *rbxfile.Instance) []*gui.QStandardItem {
     } else {
         parentItem = NewQStandardItemF("DataModel/NULL")
     }
+	pathItem := NewQStandardItemF("%s", this.GetFullName())
 
 	if len(this.Properties) > 0 {
 		propertyRootItem := NewQStandardItemF("%d properties", len(this.Properties))
@@ -65,6 +66,7 @@ func showReplicationInstance(this *rbxfile.Instance) []*gui.QStandardItem {
 		nil,
 		referentItem,
 		parentItem,
+		pathItem,
 	}
 }
 
@@ -73,7 +75,7 @@ func show83_0B(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_0B)
 	instanceList := widgets.NewQTreeView(nil)
 	standardModel := NewProperSortModel(nil)
-	standardModel.SetHorizontalHeaderLabels([]string{"Name", "Type", "Value", "Referent", "Parent"})
+	standardModel.SetHorizontalHeaderLabels([]string{"Name", "Type", "Value", "Referent", "Parent", "Path"})
 
 	rootNode := standardModel.InvisibleRootItem()
 	for _, instance := range(this.Instances) {
@@ -87,13 +89,13 @@ func show83_0B(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 }
 func show83_01(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_01)
-	return NewQLabelF("Delete instance: %s", this.Instance.Reference)
+	return NewQLabelF("Delete instance: %s, %s", this.Instance.Reference, this.Instance.GetFullName())
 }
 func show83_02(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_02)
 	instanceList := widgets.NewQTreeView(nil)
 	standardModel := NewProperSortModel(nil)
-	standardModel.SetHorizontalHeaderLabels([]string{"Name", "Type", "Value", "Referent", "Parent"})
+	standardModel.SetHorizontalHeaderLabels([]string{"Name", "Type", "Value", "Referent", "Parent", "Path"})
 
 	rootNode := standardModel.InvisibleRootItem()
 	rootNode.AppendRow(showReplicationInstance(this.Child))
@@ -108,7 +110,7 @@ func show83_03(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	widget := widgets.NewQWidget(nil, 0)
 	layout := widgets.NewQVBoxLayout()
     if this.Instance != nil {
-        layout.AddWidget(NewQLabelF("Object: %s", this.Instance.Reference), 0, 0)
+        layout.AddWidget(NewQLabelF("Object: %s", this.Instance.GetFullName()), 0, 0)
     } else {
         layout.AddWidget(NewQLabelF("Object: nil"), 0, 0)
     }
@@ -145,7 +147,7 @@ func show83_07(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	widget := widgets.NewQWidget(nil, 0)
 	layout := widgets.NewQVBoxLayout()
     if this.Instance != nil {
-        layout.AddWidget(NewQLabelF("Object: %s", this.Instance.Reference), 0, 0)
+        layout.AddWidget(NewQLabelF("Object: %s", this.Instance.GetFullName()), 0, 0)
     } else {
         layout.AddWidget(NewQLabelF("Object: nil"), 0, 0)
     }
