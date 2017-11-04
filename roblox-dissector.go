@@ -386,6 +386,7 @@ func captureFromInjectionProxy(src string, dst string, stopCaptureJob chan struc
 	return
 }
 
+// Requires you to patch the player with memcheck bypass and rbxsig ignoring! But it could work...
 func captureFromPlayerProxy(settings *PlayerProxySettings, stopCaptureJob chan struct{}, injectPacket chan peer.RakNetPacket, packetViewer *MyPacketListView, context *peer.CommunicationContext) {
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},

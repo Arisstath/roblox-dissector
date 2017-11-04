@@ -634,26 +634,6 @@ func GUIMain() {
 			}()
 		})
 	})
-	capturePlayerProxyAction.ConnectTriggered(func(checked bool)() {
-		if packetViewer.IsCapturing {
-			packetViewer.StopCaptureJob <- struct{}{}
-		}
-
-		NewPlayerProxyWidget(packetViewer, packetViewer.PlayerProxySettings, func(settings *PlayerProxySettings) {
-			packetViewer.PlayerProxySettings = settings
-			packetViewer.IsCapturing = true
-
-			context := peer.NewCommunicationContext()
-			packetViewer.Context = context
-
-			packetViewer.Reset()
-
-			go func() {
-				captureFromPlayerProxy(settings, packetViewer.StopCaptureJob, packetViewer.InjectPacket, packetViewer, context)
-				packetViewer.IsCapturing = false
-			}()
-		})
-	})
 
 	resp, err := http.Get("http://setup.roblox.com/versionQTStudio")
 	if err != nil {
