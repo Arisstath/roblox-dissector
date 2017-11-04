@@ -36,7 +36,7 @@ func DecodePacket83_0B(packet *UDPPacket, context *CommunicationContext) (interf
 
 	var i uint32
 	for i = 0; i < arrayLen; i++ {
-		layer.Instances[i], err = DecodeReplicationInstance(true, newPacket, context)
+		layer.Instances[i], err = DecodeReplicationInstance(context.IsClient(newPacket.Source), true, newPacket, context)
 		if err != nil {
 			return layer, err
 		}
@@ -46,7 +46,7 @@ func DecodePacket83_0B(packet *UDPPacket, context *CommunicationContext) (interf
 	return layer, nil
 }
 
-func (layer *Packet83_0B) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
+func (layer *Packet83_0B) Serialize(isClient bool, context *CommunicationContext, stream *ExtendedWriter) error {
     var err error
     err = stream.Align()
     if err != nil {
@@ -60,7 +60,7 @@ func (layer *Packet83_0B) Serialize(context *CommunicationContext, stream *Exten
     gzipStream := &ExtendedWriter{bitstream.NewWriter(middleStream)}
 
     for i := 0; i < len(layer.Instances); i++ {
-        err = SerializeReplicationInstance(layer.Instances[i], true, context, gzipStream)
+        err = SerializeReplicationInstance(isClient, layer.Instances[i], true, context, gzipStream)
         if err != nil {
             return err
         }

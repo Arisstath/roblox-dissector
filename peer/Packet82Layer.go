@@ -17,8 +17,8 @@ type Packet82Layer struct {
 	TypeDescriptor []*DescriptorItem
 }
 
-func NewPacket82Layer() Packet82Layer {
-	return Packet82Layer{}
+func NewPacket82Layer() *Packet82Layer {
+	return &Packet82Layer{}
 }
 
 func LearnDictionary(decompressedStream *ExtendedReader, ContextDescriptor map[string]uint32) ([]*DescriptorItem, error) {
@@ -152,7 +152,7 @@ func DecodePacket82Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	}
 }
 
-func (layer *Packet82Layer) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
+func (layer *Packet82Layer) Serialize(isClient bool, context *CommunicationContext, stream *ExtendedWriter) error {
     var err error
     // FIXME: Assume this peer is always a server
 

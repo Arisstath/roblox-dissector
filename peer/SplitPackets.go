@@ -1,5 +1,5 @@
 package peer
-import "io"
+import "bytes"
 import "github.com/gskartwii/go-bitstream"
 
 type SplitPacketBuffer struct {
@@ -9,8 +9,7 @@ type SplitPacketBuffer struct {
 	WrittenPackets uint32
 
 	DataReader *ExtendedReader
-	DataWriter *io.PipeWriter
-	DataQueue chan []byte
+	DataWriter *bytes.Buffer
 }
 type SplitPacketList map[string](map[uint16](*ReliablePacket))
 
@@ -18,23 +17,10 @@ func NewSplitPacketBuffer(packet *ReliablePacket) *SplitPacketBuffer {
 	reliables := make([]*ReliablePacket, int(packet.SplitPacketCount))
 	raknets := make([]*RakNetLayer, int(packet.SplitPacketCount))
 
-	list := &SplitPacketBuffer{reliables, raknets, 0, 0, nil, nil, make(chan []byte, packet.SplitPacketCount)}
-	reader, writer := io.Pipe()
-	list.DataReader = &ExtendedReader{bitstream.NewReader(reader)}
-	list.DataWriter = writer
-
-	go func() {
-		for list.WrittenPackets < packet.SplitPacketCount {
-			writer.Write(<- list.DataQueue)
-			list.WrittenPackets++
-			if list.WrittenPackets == packet.SplitPacketCount {
-				err := writer.Close()
-				if err != nil {
-					println("Warning: failed to close split packet stream:", err.Error())
-				}
-			}
-		}
-	}()
+	list := &SplitPacketBuffer{reliables, raknets, 0, 0, nil, nil}
+	buffer := &bytes.Buffer{}
+	list.DataReader = &ExtendedReader{bitstream.NewReader(buffer)}
+	list.DataWriter = buffer
 
 	return list
 }
@@ -87,27 +73,36 @@ func (context *CommunicationContext) HandleSplitPacket(reliablePacket *ReliableP
 
 	fullPacket.AllReliablePackets = append(fullPacket.AllReliablePackets, reliablePacket)
 	fullPacket.AllRakNetLayers = append(fullPacket.AllRakNetLayers, rakNetPacket)
+	reliablePacket.AllReliablePackets = fullPacket.AllReliablePackets
+	reliablePacket.AllRakNetLayers = fullPacket.AllRakNetLayers
 
 	fullPacket.RealLength += uint32(len(reliablePacket.SelfData))
 
 	var shouldClose bool
 	for len(packetBuffer.ReliablePackets) > int(expectedPacket) && packetBuffer.ReliablePackets[expectedPacket] != nil {
 		shouldClose = len(packetBuffer.ReliablePackets) == int(expectedPacket + 1)
-		packetBuffer.DataQueue <- packetBuffer.ReliablePackets[expectedPacket].SelfData
+		packetBuffer.DataWriter.Write(packetBuffer.ReliablePackets[expectedPacket].SelfData)
+		packetBuffer.WrittenPackets++
 
 		expectedPacket++
 		packetBuffer.NextExpectedPacket = expectedPacket
 	}
 	if shouldClose {
 		fullPacket.IsFinal = true
+		reliablePacket.IsFinal = true
 	}
 	fullPacket.NumReceivedSplits = expectedPacket
+	reliablePacket.NumReceivedSplits = fullPacket.NumReceivedSplits
 	fullPacket.ReliableMessageNumber = reliablePacket.ReliableMessageNumber
+	reliablePacket.FullDataReader = packetBuffer.DataReader
 
 	if reliablePacket.HasPacketType {
 		fullPacket.HasPacketType = true
 		fullPacket.PacketType = reliablePacket.PacketType
+	} else {
+		reliablePacket.HasPacketType = fullPacket.HasPacketType
+		reliablePacket.PacketType = fullPacket.PacketType
 	}
 
-	return fullPacket, nil
+	return reliablePacket, nil
 }

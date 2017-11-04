@@ -25,7 +25,7 @@ func DecodePacket85Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	layer := NewPacket85Layer()
 	for {
 		subpacket := &Packet85LayerSubpacket{}
-		referent, err := thisBitstream.ReadObject(false, context)
+		referent, err := thisBitstream.ReadObject(context.IsClient(packet.Source), false, context)
 		if err != nil {
 			return layer, err
 		}
@@ -68,7 +68,7 @@ func DecodePacket85Layer(packet *UDPPacket, context *CommunicationContext) (inte
 		if !isSolo {
 			for {
 				child := Packet85LayerSubpacket{}
-				referent, err := thisBitstream.ReadObject(false, context)
+				referent, err := thisBitstream.ReadObject(context.IsClient(packet.Source), false, context)
 				if err != nil {
 					return layer, err
 				}
@@ -101,6 +101,73 @@ func DecodePacket85Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	return layer, nil
 }
 
-func (layer *Packet85Layer) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
-	return nil
+func (layer *Packet85Layer) Serialize(isClient bool, context *CommunicationContext, stream *ExtendedWriter) error {
+	for i := 0; i < len(layer.SubPackets); i++ {
+		subpacket := layer.SubPackets[i]
+		err := stream.WriteObject(isClient, subpacket.Instance, false, context)
+		if err != nil {
+			return err
+		}
+		err = stream.WriteBool(subpacket.UnknownInt != 0)
+		if err != nil {
+			return err
+		}
+		if subpacket.UnknownInt != 0 {
+			err = stream.WriteByte(subpacket.UnknownInt)
+			if err != nil {
+				return err
+			}
+		}
+
+		err = stream.WritePhysicsCFrame(subpacket.CFrame)
+		if err != nil {
+			return err
+		}
+		err = stream.WriteCoordsMode1(subpacket.Pos1)
+		if err != nil {
+			return err
+		}
+		err = stream.WriteCoordsMode1(subpacket.Pos2)
+		if err != nil {
+			return err
+		}
+		err = stream.WriteMotors(subpacket.Motors)
+		if err != nil {
+			return err
+		}
+
+		for j := 0; j < len(subpacket.Children); j++ {
+			child := subpacket.Children[j]
+			err = stream.WriteBool(true)
+			if err != nil {
+				return err
+			}
+			err = stream.WriteObject(isClient, child.Instance, false, context)
+			if err != nil {
+				return err
+			}
+
+			err = stream.WritePhysicsCFrame(child.CFrame)
+			if err != nil {
+				return err
+			}
+			err = stream.WriteCoordsMode1(child.Pos1)
+			if err != nil {
+				return err
+			}
+			err = stream.WriteCoordsMode1(child.Pos2)
+			if err != nil {
+				return err
+			}
+			err = stream.WriteMotors(child.Motors)
+			if err != nil {
+				return err
+			}
+		}
+		err = stream.WriteBool(false) // Terminator for children
+		if err != nil {
+			return err
+		}
+	}
+	return stream.WriteByte(0x00) // referent to NULL instance; terminator
 }

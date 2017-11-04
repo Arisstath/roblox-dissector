@@ -19,6 +19,7 @@ var PacketDecoders = map[byte]DecoderFunc{
 	0x82: DecodePacket82Layer,
 	0x83: DecodePacket83Layer,
 	0x85: DecodePacket85Layer,
+	0x86: DecodePacket86Layer,
 	0x8F: DecodePacket8FLayer,
 	0x90: DecodePacket90Layer,
 	0x92: DecodePacket92Layer,
@@ -120,6 +121,8 @@ type PacketReader struct {
 	SimpleHandler ReceiveHandler
 	ReliableHandler ReceiveHandler
 	FullReliableHandler ReceiveHandler
+	ACKHandler func(*UDPPacket, *RakNetLayer)
+	ReliabilityLayerHandler func(*UDPPacket, *ReliabilityLayer, *RakNetLayer)
 	ErrorHandler ErrorHandler
 	Context *CommunicationContext
 
@@ -245,6 +248,7 @@ func (this *PacketReader) ReadReliable(layers *PacketLayers, packet *UDPPacket) 
 		queues = this.ServerQueues
 	}
 
+	this.ReliabilityLayerHandler(packet, reliabilityLayer, layers.RakNet)
 	for _, subPacket := range reliabilityLayer.Packets {
 		reliablePacketLayers := &PacketLayers{RakNet: layers.RakNet, Reliability: subPacket}
 		this.ReliableHandler(subPacket.PacketType, packet, reliablePacketLayers)
@@ -285,9 +289,9 @@ func (this *PacketReader) ReadPacket(payload []byte, packet *UDPPacket) {
 	} else if !rakNetLayer.IsValid {
 		this.ErrorHandler(errors.New(fmt.Sprintf("Sent invalid packet (packet header %x)", payload[0])))
 		return
-	} else if rakNetLayer.IsACK {
-		// nop
-	} else if !rakNetLayer.IsNAK {
+	} else if rakNetLayer.IsACK || rakNetLayer.IsNAK {
+		this.ACKHandler(packet, rakNetLayer)
+	} else {
 		this.ReadReliable(layers, packet)
 		return
 	}

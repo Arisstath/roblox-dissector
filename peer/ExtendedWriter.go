@@ -3,6 +3,7 @@ import "github.com/gskartwii/go-bitstream"
 import "encoding/binary"
 import "net"
 import "github.com/gskartwii/rbxfile"
+import "math"
 
 type ExtendedWriter struct {
 	*bitstream.BitWriter
@@ -35,6 +36,11 @@ func (b *ExtendedWriter) WriteUint16BE(value uint16) error {
 	binary.BigEndian.PutUint16(dest, value)
 	return b.Bytes(2, dest)
 }
+func (b *ExtendedWriter) WriteUint16LE(value uint16) error {
+	dest := make([]byte, 2)
+	binary.LittleEndian.PutUint16(dest, value)
+	return b.Bytes(2, dest)
+}
 
 func (b *ExtendedWriter) WriteUint32BE(value uint32) error {
 	dest := make([]byte, 4)
@@ -57,6 +63,18 @@ func (b *ExtendedWriter) WriteUint24LE(value uint32) error {
 	dest := make([]byte, 4)
 	binary.LittleEndian.PutUint32(dest, value)
 	return b.Bytes(3, dest)
+}
+
+func (b *ExtendedWriter) WriteFloat32BE(value float32) error {
+	return b.WriteUint32BE(math.Float32bits(value))
+}
+
+func (b *ExtendedWriter) WriteFloat64BE(value float64) error {
+	return b.Bits(64, math.Float64bits(value))
+}
+
+func (b *ExtendedWriter) WriteFloat16BE(value float32, min float32, max float32) error {
+	return b.WriteUint16BE(uint16(value / (max - min) * 65535.0))
 }
 
 func (b *ExtendedWriter) WriteBoolByte(value bool) error {
@@ -106,32 +124,139 @@ func (b *ExtendedWriter) WriteUintUTF8(value int) error {
     return nil
 }
 
-func (b *ExtendedWriter) WriteObject(object *rbxfile.Instance, isJoinData bool, context *CommunicationContext) error {
+type CacheWriteCallback func(*ExtendedWriter, interface{})(error)
+func (b *ExtendedWriter) writeWithCache(value interface{}, cache Cache, writeCallback CacheWriteCallback) error {
+	if value == nil {
+		return b.WriteByte(0x00)
+	}
+	var matchedIndex byte = 0
+	var i byte
+	for i = 0; i < 0x80; i++ {
+		equal, existed := cache.Equal(i, value)
+		if !existed {
+			break
+		}
+		if equal {
+			matchedIndex = i
+			break
+		}
+	}
+	if matchedIndex == 0 {
+		cache.Put(value, cache.LastWrite() % 0x7F + 1)
+		println("Writing new value to cache: ", cache.LastWrite())
+		err := b.WriteByte(cache.LastWrite() | 0x80)
+		if err != nil {
+			return err
+		}
+		return writeCallback(b, value)
+	} else {
+		return b.WriteByte(matchedIndex)
+	}
+}
+
+func (b *ExtendedWriter) WriteUint32AndString(val interface{}) error {
+	str := val.(string)
+	err := b.WriteUint32BE(uint32(len(str)))
+	if err != nil {
+		return err
+	}
+	return b.WriteASCII(str)
+}
+
+func (b *ExtendedWriter) WriteCached(isClient bool, val string, context *CommunicationContext) error {
+	var cache Cache
+	if isClient {
+		cache = &context.ClientCaches.String
+	} else {
+		cache = &context.ServerCaches.String
+	}
+
+	return b.writeWithCache(val, cache, (*ExtendedWriter).WriteUint32AndString)
+}
+func (b *ExtendedWriter) WriteCachedObject(isClient bool, val string, context *CommunicationContext) error {
+	var cache Cache
+	if isClient {
+		cache = &context.ClientCaches.Object
+	} else {
+		cache = &context.ServerCaches.Object
+	}
+
+	return b.writeWithCache(val, cache, (*ExtendedWriter).WriteUint32AndString)
+}
+func (b *ExtendedWriter) WriteCachedContent(isClient bool, val string, context *CommunicationContext) error {
+	var cache Cache
+	if isClient {
+		cache = &context.ClientCaches.Content
+	} else {
+		cache = &context.ServerCaches.Content
+	}
+
+	return b.writeWithCache(val, cache, (*ExtendedWriter).WriteUint32AndString)
+}
+func (b *ExtendedWriter) WriteNewCachedProtectedString(isClient bool, val string, context *CommunicationContext) error {
+	var cache Cache
+	if isClient {
+		cache = &context.ClientCaches.ProtectedString
+	} else {
+		cache = &context.ServerCaches.ProtectedString
+	}
+
+	return b.writeWithCache(val, cache, func(b *ExtendedWriter, val interface{})(error) {
+		str := val.([]byte)
+		err := b.WriteUint32BE(uint32(len(str)))
+		if err != nil {
+			return err
+		}
+		return b.AllBytes(val.([]byte))
+	})
+}
+func (b *ExtendedWriter) WriteCachedSystemAddress(isClient bool, val rbxfile.ValueSystemAddress, context *CommunicationContext) error {
+	var cache Cache
+	if isClient {
+		cache = &context.ClientCaches.SystemAddress
+	} else {
+		cache = &context.ServerCaches.SystemAddress
+	}
+
+	return b.writeWithCache(val, cache, func(b *ExtendedWriter, val interface{})(error) {
+		return b.WriteSystemAddress(isClient, val.(rbxfile.ValueSystemAddress), true, nil)
+	})
+}
+
+func (b *ExtendedWriter) WriteObject(isClient bool, object *rbxfile.Instance, isJoinData bool, context *CommunicationContext) error {
     var err error
     if object == nil {
         return b.WriteByte(0)
     }
-    referent := object.Reference
-    referentString := context.RefStringsByReferent[referent]
 
+	referentString, referent := refToObject(object.Reference)
     if isJoinData {
         if referentString == "NULL2" {
             err = b.WriteByte(0)
             return err
-        } else if referentString != "NULL" {
+		} else if referentString == context.InstanceTopScope {
+            err = b.WriteByte(0xFF)
+        } else {
             err = b.WriteByte(uint8(len(referentString)))
             if err != nil {
                 return err
             }
             err = b.WriteASCII(referentString)
-        } else {
-            err = b.WriteByte(0xFF)
-        }
-        if err != nil {
+		}
+		if err != nil {
             return err
         }
 
-        return b.WriteUint32LE(uint32(mustAtoi(referent)))
-    }
+        return b.WriteUint32LE(referent)
+    } else {
+		if referentString == "NULL2" || referentString == "null" {
+			return b.WriteByte(0x00)
+		}
+		err = b.WriteCachedObject(isClient, referentString, context)
+		if err != nil {
+			return err
+		}
+		return b.WriteUint32LE(referent)
+	}
     return nil
 }

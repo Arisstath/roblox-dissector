@@ -40,43 +40,38 @@ type Packet13Layer struct {
 	SendPongTime uint64
 }
 
-func NewPacket05Layer() Packet05Layer {
-	return Packet05Layer{}
+func NewPacket05Layer() *Packet05Layer {
+	return &Packet05Layer{}
 }
-func NewPacket06Layer() Packet06Layer {
-	return Packet06Layer{}
+func NewPacket06Layer() *Packet06Layer {
+	return &Packet06Layer{}
 }
-func NewPacket07Layer() Packet07Layer {
-	return Packet07Layer{}
+func NewPacket07Layer() *Packet07Layer {
+	return &Packet07Layer{}
 }
-func NewPacket08Layer() Packet08Layer {
-	return Packet08Layer{}
+func NewPacket08Layer() *Packet08Layer {
+	return &Packet08Layer{}
 }
-func NewPacket09Layer() Packet09Layer {
-	return Packet09Layer{}
+func NewPacket09Layer() *Packet09Layer {
+	return &Packet09Layer{}
 }
-func NewPacket10Layer() Packet10Layer {
-	return Packet10Layer{}
+func NewPacket10Layer() *Packet10Layer {
+	return &Packet10Layer{}
 }
-func NewPacket13Layer() Packet13Layer {
-	return Packet13Layer{}
+func NewPacket13Layer() *Packet13Layer {
+	return &Packet13Layer{}
 }
 var VoidOfflineMessage []byte = make([]byte, 0x10)
 
 func DecodePacket05Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
+	var err error
 	layer := NewPacket05Layer()
 	thisBitstream := packet.Stream
-
-	var err error
-	err = thisBitstream.Bytes(VoidOfflineMessage, 0x10)
-	if err != nil {
-		return layer, err
-	}
-	layer.ProtocolVersion, err = thisBitstream.ReadUint8()
+	layer.ProtocolVersion, err = thisBitstream.ReadUint8() // !! RakNetLayer will have read the offline message !!
 	return layer, err
 }
 
-func (layer *Packet05Layer) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
+func (layer *Packet05Layer) Serialize(isClient bool,context *CommunicationContext, stream *ExtendedWriter) error {
 	err := stream.AllBytes(OfflineMessageID)
 	if err != nil {
 		return err
@@ -111,7 +106,7 @@ func DecodePacket06Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	return layer, err
 }
 
-func (layer *Packet06Layer) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
+func (layer *Packet06Layer) Serialize(isClient bool,context *CommunicationContext, stream *ExtendedWriter) error {
 	var err error
 	err = stream.AllBytes(OfflineMessageID)
 	if err != nil {
@@ -150,7 +145,7 @@ func DecodePacket07Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	return layer, err
 }
 
-func (layer *Packet07Layer) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
+func (layer *Packet07Layer) Serialize(isClient bool,context *CommunicationContext, stream *ExtendedWriter) error {
 	var err error
 	err = stream.AllBytes(OfflineMessageID)
 	if err != nil {
@@ -193,7 +188,7 @@ func DecodePacket08Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	return layer, err
 }
 
-func (layer *Packet08Layer) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
+func (layer *Packet08Layer) Serialize(isClient bool,context *CommunicationContext, stream *ExtendedWriter) error {
 	var err error
 	err = stream.AllBytes(OfflineMessageID)
 	if err != nil {
@@ -265,7 +260,7 @@ func DecodePacket10Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	layer.SendPongTime, err = thisBitstream.ReadUint64BE()
 	return layer, err
 }
-func (layer *Packet10Layer) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
+func (layer *Packet10Layer) Serialize(isClient bool,context *CommunicationContext, stream *ExtendedWriter) error {
 	var err error
 	err = stream.WriteByte(0x10)
 	if err != nil {

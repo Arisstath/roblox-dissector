@@ -1,4 +1,5 @@
 package peer
+import "errors"
 
 type Packet83_11 struct {
 	SkipStats1 bool
@@ -111,6 +112,6 @@ func DecodePacket83_11(packet *UDPPacket, context *CommunicationContext) (interf
 	return inner, nil
 }
 
-func (layer *Packet83_11) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
-    return nil
+func (layer *Packet83_11) Serialize(isClient bool, context *CommunicationContext, stream *ExtendedWriter) error {
+    return errors.New("packet 83_11 not implemented!")
 }

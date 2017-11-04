@@ -97,7 +97,7 @@ var TypeNames = map[uint8]string{
 type StaticArgumentSchema struct {
 	Type uint8
 	TypeString string
-	Unknown uint16
+	EnumID uint16
 }
 
 type StaticEnumSchema struct {
@@ -115,7 +115,7 @@ type StaticPropertySchema struct {
 	Name string
 	Type uint8
 	TypeString string
-	Unknown uint16
+	EnumID uint16
 	InstanceSchema *StaticInstanceSchema
 }
 
@@ -142,8 +142,8 @@ type Packet97Layer struct {
 	Schema StaticSchema
 }
 
-func NewPacket97Layer() Packet97Layer {
-	return Packet97Layer{}
+func NewPacket97Layer() *Packet97Layer {
+	return &Packet97Layer{}
 }
 
 func DecodePacket97Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
@@ -257,7 +257,7 @@ func DecodePacket97Layer(packet *UDPPacket, context *CommunicationContext) (inte
 			thisProperty.TypeString = TypeNames[thisProperty.Type]
 
             if thisProperty.Type == 7 {
-                thisProperty.Unknown, err = stream.ReadUint16BE()
+                thisProperty.EnumID, err = stream.ReadUint16BE()
                 if err != nil {
                     return layer, err
                 }
@@ -322,12 +322,13 @@ func DecodePacket97Layer(packet *UDPPacket, context *CommunicationContext) (inte
 					return layer, err
 				}
 				thisArgument.TypeString = TypeNames[thisArgument.Type]
-                thisArgument.Unknown, err = stream.ReadUint16BE()
+                thisArgument.EnumID, err = stream.ReadUint16BE()
 				if err != nil {
 					return layer, err
 				}
                 thisEvent.Arguments[k] = thisArgument
 			}
+			thisEvent.InstanceSchema = &thisInstance
             layer.Schema.Events[eventGlobalIndex] = thisEvent
             thisInstance.Events[j] = thisEvent
             eventGlobalIndex++
@@ -341,7 +342,7 @@ func DecodePacket97Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	return layer, err
 }
 
-func (layer *Packet97Layer) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
+func (layer *Packet97Layer) Serialize(isClient bool,context *CommunicationContext, stream *ExtendedWriter) error {
     var err error
 
     err = stream.WriteByte(0x97)
@@ -404,7 +405,7 @@ func (layer *Packet97Layer) Serialize(context *CommunicationContext, stream *Ext
                 return err
             }
             if property.Type == 7 {
-                err = gzipStream.WriteUint16BE(property.Unknown)
+                err = gzipStream.WriteUint16BE(property.EnumID)
                 if err != nil {
                     return err
                 }
@@ -438,7 +439,7 @@ func (layer *Packet97Layer) Serialize(context *CommunicationContext, stream *Ext
                 if err != nil {
                     return err
                 }
-                err = gzipStream.WriteUint16BE(argument.Unknown)
+                err = gzipStream.WriteUint16BE(argument.EnumID)
                 if err != nil {
                     return err
                 }

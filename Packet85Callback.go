@@ -17,7 +17,7 @@ func ShowPacket85(packetType byte, packet *peer.UDPPacket, context *peer.Communi
 
 	rootNode := standardModel.InvisibleRootItem()
 	for _, item := range MainLayer.SubPackets {
-		nameItem := NewQStandardItemF(item.Instance.Name())
+		nameItem := NewQStandardItemF(item.Instance.GetFullName())
 		referenceItem := NewQStandardItemF(item.Instance.Reference)
 		unknownIntItem := NewQStandardItemF("%d", item.UnknownInt)
 		cframeItem := NewQStandardItemF(item.CFrame.String())

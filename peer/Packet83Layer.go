@@ -19,7 +19,7 @@ var Packet83Subpackets map[uint8]string = map[uint8]string{
 }
 
 type Packet83Subpacket interface{
-    Serialize(*CommunicationContext, *ExtendedWriter) error
+    Serialize(bool, *CommunicationContext, *ExtendedWriter) error
 }
 
 func Packet83ToType(this Packet83Subpacket) uint8 {
@@ -55,8 +55,8 @@ type Packet83Layer struct {
 	SubPackets []Packet83Subpacket
 }
 
-func NewPacket83Layer() Packet83Layer {
-	return Packet83Layer{}
+func NewPacket83Layer() *Packet83Layer {
+	return &Packet83Layer{}
 }
 
 func extractPacketType(stream *ExtendedReader) (uint8, error) {
@@ -101,7 +101,7 @@ func DecodePacket83Layer(packet *UDPPacket, context *CommunicationContext) (inte
 		case 0x06:
 			inner, err = DecodePacket83_05(packet, context) // Yes, I know it's 05
 			break
-		case 0x11:
+		case 0x12:
 			inner, err = DecodePacket83_11(packet, context)
 			break
 		case 0x0B:
@@ -142,7 +142,7 @@ func DecodePacket83Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	return layer, nil
 }
 
-func (layer *Packet83Layer) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
+func (layer *Packet83Layer) Serialize(isClient bool, context *CommunicationContext, stream *ExtendedWriter) error {
     var err error
     err = stream.WriteByte(0x83)
     if err != nil {
@@ -162,7 +162,7 @@ func (layer *Packet83Layer) Serialize(context *CommunicationContext, stream *Ext
         if err != nil {
             return err
         }
-        err = subpacket.Serialize(context, stream)
+        err = subpacket.Serialize(isClient, context, stream)
         if err != nil {
             return err
         }

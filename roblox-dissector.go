@@ -6,6 +6,15 @@ import "github.com/fatih/color"
 import "fmt"
 import "github.com/gskartwii/roblox-dissector/peer"
 import "time"
+import "net"
+import "net/http"
+import "io"
+import "io/ioutil"
+import "crypto/tls"
+import "compress/gzip"
+import "regexp"
+import "bytes"
+import "strconv"
 
 const DEBUG bool = false
 
@@ -31,6 +40,7 @@ var PacketNames map[byte]string = map[byte]string{
 	0x82: "ID_ROBLOX_DICTIONARIES",
 	0x83: "ID_ROBLOX_REPLICATION",
 	0x85: "ID_ROBLOX_PHYSICS",
+	0x86: "ID_ROBLOX_TOUCH",
 	0x89: "ID_ROBLOX_REPORT_ABUSE",
 	0x8A: "ID_ROBLOX_AUTH",
 	0x8E: "ID_ROBLOX_PROTOCOL_MISMATCH",
@@ -66,6 +76,7 @@ var ActivationCallbacks map[byte]ActivationCallback = map[byte]ActivationCallbac
 	0x83: ShowPacket83,
     0x97: ShowPacket97,
 	0x85: ShowPacket85,
+	0x86: ShowPacket86,
 }
 
 func captureJob(handle *pcap.Handle, useIPv4 bool, stopCaptureJob chan struct{}, packetViewer *MyPacketListView, context *peer.CommunicationContext) {
@@ -99,6 +110,12 @@ func captureJob(handle *pcap.Handle, useIPv4 bool, stopCaptureJob chan struct{},
 		if context.IsValid {
 			packetViewer.BindCallback(packetType, packet, context, layers, ActivationCallbacks[packetType])
 		}
+	}
+	packetReader.ReliabilityLayerHandler = func(p *peer.UDPPacket, re *peer.ReliabilityLayer, ra *peer.RakNetLayer) {
+		// nop
+	}
+	packetReader.ACKHandler = func(p *peer.UDPPacket, ra *peer.RakNetLayer) {
+		// nop
 	}
 	packetReader.ErrorHandler = func(err error) {
 		println(err.Error())
@@ -158,6 +175,286 @@ func captureFromLive(livename string, useIPv4 bool, usePromisc bool, stopCapture
 		return
 	}
 	captureJob(handle, useIPv4, stopCaptureJob, packetViewer, context)
+}
+
+type ProxiedPacket struct {
+	Packet *peer.UDPPacket
+	Payload []byte
+}
+func captureFromProxy(src string, dst string, stopCaptureJob chan struct{}, packetViewer *MyPacketListView, context *peer.CommunicationContext) {
+	fmt.Printf("Will capture from proxy %s -> %s\n", src, dst)
+
+	srcAddr, _ := net.ResolveUDPAddr("udp", src)
+	dstAddr, _ := net.ResolveUDPAddr("udp", dst)
+	conn, err := net.ListenUDP("udp", srcAddr)
+	if err != nil {
+		fmt.Printf("Failed to start proxy: %s", err.Error())
+		return
+	}
+	dstConn, err := net.DialUDP("udp", nil, dstAddr)
+	if err != nil {
+		fmt.Printf("Failed to start proxy: %s", err.Error())
+		return
+	}
+
+	packetReader := peer.NewPacketReader()
+	packetReader.SimpleHandler = func(packetType byte, packet *peer.UDPPacket, layers *peer.PacketLayers) {
+		if context.IsValid {
+			packetViewer.AddFullPacket(packetType, packet, context, layers, ActivationCallbacks[packetType])
+		}
+	}
+	packetReader.ReliableHandler = func(packetType byte, packet *peer.UDPPacket, layers *peer.PacketLayers) {
+		if context.IsValid {
+			packetViewer.AddSplitPacket(packetType, packet, context, layers)
+		}
+	}
+	packetReader.FullReliableHandler = func(packetType byte, packet *peer.UDPPacket, layers *peer.PacketLayers) {
+		if context.IsValid {
+			packetViewer.BindCallback(packetType, packet, context, layers, ActivationCallbacks[packetType])
+		}
+	}
+	packetReader.ReliabilityLayerHandler = func(p *peer.UDPPacket, re *peer.ReliabilityLayer, ra *peer.RakNetLayer) {
+		// nop
+	}
+	packetReader.ACKHandler = func(p *peer.UDPPacket, ra *peer.RakNetLayer) {
+		// nop
+	}
+	packetReader.ErrorHandler = func(err error) {
+		println(err.Error())
+	}
+	packetReader.Context = context
+
+	var clientAddr *net.UDPAddr
+	var n int
+	packetChan := make(chan ProxiedPacket, 100)
+
+	go func() {
+		for {
+			payload := make([]byte, 1500)
+			n, clientAddr, err = conn.ReadFromUDP(payload)
+			if err != nil {
+				fmt.Println("readfromudp fail: %s", err.Error())
+				continue
+			}
+			_, err = dstConn.Write(payload[:n])
+			if err != nil {
+				fmt.Println("write fail: %s", err.Error())
+				continue
+			}
+			newPacket := peer.UDPPacket{
+				peer.BufferToStream(payload[:n]),
+				*srcAddr,
+				*dstAddr,
+			}
+			if payload[0] > 0x8 {
+				packetChan <- ProxiedPacket{Packet: &newPacket, Payload: payload[:n]}
+			} else { // Need priority for join packets
+				packetReader.ReadPacket(payload[:n], &newPacket)
+			}
+		}
+	}()
+	go func() {
+		for {
+			payload := make([]byte, 1500)
+			n, _, err := dstConn.ReadFromUDP(payload)
+			if err != nil {
+				fmt.Println("readfromudp fail: %s", err.Error())
+				continue
+			}
+			_, err = conn.WriteToUDP(payload[:n], clientAddr)
+			if err != nil {
+				fmt.Println("write fail: %s", err.Error())
+				continue
+			}
+			newPacket := peer.UDPPacket{
+				peer.BufferToStream(payload[:n]),
+				*dstAddr,
+				*srcAddr,
+			}
+			if payload[0] > 0x8 {
+				packetChan <- ProxiedPacket{Packet: &newPacket, Payload: payload[:n]}
+			} else { // Need priority for join packets
+				packetReader.ReadPacket(payload[:n], &newPacket)
+			}
+		}
+	}()
+
+	for {
+		select {
+		case newPacket := <- packetChan:
+			packetReader.ReadPacket(newPacket.Payload, newPacket.Packet)
+		case _ = <- stopCaptureJob:
+			return
+		}
+	}
+	return
+}
+
+func captureFromInjectionProxy(src string, dst string, stopCaptureJob chan struct{}, injectPacket chan peer.RakNetPacket, packetViewer *MyPacketListView, context *peer.CommunicationContext) {
+	fmt.Printf("Will capture from injproxy %s -> %s\n", src, dst)
+
+	srcAddr, _ := net.ResolveUDPAddr("udp", src)
+	dstAddr, _ := net.ResolveUDPAddr("udp", dst)
+	conn, err := net.ListenUDP("udp", srcAddr)
+	if err != nil {
+		fmt.Printf("Failed to start proxy: %s", err.Error())
+		return
+	}
+	dstConn, err := net.DialUDP("udp", nil, dstAddr)
+	if err != nil {
+		fmt.Printf("Failed to start proxy: %s", err.Error())
+		return
+	}
+
+	context.Client = srcAddr.String()
+	context.Server = dstAddr.String()
+	proxyWriter := peer.NewProxyWriter(context)
+	proxyWriter.ServerAddr = dstAddr
+
+	proxyWriter.ClientHalf.OutputHandler = func(p []byte, d *net.UDPAddr) {
+		_, err := conn.WriteToUDP(p, d)
+		if err != nil {
+			fmt.Println("write fail: %s", err.Error())
+			return
+		}
+	}
+	proxyWriter.ServerHalf.OutputHandler = func(p []byte, d *net.UDPAddr) {
+		_, err := dstConn.Write(p)
+		if err != nil {
+			fmt.Println("write fail: %s", err.Error())
+			return
+		}
+	}
+
+	var n int
+	packetChan := make(chan ProxiedPacket, 100)
+
+	go func() {
+		for {
+			payload := make([]byte, 1500)
+			n, proxyWriter.ClientAddr, err = conn.ReadFromUDP(payload)
+			if err != nil {
+				fmt.Println("readfromudp fail: %s", err.Error())
+				continue
+			}
+			newPacket := peer.UDPPacket{
+				peer.BufferToStream(payload[:n]),
+				*srcAddr,
+				*dstAddr,
+			}
+			if payload[0] > 0x8 {
+				packetChan <- ProxiedPacket{Packet: &newPacket, Payload: payload[:n]}
+			} else { // Need priority for join packets
+				proxyWriter.ProxyClient(payload[:n], &newPacket)
+			}
+		}
+	}()
+	go func() {
+		for {
+			payload := make([]byte, 1500)
+			n, _, err := dstConn.ReadFromUDP(payload)
+			if err != nil {
+				fmt.Println("readfromudp fail: %s", err.Error())
+				continue
+			}
+			newPacket := peer.UDPPacket{
+				peer.BufferToStream(payload[:n]),
+				*dstAddr,
+				*srcAddr,
+			}
+			if payload[0] > 0x8 {
+				packetChan <- ProxiedPacket{Packet: &newPacket, Payload: payload[:n]}
+			} else { // Need priority for join packets
+				proxyWriter.ProxyServer(payload[:n], &newPacket)
+			}
+		}
+	}()
+	for {
+		select {
+		case newPacket := <- packetChan:
+			if newPacket.Packet.Source.String() == srcAddr.String() {
+				proxyWriter.ProxyClient(newPacket.Payload, newPacket.Packet)
+			} else {
+				proxyWriter.ProxyServer(newPacket.Payload, newPacket.Packet)
+			}
+		case injectedPacket := <- injectPacket:
+			proxyWriter.InjectServer(injectedPacket)
+		case _ = <- stopCaptureJob:
+			return
+		}
+	}
+	return
+}
+
+// Requires you to patch the player with memcheck bypass and rbxsig ignoring! But it could work...
+func captureFromPlayerProxy(settings *PlayerProxySettings, stopCaptureJob chan struct{}, injectPacket chan peer.RakNetPacket, packetViewer *MyPacketListView, context *peer.CommunicationContext) {
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
+		fmt.Printf("Request: %s/%s %s %v\n", req.Host, req.URL.String(), req.Method, req.Header)
+		req.URL.Host = "8.42.96.30"
+		req.URL.Scheme = "https"
+
+		if req.URL.Path == "/Game/Join.ashx" {
+			println("patching join.ashx gzip")
+			req.Header.Set("Accept-Encoding", "none")
+		}
+
+		resp, err := transport.RoundTrip(req)
+		if err != nil {
+			println("error:", err.Error())
+			return
+		}
+		defer resp.Body.Close()
+
+		for k, vv := range resp.Header {
+			for _, v := range vv {
+				w.Header().Add(k, v)
+			}
+		}
+
+		if req.URL.Path == "/Game/Join.ashx" {
+			w.Header().Set("Content-Encoding", "gzip")			
+			response, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				println("joinashx err:", err.Error())
+				return
+			}
+
+			newBuffer := bytes.NewBuffer(make([]byte, 0, len(response)))
+			result := regexp.MustCompile(`MachineAddress":"\d+.\d+.\d+.\d+","ServerPort":\d+`).ReplaceAll(response, []byte(`MachineAddress":"127.0.0.1","ServerPort":53640`))
+
+			args := regexp.MustCompile(`MachineAddress":"(\d+.\d+.\d+.\d+)","ServerPort":(\d+)`).FindSubmatch(response)
+
+			serverAddr := string(args[1]) + ":" + string(args[2])
+			go captureFromInjectionProxy("127.0.0.1:53640", serverAddr, stopCaptureJob, injectPacket, packetViewer, context)
+
+			compressStream := gzip.NewWriter(newBuffer)
+
+			_, err = compressStream.Write(result)
+			if err != nil {
+				println("joinashx gz w err:", err.Error())
+				return
+			}
+			err = compressStream.Close()
+			if err != nil {
+				println("joinashx gz close err:", err.Error())
+				return
+			}
+			w.Header().Set("Content-Length", strconv.Itoa(newBuffer.Len()))
+			w.WriteHeader(resp.StatusCode)
+
+			w.Write(newBuffer.Bytes())
+		} else {
+			io.Copy(w, resp.Body)
+		}
+	})
+	err := http.ListenAndServeTLS(":443", settings.Certfile, settings.Keyfile, nil)
+	if err != nil {
+		println("listen err:", err.Error())
+		return
+	}
 }
 
 func main() {

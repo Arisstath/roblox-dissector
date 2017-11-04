@@ -331,7 +331,7 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
                     Bools: [5]bool{true, false, false, false, true},
                     Int1: 0,
                     Int2: 0,
-                    String1: []byte("RBX0123456789ABCDEF"),
+                    ReferentString: []byte("RBX0123456789ABCDEF"),
                 }
                 for i, className := range services {
                     classID := context.StaticSchema.ClassesByName[className]
@@ -356,7 +356,6 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 					}
 
                     initInstances.Items[i] = item
-                    context.RefStringsByReferent[instance.Reference] = "RBX0123456789ABCDEF"
                 }
 
                 client.Writer.WriteGeneric(context, 0x81, initInstances, 3, addr)
@@ -399,7 +398,6 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 				}
 				client.InstanceID++
 				onlyWorkspaceJoinData.Instances = append(onlyWorkspaceJoinData.Instances, InputObject)
-				context.RefStringsByReferent[InputObject.Reference] = "RBX0123456789ABCDEF"
 				workspace.AddChild(InputObject)
 
 				Explosion := &rbxfile.Instance{
@@ -410,7 +408,6 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 				}
 				client.InstanceID++
 				onlyWorkspaceJoinData.Instances = append(onlyWorkspaceJoinData.Instances, Explosion)
-				context.RefStringsByReferent[Explosion.Reference] = "RBX0123456789ABCDEF"
 				workspace.AddChild(Explosion)
 
 				ParabolaAdornment := &rbxfile.Instance{
@@ -421,7 +418,6 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 				}
 				client.InstanceID++
 				onlyWorkspaceJoinData.Instances = append(onlyWorkspaceJoinData.Instances, ParabolaAdornment)
-				context.RefStringsByReferent[ParabolaAdornment.Reference] = "RBX0123456789ABCDEF"
 				workspace.AddChild(ParabolaAdornment)
 
 				Terrain := &rbxfile.Instance{
@@ -432,7 +428,6 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 				}
 				client.InstanceID++
 				onlyWorkspaceJoinData.Instances = append(onlyWorkspaceJoinData.Instances, Terrain)
-				context.RefStringsByReferent[Terrain.Reference] = "RBX0123456789ABCDEF"
 				workspace.AddChild(Terrain)
 
 				Status := &rbxfile.Instance{
@@ -443,7 +438,6 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 				}
 				client.InstanceID++
 				onlyWorkspaceJoinData.Instances = append(onlyWorkspaceJoinData.Instances, Status)
-				context.RefStringsByReferent[Status.Reference] = "RBX0123456789ABCDEF"
 				workspace.AddChild(Status)
 
 				PlayerGui := &rbxfile.Instance{
@@ -454,7 +448,6 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 				}
 				client.InstanceID++
 				onlyWorkspaceJoinData.Instances = append(onlyWorkspaceJoinData.Instances, PlayerGui)
-				context.RefStringsByReferent[PlayerGui.Reference] = "RBX0123456789ABCDEF"
 				workspace.AddChild(PlayerGui)
 
 				client.Writer.WriteGeneric(context, 0x83, &Packet83Layer{
@@ -471,7 +464,6 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 				}
 				client.InstanceID++
 				allDefaultsJoinData.Instances = append(allDefaultsJoinData.Instances, humanoid)
-				context.RefStringsByReferent[humanoid.Reference] = "RBX0123456789ABCDEF"
 				replicatedStorage.AddChild(humanoid)
 				animator := &rbxfile.Instance{
 					ClassName: "Animator",
@@ -481,7 +473,6 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 				}
 				client.InstanceID++
 				allDefaultsJoinData.Instances = append(allDefaultsJoinData.Instances, animator)
-				context.RefStringsByReferent[animator.Reference] = "RBX0123456789ABCDEF"
 				humanoid.AddChild(animator)
 
 				part := &rbxfile.Instance{
@@ -492,7 +483,6 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 				}
 				client.InstanceID++
 				allDefaultsJoinData.Instances = append(allDefaultsJoinData.Instances, part)
-				context.RefStringsByReferent[part.Reference] = "RBX0123456789ABCDEF"
 				replicatedStorage.AddChild(part)
 				attachment := &rbxfile.Instance{
 					ClassName: "Attachment",
@@ -502,7 +492,6 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 				}
 				client.InstanceID++
 				allDefaultsJoinData.Instances = append(allDefaultsJoinData.Instances, attachment)
-				context.RefStringsByReferent[attachment.Reference] = "RBX0123456789ABCDEF"
 				part.AddChild(attachment)
 
 
@@ -523,7 +512,6 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
                     client.InstanceID++
 
 					allDefaultsJoinData.Instances = append(allDefaultsJoinData.Instances, instance)
-                    context.RefStringsByReferent[instance.Reference] = "RBX0123456789ABCDEF"
 
 					replicatedStorage.AddChild(instance)
 				}

@@ -12,9 +12,11 @@ type Packet83_03 struct {
 
 func DecodePacket83_03(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
 	var err error
+	isClient := context.IsClient(packet.Source)
+
 	layer := &Packet83_03{}
 	thisBitstream := packet.Stream
-    referent, err := thisBitstream.ReadObject(false, context)
+    referent, err := thisBitstream.ReadObject(isClient, false, context)
 	if err != nil {
 		return layer, err
 	}
@@ -31,10 +33,11 @@ func DecodePacket83_03(packet *UDPPacket, context *CommunicationContext) (interf
 		}
 
         var referent Referent
-        referent, err = thisBitstream.ReadObject(false, context)
+        referent, err = thisBitstream.ReadObject(isClient, false, context)
         instance := context.InstancesByReferent.TryGetInstance(referent)
 		result := rbxfile.ValueReference{instance}
 		layer.Value = result
+		layer.PropertyName = "Parent"
 
 		context.InstancesByReferent.OnAddInstance(referent, func(instance *rbxfile.Instance) {
 			result.AddChild(instance)
@@ -53,7 +56,7 @@ func DecodePacket83_03(packet *UDPPacket, context *CommunicationContext) (interf
         return layer, err
     }
 
-    layer.Value, err = schema.Decode(ROUND_UPDATE, packet, context)
+    layer.Value, err = schema.Decode(isClient, ROUND_UPDATE, packet, context)
 
     context.InstancesByReferent.OnAddInstance(referent, func(instance *rbxfile.Instance) {
         layer.Instance = instance
@@ -63,6 +66,26 @@ func DecodePacket83_03(packet *UDPPacket, context *CommunicationContext) (interf
     return layer, err
 }
 
-func (layer *Packet83_03) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
-    return nil
+func (layer *Packet83_03) Serialize(isClient bool, context *CommunicationContext, stream *ExtendedWriter) error {
+	err := stream.WriteObject(isClient, layer.Instance, false, context)
+	if err != nil {
+		return err
+	}
+
+	if layer.PropertyName == "Parent" {
+		err = stream.WriteUint16BE(uint16(len(context.StaticSchema.Properties)))
+	} else {
+		err = stream.WriteUint16BE(uint16(context.StaticSchema.PropertiesByName[layer.Instance.ClassName + "." + layer.PropertyName]))
+	}
+	if err != nil {
+		return err
+	}
+
+	err = stream.WriteBool(layer.Bool1)
+	if err != nil {
+		return err
+	}
+
+	err = context.StaticSchema.Properties[context.StaticSchema.PropertiesByName[layer.PropertyName]].Serialize(isClient, layer.Value, ROUND_UPDATE, context, stream)
+	return err
 }

@@ -65,7 +65,7 @@ func DecodeReliabilityLayer(packet *UDPPacket, context *CommunicationContext, ra
 		if err != nil {
 			return layer, err
 		}
-		if reliablePacket.LengthInBits == 0 {
+		if reliablePacket.LengthInBits < 8 {
 			return layer, errors.New("Invalid length of 0!")
 		}
 
@@ -144,7 +144,7 @@ func DecodeReliabilityLayer(packet *UDPPacket, context *CommunicationContext, ra
 	return layer, nil
 }
 
-func (layer *ReliabilityLayer) Serialize(context *CommunicationContext, outputStream *ExtendedWriter) error {
+func (layer *ReliabilityLayer) Serialize(isClient bool, context *CommunicationContext, outputStream *ExtendedWriter) error {
 	var err error
 	for _, packet := range layer.Packets {
 		reliability := uint64(packet.Reliability)

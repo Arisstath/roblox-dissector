@@ -57,6 +57,11 @@ type DefaultsSettings struct {
 	Files []string
 }
 
+type PlayerProxySettings struct {
+	Certfile string
+	Keyfile string
+}
+
 type SelectionHandlerList map[uint64](func ())
 type MyPacketListView struct {
 	*widgets.QTreeView
@@ -74,6 +79,7 @@ type MyPacketListView struct {
 
 	IsCapturing bool
 	StopCaptureJob chan struct{}
+	InjectPacket chan peer.RakNetPacket
 
 	StudioVersion string
 	PlayerVersion string
@@ -83,6 +89,7 @@ type MyPacketListView struct {
 	PlayerSettings *PlayerSettings
     ServerSettings *ServerSettings
 	DefaultsSettings *DefaultsSettings
+	PlayerProxySettings *PlayerProxySettings
 	Context *peer.CommunicationContext
 }
 
@@ -116,6 +123,7 @@ func NewMyPacketListView(parent widgets.QWidget_ITF) *MyPacketListView {
 		
 		false,
 		make(chan struct{}),
+		make(chan peer.RakNetPacket),
 
 		"",
 		"",
@@ -125,6 +133,7 @@ func NewMyPacketListView(parent widgets.QWidget_ITF) *MyPacketListView {
 		&PlayerSettings{},
         &ServerSettings{},
 		&DefaultsSettings{},
+		&PlayerProxySettings{},
 		nil,
 	}
 	return new
@@ -219,7 +228,7 @@ func (m *TwoWayPacketList) Add(index uint32, row []*gui.QStandardItem, packet *p
 		list = m.Server
 		cond = m.EServer
 	} else {
-		panic(errors.New("add not on server or client"))
+		panic(errors.New("add not on server or client: " + packet.Source.String() + " - " + context.Client + " - " + context.Server))
 	}
 	mutex.Lock()
 
@@ -523,6 +532,8 @@ func GUIMain() {
 	captureFileAction := captureBar.AddAction("From &file...")
 	capture4FileAction := captureBar.AddAction("From &RawCap file...")
 	captureLiveAction := captureBar.AddAction("From &live interface...")
+	captureProxyAction := captureBar.AddAction("From &proxy...")
+	captureInjectAction := captureBar.AddAction("From &injection proxy...")
 	captureStopAction := captureBar.AddAction("&Stop capture")
 
 	captureStopAction.ConnectTriggered(func(checked bool)() {
@@ -584,6 +595,44 @@ func GUIMain() {
 			}()
 		})
 	})
+	captureProxyAction.ConnectTriggered(func(checked bool)() {
+		if packetViewer.IsCapturing {
+			packetViewer.StopCaptureJob <- struct{}{}
+		}
+
+		NewProxyCaptureWidget(packetViewer, func(src string, dst string) {
+			packetViewer.IsCapturing = true
+
+			context := peer.NewCommunicationContext()
+			packetViewer.Context = context
+
+			packetViewer.Reset()
+
+			go func() {
+				captureFromProxy(src, dst, packetViewer.StopCaptureJob, packetViewer, context)
+				packetViewer.IsCapturing = false
+			}()
+		})
+	})
+	captureInjectAction.ConnectTriggered(func(checked bool)() {
+		if packetViewer.IsCapturing {
+			packetViewer.StopCaptureJob <- struct{}{}
+		}
+
+		NewProxyCaptureWidget(packetViewer, func(src string, dst string) {
+			packetViewer.IsCapturing = true
+
+			context := peer.NewCommunicationContext()
+			packetViewer.Context = context
+
+			packetViewer.Reset()
+
+			go func() {
+				captureFromInjectionProxy(src, dst, packetViewer.StopCaptureJob, packetViewer.InjectPacket, packetViewer, context)
+				packetViewer.IsCapturing = false
+			}()
+		})
+	})
 
 	resp, err := http.Get("http://setup.roblox.com/versionQTStudio")
 	if err != nil {
@@ -621,7 +670,7 @@ func GUIMain() {
 		resp.Body.Close()
 	}
 
-	packetViewer.StudioSettings.Flags = `-testMode`
+	packetViewer.StudioSettings.Flags = ``
 	packetViewer.StudioSettings.Port = "53640"
 	packetViewer.PlayerSettings.Flags = `--play -a https://www.roblox.com/Login/Negotiate.ashx --launchtime=1503226579241`
 	packetViewer.PlayerSettings.AuthTicket = `Guest%3A-306579839`
@@ -634,16 +683,10 @@ func GUIMain() {
 	startServerAction.ConnectTriggered(func(checked bool)() {
 		NewStudioChooser(packetViewer, packetViewer.StudioSettings, func(settings *StudioSettings) {
 			packetViewer.StudioSettings = settings
-			port, err := strconv.Atoi(settings.Port)
-			if err != nil {
-				println("while converting port:", err.Error())
-				return
-			}
 
-			flags := []string{"-fileLocation", settings.RBXL}
-			script := fmt.Sprintf(`game:GetService'NetworkServer':Start(%d)`, port)
-			flags = append(flags, strings.Split(settings.Flags, " ")...)
-			flags = append(flags, "-script", script)
+			flags := []string{}
+			flags = append(flags, "-task", "StartServer")
+			flags = append(flags, "-port", settings.Port, "-creatorId", "0", "-creatorType", "0", "-placeVersion")
 			err = exec.Command(settings.Location, flags...).Start()
 			if err != nil {
 				println("while starting process:", err.Error())
@@ -653,16 +696,10 @@ func GUIMain() {
 	startClientAction.ConnectTriggered(func(checked bool)() {
 		NewStudioChooser(packetViewer, packetViewer.StudioSettings, func(settings *StudioSettings) {
 			packetViewer.StudioSettings = settings
-			port, err := strconv.Atoi(settings.Port)
-			if err != nil {
-				println("while converting port:", err.Error())
-				return
-			}
 
 			flags := []string{}
-			script := fmt.Sprintf(`game:GetService'NetworkClient':PlayerConnect(0, %q, %d)`, settings.Address, port)
-			flags = append(flags, strings.Split(settings.Flags, " ")...)
-			flags = append(flags, "-script", script)
+			flags = append(flags, "-task", "StartClient")
+			flags = append(flags, "-port", settings.Port)
 			err = exec.Command(settings.Location, flags...).Start()
 			if err != nil {
 				println("while starting process:", err.Error())
@@ -705,6 +742,52 @@ func GUIMain() {
 		NewFindDefaultsWidget(window, packetViewer.DefaultsSettings, func(settings *DefaultsSettings)() {
 			packetViewer.DefaultValues = ParseDefaultValues(settings.Files)
 		})
+	})
+
+	viewCache := toolsBar.AddAction("&View string cache...")
+	viewCache.ConnectTriggered(func(checked bool)() {
+		NewViewCacheWidget(packetViewer, packetViewer.Context)
+	})
+
+	injectChat := toolsBar.AddAction("Inject &chat message...")
+	injectChat.ConnectTriggered(func(checked bool)() {
+		if packetViewer.Context == nil {
+			println("context is nil!")
+			return
+		} else if packetViewer.Context.DataModel == nil {
+			println("datamodel instances is nil!")
+			return
+		}
+
+		dataModel := packetViewer.Context.DataModel.Instances
+		var players, replicatedStorage *rbxfile.Instance
+		for i := 0; i < len(dataModel); i++ {
+			if dataModel[i].ClassName == "Players" {
+				players = dataModel[i]
+			} else if dataModel[i].ClassName == "ReplicatedStorage" {
+				replicatedStorage = dataModel[i]
+			}
+		}
+		player := players.Children[0]
+		println("chose player", player.Name())
+		chatEvent := replicatedStorage.FindFirstChild("DefaultChatSystemChatEvents", false).FindFirstChild("SayMessageRequest", false)
+		subpacket := &peer.Packet83_07{
+			Instance: chatEvent,
+			EventName: "OnServerEvent",
+			Event: &peer.ReplicationEvent{
+				Arguments: []rbxfile.Value{
+					rbxfile.ValueReference{Instance: player},
+					rbxfile.ValueTuple{
+						rbxfile.ValueString("Hello, this is a hacked message"),
+						rbxfile.ValueString("All"),
+					},
+				},
+			},
+		}
+
+		packetViewer.InjectPacket <- &peer.Packet83Layer{
+			SubPackets: []peer.Packet83Subpacket{subpacket},
+		}
 	})
 
 	peersBar := window.MenuBar().AddMenu2("&Peers...")

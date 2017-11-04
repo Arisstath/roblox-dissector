@@ -24,7 +24,7 @@ func DecodePacket1BLayer(packet *UDPPacket, context *CommunicationContext) (inte
 	return layer, err
 }
 
-func (layer *Packet1BLayer) Serialize(context *CommunicationContext, stream *ExtendedWriter) error {
+func (layer *Packet1BLayer) Serialize(isClient bool,context *CommunicationContext, stream *ExtendedWriter) error {
 	var err error
 	err = stream.WriteByte(0x1B)
 	if err != nil {
