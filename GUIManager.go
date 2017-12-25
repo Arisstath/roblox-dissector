@@ -4,6 +4,7 @@ import "github.com/therecipe/qt/gui"
 import "github.com/therecipe/qt/core"
 import "github.com/gskartwii/roblox-dissector/peer"
 import "github.com/gskartwii/rbxfile"
+import "github.com/gskartwii/rbxfile/bin"
 import "os"
 import "os/exec"
 import "fmt"
@@ -535,6 +536,12 @@ func GUIMain() {
 	captureProxyAction := captureBar.AddAction("From &proxy...")
 	captureInjectAction := captureBar.AddAction("From &injection proxy...")
 	captureStopAction := captureBar.AddAction("&Stop capture")
+	captureFromPlayerProxyAction := captureBar.AddAction("From pl&ayer proxy")
+	captureFromPlayerProxyAction.ConnectTriggered(func(checked bool)() {
+		NewPlayerProxyWidget(packetViewer, packetViewer.PlayerProxySettings, func(settings *PlayerProxySettings) {
+			captureFromPlayerProxy(settings, packetViewer.StopCaptureJob, packetViewer.InjectPacket, packetViewer, packetViewer.Context)
+		})
+	})
 
 	captureStopAction.ConnectTriggered(func(checked bool)() {
 		if packetViewer.IsCapturing {
@@ -730,6 +737,23 @@ func GUIMain() {
 
 	toolsBar := window.MenuBar().AddMenu2("&Tools")
 
+	dumperAction := toolsBar.AddAction("&DataModel dumper lite...")
+	dumperAction.ConnectTriggered(func(checked bool)() {
+		location := widgets.QFileDialog_GetSaveFileName(packetViewer, "Save as RBXL...", "", "Roblox place files (*.rbxl)", "", 0)
+		writer, err := os.OpenFile(location, os.O_RDWR|os.O_CREATE, 0666)
+		if err != nil {
+			println("while opening file:", err.Error())
+			return
+		}
+
+		stripInvalidTypes(packetViewer.Context.DataModel.Instances, packetViewer.DefaultValues)
+
+		err = bin.SerializePlace(writer, nil, packetViewer.Context.DataModel)
+		if err != nil {
+			println("while serializing place:", err.Error())
+			return
+		}
+	})
 	browseAction := toolsBar.AddAction("&Browse DataModel...")
 	browseAction.ConnectTriggered(func(checked bool)() {
 		if packetViewer.Context != nil {

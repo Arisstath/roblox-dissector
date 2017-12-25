@@ -1,6 +1,7 @@
 package peer
 import "bytes"
 import "io/ioutil"
+import "errors"
 
 const DEBUG bool = false
 type RakNetPacket interface {
@@ -58,7 +59,7 @@ func DecodeRakNetLayer(packetType byte, packet *UDPPacket, context *Communicatio
 		}
 
 		if bytes.Compare(thisOfflineMessage, OfflineMessageID) != 0 {
-			return layer, nil
+			return layer, errors.New("offline message didn't match in packet 5!")
 		}
 
 		client := packet.Source

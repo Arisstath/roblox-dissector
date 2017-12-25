@@ -415,7 +415,7 @@ func captureFromPlayerProxy(settings *PlayerProxySettings, stopCaptureJob chan s
 		}
 
 		if req.URL.Path == "/Game/Join.ashx" {
-			w.Header().Set("Content-Encoding", "gzip")			
+			w.Header().Set("Content-Encoding", "gzip")
 			response, err := ioutil.ReadAll(resp.Body)
 			if err != nil {
 				println("joinashx err:", err.Error())
@@ -423,7 +423,9 @@ func captureFromPlayerProxy(settings *PlayerProxySettings, stopCaptureJob chan s
 			}
 
 			newBuffer := bytes.NewBuffer(make([]byte, 0, len(response)))
-			result := regexp.MustCompile(`MachineAddress":"\d+.\d+.\d+.\d+","ServerPort":\d+`).ReplaceAll(response, []byte(`MachineAddress":"127.0.0.1","ServerPort":53640`))
+			//result := regexp.MustCompile(`MachineAddress":"\d+.\d+.\d+.\d+","ServerPort":\d+`).ReplaceAll(response, []byte(`MachineAddress":"127.0.0.1","ServerPort":53640`))
+			result := []byte(`--rbxsig%QtNI8SiXF7yjeJg6d4S2J8Jo5PeMtgp7xwVM/VMkoMLRb49dWV/8O7NEU8xrFidalt/bQ3/3FLsBupknl2fJLm1MPRSTDK5NCYjzwqn6xOrU/yt7ZUsOA7UHUHRqc4Fq/8wBleW/sbc07evcnP0F/ukFjh/NgYq5u0LV58jjSzs=%
+{"ClientPort":0,"MachineAddress":"localhost","ServerPort":53640,"PingUrl":"","PingInterval":300,"UserName":"Player","SeleniumTestMode":false,"UserId":0,"SuperSafeChat":true,"CharacterAppearance":"https://api.sitetest3.robloxlabs.com/v1.1/avatar-fetch/?placeId=0&userId=0","ClientTicket":"11/12/2017 3:47:30 AM;c3MUdaYefbSrJEd51QITWKVPMea12cMN2vwWFahiBKaiTTvM280xDTabnOsFsmQLgvhqLeVAgcvAzAtGgVTLWl64BVzvQA7FOaXqjgaFWwtt1I8Zu37nnsp00PNBwtKuUeZ5uTe2e2U/S6Z2xy9zSCxMuLcC78Yua/5Y6ppAkE4=;bfMULtcz6pXut6DQyGm2K7IWamsW+pBFlWwfQXVwgqJWvd+c85wRQIG0VOhuznN0Oqjgalt47qjAxJbflnPqyb02Jrh+hbmKpRe/VoQWJxPC6i1atq/fpiO5lO8ysLOgxR42I4BxHuBDN59zS9GAkzhqckLnSqvty4bmQ7tIN48=","NewClientTicket":"11/12/2017 3:47:30 AM;j0wgKOqDExCg/mlccmtbzEFS4GayxlGb3w3b9liZhTbPt07YDkhqda3+hcVHileH5tu3U6V6+e7/vsv992lTtRjWz9n+HqT7aECecfyMtmC7dEitpmgjgDChMX+TS43Kp2aEfLizRWkGRQxBeDH21x8OfaLiqDCRBbgP29Fl0bU=;bfMULtcz6pXut6DQyGm2K7IWamsW+pBFlWwfQXVwgqJWvd+c85wRQIG0VOhuznN0Oqjgalt47qjAxJbflnPqyb02Jrh+hbmKpRe/VoQWJxPC6i1atq/fpiO5lO8ysLOgxR42I4BxHuBDN59zS9GAkzhqckLnSqvty4bmQ7tIN48=","GameId":"00000000-0000-0000-0000-000000000000","PlaceId":0,"MeasurementUrl":"","WaitingForCharacterGuid":"774fc427-1665-4cb8-b0e5-50618ead81ce","BaseUrl":"http://assetgame.sitetest3.robloxlabs.com/","ChatStyle":"Classic","VendorId":0,"ScreenShotInfo":"","VideoInfo":"<?xml version=\"1.0\"?><entry xmlns=\"http://www.w3.org/2005/Atom\" xmlns:media=\"http://search.yahoo.com/mrss/\" xmlns:yt=\"http://gdata.youtube.com/schemas/2007\"><media:group><media:title type=\"plain\"><![CDATA[ROBLOX Place]]></media:title><media:description type=\"plain\"><![CDATA[ For more games visit http://www.roblox.com]]></media:description><media:category scheme=\"http://gdata.youtube.com/schemas/2007/categories.cat\">Games</media:category><media:keywords>ROBLOX, video, free game, online virtual world</media:keywords></media:group></entry>","CreatorId":0,"CreatorTypeEnum":"User","MembershipType":"None","AccountAge":0,"CookieStoreFirstTimePlayKey":"rbx_evt_ftp","CookieStoreFiveMinutePlayKey":"rbx_evt_fmp","CookieStoreEnabled":true,"IsRobloxPlace":false,"GenerateTeleportJoin":false,"IsUnknownOrUnder13":true,"GameChatType":"NoOne","SessionId":"87aa47bb-5eee-4599-982b-da0b07c913ba|00000000-0000-0000-0000-000000000000|0|109.240.79.235|5|2017-11-12T09:47:31.1863008Z|0|null|null|null|null|null|null","DataCenterId":0,"UniverseId":0,"BrowserTrackerId":0,"UsePortraitMode":false,"FollowUserId":0,"characterAppearanceId":0}`)
 
 			args := regexp.MustCompile(`MachineAddress":"(\d+.\d+.\d+.\d+)","ServerPort":(\d+)`).FindSubmatch(response)
 
