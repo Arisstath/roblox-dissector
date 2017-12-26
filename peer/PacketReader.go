@@ -14,7 +14,6 @@ var PacketDecoders = map[byte]DecoderFunc{
 	0x10: DecodePacket10Layer,
 	0x13: DecodePacket13Layer,
 
-	//0x8A: DecodePacket8ALayer,
 	0x81: DecodePacket81Layer,
 	0x82: DecodePacket82Layer,
 	0x83: DecodePacket83Layer,
@@ -201,17 +200,36 @@ func (this *PacketReader) ReadGeneric(packetType uint8, layers *PacketLayers, pa
 		layers.Reliability.PacketType = packetType
 		layers.Reliability.HasPacketType = true
 	}
-
-	decoder := PacketDecoders[packetType]
-	if decoder != nil {
-		layers.Main, err = decoder(packet, this.Context)
-
+	if packetType == 0x8A {
+		println("will read ", layers.Reliability.LengthInBits)
+		data, err := packet.Stream.ReadString(int((layers.Reliability.LengthInBits+7)/8) - 1)
 		if err != nil {
+			println("failed while reading packet8a")
 			this.ErrorHandler(errors.New(fmt.Sprintf("Failed to decode reliable packet %02X: %s", packetType, err.Error())))
 
 			return
 		}
+		layers.Main, err = DecodePacket8ALayer(packet, this.Context, data)
+
+		if err != nil {
+			println("decode fail")
+			this.ErrorHandler(errors.New(fmt.Sprintf("Failed to decode reliable packet %02X: %s", packetType, err.Error())))
+
+			return
+		}
+	} else {
+		decoder := PacketDecoders[packetType]
+		if decoder != nil {
+			layers.Main, err = decoder(packet, this.Context)
+
+			if err != nil {
+				this.ErrorHandler(errors.New(fmt.Sprintf("Failed to decode reliable packet %02X: %s", packetType, err.Error())))
+
+				return
+			}
+		}
 	}
+
 	this.FullReliableHandler(packetType, packet, layers)
 }
 

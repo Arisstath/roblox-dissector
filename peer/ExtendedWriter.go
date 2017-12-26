@@ -4,6 +4,7 @@ import "encoding/binary"
 import "net"
 import "github.com/gskartwii/rbxfile"
 import "math"
+import "bytes"
 
 type ExtendedWriter struct {
 	*bitstream.BitWriter
@@ -259,4 +260,67 @@ func (b *ExtendedWriter) WriteObject(isClient bool, object *rbxfile.Instance, is
 		return b.WriteUint32LE(referent)
 	}
     return nil
+}
+
+func (b *ExtendedWriter) WriteHuffman(value []byte) error {
+	encodedBuffer := new(bytes.Buffer)
+	encodedStream := &ExtendedWriter{bitstream.NewWriter(encodedBuffer)}
+
+	bitLen, err := englishTree.EncodeArray(encodedStream, value)
+	if err != nil {
+		return err
+	}
+	err = encodedStream.Flush(bitstream.Bit(false))
+	if err != nil {
+		return err
+	}
+
+	err = b.WriteUint32BE(uint32(len(value) + 1))
+	if err != nil {
+		return err
+	}
+	err = b.WriteUint32BECompressed(uint32(bitLen))
+	if err != nil {
+		return err
+	}
+	return b.AllBytes(encodedBuffer.Bytes())
+}
+
+func (b *ExtendedWriter) WriteCompressed(value []byte, length uint32, isUnsigned bool) error {
+	var byteMatch, halfByteMatch byte
+	var err error
+	if !isUnsigned {
+		byteMatch = 0xFF
+		halfByteMatch = 0xF0
+	}
+	var currentByte uint32
+	for currentByte = length >> 3 - 1; currentByte > 0; currentByte-- {
+		isMatch := value[currentByte] == byteMatch
+		err = b.WriteBool(isMatch)
+		if err != nil {
+			return err
+		}
+		if !isMatch {
+			return b.AllBytes(value[:currentByte+1])
+		}
+	}
+	lastByte := value[0]
+	if lastByte & 0xF0 == halfByteMatch {
+		err = b.WriteBool(true)
+		if err != nil {
+			return err
+		}
+		return b.Bits(4, uint64(lastByte))
+	}
+	err = b.WriteBool(false)
+	if err != nil {
+		return err
+	}
+	return b.WriteByte(lastByte)
+}
+func (b *ExtendedWriter) WriteUint32BECompressed(value uint32) error {
+	println("writing compressed val", value)
+	val := make([]byte, 4)
+	binary.BigEndian.PutUint32(val, value)
+	return b.WriteCompressed(val, 32, true)
 }

@@ -536,6 +536,7 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 			fmt.Printf("Wrote %d bytes, err: %s", num, err.Error())
 		}
 	}
+	
 
 	client = &Client{
 		Reader: packetReader,

@@ -233,6 +233,26 @@ func DecodePacket09Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	}
 	return layer, err
 }
+func (layer *Packet09Layer) Serialize(isClient bool, context *CommunicationContext, stream *ExtendedWriter) error {
+	var err error
+	err = stream.WriteByte(0x09)
+	if err != nil {
+		return err
+	}
+	err = stream.WriteUint64BE(layer.GUID)
+	if err != nil {
+		return err
+	}
+	err = stream.WriteUint64BE(layer.Timestamp)
+	if err != nil {
+		return err
+	}
+	err = stream.WriteBoolByte(layer.UseSecurity)
+	if err != nil {
+		return err
+	}
+	return stream.AllBytes(layer.Password)
+}
 
 func DecodePacket10Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
 	layer := NewPacket10Layer()
@@ -313,4 +333,31 @@ func DecodePacket13Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	}
 	layer.SendPongTime, err = thisBitstream.ReadUint64BE()
 	return layer, err
+}
+func (layer *Packet13Layer) Serialize(isClient bool,context *CommunicationContext, stream *ExtendedWriter) error {
+	var err error
+	err = stream.WriteByte(0x13)
+	if err != nil {
+		return err
+	}
+
+	err = stream.WriteAddress(layer.IPAddress)
+	if err != nil {
+		return err
+	}
+	for i := 0; i < 10; i++ {
+		err = stream.WriteAddress(layer.Addresses[i])
+		if err != nil {
+			return err
+		}
+	}
+	err = stream.WriteUint64BE(layer.SendPingTime)
+	if err != nil {
+		return err
+	}
+	err = stream.WriteUint64BE(layer.SendPongTime)
+	if err != nil {
+		return err
+	}
+	return err
 }

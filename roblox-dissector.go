@@ -77,6 +77,7 @@ var ActivationCallbacks map[byte]ActivationCallback = map[byte]ActivationCallbac
     0x97: ShowPacket97,
 	0x85: ShowPacket85,
 	0x86: ShowPacket86,
+	0x8A: ShowPacket8A,
 }
 
 func captureJob(handle *pcap.Handle, useIPv4 bool, stopCaptureJob chan struct{}, packetViewer *MyPacketListView, context *peer.CommunicationContext) {
@@ -460,5 +461,7 @@ func captureFromPlayerProxy(settings *PlayerProxySettings, stopCaptureJob chan s
 }
 
 func main() {
+	addr, _ := net.ResolveUDPAddr("udp", "127.0.0.1:53640")
+	go peer.StartClient(*addr)
 	GUIMain()
 }
