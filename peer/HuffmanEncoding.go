@@ -109,7 +109,6 @@ func GenerateHuffmanFromFrequencyTable(frequencyTable []uint32) *HuffmanEncoding
 		}
 		this.encodingTable[counter].bitLength = bitlen
 		this.encodingTable[counter].encoding = buffer
-		println("encoding for", counter, bitlen, buffer)
 	}
 	return this
 }
@@ -155,7 +154,6 @@ func (tree *HuffmanEncodingTree) EncodeArray(stream *ExtendedWriter, value []byt
 	}
 	if bitsUsed % 8 != 0 {
 		remainingBits := 8 - bitsUsed % 8
-		println("remaining bits in", len(value), bitsUsed, remainingBits)
 		for counter := 0; counter < 256; counter++ {
 			if tree.encodingTable[counter].bitLength > remainingBits {
 				bitsUsed += remainingBits

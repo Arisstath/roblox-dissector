@@ -517,10 +517,20 @@ func (b *ExtendedWriter) WriteSystemAddress(isClient bool, val rbxfile.ValueSyst
 	if err != nil {
 		return err
 	}
+	for i := 0; i < 4; i++ {
+		addr.IP[i] = addr.IP[i] ^ 0xFF // bitwise NOT
+	}
+
 	err = b.Bytes(4, addr.IP)
 	if err != nil {
 		return err
 	}
+
+	// in case the value will be used again
+	for i := 0; i < 4; i++ {
+		addr.IP[i] = addr.IP[i] ^ 0xFF
+	}
+
 	return b.WriteUint16BE(uint16(addr.Port))
 }
 

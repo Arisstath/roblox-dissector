@@ -27,12 +27,12 @@ func DecodePacket83_0B(packet *UDPPacket, context *CommunicationContext) (interf
 
 	layer = NewPacket83_0BLayer(int(arrayLen))
 
-	gzipStream, err := thisBitstream.RegionToGZipStream()
+	zstdStream, err := thisBitstream.RegionToZStdStream()
 	if err != nil {
 		return layer, err
 	}
 
-	newPacket := &UDPPacket{gzipStream, packet.Source, packet.Destination}
+	newPacket := &UDPPacket{zstdStream, packet.Source, packet.Destination}
 
 	var i uint32
 	for i = 0; i < arrayLen; i++ {
@@ -41,7 +41,7 @@ func DecodePacket83_0B(packet *UDPPacket, context *CommunicationContext) (interf
 			return layer, err
 		}
 
-		gzipStream.Align()
+		zstdStream.Align()
 	}
 	return layer, nil
 }
@@ -54,23 +54,23 @@ func (layer *Packet83_0B) Serialize(isClient bool, context *CommunicationContext
     }
 
     err = stream.WriteUint32BE(uint32(len(layer.Instances)))
-    gzipBuf := bytes.NewBuffer([]byte{})
-    middleStream := gzip.NewWriter(gzipBuf)
+    zstdBuf := bytes.NewBuffer([]byte{})
+    middleStream := gzip.NewWriter(zstdBuf)
     defer middleStream.Close()
-    gzipStream := &ExtendedWriter{bitstream.NewWriter(middleStream)}
+    zstdStream := &ExtendedWriter{bitstream.NewWriter(middleStream)}
 
     for i := 0; i < len(layer.Instances); i++ {
-        err = SerializeReplicationInstance(isClient, layer.Instances[i], true, context, gzipStream)
+        err = SerializeReplicationInstance(isClient, layer.Instances[i], true, context, zstdStream)
         if err != nil {
             return err
         }
-        err = gzipStream.Align()
+        err = zstdStream.Align()
         if err != nil {
             return err
         }
     }
 
-    err = gzipStream.Flush(bitstream.Zero)
+    err = zstdStream.Flush(bitstream.Zero)
     if err != nil {
         return err
     }
@@ -82,10 +82,10 @@ func (layer *Packet83_0B) Serialize(isClient bool, context *CommunicationContext
     if err != nil {
         return err
     }
-    err = stream.WriteUint32BE(uint32(gzipBuf.Len()))
+    err = stream.WriteUint32BE(uint32(zstdBuf.Len()))
     if err != nil {
         return err
     }
-    err = stream.AllBytes(gzipBuf.Bytes())
+    err = stream.AllBytes(zstdBuf.Bytes())
     return err
 }

@@ -481,6 +481,10 @@ func (b *ExtendedReader) ReadSystemAddress(isClient bool, isJoinData bool, conte
 	if err != nil {
 		return thisAddress, err
 	}
+	for i := 0; i < 4; i++ {
+		thisAddr.IP[i] = thisAddr.IP[i] ^ 0xFF // bitwise NOT
+	}
+
 	port, err := b.ReadUint16BE()
 	thisAddr.Port = int(port)
 	if err != nil {

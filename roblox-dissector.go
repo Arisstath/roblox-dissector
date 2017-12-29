@@ -9,12 +9,9 @@ import "time"
 import "net"
 import "net/http"
 import "io"
-import "io/ioutil"
 import "crypto/tls"
-import "compress/gzip"
-import "regexp"
-import "bytes"
-import "strconv"
+import "strings"
+import "os"
 
 const DEBUG bool = false
 
@@ -36,21 +33,27 @@ var PacketNames map[byte]string = map[byte]string{
 	0x18: "ID_INVALID_PASSWORD",
 	0x1B: "ID_TIMESTAMP",
 	0x1C: "ID_UNCONNECTED_PONG",
-	0x81: "ID_ROBLOX_INIT_INSTANCES",
-	0x82: "ID_ROBLOX_DICTIONARIES",
-	0x83: "ID_ROBLOX_REPLICATION",
-	0x85: "ID_ROBLOX_PHYSICS",
-	0x86: "ID_ROBLOX_TOUCH",
+	0x81: "ID_ROBLOX_INIT_INSTANCES", // ID_SET_GLOBALS
+	0x82: "ID_ROBLOX_DICTIONARIES", // ID_TEACH_DESCRIPTOR_DICTIONARIES
+	0x83: "ID_ROBLOX_REPLICATION", // ID_DATA
+	0x85: "ID_ROBLOX_PHYSICS", // ID_PHYSICS
+	0x86: "ID_ROBLOX_TOUCH", // ID_TOUCHES
+	0x87: "ID_ROBLOX_CHAT_ALL", // unused
+	0x88: "ID_ROBLOX_CHAT_TEAM", // unused
 	0x89: "ID_ROBLOX_REPORT_ABUSE",
-	0x8A: "ID_ROBLOX_AUTH",
+	0x8A: "ID_ROBLOX_AUTH", // ID_SUBMIT_TICKET
+	0x8B: "ID_ROBLOX_CHAT_GAME", // unused
+	0x8C: "ID_ROBLOX_CHAT_PLAYER", // unused
+	0x8D: "ID_ROBLOX_CLUSTER", // ???
 	0x8E: "ID_ROBLOX_PROTOCOL_MISMATCH",
 	0x8F: "ID_ROBLOX_INITIAL_SPAWN_NAME",
-	0x90: "ID_ROBLOX_SCHEMA_VERSION",
-	0x91: "ID_ROBLOX_NETWORK_SCHEMA",
-	0x92: "ID_ROBLOX_START_AUTH_THREAD",
-	0x93: "ID_ROBLOX_NETWORK_PARAMS",
-	0x94: "ID_ROBLOX_HASH_REJECTED",
-	0x95: "ID_ROBLOX_SECURITY_KEY_REJECTED",
+	0x90: "ID_ROBLOX_REQUEST_PARAMS", // ID_PROTOCOL_SYNC
+	0x91: "ID_ROBLOX_NETWORK_SCHEMA", // ID_SCHEMA_SYNC
+	0x92: "ID_ROBLOX_VERIFY_PLACEID", // ID_PLACEID_VERIFICATION
+	0x93: "ID_ROBLOX_NETWORK_PARAMS", // ID_DICTIONARY_FORMAT
+	0x94: "ID_ROBLOX_HASH_REJECTED", // ID_HASH_MISMATCH
+	0x95: "ID_ROBLOX_SECURITY_KEY_REJECTED", // ID_SECURITYKEY_MISMATCH
+	0x96: "ID_ROBLOX_REQUEST_STATS",
 	0x97: "ID_ROBLOX_NEW_SCHEMA",
 }
 
@@ -393,16 +396,10 @@ func captureFromPlayerProxy(settings *PlayerProxySettings, stopCaptureJob chan s
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
-		fmt.Printf("Request: %s/%s %s %v\n", req.Host, req.URL.String(), req.Method, req.Header)
 		req.URL.Host = "8.42.96.30"
 		req.URL.Scheme = "https"
-
-		if req.URL.Path == "/Game/Join.ashx" {
-			println("patching join.ashx gzip")
-			req.Header.Set("Accept-Encoding", "none")
-		}
-
 		resp, err := transport.RoundTrip(req)
+		fmt.Printf("Request: %s/%s %s %v %v\n", req.Host, req.URL.String(), req.Method, req.Header, resp.Header)
 		if err != nil {
 			println("error:", err.Error())
 			return
@@ -414,44 +411,16 @@ func captureFromPlayerProxy(settings *PlayerProxySettings, stopCaptureJob chan s
 				w.Header().Add(k, v)
 			}
 		}
-
-		if req.URL.Path == "/Game/Join.ashx" {
-			w.Header().Set("Content-Encoding", "gzip")
-			response, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-				println("joinashx err:", err.Error())
-				return
-			}
-
-			newBuffer := bytes.NewBuffer(make([]byte, 0, len(response)))
-			//result := regexp.MustCompile(`MachineAddress":"\d+.\d+.\d+.\d+","ServerPort":\d+`).ReplaceAll(response, []byte(`MachineAddress":"127.0.0.1","ServerPort":53640`))
-			result := []byte(`--rbxsig%QtNI8SiXF7yjeJg6d4S2J8Jo5PeMtgp7xwVM/VMkoMLRb49dWV/8O7NEU8xrFidalt/bQ3/3FLsBupknl2fJLm1MPRSTDK5NCYjzwqn6xOrU/yt7ZUsOA7UHUHRqc4Fq/8wBleW/sbc07evcnP0F/ukFjh/NgYq5u0LV58jjSzs=%
-{"ClientPort":0,"MachineAddress":"localhost","ServerPort":53640,"PingUrl":"","PingInterval":300,"UserName":"Player","SeleniumTestMode":false,"UserId":0,"SuperSafeChat":true,"CharacterAppearance":"https://api.sitetest3.robloxlabs.com/v1.1/avatar-fetch/?placeId=0&userId=0","ClientTicket":"11/12/2017 3:47:30 AM;c3MUdaYefbSrJEd51QITWKVPMea12cMN2vwWFahiBKaiTTvM280xDTabnOsFsmQLgvhqLeVAgcvAzAtGgVTLWl64BVzvQA7FOaXqjgaFWwtt1I8Zu37nnsp00PNBwtKuUeZ5uTe2e2U/S6Z2xy9zSCxMuLcC78Yua/5Y6ppAkE4=;bfMULtcz6pXut6DQyGm2K7IWamsW+pBFlWwfQXVwgqJWvd+c85wRQIG0VOhuznN0Oqjgalt47qjAxJbflnPqyb02Jrh+hbmKpRe/VoQWJxPC6i1atq/fpiO5lO8ysLOgxR42I4BxHuBDN59zS9GAkzhqckLnSqvty4bmQ7tIN48=","NewClientTicket":"11/12/2017 3:47:30 AM;j0wgKOqDExCg/mlccmtbzEFS4GayxlGb3w3b9liZhTbPt07YDkhqda3+hcVHileH5tu3U6V6+e7/vsv992lTtRjWz9n+HqT7aECecfyMtmC7dEitpmgjgDChMX+TS43Kp2aEfLizRWkGRQxBeDH21x8OfaLiqDCRBbgP29Fl0bU=;bfMULtcz6pXut6DQyGm2K7IWamsW+pBFlWwfQXVwgqJWvd+c85wRQIG0VOhuznN0Oqjgalt47qjAxJbflnPqyb02Jrh+hbmKpRe/VoQWJxPC6i1atq/fpiO5lO8ysLOgxR42I4BxHuBDN59zS9GAkzhqckLnSqvty4bmQ7tIN48=","GameId":"00000000-0000-0000-0000-000000000000","PlaceId":0,"MeasurementUrl":"","WaitingForCharacterGuid":"774fc427-1665-4cb8-b0e5-50618ead81ce","BaseUrl":"http://assetgame.sitetest3.robloxlabs.com/","ChatStyle":"Classic","VendorId":0,"ScreenShotInfo":"","VideoInfo":"<?xml version=\"1.0\"?><entry xmlns=\"http://www.w3.org/2005/Atom\" xmlns:media=\"http://search.yahoo.com/mrss/\" xmlns:yt=\"http://gdata.youtube.com/schemas/2007\"><media:group><media:title type=\"plain\"><![CDATA[ROBLOX Place]]></media:title><media:description type=\"plain\"><![CDATA[ For more games visit http://www.roblox.com]]></media:description><media:category scheme=\"http://gdata.youtube.com/schemas/2007/categories.cat\">Games</media:category><media:keywords>ROBLOX, video, free game, online virtual world</media:keywords></media:group></entry>","CreatorId":0,"CreatorTypeEnum":"User","MembershipType":"None","AccountAge":0,"CookieStoreFirstTimePlayKey":"rbx_evt_ftp","CookieStoreFiveMinutePlayKey":"rbx_evt_fmp","CookieStoreEnabled":true,"IsRobloxPlace":false,"GenerateTeleportJoin":false,"IsUnknownOrUnder13":true,"GameChatType":"NoOne","SessionId":"87aa47bb-5eee-4599-982b-da0b07c913ba|00000000-0000-0000-0000-000000000000|0|109.240.79.235|5|2017-11-12T09:47:31.1863008Z|0|null|null|null|null|null|null","DataCenterId":0,"UniverseId":0,"BrowserTrackerId":0,"UsePortraitMode":false,"FollowUserId":0,"characterAppearanceId":0}`)
-
-			args := regexp.MustCompile(`MachineAddress":"(\d+.\d+.\d+.\d+)","ServerPort":(\d+)`).FindSubmatch(response)
-
-			serverAddr := string(args[1]) + ":" + string(args[2])
-			go captureFromInjectionProxy("127.0.0.1:53640", serverAddr, stopCaptureJob, injectPacket, packetViewer, context)
-
-			compressStream := gzip.NewWriter(newBuffer)
-
-			_, err = compressStream.Write(result)
-			if err != nil {
-				println("joinashx gz w err:", err.Error())
-				return
-			}
-			err = compressStream.Close()
-			if err != nil {
-				println("joinashx gz close err:", err.Error())
-				return
-			}
-			w.Header().Set("Content-Length", strconv.Itoa(newBuffer.Len()))
-			w.WriteHeader(resp.StatusCode)
-
-			w.Write(newBuffer.Bytes())
-		} else {
-			io.Copy(w, resp.Body)
+		println("dumping to", "dumps/" + strings.Replace(req.URL.Path, "/", "_", -1))
+		dumpfile, err := os.Create("dumps/" + strings.Replace(req.URL.Path, "/", "_", -1))
+		if err != nil {
+			println("fail:", err.Error())
+			return
 		}
+		defer dumpfile.Close()
+		tee := io.TeeReader(resp.Body, dumpfile)
+
+		io.Copy(w, tee)
 	})
 	err := http.ListenAndServeTLS(":443", settings.Certfile, settings.Keyfile, nil)
 	if err != nil {
@@ -461,7 +430,11 @@ func captureFromPlayerProxy(settings *PlayerProxySettings, stopCaptureJob chan s
 }
 
 func main() {
-	addr, _ := net.ResolveUDPAddr("udp", "127.0.0.1:53640")
-	go peer.StartClient(*addr)
+	go func() {
+		_, err := peer.StartClient()
+		if err != nil {
+			panic(err)
+		}
+	}()
 	GUIMain()
 }

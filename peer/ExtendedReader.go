@@ -8,6 +8,8 @@ import "bytes"
 import "compress/gzip"
 import "strconv"
 import "io"
+import "fmt"
+import "github.com/DataDog/zstd"
 
 var englishTree *HuffmanEncodingTree
 
@@ -458,6 +460,9 @@ func (b *ExtendedReader) ReadAddress() (*net.UDPAddr, error) {
 	if err != nil {
 		return nil, err
 	}
+	for i := 0; i < 4; i++ {
+		address[i] = address[i] ^ 0xFF // bitwise NOT
+	}
 	port, err := b.ReadUint16BE()
 	if err != nil {
 		return nil, err
@@ -495,12 +500,14 @@ func (b *ExtendedReader) RegionToGZipStream() (*ExtendedReader, error) {
 	if err != nil {
 		return nil, err
 	}
+	println("compressedLen:", compressedLen)
 
 	compressed := make([]byte, compressedLen)
 	err = b.Bytes(compressed, int(compressedLen))
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("compressed start: %v\n", compressed[:0x20])
 
 	gzipStream, err := gzip.NewReader(bytes.NewReader(compressed))
 	if err != nil {
@@ -508,6 +515,27 @@ func (b *ExtendedReader) RegionToGZipStream() (*ExtendedReader, error) {
 	}
 
 	return &ExtendedReader{bitstream.NewReader(gzipStream)}, err
+}
+
+func (b *ExtendedReader) RegionToZStdStream() (*ExtendedReader, error) {
+	compressedLen, err := b.ReadUint32BE()
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = b.ReadUint32BE()
+	if err != nil {
+		return nil, err
+	}
+
+	compressed := make([]byte, compressedLen)
+	err = b.Bytes(compressed, int(compressedLen))
+	if err != nil {
+		return nil, err
+	}
+
+	zstdStream := zstd.NewReader(bytes.NewReader(compressed))
+	return &ExtendedReader{bitstream.NewReader(zstdStream)}, err
 }
 
 func (b *ExtendedReader) ReadJoinReferent(context *CommunicationContext) (string, uint32, error) {

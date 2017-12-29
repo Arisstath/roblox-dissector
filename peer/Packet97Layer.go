@@ -153,7 +153,7 @@ func DecodePacket97Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	context.MSchema.Lock()
 	defer context.MSchema.Unlock()
 	var err error
-	stream, err := thisBitstream.RegionToGZipStream()
+	stream, err := thisBitstream.RegionToZStdStream()
 	if err != nil {
 		return layer, err
 	}

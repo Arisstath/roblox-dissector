@@ -91,10 +91,19 @@ func (b *ExtendedWriter) WriteAddress(value *net.UDPAddr) error {
 	if err != nil {
 		return err
 	}
-	err = b.Bytes(4, value.IP)
+	for i := 0; i < len(value.IP); i++ {
+		value.IP[i] = value.IP[i] ^ 0xFF // bitwise NOT
+	}
+	err = b.Bytes(4, value.IP[len(value.IP)-4:])
 	if err != nil {
 		return err
 	}
+
+	// in case the value will be used again
+	for i := 0; i < len(value.IP); i++ {
+		value.IP[i] = value.IP[i] ^ 0xFF
+	}
+
 	err = b.WriteUint16BE(uint16(value.Port))
 	return err
 }
@@ -275,7 +284,7 @@ func (b *ExtendedWriter) WriteHuffman(value []byte) error {
 		return err
 	}
 
-	err = b.WriteUint32BE(uint32(len(value) + 1))
+	err = b.WriteUint32BE(uint32(len(value)))
 	if err != nil {
 		return err
 	}

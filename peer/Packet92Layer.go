@@ -18,5 +18,9 @@ func DecodePacket92Layer(packet *UDPPacket, context *CommunicationContext) (inte
 }
 
 func (layer *Packet92Layer) Serialize(isClient bool,context *CommunicationContext, stream *ExtendedWriter) error {
+	err := stream.WriteByte(0x92)
+	if err != nil {
+		return err
+	}
 	return stream.WriteUint32BE(layer.UnknownValue)
 }

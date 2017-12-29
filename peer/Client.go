@@ -3,10 +3,24 @@ import "time"
 import "net"
 import "fmt"
 import "sort"
+import "net/http"
+import "encoding/json"
+import "strings"
 
+type PlaceLauncherResponse struct {
+	JobId string
+	Status int
+	JoinScriptUrl string
+	AuthenticationUrl string
+	AuthenticationTicket string
+}
 type JoinAshxResponse struct {
+	ClientTicket string
 	NewClientTicket string
 	SessionId string
+	MachineAddress string
+	ServerPort uint16
+	UserId int32
 }
 
 type CustomClient struct {
@@ -17,6 +31,9 @@ type CustomClient struct {
 	ServerAddress net.UDPAddr
 	Connected bool
 	MustACK []int
+	ClientTicket string
+	SessionId string
+	PlayerId int32
 }
 
 func (client *CustomClient) SendACKs() {
@@ -71,9 +88,75 @@ func (client *CustomClient) Receive(buf []byte) {
 	client.Reader.ReadPacket(buf, packet)
 }
 
-func StartClient(addr net.UDPAddr) (*CustomClient, error) {
+func StartClient() (*CustomClient, error) {
 	context := NewCommunicationContext()
 	client := &CustomClient{}
+	client.PlayerId = -306579839
+
+	robloxCommClient := &http.Client{}
+	placeLauncherRequest, err := http.NewRequest("GET", "https://assetgame.roblox.com/game/PlaceLauncher.ashx?request=RequestGame&browserTrackerId=9783257674&placeId=211851454&isPartyLeader=false&genderId=2", nil)
+	if err != nil {
+		return nil, err
+	}
+	placeLauncherRequest.Header.Set("User-Agent", "Roblox/WinInet")
+	placeLauncherRequest.Header.Set("Playercount", "0")
+	placeLauncherRequest.Header.Set("Requester", "Client")
+	placeLauncherRequest.AddCookie(&http.Cookie{Name: "GuestData", Value: "UserId=-306579839"})
+	resp, err := robloxCommClient.Do(placeLauncherRequest)
+	if err != nil {
+		return nil, err
+	}
+	var plResp PlaceLauncherResponse
+	err = json.NewDecoder(resp.Body).Decode(&plResp)
+	if err != nil {
+		return nil, err
+	}
+	println("got plresp", plResp.JoinScriptUrl)
+
+	joinScriptRequest, err := http.NewRequest("GET", plResp.JoinScriptUrl, nil)
+	if err != nil {
+		return nil, err
+	}
+	userIds := strings.Split(plResp.AuthenticationTicket, ":")
+	if len(userIds) < 2 {
+		println("Oh no! authtick fetch broke!", plResp.AuthenticationTicket)
+	}
+
+	joinScriptRequest.AddCookie(&http.Cookie{Name: "GuestData", Value: "UserId=" + userIds[1] + "&Gender=2"})
+	resp, err = robloxCommClient.Do(joinScriptRequest)
+	if err != nil {
+		return nil, err
+	}
+	body := resp.Body
+
+	// Discard rbxsig by reading until newline
+	char := make([]byte, 1)
+	_, err = body.Read(char)
+	for err == nil && char[0] != 0x0A {
+		_, err = body.Read(char)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	var jsResp JoinAshxResponse
+	err = json.NewDecoder(body).Decode(&jsResp)
+	if err != nil {
+		return nil, err
+	}
+	println("got jsresp", jsResp.NewClientTicket)
+	client.ClientTicket = jsResp.ClientTicket
+	client.SessionId = jsResp.SessionId
+	client.PlayerId = jsResp.UserId
+	addrp, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", jsResp.MachineAddress, jsResp.ServerPort))
+	if err != nil {
+		return nil, err
+	}
+	println("dialing addr", addrp.String())
+	addr := *addrp // Yes, I'm lazy
+	println("addr", addr.IP[0])
+
 	client.Context = context
 	client.ServerAddress = addr
 
@@ -86,6 +169,9 @@ func StartClient(addr net.UDPAddr) (*CustomClient, error) {
 	}
 	packetReader.SimpleHandler = func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
 		if packetType == 0x6 {
+			if client.Connected {
+				return
+			}
 			println("receive 6!")
 			client.Connected = true
 
@@ -102,9 +188,9 @@ func StartClient(addr net.UDPAddr) (*CustomClient, error) {
 				GUID: 0x1122334455667788,
 				Timestamp: 117,
 				UseSecurity: false,
-				Password: []byte{/*0x37, 0x4F, */0x5E, 0x11, /*0x6C, 0x45*/},
+				Password: []byte{0x37, 0x4F, 0x5E, 0x11, 0x6C, 0x45},
 			}
-			client.Writer.WriteGeneric(context, 9, response, 2, &addr)
+			client.Writer.WriteGeneric(context, 9, response, 3, &addr)
 		} else {
 			println("receive simple unk", packetType)
 		}
@@ -121,13 +207,14 @@ func StartClient(addr net.UDPAddr) (*CustomClient, error) {
 				SendPongTime: mainLayer.SendPingTime + 10,
 			}
 
-			client.Writer.WriteGeneric(context, 3, response, 2, &addr)
+			client.Writer.WriteGeneric(context, 3, response, 3, &addr)
 		} else if packetType == 0x10 {
 			println("receive 10!")
 			mainLayer := layers.Main.(*Packet10Layer)
-			nullIP, _ := net.ResolveUDPAddr("udp", "255.255.255.255:0")
+			nullIP, _ := net.ResolveUDPAddr("udp", "0.0.0.0:0")
+			client.Address.Port = 0
 			response := &Packet13Layer{
-				IPAddress: mainLayer.IPAddress,
+				IPAddress: &addr,
 				Addresses: [10]*net.UDPAddr{
 					&client.Address,
 					nullIP,
@@ -140,24 +227,51 @@ func StartClient(addr net.UDPAddr) (*CustomClient, error) {
 					nullIP,
 					nullIP,
 				},
-				SendPingTime: mainLayer.SendPingTime,
-				SendPongTime: mainLayer.SendPingTime + 10,
+				SendPingTime: mainLayer.SendPongTime,
+				SendPongTime: 127,
 			}
 
-			client.Writer.WriteGeneric(context, 3, response, 2, &addr)
+			client.Writer.WriteGeneric(context, 3, response, 3, &addr)
+			response90 := &Packet90Layer{
+				SchemaVersion: 36,
+				RequestedFlags: []string{
+					"AllowMoreAngles",
+					"UseNewProtocolForStreaming",
+					"ReplicatorSupportRegion3Types",
+					"SendAdditionalNonAdjustedTimeStamp",
+					"SendPlayerGuiEarly2",
+					"UseNewPhysicsSender6",
+					"FixWeldedHumanoidsDeath",
+					"PartColor3Uint8Enabled",
+					"ReplicatorUseZstd",
+					"BodyColorsColor3PropertyReplicationEnabled",
+					"ReplicatorSupportInt64Type",
+				},
+			}
+			client.Writer.WriteGeneric(context, 3, response90, 3, &addr)
+
+			response92 := &Packet92Layer{
+				UnknownValue: 0,
+			}
+			client.Writer.WriteGeneric(context, 3, response92, 3, &addr)
 
 			response8A := &Packet8ALayer{
-				PlayerId: 0,
-				ClientTicket: []byte(""),
-				String2: []byte(""),
-				Int2: 36,
-				SecurityHash: []byte(""),
+				PlayerId: client.PlayerId,
+				ClientTicket: []byte(client.ClientTicket),
+				DataModelHash: []byte("4b8387d8b57d73944b33dbe044b3707b"),
+				ProtocolVersion: 36,
+				SecurityKey: []byte("571cb33a3b024d7b8dafb87156909e92b7eaf86d!1ac9a51ce47836b5c1f65dfc441dfa41"),
 				Platform: []byte("Win32"),
-				String5: []byte("?"),
-				SessionId: []byte(""),
-				Int3: 5555555,
+				RobloxProductName: []byte("?"),
+				SessionId: []byte(client.SessionId),
+				GoldenHash: 19857408,
 			}
-			client.Writer.WriteGeneric(context, 3, response8A, 2, &addr)
+			client.Writer.WriteGeneric(context, 3, response8A, 3, &addr)
+
+			response8F := &Packet8FLayer{
+				SpawnName: "",
+			}
+			client.Writer.WriteGeneric(context, 3, response8F, 3, &addr)
 		} else {
 			println("receive generic unk", packetType)
 		}
