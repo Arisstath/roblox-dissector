@@ -8,8 +8,8 @@ func ShowPacket93(packetType byte, packet *peer.UDPPacket, context *peer.Communi
 
 	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
 
-	unknownBool1Label := NewQLabelF("Unknown bool 1: %v", MainLayer.UnknownBool1)
-	unknownBool2Label := NewQLabelF("Unknown bool 2: %v", MainLayer.UnknownBool2)
+	unknownBool1Label := NewQLabelF("Protocol schema sync: %v", MainLayer.ProtocolSchemaSync)
+	unknownBool2Label := NewQLabelF("API dictionary compression: %v", MainLayer.ApiDictionaryCompression)
 	layerLayout.AddWidget(unknownBool1Label, 0, 0)
 	layerLayout.AddWidget(unknownBool2Label, 0, 0)
 

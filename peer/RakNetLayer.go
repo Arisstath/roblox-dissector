@@ -3,7 +3,7 @@ import "bytes"
 import "io/ioutil"
 import "errors"
 
-const DEBUG bool = false
+const DEBUG bool = true
 type RakNetPacket interface {
 	Serialize(bool, *CommunicationContext, *ExtendedWriter) error
 }

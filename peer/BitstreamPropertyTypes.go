@@ -7,12 +7,10 @@ import "math"
 import "strings"
 
 type Referent string
-type PhysicsMotor struct {
-	HasCoords1 bool
-	Coords1 rbxfile.ValueVector3
-	HasCoords2 bool
-	Coords2 rbxfile.ValueVector3
-	Angle uint8
+type PhysicsMotor rbxfile.ValueCFrame
+
+func (m PhysicsMotor) String() string {
+	return rbxfile.ValueCFrame(m).String()
 }
 
 func (b *ExtendedReader) ReadUDim() (rbxfile.ValueUDim, error) {
@@ -961,38 +959,123 @@ func (b *ExtendedReader) ReadPhysicsCFrame() (rbxfile.ValueCFrame, error) {
 	return rbxfile.ValueCFrame{coords, matrix}, nil
 }
 
+/* code to convert compact cf to real:
+	fCos := math.Cos(realAngleRadians)
+	fSin := math.Sin(realAngleRadians)
+	fOneMinusCos := 1 - fCos
+
+	fX2 := unitVector.X ** 2
+	fY2 := unitVector.Y ** 2
+	fZ2 := unitVector.Z ** 2
+	fXYM := unitVector.X * unitVector.Y * fOneMinusCos
+	fXZM := unitVector.X * unitVector.Z * fOneMinusCos
+	fYZM := unitVector.Y * unitVector.Z * fOneMinusCos
+	fXSin := unitVector.X * fSin
+	fYSin := unitVector.Y * fSin
+	fZSin := unitVector.Z * fSin
+
+	return PhysicsMotor{rbxfile.ValueVector3{}, [9]float32{
+		fX2 * fOneMinusCos + fCos,
+		fXYM - fZSin,
+		fXZM + fYSin,
+
+		fXYM + fZSin,
+		fY2 * fOneMinusCos + fCos,
+		FYZM + fXSin,
+
+		fXZM - fYSin,
+		fYZM + fXSin,
+		fZ2 * fOneMinusCos + fCos,
+	}}
+*/
 func (b *ExtendedReader) ReadPhysicsMotor() (PhysicsMotor, error) {
 	var motor PhysicsMotor
-	hasCoords, err := b.ReadBool()
+	isSimpleZAngle, err := b.ReadBool()
 	if err != nil {
 		return motor, err
 	}
-	if !hasCoords {
-		motor.HasCoords1, err = b.ReadBool()
+	if isSimpleZAngle {
+		angle, err := b.ReadByte()
 		if err != nil {
 			return motor, err
 		}
-		motor.HasCoords2, err = b.ReadBool()
+
+		segSizeRadians := math.Pi * 2 / 256.0
+		realAngleRadians := float64(angle) * float64(segSizeRadians) - math.Pi
+
+		// skipping a few steps here
+		fCos := float32(math.Cos(realAngleRadians))
+		fSin := float32(math.Sin(realAngleRadians))
+		return PhysicsMotor{rbxfile.ValueVector3{}, [9]float32{
+			fCos,
+			-fSin,
+			0,
+			fSin,
+			fCos,
+			0,
+			0,
+			0,
+			1,
+		}}, nil
+	} else {
+		hasTranslation, err := b.ReadBool()
 		if err != nil {
 			return motor, err
 		}
-		if motor.HasCoords1 {
-			motor.Coords1, err = b.ReadPhysicsCoords()
+		hasRotation, err := b.ReadBool()
+		if err != nil {
+			return motor, err
+		}
+		if hasTranslation {
+			motor.Position, err = b.ReadPhysicsCoords()
 			if err != nil {
 				return motor, err
 			}
 		}
-		if motor.HasCoords2 {
-			motor.Coords2, err = b.ReadCoordsMode1()
+
+		unitVector := rbxfile.ValueVector3{1,0,0}
+		var angle byte
+		if hasRotation {
+			unitVector, err = b.ReadCoordsMode1()
 			if err != nil {
 				return motor, err
 			}
-		} else {
-			return motor, nil
+			angle, err = b.ReadByte()
+			if err != nil {
+				return motor, err
+			}
 		}
+		segSizeRadians := math.Pi * 2 / 256.0
+		realAngleRadians := float64(angle) * float64(segSizeRadians) - math.Pi
+		fCos := math.Cos(realAngleRadians)
+		fSin := math.Sin(realAngleRadians)
+		fOneMinusCos := 1 - fCos
+
+		fX2 := math.Pow(float64(unitVector.X), 2)
+		fY2 := math.Pow(float64(unitVector.Y), 2)
+		fZ2 := math.Pow(float64(unitVector.Z), 2)
+		fXYM := float64(unitVector.X) * float64(unitVector.Y) * fOneMinusCos
+		fXZM := float64(unitVector.X) * float64(unitVector.Z) * fOneMinusCos
+		fYZM := float64(unitVector.Y) * float64(unitVector.Z) * fOneMinusCos
+		fXSin := float64(unitVector.X) * fSin
+		fYSin := float64(unitVector.Y) * fSin
+		fZSin := float64(unitVector.Z) * fSin
+
+		motor.Rotation = [9]float32{
+			float32(fX2 * fOneMinusCos + fCos),
+			float32(fXYM - fZSin),
+			float32(fXZM + fYSin),
+
+			float32(fXYM + fZSin),
+			float32(fY2 * fOneMinusCos + fCos),
+			float32(fYZM + fXSin),
+
+			float32(fXZM - fYSin),
+			float32(fYZM + fXSin),
+			float32(fZ2 * fOneMinusCos + fCos),
+		}
+		return motor, nil
 	}
-	motor.Angle, err = b.ReadByte()
-	return motor, err
 }
 
 func (b *ExtendedReader) ReadMotors() ([]PhysicsMotor, error) {
@@ -1000,6 +1083,8 @@ func (b *ExtendedReader) ReadMotors() ([]PhysicsMotor, error) {
 	if err != nil {
 		return nil, err
 	}
+	println("reading", countMotors, "motors")
+
 	motors := make([]PhysicsMotor, countMotors)
 	var i uint8
 	for i = 0; i < countMotors; i++ {

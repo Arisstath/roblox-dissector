@@ -13,16 +13,16 @@ func ShowPacket85(packetType byte, packet *peer.UDPPacket, context *peer.Communi
 
 	subpacketList := widgets.NewQTreeView(nil)
 	standardModel := NewProperSortModel(nil)
-	standardModel.SetHorizontalHeaderLabels([]string{"Name", "Reference", "Unknown int", "CFrame", "Vector3 1", "Vector3 2", "Angle"})
+	standardModel.SetHorizontalHeaderLabels([]string{"Name", "Reference", "Humanoid state", "CFrame", "Linear velocity", "Rotational velocity", "Position", "Precision", "Interval"})
 
 	rootNode := standardModel.InvisibleRootItem()
 	for _, item := range MainLayer.SubPackets {
 		nameItem := NewQStandardItemF(item.Instance.GetFullName())
 		referenceItem := NewQStandardItemF(item.Instance.Reference)
-		unknownIntItem := NewQStandardItemF("%d", item.UnknownInt)
+		humanoidStateItem := NewQStandardItemF("%d", item.NetworkHumanoidState)
 		cframeItem := NewQStandardItemF(item.CFrame.String())
-		pos1Item := NewQStandardItemF(item.Pos1.String())
-		pos2Item := NewQStandardItemF(item.Pos2.String())
+		linVelItem := NewQStandardItemF(item.LinearVelocity.String())
+		rotVelItem := NewQStandardItemF(item.RotationalVelocity.String())
 
 		if len(item.Motors) > 0 {
 			motorsItem := NewQStandardItemF("Motors (%d entries)", len(item.Motors))
@@ -31,13 +31,32 @@ func ShowPacket85(packetType byte, packet *peer.UDPPacket, context *peer.Communi
 					nil,
 					nil,
 					nil,
+					NewQStandardItemF(motor.String()),
 					nil,
-					NewQStandardItemF(motor.Coords1.String()),
-					NewQStandardItemF(motor.Coords2.String()),
-					NewQStandardItemF("%d", motor.Angle),
+					nil,
+					nil,
+					nil,
+					nil,
 				})
 			}
 			nameItem.AppendRow([]*gui.QStandardItem{motorsItem})
+		}
+		if len(item.HistoryWaypoints) > 0 {
+			waypointsItem := NewQStandardItemF("Waypoints (%d entries)", len(item.HistoryWaypoints))
+			for _, waypoint := range item.HistoryWaypoints {
+				waypointsItem.AppendRow([]*gui.QStandardItem{
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					NewQStandardItemF(waypoint.Position.String()),
+					NewQStandardItemF("%d", waypoint.PrecisionLevel),
+					NewQStandardItemF("%d", waypoint.Interval),
+				})
+			}
+			nameItem.AppendRow([]*gui.QStandardItem{waypointsItem})
 		}
 		if len(item.Children) > 0 {
 			childrenItem := NewQStandardItemF("Children (%d entries)", len(item.Children))
@@ -45,11 +64,10 @@ func ShowPacket85(packetType byte, packet *peer.UDPPacket, context *peer.Communi
 				childrenItem.AppendRow([]*gui.QStandardItem{
 					NewQStandardItemF(child.Instance.Name()),
 					NewQStandardItemF(child.Instance.Reference),
-					NewQStandardItemF("%d", child.UnknownInt),
+					NewQStandardItemF("%d", child.NetworkHumanoidState),
 					NewQStandardItemF(child.CFrame.String()),
-					NewQStandardItemF(child.Pos1.String()),
-					NewQStandardItemF(child.Pos2.String()),
-					nil,
+					NewQStandardItemF(child.LinearVelocity.String()),
+					NewQStandardItemF(child.RotationalVelocity.String()),
 				})
 				if len(child.Motors) > 0 {
 					motorsItem := NewQStandardItemF("Motors (%d entries)", len(item.Motors))
@@ -58,10 +76,12 @@ func ShowPacket85(packetType byte, packet *peer.UDPPacket, context *peer.Communi
 							nil,
 							nil,
 							nil,
+							NewQStandardItemF(motor.String()),
 							nil,
-							NewQStandardItemF(motor.Coords1.String()),
-							NewQStandardItemF(motor.Coords2.String()),
-							NewQStandardItemF("%d", motor.Angle),
+							nil,
+							nil,
+							nil,
+							nil,
 						})
 					}
 					nameItem.AppendRow([]*gui.QStandardItem{motorsItem})
@@ -71,7 +91,7 @@ func ShowPacket85(packetType byte, packet *peer.UDPPacket, context *peer.Communi
 			nameItem.AppendRow([]*gui.QStandardItem{childrenItem})
 		}
 
-		rootNode.AppendRow([]*gui.QStandardItem{nameItem, referenceItem, unknownIntItem, cframeItem, pos1Item, pos2Item, nil})
+		rootNode.AppendRow([]*gui.QStandardItem{nameItem, referenceItem, humanoidStateItem, cframeItem, linVelItem, rotVelItem})
 	}
 
 	subpacketList.SetModel(standardModel)

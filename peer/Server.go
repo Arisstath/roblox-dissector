@@ -295,8 +295,8 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 				client.Writer.WriteGeneric(context, 0x10, response, 2, addr)
 			} else if packetType == 0x90 {
 				response := &Packet93Layer{
-					UnknownBool1: true,
-					UnknownBool2: true,
+					ProtocolSchemaSync: true,
+					ApiDictionaryCompression: true,
 					Params: map[string]bool{
 						"BodyColorsColor3PropertyReplicationEnabled": false,
 						"PartColor3Uint8Enabled": false,
@@ -328,7 +328,11 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 
                 initInstances := &Packet81Layer{
                     Items: make([]*Packet81LayerItem, len(services)),
-                    Bools: [5]bool{true, false, false, false, true},
+					DistributedPhysicsEnabled: true,
+					StreamJob: false,
+					FilteringEnabled: false,
+					AllowThirdPartySales: false,
+					CharacterAutoSpawn: false,
                     Int1: 0,
                     Int2: 0,
                     ReferentString: []byte("RBX0123456789ABCDEF"),

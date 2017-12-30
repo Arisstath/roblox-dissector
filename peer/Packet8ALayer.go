@@ -80,6 +80,10 @@ func DecodePacket8ALayer(packet *UDPPacket, context *CommunicationContext, data 
 		return layer, errors.New("checksum check fail")
 	}
 
+	_, err = thisBitstream.ReadByte()
+	if err != nil {
+		return layer, err
+	}
 	paddingSizeByte, err := thisBitstream.ReadByte()
 	if err != nil {
 		return layer, err

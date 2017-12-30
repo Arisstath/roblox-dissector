@@ -355,30 +355,30 @@ func (layer *Packet97Layer) Serialize(isClient bool,context *CommunicationContex
     gzipStream := &ExtendedWriter{bitstream.NewWriter(middleStream)}
 
     schema := layer.Schema
-    err = gzipStream.WriteUintUTF8(len(schema.Enums))
+    err = gzipStream.WriteUintUTF8(uint32(len(schema.Enums)))
     if err != nil {
         return err
     }
     for _, enum := range schema.Enums {
-        err = gzipStream.WriteUintUTF8(len(enum.Name))
+        err = gzipStream.WriteUintUTF8(uint32(len(enum.Name)))
         err = gzipStream.WriteASCII(enum.Name)
         err = gzipStream.WriteByte(enum.BitSize)
     }
 
-    err = gzipStream.WriteUintUTF8(len(schema.Instances))
+    err = gzipStream.WriteUintUTF8(uint32(len(schema.Instances)))
     if err != nil {
         return err
     }
-    err = gzipStream.WriteUintUTF8(len(schema.Properties))
+    err = gzipStream.WriteUintUTF8(uint32(len(schema.Properties)))
     if err != nil {
         return err
     }
-    err = gzipStream.WriteUintUTF8(len(schema.Events))
+    err = gzipStream.WriteUintUTF8(uint32(len(schema.Events)))
     if err != nil {
         return err
     }
     for _, instance := range schema.Instances {
-        err = gzipStream.WriteUintUTF8(len(instance.Name))
+        err = gzipStream.WriteUintUTF8(uint32(len(instance.Name)))
         if err != nil {
             return err
         }
@@ -386,13 +386,13 @@ func (layer *Packet97Layer) Serialize(isClient bool,context *CommunicationContex
         if err != nil {
             return err
         }
-        err = gzipStream.WriteUintUTF8(len(instance.Properties))
+        err = gzipStream.WriteUintUTF8(uint32(len(instance.Properties)))
         if err != nil {
             return err
         }
 
         for _, property := range instance.Properties {
-            err = gzipStream.WriteUintUTF8(len(property.Name))
+            err = gzipStream.WriteUintUTF8(uint32(len(property.Name)))
             if err != nil {
                 return err
             }
@@ -416,12 +416,12 @@ func (layer *Packet97Layer) Serialize(isClient bool,context *CommunicationContex
         if err != nil {
             return err
         }
-        err = gzipStream.WriteUintUTF8(len(instance.Events))
+        err = gzipStream.WriteUintUTF8(uint32(len(instance.Events)))
         if err != nil {
             return err
         }
         for _, event := range instance.Events {
-            err = gzipStream.WriteUintUTF8(len(event.Name))
+            err = gzipStream.WriteUintUTF8(uint32(len(event.Name)))
             if err != nil {
                 return err
             }
@@ -430,7 +430,7 @@ func (layer *Packet97Layer) Serialize(isClient bool,context *CommunicationContex
                 return err
             }
 
-            err = gzipStream.WriteUintUTF8(len(event.Arguments))
+            err = gzipStream.WriteUintUTF8(uint32(len(event.Arguments)))
             if err != nil {
                 return err
             }

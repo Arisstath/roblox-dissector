@@ -397,12 +397,10 @@ func (b *ExtendedReader) ReadUint32BECompressed(unsignedData bool) (uint32, erro
 func (b *ExtendedReader) ReadHuffman() ([]byte, error) {
 	var name []byte
 	maxCharLen, err := b.ReadUint32BE()
-	println("max char len", maxCharLen)
 	if err != nil {
 		return name, err
 	}
 	sizeInBits, err := b.ReadUint32BECompressed(true)
-	println("sizeinbits", sizeInBits)
 	if err != nil {
 		return name, err
 	}
@@ -532,6 +530,13 @@ func (b *ExtendedReader) RegionToZStdStream() (*ExtendedReader, error) {
 	err = b.Bytes(compressed, int(compressedLen))
 	if err != nil {
 		return nil, err
+	}
+	decompressed, err := zstd.Decompress(nil, compressed)
+	println("decomp len", len(decompressed))
+	if len(decompressed) > 0x20 {
+		fmt.Println("first bytes", decompressed[:0x20])
+	} else {
+		fmt.Println("first bytes", decompressed)
 	}
 
 	zstdStream := zstd.NewReader(bytes.NewReader(compressed))

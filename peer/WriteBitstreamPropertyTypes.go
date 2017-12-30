@@ -200,7 +200,7 @@ func (b *ExtendedWriter) WriteNewPString(isClient bool, val rbxfile.ValueString,
 	if !isJoinData {
 		return b.WriteCached(isClient, string(val), context)
 	}
-	err := b.WriteUintUTF8(len(val))
+	err := b.WriteUintUTF8(uint32(len(val)))
 	if err != nil {
 		return err
 	}
@@ -255,7 +255,7 @@ func (b *ExtendedWriter) WriteCFrame(val rbxfile.ValueCFrame) error {
 }
 
 func (b *ExtendedWriter) WriteSintUTF8(val int32) error {
-	return b.WriteUintUTF8(int(uint32(val) << 1 ^ -(uint32(val) >> 31)))
+	return b.WriteUintUTF8(uint32(val) << 1 ^ -(uint32(val) >> 31))
 }
 func (b *ExtendedWriter) WriteNewPSint(val rbxfile.ValueInt) error {
 	return b.WriteSintUTF8(int32(val))
@@ -406,7 +406,7 @@ func (b *ExtendedWriter) WriteNewTypeAndValue(isClient bool, val rbxfile.Value, 
 }
 
 func (b *ExtendedWriter) WriteNewTuple(isClient bool, val rbxfile.ValueTuple, isJoinData bool, context *CommunicationContext) error {
-	err := b.WriteUintUTF8(len(val))
+	err := b.WriteUintUTF8(uint32(len(val)))
 	if err != nil {
 		return err
 	}
@@ -423,12 +423,12 @@ func (b *ExtendedWriter) WriteNewArray(isClient bool, val rbxfile.ValueArray, is
 }
 
 func (b *ExtendedWriter) WriteNewDictionary(isClient bool, val rbxfile.ValueDictionary, isJoinData bool, context *CommunicationContext) error {
-	err := b.WriteUintUTF8(len(val))
+	err := b.WriteUintUTF8(uint32(len(val)))
 	if err != nil {
 		return err
 	}
 	for key, value := range val {
-		err = b.WriteUintUTF8(len(key))
+		err = b.WriteUintUTF8(uint32(len(key)))
 		if err != nil {
 			return err
 		}
@@ -506,7 +506,7 @@ func (b *ExtendedWriter) WriteColorSequence(val rbxfile.ValueColorSequence) erro
 }
 
 func (b *ExtendedWriter) WriteNewEnumValue(val rbxfile.ValueToken) error {
-	return b.WriteUintUTF8(int(val.Value))
+	return b.WriteUintUTF8(val.Value)
 }
 
 func (b *ExtendedWriter) WriteSystemAddress(isClient bool, val rbxfile.ValueSystemAddress, isJoinData bool, context *CommunicationContext) error {
@@ -710,34 +710,7 @@ func (b *ExtendedWriter) WritePhysicsCFrame(val rbxfile.ValueCFrame) error {
 }
 
 func (b *ExtendedWriter) WriteMotor(motor PhysicsMotor) error {
-	err := b.WriteBool(!motor.HasCoords1 && motor.HasCoords2)
-	if err != nil {
-		return err
-	}
-	if motor.HasCoords1 || motor.HasCoords2 {
-		err = b.WriteBool(motor.HasCoords1)
-		if err != nil {
-			return err
-		}
-		err = b.WriteBool(motor.HasCoords2)
-		if err != nil {
-			return err
-		}
-
-		if motor.HasCoords1 {
-			err = b.WritePhysicsCoords(motor.Coords1)
-			if err != nil {
-				return err
-			}
-		}
-		if motor.HasCoords2 {
-			err = b.WriteCoordsMode1(motor.Coords2)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return b.WriteByte(motor.Angle)
+	return errors.New("sorry, not implemented") // TODO
 }
 
 func (b *ExtendedWriter) WriteMotors(val []PhysicsMotor) error {

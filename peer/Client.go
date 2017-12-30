@@ -6,6 +6,7 @@ import "sort"
 import "net/http"
 import "encoding/json"
 import "strings"
+import "github.com/gskartwii/rbxfile"
 
 type PlaceLauncherResponse struct {
 	JobId string
@@ -21,6 +22,8 @@ type JoinAshxResponse struct {
 	MachineAddress string
 	ServerPort uint16
 	UserId int32
+	UserName string
+	CharacterAppearance string
 }
 
 type CustomClient struct {
@@ -34,6 +37,8 @@ type CustomClient struct {
 	ClientTicket string
 	SessionId string
 	PlayerId int32
+	UserName string
+	CharacterAppearance string
 }
 
 func (client *CustomClient) SendACKs() {
@@ -111,7 +116,6 @@ func StartClient() (*CustomClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	println("got plresp", plResp.JoinScriptUrl)
 
 	joinScriptRequest, err := http.NewRequest("GET", plResp.JoinScriptUrl, nil)
 	if err != nil {
@@ -145,17 +149,15 @@ func StartClient() (*CustomClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	println("got jsresp", jsResp.NewClientTicket)
 	client.ClientTicket = jsResp.ClientTicket
 	client.SessionId = jsResp.SessionId
 	client.PlayerId = jsResp.UserId
+	client.UserName = jsResp.UserName
 	addrp, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", jsResp.MachineAddress, jsResp.ServerPort))
 	if err != nil {
 		return nil, err
 	}
-	println("dialing addr", addrp.String())
 	addr := *addrp // Yes, I'm lazy
-	println("addr", addr.IP[0])
 
 	client.Context = context
 	client.ServerAddress = addr
@@ -251,7 +253,7 @@ func StartClient() (*CustomClient, error) {
 			client.Writer.WriteGeneric(context, 3, response90, 3, &addr)
 
 			response92 := &Packet92Layer{
-				UnknownValue: 0,
+				PlaceId: 0,
 			}
 			client.Writer.WriteGeneric(context, 3, response92, 3, &addr)
 
@@ -272,6 +274,44 @@ func StartClient() (*CustomClient, error) {
 				SpawnName: "",
 			}
 			client.Writer.WriteGeneric(context, 3, response8F, 3, &addr)
+		} else if packetType == 0x81 {
+			var players *rbxfile.Instance
+			for i := 0; i < len(context.DataModel.Instances); i++ {
+				instance := context.DataModel.Instances[i]
+				if instance.Name() == "Players" {
+					players = instance
+					break
+				}
+			}
+
+			mainLayer := layers.Main.(*Packet81Layer)
+			myPlayer := &rbxfile.Instance{
+				ClassName: "Player",
+				Reference: string(mainLayer.ReferentString) + "_35000",
+				IsService: false,
+				Properties: map[string]rbxfile.Value{
+					"Name": rbxfile.ValueString(client.UserName),
+					"CharacterAppearance": rbxfile.ValueString(client.CharacterAppearance),
+					"CharacterAppearanceId": rbxfile.ValueInt(15437777),
+					"ChatPrivacyMode": rbxfile.ValueToken{
+						Value: 0,
+						ID: uint16(context.StaticSchema.EnumsByName["ChatPrivacyMode"]),
+						Name: "ChatPrivacyMode",
+					},
+					"AccountAgeReplicate": rbxfile.ValueInt(0),
+					"OsPlatform": rbxfile.ValueString("Win32"),
+					"userId": rbxfile.ValueInt(client.PlayerId),
+					"UserId": rbxfile.ValueInt(client.PlayerId),
+				},
+			}
+			players.AddChild(myPlayer)
+
+			response83 := &Packet83Layer{
+				SubPackets: []Packet83Subpacket{
+					&Packet83_0B{[]*rbxfile.Instance{myPlayer}},
+				},
+			}
+			client.Writer.WriteGeneric(context, 0x83, response83, 3, &addr)
 		} else {
 			println("receive generic unk", packetType)
 		}

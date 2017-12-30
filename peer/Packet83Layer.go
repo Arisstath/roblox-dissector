@@ -109,9 +109,6 @@ func DecodePacket83Layer(packet *UDPPacket, context *CommunicationContext) (inte
 		case 0x06:
 			inner, err = DecodePacket83_05(packet, context) // Yes, I know it's 05
 			break
-		case 0x12:
-			inner, err = DecodePacket83_11(packet, context)
-			break
 		case 0x0B:
 			inner, err = DecodePacket83_0B(packet, context)
 			break

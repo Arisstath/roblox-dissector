@@ -112,11 +112,12 @@ func (b *ExtendedWriter) WriteASCII(value string) error {
 	return b.AllBytes([]byte(value))
 }
 
-func (b *ExtendedWriter) WriteUintUTF8(value int) error {
+func (b *ExtendedWriter) WriteUintUTF8(value uint32) error {
     if value == 0 {
         return b.WriteByte(0)
     }
     for value != 0 {
+		print("new round because", value)
         nextValue := value >> 7
         if nextValue != 0 {
             err := b.WriteByte(byte(value&0x7F|0x80))

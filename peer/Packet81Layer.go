@@ -11,7 +11,11 @@ type Packet81LayerItem struct {
 }
 
 type Packet81Layer struct {
-	Bools [5]bool
+	DistributedPhysicsEnabled bool
+	StreamJob bool
+	FilteringEnabled bool
+	AllowThirdPartySales bool
+	CharacterAutoSpawn bool
 	ReferentString []byte
 	Int1 uint32
 	Int2 uint32
@@ -27,11 +31,25 @@ func DecodePacket81Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	thisBitstream := packet.Stream
 	var err error
 
-	for i := 0; i < 5; i++ {
-		layer.Bools[i], err = thisBitstream.ReadBool()
-		if err != nil {
-			return layer, err
-		}
+	layer.DistributedPhysicsEnabled, err = thisBitstream.ReadBool()
+	if err != nil {
+		return layer, err
+	}
+	layer.StreamJob, err = thisBitstream.ReadBool()
+	if err != nil {
+		return layer, err
+	}
+	layer.FilteringEnabled, err = thisBitstream.ReadBool()
+	if err != nil {
+		return layer, err
+	}
+	layer.AllowThirdPartySales, err = thisBitstream.ReadBool()
+	if err != nil {
+		return layer, err
+	}
+	layer.CharacterAutoSpawn, err = thisBitstream.ReadBool()
+	if err != nil {
+		return layer, err
 	}
 	stringLen, err := thisBitstream.ReadUint32BE()
 	if err != nil {
@@ -113,12 +131,27 @@ func (layer *Packet81Layer) Serialize(isClient bool,context *CommunicationContex
         return err
     }
 
-    for i := 0; i < 5; i++ {
-        err = stream.WriteBool(layer.Bools[i])
-        if err != nil {
-            return err
-        }
+	err = stream.WriteBool(layer.DistributedPhysicsEnabled)
+    if err != nil {
+        return err
     }
+	err = stream.WriteBool(layer.StreamJob)
+    if err != nil {
+        return err
+    }
+	err = stream.WriteBool(layer.FilteringEnabled)
+    if err != nil {
+        return err
+    }
+	err = stream.WriteBool(layer.AllowThirdPartySales)
+    if err != nil {
+        return err
+    }
+	err = stream.WriteBool(layer.CharacterAutoSpawn)
+    if err != nil {
+        return err
+    }
+
     err = stream.WriteUint32BE(uint32(len(layer.ReferentString)))
     if err != nil {
         return err
@@ -130,7 +163,7 @@ func (layer *Packet81Layer) Serialize(isClient bool,context *CommunicationContex
 
     // FIXME: assumes Studio
 
-    err = stream.WriteUintUTF8(len(layer.Items))
+    err = stream.WriteUintUTF8(uint32(len(layer.Items)))
     for _, item := range layer.Items {
         err = stream.WriteObject(isClient, item.Instance, true, context)
         if err != nil {

@@ -1,14 +1,20 @@
 package peer
 import "github.com/gskartwii/rbxfile"
 
+type PhysicsHistoryWaypoint struct {
+	Position rbxfile.ValueVector3
+	PrecisionLevel uint8
+	Interval uint8
+}
 type Packet85LayerSubpacket struct {
 	Instance *rbxfile.Instance
-	UnknownInt uint8
+	NetworkHumanoidState uint8
 	CFrame rbxfile.ValueCFrame
-	Pos1 rbxfile.ValueVector3
-	Pos2 rbxfile.ValueVector3
+	LinearVelocity rbxfile.ValueVector3
+	RotationalVelocity rbxfile.ValueVector3
 	Motors []PhysicsMotor
 	Children []Packet85LayerSubpacket
+	HistoryWaypoints []PhysicsHistoryWaypoint
 }
 
 type Packet85Layer struct {
@@ -34,31 +40,121 @@ func DecodePacket85Layer(packet *UDPPacket, context *CommunicationContext) (inte
 		}
 		subpacket.Instance = context.InstancesByReferent.TryGetInstance(referent)
 
-		hasInt, err := thisBitstream.ReadBool()
+		hasState, err := thisBitstream.ReadBool()
 		if err != nil {
 			return layer, err
 		}
-		if hasInt {
-			subpacket.UnknownInt, err = thisBitstream.ReadByte()
+		if hasState {
+			subpacket.NetworkHumanoidState, err = thisBitstream.ReadByte()
 			if err != nil {
 				return layer, err
 			}
 		}
-		subpacket.CFrame, err = thisBitstream.ReadPhysicsCFrame()
-		if err != nil {
-			return layer, err
-		}
-		subpacket.Pos1, err = thisBitstream.ReadCoordsMode1()
-		if err != nil {
-			return layer, err
-		}
-		subpacket.Pos2, err = thisBitstream.ReadCoordsMode1()
-		if err != nil {
-			return layer, err
-		}
-		subpacket.Motors, err = thisBitstream.ReadMotors()
-		if err != nil {
-			return layer, err
+		
+		if !context.IsClient(packet.Source) { // packet came from server: must read movement history
+			println("from server")
+			hasHistory, err := thisBitstream.ReadBool()
+			if err != nil {
+				return layer, err
+			}
+			if !hasHistory {
+				println("no history")
+				subpacket.Motors, err = thisBitstream.ReadMotors()
+				if err != nil {
+					return layer, err
+				}
+			} else {
+				println("has history")
+				xPacketCompression, err := thisBitstream.ReadBool()
+				if err != nil {
+					return layer, err
+				}
+
+				if !xPacketCompression {
+					println("use compr")
+					subpacket.CFrame, err = thisBitstream.ReadPhysicsCFrame()
+					if err != nil {
+						return layer, err
+					}
+					println("cf", subpacket.CFrame.String())
+					subpacket.LinearVelocity, err = thisBitstream.ReadCoordsMode1()
+					if err != nil {
+						return layer, err
+					}
+					println("lv", subpacket.LinearVelocity.String())
+					subpacket.RotationalVelocity, err = thisBitstream.ReadCoordsMode1()
+					if err != nil {
+						return layer, err
+					}
+					println("rv", subpacket.RotationalVelocity.String())
+				} else {
+					matrix, err := thisBitstream.ReadPhysicsMatrix()
+					if err != nil {
+						return layer, err
+					}
+					subpacket.CFrame = rbxfile.ValueCFrame{rbxfile.ValueVector3{}, matrix}
+					println("cf", subpacket.CFrame.String())
+				}
+				subpacket.Motors, err = thisBitstream.ReadMotors()
+				if err != nil {
+					return layer, err
+				}
+				println("motor succ")
+
+				numNodes, err := thisBitstream.ReadUintUTF8()
+				if err != nil {
+					return layer, err
+				}
+				println("numnod", numNodes)
+				
+				currentPosition := subpacket.CFrame.Position
+
+				subpacket.HistoryWaypoints = make([]PhysicsHistoryWaypoint, numNodes)
+				for i := 0; i < int(numNodes); i++ {
+					subpacket.HistoryWaypoints[i].PrecisionLevel, err = thisBitstream.ReadByte()
+					if err != nil {
+						return layer, err
+					}
+					deltaX, err := thisBitstream.ReadByte()
+					if err != nil {
+						return layer, err
+					}
+					deltaY, err := thisBitstream.ReadByte()
+					if err != nil {
+						return layer, err
+					}
+					deltaZ, err := thisBitstream.ReadByte()
+					if err != nil {
+						return layer, err
+					}
+					subpacket.HistoryWaypoints[i].Interval, err = thisBitstream.ReadByte()
+					if err != nil {
+						return layer, err
+					}
+					currentPosition.X -= float32(int8(deltaX) * int8(subpacket.HistoryWaypoints[i].PrecisionLevel + 1)) * 0.01
+					currentPosition.Y -= float32(int8(deltaY) * int8(subpacket.HistoryWaypoints[i].PrecisionLevel + 1)) * 0.01
+					currentPosition.Z -= float32(int8(deltaZ) * int8(subpacket.HistoryWaypoints[i].PrecisionLevel + 1)) * 0.01
+					subpacket.HistoryWaypoints[i].Position = currentPosition
+				}
+			} // hasHistory
+		} else {
+			// packet came from client, just read the assembly
+			subpacket.CFrame, err = thisBitstream.ReadPhysicsCFrame()
+			if err != nil {
+				return layer, err
+			}
+			subpacket.LinearVelocity, err = thisBitstream.ReadCoordsMode1()
+			if err != nil {
+				return layer, err
+			}
+			subpacket.RotationalVelocity, err = thisBitstream.ReadCoordsMode1()
+			if err != nil {
+				return layer, err
+			}
+			subpacket.Motors, err = thisBitstream.ReadMotors()
+			if err != nil {
+				return layer, err
+			}
 		}
 
 		isSolo, err := thisBitstream.ReadBool()
@@ -77,11 +173,11 @@ func DecodePacket85Layer(packet *UDPPacket, context *CommunicationContext) (inte
 				if err != nil {
 					return layer, err
 				}
-				child.Pos1, err = thisBitstream.ReadCoordsMode1()
+				child.LinearVelocity, err = thisBitstream.ReadCoordsMode1()
 				if err != nil {
 					return layer, err
 				}
-				child.Pos2, err = thisBitstream.ReadCoordsMode1()
+				child.RotationalVelocity, err = thisBitstream.ReadCoordsMode1()
 				if err != nil {
 					return layer, err
 				}
@@ -108,12 +204,12 @@ func (layer *Packet85Layer) Serialize(isClient bool, context *CommunicationConte
 		if err != nil {
 			return err
 		}
-		err = stream.WriteBool(subpacket.UnknownInt != 0)
+		err = stream.WriteBool(subpacket.NetworkHumanoidState != 0)
 		if err != nil {
 			return err
 		}
-		if subpacket.UnknownInt != 0 {
-			err = stream.WriteByte(subpacket.UnknownInt)
+		if subpacket.NetworkHumanoidState != 0 {
+			err = stream.WriteByte(subpacket.NetworkHumanoidState)
 			if err != nil {
 				return err
 			}
@@ -123,11 +219,11 @@ func (layer *Packet85Layer) Serialize(isClient bool, context *CommunicationConte
 		if err != nil {
 			return err
 		}
-		err = stream.WriteCoordsMode1(subpacket.Pos1)
+		err = stream.WriteCoordsMode1(subpacket.LinearVelocity)
 		if err != nil {
 			return err
 		}
-		err = stream.WriteCoordsMode1(subpacket.Pos2)
+		err = stream.WriteCoordsMode1(subpacket.RotationalVelocity)
 		if err != nil {
 			return err
 		}
@@ -151,11 +247,11 @@ func (layer *Packet85Layer) Serialize(isClient bool, context *CommunicationConte
 			if err != nil {
 				return err
 			}
-			err = stream.WriteCoordsMode1(child.Pos1)
+			err = stream.WriteCoordsMode1(child.LinearVelocity)
 			if err != nil {
 				return err
 			}
-			err = stream.WriteCoordsMode1(child.Pos2)
+			err = stream.WriteCoordsMode1(child.RotationalVelocity)
 			if err != nil {
 				return err
 			}

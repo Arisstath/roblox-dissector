@@ -113,16 +113,16 @@ func (schema StaticPropertySchema) Decode(isClient bool, round int, packet *UDPP
         var isDefault bool
         isDefault, err = thisBitstream.ReadBool()
 		if isDefault || err != nil {
-			if DEBUG && round == ROUND_JOINDATA {
-				//println("Read", schema.Name, "default")
+			if DEBUG && round == ROUND_JOINDATA && isClient {
+				println("Read", schema.Name, "default")
 			}
 			return rbxfile.DefaultValue, err
 		}
 	}
 
     val, err := readSerializedValue(isClient, isJoinData, schema.EnumID, schema.Type, thisBitstream, context)
-    if val.Type().String() != "ProtectedString" && round == ROUND_JOINDATA && DEBUG {
-        //println("Read", schema.Name, val.String())
+    if val.Type().String() != "ProtectedString" && round == ROUND_JOINDATA && DEBUG && isClient {
+        println("Read", schema.Name, val.String())
     }
     if err != nil {
         return val, errors.New("while parsing " + schema.Name + ": " + err.Error())
@@ -136,5 +136,9 @@ func (schema StaticPropertySchema) Serialize(isClient bool, value rbxfile.Value,
             return stream.WriteBool(true)
         }
     }
-    return nil
+	err := stream.WriteBool(false) // not default
+	if err != nil {
+		return err
+	}
+    return stream.writeSerializedValue(isClient, value, round == ROUND_JOINDATA, schema.Type, context) // let's just pray that this works
 }

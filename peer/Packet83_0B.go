@@ -2,8 +2,8 @@ package peer
 import "errors"
 import "github.com/gskartwii/rbxfile"
 import "bytes"
-import "compress/gzip"
 import "github.com/gskartwii/go-bitstream"
+import "github.com/DataDog/zstd"
 
 type Packet83_0B struct {
 	Instances []*rbxfile.Instance
@@ -54,10 +54,11 @@ func (layer *Packet83_0B) Serialize(isClient bool, context *CommunicationContext
     }
 
     err = stream.WriteUint32BE(uint32(len(layer.Instances)))
-    zstdBuf := bytes.NewBuffer([]byte{})
-    middleStream := gzip.NewWriter(zstdBuf)
+    uncompressedBuf := bytes.NewBuffer([]byte{})
+	zstdBuf := bytes.NewBuffer([]byte{})
+    middleStream := zstd.NewWriter(zstdBuf)
     defer middleStream.Close()
-    zstdStream := &ExtendedWriter{bitstream.NewWriter(middleStream)}
+    zstdStream := &ExtendedWriter{bitstream.NewWriter(uncompressedBuf)}
 
     for i := 0; i < len(layer.Instances); i++ {
         err = SerializeReplicationInstance(isClient, layer.Instances[i], true, context, zstdStream)
@@ -74,7 +75,7 @@ func (layer *Packet83_0B) Serialize(isClient bool, context *CommunicationContext
     if err != nil {
         return err
     }
-    err = middleStream.Flush()
+	_, err = middleStream.Write(uncompressedBuf.Bytes())
     if err != nil {
         return err
     }
@@ -82,7 +83,12 @@ func (layer *Packet83_0B) Serialize(isClient bool, context *CommunicationContext
     if err != nil {
         return err
     }
+
     err = stream.WriteUint32BE(uint32(zstdBuf.Len()))
+    if err != nil {
+        return err
+    }
+    err = stream.WriteUint32BE(uint32(uncompressedBuf.Len()))
     if err != nil {
         return err
     }

@@ -2,8 +2,8 @@ package peer
 import "fmt"
 
 type Packet93Layer struct {
-	UnknownBool1 bool
-	UnknownBool2 bool
+	ProtocolSchemaSync bool
+	ApiDictionaryCompression bool
 	Params map[string]bool
 }
 
@@ -16,11 +16,11 @@ func DecodePacket93Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	thisBitstream := packet.Stream
 
 	var err error
-	layer.UnknownBool1, err = thisBitstream.ReadBool()
+	layer.ProtocolSchemaSync, err = thisBitstream.ReadBool()
 	if err != nil {
 		return layer, err
 	}
-	layer.UnknownBool2, err = thisBitstream.ReadBool()
+	layer.ApiDictionaryCompression, err = thisBitstream.ReadBool()
 	if err != nil {
 		return layer, err
 	}
@@ -69,11 +69,11 @@ func (layer *Packet93Layer) Serialize(isClient bool,context *CommunicationContex
 		return err
 	}
 
-	err = stream.WriteBool(layer.UnknownBool1)
+	err = stream.WriteBool(layer.ProtocolSchemaSync)
 	if err != nil {
 		return err
 	}
-	err = stream.WriteBool(layer.UnknownBool2)
+	err = stream.WriteBool(layer.ApiDictionaryCompression)
 	if err != nil {
 		return err
 	}

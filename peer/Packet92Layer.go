@@ -1,7 +1,7 @@
 package peer
 
 type Packet92Layer struct {
-	UnknownValue uint32
+	PlaceId uint32
 }
 
 func NewPacket92Layer() *Packet92Layer {
@@ -13,7 +13,7 @@ func DecodePacket92Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	thisBitstream := packet.Stream
 
 	var err error
-	layer.UnknownValue, err = thisBitstream.ReadUint32BE()
+	layer.PlaceId, err = thisBitstream.ReadUint32BE()
 	return layer, err
 }
 
@@ -22,5 +22,5 @@ func (layer *Packet92Layer) Serialize(isClient bool,context *CommunicationContex
 	if err != nil {
 		return err
 	}
-	return stream.WriteUint32BE(layer.UnknownValue)
+	return stream.WriteUint32BE(layer.PlaceId)
 }
