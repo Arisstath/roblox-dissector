@@ -13,6 +13,7 @@ var SubpacketCallbacks = map[uint8](func(peer.Packet83Subpacket) widgets.QWidget
 	0x3: show83_03,
 	0x4: show83_04,
 	0x5: show83_05,
+	0x6: show83_06,
 	0x7: show83_07,
 	0x9: show83_09,
 	0x10: show83_10,
@@ -134,10 +135,22 @@ func show83_05(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_05)
 	widget := widgets.NewQWidget(nil, 0)
 	layout := widgets.NewQVBoxLayout()
-	layout.AddWidget(NewQLabelF("Unknown bool: %v", this.Bool1), 0, 0)
-	layout.AddWidget(NewQLabelF("Int 1: %d", this.Int1), 0, 0)
-	layout.AddWidget(NewQLabelF("Int 2: %d", this.Int2), 0, 0)
-	layout.AddWidget(NewQLabelF("Int 3: %d", this.Int3), 0, 0)
+	layout.AddWidget(NewQLabelF("Is ping back: %v", this.IsPingBack), 0, 0)
+	layout.AddWidget(NewQLabelF("Timestamp: %d", this.Timestamp), 0, 0)
+	layout.AddWidget(NewQLabelF("Stats 1: %d", this.SendStats), 0, 0)
+	layout.AddWidget(NewQLabelF("Stats 2: %d", this.ExtraStats), 0, 0)
+	widget.SetLayout(layout)
+
+	return widget
+}
+func show83_06(t peer.Packet83Subpacket) widgets.QWidget_ITF {
+	this := t.(*peer.Packet83_06)
+	widget := widgets.NewQWidget(nil, 0)
+	layout := widgets.NewQVBoxLayout()
+	layout.AddWidget(NewQLabelF("Is ping back: %v", this.IsPingBack), 0, 0)
+	layout.AddWidget(NewQLabelF("Timestamp: %d", this.Timestamp), 0, 0)
+	layout.AddWidget(NewQLabelF("Stats 1: %d", this.SendStats), 0, 0)
+	layout.AddWidget(NewQLabelF("Stats 2: %d", this.ExtraStats), 0, 0)
 	widget.SetLayout(layout)
 
 	return widget

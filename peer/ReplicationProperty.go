@@ -10,95 +10,95 @@ const (
 	ROUND_UPDATE	= iota
 )
 
-func readSerializedValue(isClient bool, isJoinData bool, enumId uint16, valueType uint8, thisBitstream *ExtendedReader, context *CommunicationContext) (rbxfile.Value, error) {
+func readSerializedValue(isClient bool, isJoinData bool, enumId uint16, valueType uint8, thisBitstream *extendedReader, context *CommunicationContext) (rbxfile.Value, error) {
 	var err error
 	var result rbxfile.Value
 	switch valueType {
 	case PROP_TYPE_STRING:
-		result, err = thisBitstream.ReadNewPString(isClient, isJoinData, context)
+		result, err = thisBitstream.readNewPString(isClient, isJoinData, context)
 	case PROP_TYPE_STRING_NO_CACHE:
-		result, err = thisBitstream.ReadNewPString(isClient, true, context)
+		result, err = thisBitstream.readNewPString(isClient, true, context)
 	case PROP_TYPE_PROTECTEDSTRING_0:
-		result, err = thisBitstream.ReadNewProtectedString(isClient, isJoinData, context)
+		result, err = thisBitstream.readNewProtectedString(isClient, isJoinData, context)
 	case PROP_TYPE_PROTECTEDSTRING_1:
-		result, err = thisBitstream.ReadNewProtectedString(isClient, isJoinData, context)
+		result, err = thisBitstream.readNewProtectedString(isClient, isJoinData, context)
 	case PROP_TYPE_PROTECTEDSTRING_2:
-		result, err = thisBitstream.ReadNewProtectedString(isClient, isJoinData, context)
+		result, err = thisBitstream.readNewProtectedString(isClient, isJoinData, context)
 	case PROP_TYPE_PROTECTEDSTRING_3:
-		result, err = thisBitstream.ReadNewProtectedString(isClient, isJoinData, context)
+		result, err = thisBitstream.readNewProtectedString(isClient, isJoinData, context)
 	case PROP_TYPE_ENUM:
-		result, err = thisBitstream.ReadNewEnumValue(enumId, context)
+		result, err = thisBitstream.readNewEnumValue(enumId, context)
 	case PROP_TYPE_BINARYSTRING:
-		result, err = thisBitstream.ReadNewBinaryString()
+		result, err = thisBitstream.readNewBinaryString()
 	case PROP_TYPE_PBOOL:
-		result, err = thisBitstream.ReadPBool()
+		result, err = thisBitstream.readPBool()
 	case PROP_TYPE_PSINT:
-		result, err = thisBitstream.ReadNewPSint()
+		result, err = thisBitstream.readNewPSint()
 	case PROP_TYPE_PFLOAT:
-		result, err = thisBitstream.ReadPFloat()
+		result, err = thisBitstream.readPFloat()
 	case PROP_TYPE_PDOUBLE:
-		result, err = thisBitstream.ReadPDouble()
+		result, err = thisBitstream.readPDouble()
 	case PROP_TYPE_UDIM:
-		result, err = thisBitstream.ReadUDim()
+		result, err = thisBitstream.readUDim()
 	case PROP_TYPE_UDIM2:
-		result, err = thisBitstream.ReadUDim2()
+		result, err = thisBitstream.readUDim2()
 	case PROP_TYPE_RAY:
-		result, err = thisBitstream.ReadRay()
+		result, err = thisBitstream.readRay()
 	case PROP_TYPE_FACES:
-		result, err = thisBitstream.ReadFaces()
+		result, err = thisBitstream.readFaces()
 	case PROP_TYPE_AXES:
-		result, err = thisBitstream.ReadAxes()
+		result, err = thisBitstream.readAxes()
 	case PROP_TYPE_BRICKCOLOR:
-		result, err = thisBitstream.ReadBrickColor()
+		result, err = thisBitstream.readBrickColor()
 	case PROP_TYPE_COLOR3:
-		result, err = thisBitstream.ReadColor3()
+		result, err = thisBitstream.readColor3()
 	case PROP_TYPE_COLOR3UINT8:
-		result, err = thisBitstream.ReadColor3uint8()
+		result, err = thisBitstream.readColor3uint8()
 	case PROP_TYPE_VECTOR2:
-		result, err = thisBitstream.ReadVector2()
+		result, err = thisBitstream.readVector2()
 	case PROP_TYPE_VECTOR3_SIMPLE:
-		result, err = thisBitstream.ReadVector3Simple()
+		result, err = thisBitstream.readVector3Simple()
 	case PROP_TYPE_VECTOR3_COMPLICATED:
-		result, err = thisBitstream.ReadVector3()
+		result, err = thisBitstream.readVector3()
 	case PROP_TYPE_VECTOR2UINT16:
-		result, err = thisBitstream.ReadVector2int16()
+		result, err = thisBitstream.readVector2int16()
 	case PROP_TYPE_VECTOR3UINT16:
-		result, err = thisBitstream.ReadVector3int16()
+		result, err = thisBitstream.readVector3int16()
 	case PROP_TYPE_CFRAME_SIMPLE:
-		result, err = thisBitstream.ReadCFrameSimple()
+		result, err = thisBitstream.readCFrameSimple()
 	case PROP_TYPE_CFRAME_COMPLICATED:
-		result, err = thisBitstream.ReadCFrame()
+		result, err = thisBitstream.readCFrame()
 	case PROP_TYPE_INSTANCE:
         var referent Referent
-        referent, err = thisBitstream.ReadObject(isClient, isJoinData, context)
+        referent, err = thisBitstream.readObject(isClient, isJoinData, context)
         instance := context.InstancesByReferent.TryGetInstance(referent)
         result = rbxfile.ValueReference{instance}
 	case PROP_TYPE_CONTENT:
-		result, err = thisBitstream.ReadNewContent(isClient, isJoinData, context)
+		result, err = thisBitstream.readNewContent(isClient, isJoinData, context)
 	case PROP_TYPE_SYSTEMADDRESS:
-		result, err = thisBitstream.ReadSystemAddress(isClient, isJoinData, context)
+		result, err = thisBitstream.readSystemAddress(isClient, isJoinData, context)
 	case PROP_TYPE_TUPLE:
-		result, err = thisBitstream.ReadNewTuple(isClient, isJoinData, context)
+		result, err = thisBitstream.readNewTuple(isClient, isJoinData, context)
 	case PROP_TYPE_ARRAY:
-		result, err = thisBitstream.ReadNewArray(isClient, isJoinData, context)
+		result, err = thisBitstream.readNewArray(isClient, isJoinData, context)
 	case PROP_TYPE_DICTIONARY:
-		result, err = thisBitstream.ReadNewDictionary(isClient, isJoinData, context)
+		result, err = thisBitstream.readNewDictionary(isClient, isJoinData, context)
 	case PROP_TYPE_MAP:
-		result, err = thisBitstream.ReadNewMap(isClient, isJoinData, context)
+		result, err = thisBitstream.readNewMap(isClient, isJoinData, context)
 	case PROP_TYPE_NUMBERSEQUENCE:
-		result, err = thisBitstream.ReadNumberSequence()
+		result, err = thisBitstream.readNumberSequence()
 	case PROP_TYPE_NUMBERSEQUENCEKEYPOINT:
-		result, err = thisBitstream.ReadNumberSequenceKeypoint()
+		result, err = thisBitstream.readNumberSequenceKeypoint()
 	case PROP_TYPE_NUMBERRANGE:
-		result, err = thisBitstream.ReadNumberRange()
+		result, err = thisBitstream.readNumberRange()
 	case PROP_TYPE_COLORSEQUENCE:
-		result, err = thisBitstream.ReadColorSequence()
+		result, err = thisBitstream.readColorSequence()
 	case PROP_TYPE_COLORSEQUENCEKEYPOINT:
-		result, err = thisBitstream.ReadColorSequenceKeypoint()
+		result, err = thisBitstream.readColorSequenceKeypoint()
 	case PROP_TYPE_RECT2D:
-		result, err = thisBitstream.ReadRect2D()
+		result, err = thisBitstream.readRect2D()
 	case PROP_TYPE_PHYSICALPROPERTIES:
-		result, err = thisBitstream.ReadPhysicalProperties()
+		result, err = thisBitstream.readPhysicalProperties()
 	default:
 		return nil, errors.New("Unsupported property type: " + strconv.Itoa(int(valueType)))
 	}
@@ -107,14 +107,14 @@ func readSerializedValue(isClient bool, isJoinData bool, enumId uint16, valueTyp
 
 func (schema StaticPropertySchema) Decode(isClient bool, round int, packet *UDPPacket, context *CommunicationContext) (rbxfile.Value, error) {
 	var err error
-	thisBitstream := packet.Stream
+	thisBitstream := packet.stream
 	isJoinData := round == ROUND_JOINDATA
 	if round != ROUND_UPDATE {
         var isDefault bool
-        isDefault, err = thisBitstream.ReadBool()
+        isDefault, err = thisBitstream.readBool()
 		if isDefault || err != nil {
 			if DEBUG && round == ROUND_JOINDATA && isClient {
-				println("Read", schema.Name, "default")
+				println("read", schema.Name, "default")
 			}
 			return rbxfile.DefaultValue, err
 		}
@@ -122,7 +122,7 @@ func (schema StaticPropertySchema) Decode(isClient bool, round int, packet *UDPP
 
     val, err := readSerializedValue(isClient, isJoinData, schema.EnumID, schema.Type, thisBitstream, context)
     if val.Type().String() != "ProtectedString" && round == ROUND_JOINDATA && DEBUG && isClient {
-        println("Read", schema.Name, val.String())
+        println("read", schema.Name, val.String())
     }
     if err != nil {
         return val, errors.New("while parsing " + schema.Name + ": " + err.Error())
@@ -130,13 +130,13 @@ func (schema StaticPropertySchema) Decode(isClient bool, round int, packet *UDPP
     return val, nil
 }
 
-func (schema StaticPropertySchema) Serialize(isClient bool, value rbxfile.Value, round int, context *CommunicationContext, stream *ExtendedWriter) error {
+func (schema StaticPropertySchema) serialize(isClient bool, value rbxfile.Value, round int, context *CommunicationContext, stream *extendedWriter) error {
     if round != ROUND_UPDATE {
         if value == rbxfile.DefaultValue {
-            return stream.WriteBool(true)
+            return stream.writeBool(true)
         }
     }
-	err := stream.WriteBool(false) // not default
+	err := stream.writeBool(false) // not default
 	if err != nil {
 		return err
 	}

@@ -3,23 +3,27 @@ import "errors"
 import "fmt"
 import "github.com/gskartwii/rbxfile"
 
+// ID_EVENT
 type Packet83_07 struct {
+	// Instance that the event was invoked on
 	Instance *rbxfile.Instance
+	// Name of the event
 	EventName string
+	// Description about the invocation
 	Event *ReplicationEvent
 }
 
-func DecodePacket83_07(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
+func decodePacket83_07(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
 	var err error
 	isClient := context.IsClient(packet.Source)
 	layer := &Packet83_07{}
-	thisBitstream := packet.Stream
-    referent, err := thisBitstream.ReadObject(isClient, false, context)
+	thisBitstream := packet.stream
+    referent, err := thisBitstream.readObject(isClient, false, context)
 	if err != nil {
 		return layer, err
 	}
 
-    eventIDx, err := thisBitstream.ReadUint16BE()
+    eventIDx, err := thisBitstream.readUint16BE()
     if err != nil {
         return layer, err
     }
@@ -37,8 +41,8 @@ func DecodePacket83_07(packet *UDPPacket, context *CommunicationContext) (interf
     return layer, err
 }
 
-func (layer *Packet83_07) Serialize(isClient bool, context *CommunicationContext, stream *ExtendedWriter) error {
-	err := stream.WriteObject(isClient, layer.Instance, false, context)
+func (layer *Packet83_07) serialize(isClient bool, context *CommunicationContext, stream *extendedWriter) error {
+	err := stream.writeObject(isClient, layer.Instance, false, context)
 	if err != nil {
 		return err
 	}
@@ -47,7 +51,7 @@ func (layer *Packet83_07) Serialize(isClient bool, context *CommunicationContext
 	if !ok {
 		return errors.New("Invalid event: " + layer.Instance.ClassName + "." + layer.EventName)
 	}
-	err = stream.WriteUint16BE(uint16(eventSchemaID))
+	err = stream.writeUint16BE(uint16(eventSchemaID))
 	if err != nil {
 		return err
 	}
@@ -55,5 +59,5 @@ func (layer *Packet83_07) Serialize(isClient bool, context *CommunicationContext
 	schema := context.StaticSchema.Events[uint16(eventSchemaID)]
 	println("Writing event", schema.Name, schema.InstanceSchema.Name)
 
-	return schema.Serialize(isClient, layer.Event, context, stream)
+	return schema.serialize(isClient, layer.Event, context, stream)
 }

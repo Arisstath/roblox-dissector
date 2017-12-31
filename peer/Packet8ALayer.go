@@ -4,10 +4,9 @@ import "bytes"
 import "crypto/aes"
 import "crypto/cipher"
 import "io"
-import "os"
 import "errors"
 
-func ShuffleSlice(src []byte) ([]byte) {
+func shuffleSlice(src []byte) ([]byte) {
 	ShuffledSrc := make([]byte, 0, len(src))
 	ShuffledSrc = append(ShuffledSrc, src[:0x10]...)
 	for j := len(src) - 0x10; j >= 0x10; j -= 0x10 {
@@ -16,7 +15,7 @@ func ShuffleSlice(src []byte) ([]byte) {
 	return ShuffledSrc
 }
 
-func CalculateChecksum(data []byte) uint32 {
+func calculateChecksum(data []byte) uint32 {
 	var sum uint32 = 0
 	var r uint16 = 55665
 	var c1 uint16 = 52845
@@ -30,14 +29,16 @@ func CalculateChecksum(data []byte) uint32 {
 	return sum
 }
 
+// ID_SUBMIT_TICKET - client -> server
 type Packet8ALayer struct {
-	PlayerId int32 // May be negative with guests!
+	PlayerId int32
 	ClientTicket []byte
 	DataModelHash []byte
-	ProtocolVersion uint32 // Always 36?
+	ProtocolVersion uint32
 	SecurityKey []byte
 	Platform []byte
-	RobloxProductName []byte // Always "?"?
+	// Always 36?
+	RobloxProductName []byte
 	SessionId []byte
 	GoldenHash uint32
 }
@@ -46,7 +47,7 @@ func NewPacket8ALayer() Packet8ALayer {
 	return Packet8ALayer{}
 }
 
-func DecodePacket8ALayer(packet *UDPPacket, context *CommunicationContext, data []byte) (interface{}, error) {
+func decodePacket8ALayer(packet *UDPPacket, context *CommunicationContext, data []byte) (interface{}, error) {
 	layer := NewPacket8ALayer()
 	block, e := aes.NewCipher([]byte{0xFE, 0xF9, 0xF0, 0xEB, 0xE2, 0xDD, 0xD4, 0xCF, 0xC6, 0xC1, 0xB8, 0xB3, 0xAA, 0xA5, 0x9C, 0x97})
 
@@ -60,18 +61,14 @@ func DecodePacket8ALayer(packet *UDPPacket, context *CommunicationContext, data 
 	}
 	c := cipher.NewCBCDecrypter(block, []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0})
 
-	ShuffledSrc := ShuffleSlice(data)
+	ShuffledSrc := shuffleSlice(data)
 
 	c.CryptBlocks(dest, ShuffledSrc)
-	dest = ShuffleSlice(dest)
+	dest = shuffleSlice(dest)
 
-	file, _ := os.Create("dumps/0x8a")
-	file.Write(dest)
-	file.Close()
-
-	checkSum := CalculateChecksum(dest[4:])
-	thisBitstream := ExtendedReader{bitstream.NewReader(bytes.NewReader(dest))}
-	storedChecksum, err := thisBitstream.ReadUint32LE()
+	checkSum := calculateChecksum(dest[4:])
+	thisBitstream := extendedReader{bitstream.NewReader(bytes.NewReader(dest))}
+	storedChecksum, err := thisBitstream.readUint32LE()
 	if err != nil {
 		return layer, err
 	}
@@ -91,100 +88,95 @@ func DecodePacket8ALayer(packet *UDPPacket, context *CommunicationContext, data 
 	PaddingSize := paddingSizeByte & 0xF
 
 	void := make([]byte, PaddingSize)
-	err = thisBitstream.Bytes(void, int(PaddingSize))
+	err = thisBitstream.bytes(void, int(PaddingSize))
 	if err != nil {
 		return layer, err
 	}
 
-	playerId, err := thisBitstream.ReadUint32BE()
+	playerId, err := thisBitstream.readUint32BE()
 	if err != nil {
 		return layer, err
 	}
 	layer.PlayerId = int32(playerId)
-	layer.ClientTicket, err = thisBitstream.ReadHuffman()
+	layer.ClientTicket, err = thisBitstream.readHuffman()
 	if err != nil {
 		return layer, err
 	}
-	layer.DataModelHash, err = thisBitstream.ReadHuffman()
+	layer.DataModelHash, err = thisBitstream.readHuffman()
 	if err != nil {
 		return layer, err
 	}
-	layer.ProtocolVersion, err = thisBitstream.ReadUint32BE()
+	layer.ProtocolVersion, err = thisBitstream.readUint32BE()
 	if err != nil {
 		return layer, err
 	}
-	layer.SecurityKey, err = thisBitstream.ReadHuffman()
+	layer.SecurityKey, err = thisBitstream.readHuffman()
 	if err != nil {
 		return layer, err
 	}
-	layer.Platform, err = thisBitstream.ReadHuffman()
+	layer.Platform, err = thisBitstream.readHuffman()
 	if err != nil {
 		return layer, err
 	}
-	layer.RobloxProductName, err = thisBitstream.ReadHuffman()
+	layer.RobloxProductName, err = thisBitstream.readHuffman()
 	if err == io.EOF {
 		return layer, nil
 	} else if err != nil {
 		return layer, err
 	}
-	layer.SessionId, err = thisBitstream.ReadHuffman()
+	layer.SessionId, err = thisBitstream.readHuffman()
 	if err != nil {
 		return layer, err
 	}
-	layer.GoldenHash, err = thisBitstream.ReadUint32BE()
+	layer.GoldenHash, err = thisBitstream.readUint32BE()
 	if err != nil {
 		return layer, err
 	}
 	
-	oneByte, err := thisBitstream.ReadByte()
-	if err == nil {
-		println("there was more:", oneByte)
-	}
-
 	return layer, nil
 }
-func (layer *Packet8ALayer) Serialize(isClient bool, context *CommunicationContext, stream *ExtendedWriter) error {
+func (layer *Packet8ALayer) serialize(isClient bool, context *CommunicationContext, stream *extendedWriter) error {
 	rawBuffer := new(bytes.Buffer)
-	rawStream := &ExtendedWriter{bitstream.NewWriter(rawBuffer)}
+	rawStream := &extendedWriter{bitstream.NewWriter(rawBuffer)}
 	var err error
 
 	err = stream.WriteByte(0x8A)
 	if err != nil {
 		return err
 	}
-	err = rawStream.WriteUint32BE(uint32(layer.PlayerId))
+	err = rawStream.writeUint32BE(uint32(layer.PlayerId))
 	if err != nil {
 		return err
 	}
-	err = rawStream.WriteHuffman(layer.ClientTicket)
+	err = rawStream.writeHuffman(layer.ClientTicket)
 	if err != nil {
 		return err
 	}
-	err = rawStream.WriteHuffman(layer.DataModelHash)
+	err = rawStream.writeHuffman(layer.DataModelHash)
 	if err != nil {
 		return err
 	}
-	err = rawStream.WriteUint32BE(layer.ProtocolVersion)
+	err = rawStream.writeUint32BE(layer.ProtocolVersion)
 	if err != nil {
 		return err
 	}
-	err = rawStream.WriteHuffman(layer.SecurityKey)
+	err = rawStream.writeHuffman(layer.SecurityKey)
 	if err != nil {
 		return err
 	}
-	err = rawStream.WriteHuffman(layer.Platform)
+	err = rawStream.writeHuffman(layer.Platform)
 	if err != nil {
 		return err
 	}
-	err = rawStream.WriteHuffman(layer.RobloxProductName)
+	err = rawStream.writeHuffman(layer.RobloxProductName)
 	if err != nil {
 		return err
 	}
-	err = rawStream.WriteHuffman(layer.SessionId)
+	err = rawStream.writeHuffman(layer.SessionId)
 	if err != nil {
 		return err
 	}
-	err = rawStream.WriteUint32BE(layer.GoldenHash)
+	err = rawStream.writeUint32BE(layer.GoldenHash)
 	if err != nil {
 		return err
 	}
@@ -197,7 +189,7 @@ func (layer *Packet8ALayer) Serialize(isClient bool, context *CommunicationConte
 	rawCopy[5] = byte(paddingSize & 0xF)
 	copy(rawCopy[6+paddingSize:], rawBuffer.Bytes())
 
-	checkSum := CalculateChecksum(rawCopy[4:])
+	checkSum := calculateChecksum(rawCopy[4:])
 	rawCopy[3] = byte(checkSum >> 24 & 0xFF)
 	rawCopy[2] = byte(checkSum >> 16 & 0xFF)
 	rawCopy[1] = byte(checkSum >> 8 & 0xFF)
@@ -205,14 +197,14 @@ func (layer *Packet8ALayer) Serialize(isClient bool, context *CommunicationConte
 
 	// CBC blocks are encrypted in a weird order
 	dest := make([]byte, len(rawCopy))
-	shuffledEncryptable := ShuffleSlice(rawCopy)
+	shuffledEncryptable := shuffleSlice(rawCopy)
 	block, err := aes.NewCipher([]byte{0xFE, 0xF9, 0xF0, 0xEB, 0xE2, 0xDD, 0xD4, 0xCF, 0xC6, 0xC1, 0xB8, 0xB3, 0xAA, 0xA5, 0x9C, 0x97})
 	if err != nil {
 		return err
 	}
 	c := cipher.NewCBCEncrypter(block, []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0})
 	c.CryptBlocks(dest, shuffledEncryptable)
-	dest = ShuffleSlice(dest) // shuffle back to correct order
+	dest = shuffleSlice(dest) // shuffle back to correct order
 
-	return stream.AllBytes(dest)
+	return stream.allBytes(dest)
 }

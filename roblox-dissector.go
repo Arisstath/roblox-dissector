@@ -245,15 +245,13 @@ func captureFromProxy(src string, dst string, stopCaptureJob chan struct{}, pack
 				fmt.Println("write fail: %s", err.Error())
 				continue
 			}
-			newPacket := peer.UDPPacket{
-				peer.BufferToStream(payload[:n]),
-				*srcAddr,
-				*dstAddr,
-			}
+			newPacket := peer.UDPPacketFromBytes(payload[:n])
+			newPacket.Source = *srcAddr
+			newPacket.Destination = *dstAddr
 			if payload[0] > 0x8 {
-				packetChan <- ProxiedPacket{Packet: &newPacket, Payload: payload[:n]}
+				packetChan <- ProxiedPacket{Packet: newPacket, Payload: payload[:n]}
 			} else { // Need priority for join packets
-				packetReader.ReadPacket(payload[:n], &newPacket)
+				packetReader.ReadPacket(payload[:n], newPacket)
 			}
 		}
 	}()
@@ -270,15 +268,13 @@ func captureFromProxy(src string, dst string, stopCaptureJob chan struct{}, pack
 				fmt.Println("write fail: %s", err.Error())
 				continue
 			}
-			newPacket := peer.UDPPacket{
-				peer.BufferToStream(payload[:n]),
-				*dstAddr,
-				*srcAddr,
-			}
+			newPacket := peer.UDPPacketFromBytes(payload[:n])
+			newPacket.Source = *srcAddr
+			newPacket.Destination = *dstAddr
 			if payload[0] > 0x8 {
-				packetChan <- ProxiedPacket{Packet: &newPacket, Payload: payload[:n]}
+				packetChan <- ProxiedPacket{Packet: newPacket, Payload: payload[:n]}
 			} else { // Need priority for join packets
-				packetReader.ReadPacket(payload[:n], &newPacket)
+				packetReader.ReadPacket(payload[:n], newPacket)
 			}
 		}
 	}()
@@ -341,15 +337,13 @@ func captureFromInjectionProxy(src string, dst string, stopCaptureJob chan struc
 				fmt.Println("readfromudp fail: %s", err.Error())
 				continue
 			}
-			newPacket := peer.UDPPacket{
-				peer.BufferToStream(payload[:n]),
-				*srcAddr,
-				*dstAddr,
-			}
+			newPacket := peer.UDPPacketFromBytes(payload[:n])
+			newPacket.Source = *srcAddr
+			newPacket.Destination = *dstAddr
 			if payload[0] > 0x8 {
-				packetChan <- ProxiedPacket{Packet: &newPacket, Payload: payload[:n]}
+				packetChan <- ProxiedPacket{Packet: newPacket, Payload: payload[:n]}
 			} else { // Need priority for join packets
-				proxyWriter.ProxyClient(payload[:n], &newPacket)
+				proxyWriter.ProxyClient(payload[:n], newPacket)
 			}
 		}
 	}()
@@ -361,15 +355,13 @@ func captureFromInjectionProxy(src string, dst string, stopCaptureJob chan struc
 				fmt.Println("readfromudp fail: %s", err.Error())
 				continue
 			}
-			newPacket := peer.UDPPacket{
-				peer.BufferToStream(payload[:n]),
-				*dstAddr,
-				*srcAddr,
-			}
+			newPacket := peer.UDPPacketFromBytes(payload[:n])
+			newPacket.Source = *srcAddr
+			newPacket.Destination = *dstAddr
 			if payload[0] > 0x8 {
-				packetChan <- ProxiedPacket{Packet: &newPacket, Payload: payload[:n]}
+				packetChan <- ProxiedPacket{Packet: newPacket, Payload: payload[:n]}
 			} else { // Need priority for join packets
-				proxyWriter.ProxyServer(payload[:n], &newPacket)
+				proxyWriter.ProxyServer(payload[:n], newPacket)
 			}
 		}
 	}()
@@ -431,7 +423,13 @@ func captureFromPlayerProxy(settings *PlayerProxySettings, stopCaptureJob chan s
 
 func main() {
 	go func() {
-		_, err := peer.StartClient()
+		client := peer.NewCustomClient()
+		client.SecurityKey = "571cb33a3b024d7b8dafb87156909e92b7eaf86d!1ac9a51ce47836b5c1f65dfc441dfa41"
+		client.OsPlatform = "Win32"
+		client.GoldenHash = 19857408
+		client.DataModelHash = "4b8387d8b57d73944b33dbe044b3707b"
+		client.BrowserTrackerId = 9783257674
+		err := client.ConnectGuest(12109643, 2)
 		if err != nil {
 			panic(err)
 		}

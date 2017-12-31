@@ -1,5 +1,4 @@
 package peer
-import "sync"
 import "github.com/gskartwii/rbxfile"
 import "net"
 import "bytes"
@@ -106,13 +105,7 @@ type CommunicationContext struct {
 	DataModel *rbxfile.Root
     InstancesByReferent InstanceList
 
-	MDescriptor *sync.Mutex
-	MSchema *sync.Mutex
-
 	UniqueID uint32
-
-	EDescriptorsParsed *sync.Cond
-	ESchemaParsed *sync.Cond
 
 	UseStaticSchema bool
 	StaticSchema *StaticSchema
@@ -120,34 +113,23 @@ type CommunicationContext struct {
 	IsStudio bool
 	IsValid bool
 
-	SplitPackets SplitPacketList
-	MUniques *sync.Mutex
+	splitPackets splitPacketList
 	UniqueDatagramsClient map[uint32]struct{}
 	UniqueDatagramsServer map[uint32]struct{}
 }
 
 func NewCommunicationContext() *CommunicationContext {
-	MDescriptor := &sync.Mutex{}
-	MSchema := &sync.Mutex{}
 	return &CommunicationContext{
 		ClassDescriptor: make(Descriptor),
 		PropertyDescriptor: make(Descriptor),
 		EventDescriptor: make(Descriptor),
 		TypeDescriptor: make(Descriptor),
 
-		MDescriptor: MDescriptor,
-		MSchema: MSchema,
-
-		EDescriptorsParsed: sync.NewCond(MDescriptor),
-		ESchemaParsed: sync.NewCond(MSchema),
 		IsValid: true,
 
-		MUniques: &sync.Mutex{},
 		UniqueDatagramsClient: make(map[uint32]struct{}),
 		UniqueDatagramsServer: make(map[uint32]struct{}),
         InstancesByReferent: InstanceList{
-            CommonMutex: MSchema,
-            EAddReferent: sync.NewCond(MSchema),
             Instances: make(map[string]*rbxfile.Instance),
         },
 		InstanceTopScope: "WARNING_UNASSIGNED_TOP_SCOPE",
@@ -173,24 +155,3 @@ func (c *CommunicationContext) IsClient(peer net.UDPAddr) bool {
 func (c *CommunicationContext) IsServer(peer net.UDPAddr) bool {
 	return peer.String() == c.Server
 }
-
-func (c *CommunicationContext) WaitForDescriptors() {
-	c.MDescriptor.Lock()
-	for len(c.ClassDescriptor) == 0 {
-		c.EDescriptorsParsed.Wait()
-	}
-}
-func (c *CommunicationContext) WaitForSchema() {
-	c.MSchema.Lock()
-	for c.StaticSchema == nil {
-		c.ESchemaParsed.Wait()
-	}
-}
-
-func (c *CommunicationContext) FinishDescriptors() {
-	c.MDescriptor.Unlock()
-}
-func (c *CommunicationContext) FinishSchema() {
-	c.MSchema.Unlock()
-}
-

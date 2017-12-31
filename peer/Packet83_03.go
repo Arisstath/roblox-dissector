@@ -3,37 +3,41 @@ import "errors"
 import "fmt"
 import "github.com/gskartwii/rbxfile"
 
+// ID_CHANGE_PROPERTY
 type Packet83_03 struct {
+	// Instance that had the property change
 	Instance *rbxfile.Instance
 	Bool1 bool
+	// Name of the property
 	PropertyName string
+	// New value
 	Value rbxfile.Value
 }
 
-func DecodePacket83_03(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
+func decodePacket83_03(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
 	var err error
 	isClient := context.IsClient(packet.Source)
 
 	layer := &Packet83_03{}
-	thisBitstream := packet.Stream
-    referent, err := thisBitstream.ReadObject(isClient, false, context)
+	thisBitstream := packet.stream
+    referent, err := thisBitstream.readObject(isClient, false, context)
 	if err != nil {
 		return layer, err
 	}
 
-    propertyIDx, err := thisBitstream.ReadUint16BE()
+    propertyIDx, err := thisBitstream.readUint16BE()
     if err != nil {
         return layer, err
     }
 
     if int(propertyIDx) == int(len(context.StaticSchema.Properties)) { // explicit Parent property system
-		layer.Bool1, err = thisBitstream.ReadBool()
+		layer.Bool1, err = thisBitstream.readBool()
 		if err != nil {
 			return layer, err
 		}
 
         var referent Referent
-        referent, err = thisBitstream.ReadObject(isClient, false, context)
+        referent, err = thisBitstream.readObject(isClient, false, context)
         instance := context.InstancesByReferent.TryGetInstance(referent)
 		result := rbxfile.ValueReference{instance}
 		layer.Value = result
@@ -51,7 +55,7 @@ func DecodePacket83_03(packet *UDPPacket, context *CommunicationContext) (interf
     schema := context.StaticSchema.Properties[propertyIDx]
     layer.PropertyName = schema.Name
 
-    layer.Bool1, err = thisBitstream.ReadBool()
+    layer.Bool1, err = thisBitstream.readBool()
     if err != nil {
         return layer, err
     }
@@ -66,26 +70,26 @@ func DecodePacket83_03(packet *UDPPacket, context *CommunicationContext) (interf
     return layer, err
 }
 
-func (layer *Packet83_03) Serialize(isClient bool, context *CommunicationContext, stream *ExtendedWriter) error {
-	err := stream.WriteObject(isClient, layer.Instance, false, context)
+func (layer *Packet83_03) serialize(isClient bool, context *CommunicationContext, stream *extendedWriter) error {
+	err := stream.writeObject(isClient, layer.Instance, false, context)
 	if err != nil {
 		return err
 	}
 
 	if layer.PropertyName == "Parent" {
-		err = stream.WriteUint16BE(uint16(len(context.StaticSchema.Properties)))
+		err = stream.writeUint16BE(uint16(len(context.StaticSchema.Properties)))
 	} else {
-		err = stream.WriteUint16BE(uint16(context.StaticSchema.PropertiesByName[layer.Instance.ClassName + "." + layer.PropertyName]))
+		err = stream.writeUint16BE(uint16(context.StaticSchema.PropertiesByName[layer.Instance.ClassName + "." + layer.PropertyName]))
 	}
 	if err != nil {
 		return err
 	}
 
-	err = stream.WriteBool(layer.Bool1)
+	err = stream.writeBool(layer.Bool1)
 	if err != nil {
 		return err
 	}
 
-	err = context.StaticSchema.Properties[context.StaticSchema.PropertiesByName[layer.PropertyName]].Serialize(isClient, layer.Value, ROUND_UPDATE, context, stream)
+	err = context.StaticSchema.Properties[context.StaticSchema.PropertiesByName[layer.PropertyName]].serialize(isClient, layer.Value, ROUND_UPDATE, context, stream)
 	return err
 }

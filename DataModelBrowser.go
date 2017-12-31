@@ -66,9 +66,7 @@ func NewDataModelBrowser(context *peer.CommunicationContext, dataModel *rbxfile.
 
 	subWindow.SetWindowTitle("Data Model")
 
-	context.MSchema.Lock()
 	children := dataModel.Copy()
-	context.MSchema.Unlock()
 	
 	takeSnapshotButton := widgets.NewQPushButton2("Save as RBXL...", nil)
 	takeSnapshotButton.ConnectPressed(func() {

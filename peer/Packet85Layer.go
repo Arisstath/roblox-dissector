@@ -1,22 +1,34 @@
 package peer
 import "github.com/gskartwii/rbxfile"
+import "errors"
 
+// History waypoint in the movement of a mechanism
 type PhysicsHistoryWaypoint struct {
+	// Position at that point
 	Position rbxfile.ValueVector3
+	// Level of precision. Smaller = higher precision
 	PrecisionLevel uint8
+	// Interval to previous waypoint in ms
 	Interval uint8
 }
+
+// Physics replication for one instance
 type Packet85LayerSubpacket struct {
 	Instance *rbxfile.Instance
+	// See http://wiki.roblox.com/index.php?title=API:Enum/HumanoidStateType
 	NetworkHumanoidState uint8
 	CFrame rbxfile.ValueCFrame
 	LinearVelocity rbxfile.ValueVector3
 	RotationalVelocity rbxfile.ValueVector3
+	// CFrames for any motors attached
 	Motors []PhysicsMotor
+	// Any other parts attached to this mechanism
 	Children []Packet85LayerSubpacket
+	// Movement history
 	HistoryWaypoints []PhysicsHistoryWaypoint
 }
 
+// ID_PHYSICS - client <-> server
 type Packet85Layer struct {
 	SubPackets []*Packet85LayerSubpacket
 }
@@ -25,13 +37,17 @@ func NewPacket85Layer() *Packet85Layer {
 	return &Packet85Layer{}
 }
 
-func DecodePacket85Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
-	thisBitstream := packet.Stream
+func decodePacket85Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
+	thisBitstream := packet.stream
+
+	if true {
+		return nil, errors.New("not implemented!")
+	}
 
 	layer := NewPacket85Layer()
 	for {
 		subpacket := &Packet85LayerSubpacket{}
-		referent, err := thisBitstream.ReadObject(context.IsClient(packet.Source), false, context)
+		referent, err := thisBitstream.readObject(context.IsClient(packet.Source), false, context)
 		if err != nil {
 			return layer, err
 		}
@@ -40,7 +56,7 @@ func DecodePacket85Layer(packet *UDPPacket, context *CommunicationContext) (inte
 		}
 		subpacket.Instance = context.InstancesByReferent.TryGetInstance(referent)
 
-		hasState, err := thisBitstream.ReadBool()
+		hasState, err := thisBitstream.readBool()
 		if err != nil {
 			return layer, err
 		}
@@ -53,55 +69,55 @@ func DecodePacket85Layer(packet *UDPPacket, context *CommunicationContext) (inte
 		
 		if !context.IsClient(packet.Source) { // packet came from server: must read movement history
 			println("from server")
-			hasHistory, err := thisBitstream.ReadBool()
+			hasHistory, err := thisBitstream.readBool()
 			if err != nil {
 				return layer, err
 			}
 			if !hasHistory {
 				println("no history")
-				subpacket.Motors, err = thisBitstream.ReadMotors()
+				subpacket.Motors, err = thisBitstream.readMotors()
 				if err != nil {
 					return layer, err
 				}
 			} else {
 				println("has history")
-				xPacketCompression, err := thisBitstream.ReadBool()
+				xPacketCompression, err := thisBitstream.readBool()
 				if err != nil {
 					return layer, err
 				}
 
 				if !xPacketCompression {
 					println("use compr")
-					subpacket.CFrame, err = thisBitstream.ReadPhysicsCFrame()
+					subpacket.CFrame, err = thisBitstream.readPhysicsCFrame()
 					if err != nil {
 						return layer, err
 					}
 					println("cf", subpacket.CFrame.String())
-					subpacket.LinearVelocity, err = thisBitstream.ReadCoordsMode1()
+					subpacket.LinearVelocity, err = thisBitstream.readCoordsMode1()
 					if err != nil {
 						return layer, err
 					}
 					println("lv", subpacket.LinearVelocity.String())
-					subpacket.RotationalVelocity, err = thisBitstream.ReadCoordsMode1()
+					subpacket.RotationalVelocity, err = thisBitstream.readCoordsMode1()
 					if err != nil {
 						return layer, err
 					}
 					println("rv", subpacket.RotationalVelocity.String())
 				} else {
-					matrix, err := thisBitstream.ReadPhysicsMatrix()
+					matrix, err := thisBitstream.readPhysicsMatrix()
 					if err != nil {
 						return layer, err
 					}
 					subpacket.CFrame = rbxfile.ValueCFrame{rbxfile.ValueVector3{}, matrix}
 					println("cf", subpacket.CFrame.String())
 				}
-				subpacket.Motors, err = thisBitstream.ReadMotors()
+				subpacket.Motors, err = thisBitstream.readMotors()
 				if err != nil {
 					return layer, err
 				}
 				println("motor succ")
 
-				numNodes, err := thisBitstream.ReadUintUTF8()
+				numNodes, err := thisBitstream.readUintUTF8()
 				if err != nil {
 					return layer, err
 				}
@@ -139,53 +155,53 @@ func DecodePacket85Layer(packet *UDPPacket, context *CommunicationContext) (inte
 			} // hasHistory
 		} else {
 			// packet came from client, just read the assembly
-			subpacket.CFrame, err = thisBitstream.ReadPhysicsCFrame()
+			subpacket.CFrame, err = thisBitstream.readPhysicsCFrame()
 			if err != nil {
 				return layer, err
 			}
-			subpacket.LinearVelocity, err = thisBitstream.ReadCoordsMode1()
+			subpacket.LinearVelocity, err = thisBitstream.readCoordsMode1()
 			if err != nil {
 				return layer, err
 			}
-			subpacket.RotationalVelocity, err = thisBitstream.ReadCoordsMode1()
+			subpacket.RotationalVelocity, err = thisBitstream.readCoordsMode1()
 			if err != nil {
 				return layer, err
 			}
-			subpacket.Motors, err = thisBitstream.ReadMotors()
+			subpacket.Motors, err = thisBitstream.readMotors()
 			if err != nil {
 				return layer, err
 			}
 		}
 
-		isSolo, err := thisBitstream.ReadBool()
+		isSolo, err := thisBitstream.readBool()
 		if err != nil {
 			return layer, err
 		}
 		if !isSolo {
 			for {
 				child := Packet85LayerSubpacket{}
-				referent, err := thisBitstream.ReadObject(context.IsClient(packet.Source), false, context)
+				referent, err := thisBitstream.readObject(context.IsClient(packet.Source), false, context)
 				if err != nil {
 					return layer, err
 				}
 				child.Instance = context.InstancesByReferent.TryGetInstance(referent)
-				child.CFrame, err = thisBitstream.ReadPhysicsCFrame()
+				child.CFrame, err = thisBitstream.readPhysicsCFrame()
 				if err != nil {
 					return layer, err
 				}
-				child.LinearVelocity, err = thisBitstream.ReadCoordsMode1()
+				child.LinearVelocity, err = thisBitstream.readCoordsMode1()
 				if err != nil {
 					return layer, err
 				}
-				child.RotationalVelocity, err = thisBitstream.ReadCoordsMode1()
+				child.RotationalVelocity, err = thisBitstream.readCoordsMode1()
 				if err != nil {
 					return layer, err
 				}
-				child.Motors, err = thisBitstream.ReadMotors()
+				child.Motors, err = thisBitstream.readMotors()
 				if err != nil {
 					return layer, err
 				}
-				isEOF, err := thisBitstream.ReadBool()
+				isEOF, err := thisBitstream.readBool()
 				if isEOF {
 					break
 				}
@@ -197,14 +213,14 @@ func DecodePacket85Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	return layer, nil
 }
 
-func (layer *Packet85Layer) Serialize(isClient bool, context *CommunicationContext, stream *ExtendedWriter) error {
+func (layer *Packet85Layer) serialize(isClient bool, context *CommunicationContext, stream *extendedWriter) error {
 	for i := 0; i < len(layer.SubPackets); i++ {
 		subpacket := layer.SubPackets[i]
-		err := stream.WriteObject(isClient, subpacket.Instance, false, context)
+		err := stream.writeObject(isClient, subpacket.Instance, false, context)
 		if err != nil {
 			return err
 		}
-		err = stream.WriteBool(subpacket.NetworkHumanoidState != 0)
+		err = stream.writeBool(subpacket.NetworkHumanoidState != 0)
 		if err != nil {
 			return err
 		}
@@ -215,52 +231,52 @@ func (layer *Packet85Layer) Serialize(isClient bool, context *CommunicationConte
 			}
 		}
 
-		err = stream.WritePhysicsCFrame(subpacket.CFrame)
+		err = stream.writePhysicsCFrame(subpacket.CFrame)
 		if err != nil {
 			return err
 		}
-		err = stream.WriteCoordsMode1(subpacket.LinearVelocity)
+		err = stream.writeCoordsMode1(subpacket.LinearVelocity)
 		if err != nil {
 			return err
 		}
-		err = stream.WriteCoordsMode1(subpacket.RotationalVelocity)
+		err = stream.writeCoordsMode1(subpacket.RotationalVelocity)
 		if err != nil {
 			return err
 		}
-		err = stream.WriteMotors(subpacket.Motors)
+		err = stream.writeMotors(subpacket.Motors)
 		if err != nil {
 			return err
 		}
 
 		for j := 0; j < len(subpacket.Children); j++ {
 			child := subpacket.Children[j]
-			err = stream.WriteBool(true)
+			err = stream.writeBool(true)
 			if err != nil {
 				return err
 			}
-			err = stream.WriteObject(isClient, child.Instance, false, context)
+			err = stream.writeObject(isClient, child.Instance, false, context)
 			if err != nil {
 				return err
 			}
 
-			err = stream.WritePhysicsCFrame(child.CFrame)
+			err = stream.writePhysicsCFrame(child.CFrame)
 			if err != nil {
 				return err
 			}
-			err = stream.WriteCoordsMode1(child.LinearVelocity)
+			err = stream.writeCoordsMode1(child.LinearVelocity)
 			if err != nil {
 				return err
 			}
-			err = stream.WriteCoordsMode1(child.RotationalVelocity)
+			err = stream.writeCoordsMode1(child.RotationalVelocity)
 			if err != nil {
 				return err
 			}
-			err = stream.WriteMotors(child.Motors)
+			err = stream.writeMotors(child.Motors)
 			if err != nil {
 				return err
 			}
 		}
-		err = stream.WriteBool(false) // Terminator for children
+		err = stream.writeBool(false) // Terminator for children
 		if err != nil {
 			return err
 		}

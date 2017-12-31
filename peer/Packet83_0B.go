@@ -5,7 +5,9 @@ import "bytes"
 import "github.com/gskartwii/go-bitstream"
 import "github.com/DataDog/zstd"
 
+// ID_JOINDATA
 type Packet83_0B struct {
+	// Instances replicated by the server
 	Instances []*rbxfile.Instance
 }
 
@@ -13,11 +15,11 @@ func NewPacket83_0BLayer(length int) *Packet83_0B {
 	return &Packet83_0B{make([]*rbxfile.Instance, length)}
 }
 
-func DecodePacket83_0B(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
+func decodePacket83_0B(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
 	var layer *Packet83_0B
-	thisBitstream := packet.Stream
+	thisBitstream := packet.stream
 	thisBitstream.Align()
-	arrayLen, err := thisBitstream.ReadUint32BE()
+	arrayLen, err := thisBitstream.readUint32BE()
 	if err != nil {
 		return layer, err
 	}
@@ -36,7 +38,7 @@ func DecodePacket83_0B(packet *UDPPacket, context *CommunicationContext) (interf
 
 	var i uint32
 	for i = 0; i < arrayLen; i++ {
-		layer.Instances[i], err = DecodeReplicationInstance(context.IsClient(newPacket.Source), true, newPacket, context)
+		layer.Instances[i], err = decodeReplicationInstance(context.IsClient(newPacket.Source), true, newPacket, context)
 		if err != nil {
 			return layer, err
 		}
@@ -46,22 +48,22 @@ func DecodePacket83_0B(packet *UDPPacket, context *CommunicationContext) (interf
 	return layer, nil
 }
 
-func (layer *Packet83_0B) Serialize(isClient bool, context *CommunicationContext, stream *ExtendedWriter) error {
+func (layer *Packet83_0B) serialize(isClient bool, context *CommunicationContext, stream *extendedWriter) error {
     var err error
     err = stream.Align()
     if err != nil {
         return err
     }
 
-    err = stream.WriteUint32BE(uint32(len(layer.Instances)))
+    err = stream.writeUint32BE(uint32(len(layer.Instances)))
     uncompressedBuf := bytes.NewBuffer([]byte{})
 	zstdBuf := bytes.NewBuffer([]byte{})
     middleStream := zstd.NewWriter(zstdBuf)
     defer middleStream.Close()
-    zstdStream := &ExtendedWriter{bitstream.NewWriter(uncompressedBuf)}
+    zstdStream := &extendedWriter{bitstream.NewWriter(uncompressedBuf)}
 
     for i := 0; i < len(layer.Instances); i++ {
-        err = SerializeReplicationInstance(isClient, layer.Instances[i], true, context, zstdStream)
+        err = serializeReplicationInstance(isClient, layer.Instances[i], true, context, zstdStream)
         if err != nil {
             return err
         }
@@ -84,14 +86,14 @@ func (layer *Packet83_0B) Serialize(isClient bool, context *CommunicationContext
         return err
     }
 
-    err = stream.WriteUint32BE(uint32(zstdBuf.Len()))
+    err = stream.writeUint32BE(uint32(zstdBuf.Len()))
     if err != nil {
         return err
     }
-    err = stream.WriteUint32BE(uint32(uncompressedBuf.Len()))
+    err = stream.writeUint32BE(uint32(uncompressedBuf.Len()))
     if err != nil {
         return err
     }
-    err = stream.AllBytes(zstdBuf.Bytes())
+    err = stream.allBytes(zstdBuf.Bytes())
     return err
 }

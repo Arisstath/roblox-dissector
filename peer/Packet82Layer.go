@@ -4,12 +4,16 @@ import "github.com/gskartwii/go-bitstream"
 import "errors"
 import "bytes"
 
+// Descriptor item containing information about a class/property/event/type
 type DescriptorItem struct {
 	IDx uint32
 	OtherID uint32
 	Name string
 }
 
+// ID_TEACH_DESCRIPTOR_DICTIONARIES - server <-> client
+// Contains descriptors to be negotiated by the peers, so that their uint32
+// identifiers can be passed over the network
 type Packet82Layer struct {
 	ClassDescriptor []*DescriptorItem
 	PropertyDescriptor []*DescriptorItem
@@ -21,19 +25,19 @@ func NewPacket82Layer() *Packet82Layer {
 	return &Packet82Layer{}
 }
 
-func LearnDictionary(decompressedStream *ExtendedReader, ContextDescriptor map[string]uint32) ([]*DescriptorItem, error) {
+func learnDictionary(decompressedStream *extendedReader, ContextDescriptor map[string]uint32) ([]*DescriptorItem, error) {
 	var dictionary []*DescriptorItem
-	dictionaryLength, _ := decompressedStream.ReadUint32BE()
+	dictionaryLength, _ := decompressedStream.readUint32BE()
 	if dictionaryLength > 0x1000 {
 		return dictionary, errors.New("sanity check: dictionary length exceeded maximum")
 	}
 	dictionary = make([]*DescriptorItem, dictionaryLength)
 	var i uint32
 	for i = 0; i < dictionaryLength; i++ {
-		IDx, _ := decompressedStream.ReadUint32BE()
-		nameLength, _ := decompressedStream.ReadUint16BE()
-		name, _ := decompressedStream.ReadString(int(nameLength))
-		otherID, _ := decompressedStream.ReadUint32BE()
+		IDx, _ := decompressedStream.readUint32BE()
+		nameLength, _ := decompressedStream.readUint16BE()
+		name, _ := decompressedStream.readString(int(nameLength))
+		otherID, _ := decompressedStream.readUint32BE()
 
 		dictionary[i] = &DescriptorItem{IDx, otherID, string(name)}
 		ContextDescriptor[string(name)] = IDx
@@ -41,26 +45,26 @@ func LearnDictionary(decompressedStream *ExtendedReader, ContextDescriptor map[s
 	return dictionary, nil
 }
 
-func TeachDictionary(stream *ExtendedWriter, descriptor []*DescriptorItem) error {
-    err := stream.WriteUint32BE(uint32(len(descriptor)))
+func teachDictionary(stream *extendedWriter, descriptor []*DescriptorItem) error {
+    err := stream.writeUint32BE(uint32(len(descriptor)))
     if err != nil {
         return err
     }
 
     for _, item := range descriptor {
-        err = stream.WriteUint32BE(item.IDx)
+        err = stream.writeUint32BE(item.IDx)
         if err != nil {
             return err
         }
-        err = stream.WriteUint16BE(uint16(len(item.Name)))
+        err = stream.writeUint16BE(uint16(len(item.Name)))
         if err != nil {
             return err
         }
-        err = stream.WriteASCII(item.Name)
+        err = stream.writeASCII(item.Name)
         if err != nil {
             return err
         }
-        err = stream.WriteUint32BE(item.OtherID)
+        err = stream.writeUint32BE(item.OtherID)
         if err != nil {
             return err
         }
@@ -68,17 +72,17 @@ func TeachDictionary(stream *ExtendedWriter, descriptor []*DescriptorItem) error
     return nil
 }
 
-func LearnDictionaryHuffman(decompressedStream *ExtendedReader, ContextDescriptor map[string]uint32) ([]*DescriptorItem, error) {
+func learnDictionaryHuffman(decompressedStream *extendedReader, ContextDescriptor map[string]uint32) ([]*DescriptorItem, error) {
 	var dictionary []*DescriptorItem
-	dictionaryLength, _ := decompressedStream.ReadUint32BE()
+	dictionaryLength, _ := decompressedStream.readUint32BE()
 	if dictionaryLength > 0x1000 {
 		return dictionary, errors.New("sanity check: dictionary length exceeded maximum")
 	}
 	dictionary = make([]*DescriptorItem, dictionaryLength)
 	var i uint32
 	for i = 0; i < dictionaryLength; i++ {
-		IDx, _ := decompressedStream.ReadUint32BE()
-		name, _ := decompressedStream.ReadHuffman()
+		IDx, _ := decompressedStream.readUint32BE()
+		name, _ := decompressedStream.readHuffman()
 
 		dictionary[i] = &DescriptorItem{IDx, 0, string(name)}
 		ContextDescriptor[string(name)] = IDx
@@ -86,73 +90,69 @@ func LearnDictionaryHuffman(decompressedStream *ExtendedReader, ContextDescripto
 	return dictionary, nil
 }
 
-func DecodePacket82Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
+func decodePacket82Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
 	layer := NewPacket82Layer()
-	thisBitstream := packet.Stream
+	thisBitstream := packet.stream
 
 	var err error
-	var decompressedStream *ExtendedReader
-	context.MDescriptor.Lock()
-	defer context.MDescriptor.Unlock() // Do not broadcast if parsing fails
+	var decompressedStream *extendedReader
 	if context.IsClient(packet.Source) {
 		decompressedStream = thisBitstream
 
-		layer.ClassDescriptor, err = LearnDictionaryHuffman(decompressedStream, context.ClassDescriptor)
+		layer.ClassDescriptor, err = learnDictionaryHuffman(decompressedStream, context.ClassDescriptor)
 		if err != nil {
 			return layer, err
 		}
 
-		layer.PropertyDescriptor, err = LearnDictionaryHuffman(decompressedStream, context.PropertyDescriptor)
+		layer.PropertyDescriptor, err = learnDictionaryHuffman(decompressedStream, context.PropertyDescriptor)
 		if err != nil {
 			return layer, err
 		}
 
-		layer.EventDescriptor, err = LearnDictionaryHuffman(decompressedStream, context.EventDescriptor)
+		layer.EventDescriptor, err = learnDictionaryHuffman(decompressedStream, context.EventDescriptor)
 		if err != nil {
 			return layer, err
 		}
 
-		layer.TypeDescriptor, err = LearnDictionaryHuffman(decompressedStream, context.TypeDescriptor)
+		layer.TypeDescriptor, err = learnDictionaryHuffman(decompressedStream, context.TypeDescriptor)
 		if err != nil {
 			return layer, err
 		}
-		context.EDescriptorsParsed.Broadcast()
 		return layer, nil
 	} else {
-		_, _ = thisBitstream.ReadUint32BE() // Skip compressed len
+		_, _ = thisBitstream.readUint32BE() // Skip compressed len
 		gzipStream, err := gzip.NewReader(thisBitstream.GetReader())
 		if err != nil {
 			return layer, err
 		}
 
-		decompressedStream = &ExtendedReader{bitstream.NewReader(gzipStream)}
+		decompressedStream = &extendedReader{bitstream.NewReader(gzipStream)}
 
-		layer.ClassDescriptor, err = LearnDictionary(decompressedStream, context.ClassDescriptor)
+		layer.ClassDescriptor, err = learnDictionary(decompressedStream, context.ClassDescriptor)
 		if err != nil {
 			return layer, err
 		}
 
-		layer.PropertyDescriptor, err = LearnDictionary(decompressedStream, context.PropertyDescriptor)
+		layer.PropertyDescriptor, err = learnDictionary(decompressedStream, context.PropertyDescriptor)
 		if err != nil {
 			return layer, err
 		}
 
-		layer.EventDescriptor, err = LearnDictionary(decompressedStream, context.EventDescriptor)
+		layer.EventDescriptor, err = learnDictionary(decompressedStream, context.EventDescriptor)
 		if err != nil {
 			return layer, err
 		}
 
-		layer.TypeDescriptor, err = LearnDictionary(decompressedStream, context.TypeDescriptor)
+		layer.TypeDescriptor, err = learnDictionary(decompressedStream, context.TypeDescriptor)
 		if err != nil {
 			return layer, err
 		}
 
-		context.EDescriptorsParsed.Broadcast()
 		return layer, nil
 	}
 }
 
-func (layer *Packet82Layer) Serialize(isClient bool, context *CommunicationContext, stream *ExtendedWriter) error {
+func (layer *Packet82Layer) serialize(isClient bool, context *CommunicationContext, stream *extendedWriter) error {
     var err error
     // FIXME: Assume this peer is always a server
 
@@ -163,20 +163,20 @@ func (layer *Packet82Layer) Serialize(isClient bool, context *CommunicationConte
     gzipBuf := bytes.NewBuffer([]byte{})
     middleStream := gzip.NewWriter(gzipBuf)
     defer middleStream.Close()
-    gzipStream := &ExtendedWriter{bitstream.NewWriter(middleStream)}
-    err = TeachDictionary(gzipStream, layer.ClassDescriptor)
+    gzipStream := &extendedWriter{bitstream.NewWriter(middleStream)}
+    err = teachDictionary(gzipStream, layer.ClassDescriptor)
     if err != nil {
         return err
     }
-    err = TeachDictionary(gzipStream, layer.PropertyDescriptor)
+    err = teachDictionary(gzipStream, layer.PropertyDescriptor)
     if err != nil {
         return err
     }
-    err = TeachDictionary(gzipStream, layer.EventDescriptor)
+    err = teachDictionary(gzipStream, layer.EventDescriptor)
     if err != nil {
         return err
     }
-    err = TeachDictionary(gzipStream, layer.TypeDescriptor)
+    err = teachDictionary(gzipStream, layer.TypeDescriptor)
     if err != nil {
         return err
     }
@@ -192,10 +192,10 @@ func (layer *Packet82Layer) Serialize(isClient bool, context *CommunicationConte
 	if err != nil {
 		return err
 	}
-    err = stream.WriteUint32BE(uint32(gzipBuf.Len()))
+    err = stream.writeUint32BE(uint32(gzipBuf.Len()))
     if err != nil {
         return err
     }
-    err = stream.AllBytes(gzipBuf.Bytes())
+    err = stream.allBytes(gzipBuf.Bytes())
     return err
 }

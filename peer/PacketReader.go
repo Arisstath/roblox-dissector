@@ -2,88 +2,88 @@ package peer
 import "errors"
 import "fmt"
 
-type DecoderFunc func(*UDPPacket, *CommunicationContext) (interface{}, error)
-var PacketDecoders = map[byte]DecoderFunc{
-	0x05: DecodePacket05Layer,
-	0x06: DecodePacket06Layer,
-	0x07: DecodePacket07Layer,
-	0x08: DecodePacket08Layer,
-	0x00: DecodePacket00Layer,
-	0x03: DecodePacket03Layer,
-	0x09: DecodePacket09Layer,
-	0x10: DecodePacket10Layer,
-	0x13: DecodePacket13Layer,
+type decoderFunc func(*UDPPacket, *CommunicationContext) (interface{}, error)
+var packetDecoders = map[byte]decoderFunc{
+	0x05: decodePacket05Layer,
+	0x06: decodePacket06Layer,
+	0x07: decodePacket07Layer,
+	0x08: decodePacket08Layer,
+	0x00: decodePacket00Layer,
+	0x03: decodePacket03Layer,
+	0x09: decodePacket09Layer,
+	0x10: decodePacket10Layer,
+	0x13: decodePacket13Layer,
 
-	0x81: DecodePacket81Layer,
-	0x82: DecodePacket82Layer,
-	0x83: DecodePacket83Layer,
-	0x85: DecodePacket85Layer,
-	0x86: DecodePacket86Layer,
-	0x8F: DecodePacket8FLayer,
-	0x90: DecodePacket90Layer,
-	0x92: DecodePacket92Layer,
-	0x93: DecodePacket93Layer,
-	0x97: DecodePacket97Layer,
+	0x81: decodePacket81Layer,
+	0x82: decodePacket82Layer,
+	0x83: decodePacket83Layer,
+	0x85: decodePacket85Layer,
+	0x86: decodePacket86Layer,
+	0x8F: decodePacket8FLayer,
+	0x90: decodePacket90Layer,
+	0x92: decodePacket92Layer,
+	0x93: decodePacket93Layer,
+	0x97: decodePacket97Layer,
 }
 
 type ReceiveHandler func(byte, *UDPPacket, *PacketLayers)
 type ErrorHandler func(error)
 
-type RMNumberQueue struct {
-	Index uint32
-	Queue map[uint32]*PacketLayers
+type rmNumberQueue struct {
+	index uint32
+	queue map[uint32]*PacketLayers
 }
-type SequenceQueue RMNumberQueue
-type OrderingQueue struct {
-	Index [32]uint32
-	Queue [32]map[uint32]*PacketLayers
-}
-
-type Queues struct {
-	RMNumberQueue *RMNumberQueue
-	SequenceQueue *SequenceQueue
-	OrderingQueue *OrderingQueue
+type sequenceQueue rmNumberQueue
+type orderingQueue struct {
+	index [32]uint32
+	queue [32]map[uint32]*PacketLayers
 }
 
-func (q *Queues) Add(layers *PacketLayers) {
+type queues struct {
+	rmNumberQueue *rmNumberQueue
+	sequenceQueue *sequenceQueue
+	orderingQueue *orderingQueue
+}
+
+func (q *queues) add(layers *PacketLayers) {
 	packet := layers.Reliability
 	reliability := packet.Reliability
 	hasRMN := reliability >= 2 && reliability <= 4
 	hasSeq := reliability == 1 || reliability == 4
 	hasOrd := reliability == 1 || reliability == 4 || reliability == 3 || reliability == 7
 	if hasRMN {
-		q.RMNumberQueue.Queue[packet.ReliableMessageNumber] = layers
+		q.rmNumberQueue.queue[packet.ReliableMessageNumber] = layers
 	}
 	if hasSeq {
-		q.SequenceQueue.Queue[packet.SequencingIndex] = layers
+		q.sequenceQueue.queue[packet.SequencingIndex] = layers
 	}
 	if hasOrd {
-		q.OrderingQueue.Queue[packet.OrderingChannel][packet.OrderingIndex] = layers
+		q.orderingQueue.queue[packet.OrderingChannel][packet.OrderingIndex] = layers
 	}
 }
 
-func (q *Queues) Remove(layers *PacketLayers) {
+func (q *queues) remove(layers *PacketLayers) {
 	packet := layers.Reliability
 	reliability := packet.Reliability
 	hasRMN := reliability >= 2 && reliability <= 4
 	hasSeq := reliability == 1 || reliability == 4
 	hasOrd := reliability == 1 || reliability == 4 || reliability == 3 || reliability == 7
 	if hasRMN {
-		delete(q.RMNumberQueue.Queue, packet.ReliableMessageNumber)
+		delete(q.rmNumberQueue.queue, packet.ReliableMessageNumber)
 	}
 	if hasSeq {
-		delete(q.SequenceQueue.Queue, packet.SequencingIndex)
+		delete(q.sequenceQueue.queue, packet.SequencingIndex)
 	}
 	if hasOrd {
-		delete(q.OrderingQueue.Queue[packet.OrderingChannel], packet.OrderingIndex)
+		delete(q.orderingQueue.queue[packet.OrderingChannel], packet.OrderingIndex)
 	}
 }
 
-func (q *Queues) Next(channel uint8) *PacketLayers {
-	rmnReadIndex := q.RMNumberQueue.Index
-	packet, ok := q.RMNumberQueue.Queue[rmnReadIndex]
+func (q *queues) next(channel uint8) *PacketLayers {
+	rmnReadIndex := q.rmNumberQueue.index
+	packet, ok := q.rmNumberQueue.queue[rmnReadIndex]
 	if ok {
-		q.RMNumberQueue.Index++
+		q.rmNumberQueue.index++
 		reliability := packet.Reliability.Reliability
 		hasSeq := reliability == 1 || reliability == 4
 		hasOrd := reliability == 1 || reliability == 4 || reliability == 3 || reliability == 7
@@ -92,13 +92,13 @@ func (q *Queues) Next(channel uint8) *PacketLayers {
 		}
 	}
 
-	ordReadIndex := q.OrderingQueue.Index[channel]
-	packet, ok = q.OrderingQueue.Queue[channel][ordReadIndex]
+	ordReadIndex := q.orderingQueue.index[channel]
+	packet, ok = q.orderingQueue.queue[channel][ordReadIndex]
 	if !ok {
 		return nil
 	}
 	if packet.Reliability.IsFinal {
-		q.OrderingQueue.Index[channel]++
+		q.orderingQueue.index[channel]++
 	}
 
 	reliability := packet.Reliability.Reliability
@@ -107,26 +107,41 @@ func (q *Queues) Next(channel uint8) *PacketLayers {
 		return packet
 	}
 
-	if packet.Reliability.SequencingIndex == q.SequenceQueue.Index {
+	if packet.Reliability.SequencingIndex == q.sequenceQueue.index {
 		if packet.Reliability.IsFinal {
-			q.SequenceQueue.Index++
+			q.sequenceQueue.index++
 		}
 		return packet
 	}
 	return nil
 }
 
+// PacketReader is a struct that can be used to read packets from a source
+// Pass packets in using ReadPacket() and bind to the given callbacks
+// to receive the results
 type PacketReader struct {
+	// Callback for "simple" packets (pre-connection offline packets).
 	SimpleHandler ReceiveHandler
+	// Callback for ReliabilityLayer subpackets. This callback is invoked for every
+	// split of every packets, possible duplicates, etc.
 	ReliableHandler ReceiveHandler
+	// Callback for generic packets (anything that is sent when a connection has been
+	// established. You definitely want to bind to this.
 	FullReliableHandler ReceiveHandler
+	// Callback for ACKs and NAKs. Not very useful if you're just parsing packets.
+	// However, you want to bind to this if you are writing a peer.
 	ACKHandler func(*UDPPacket, *RakNetLayer)
+	// Callback for ReliabilityLayer full packets. This callback is invoked for every
+	// real ReliabilityLayer.
 	ReliabilityLayerHandler func(*UDPPacket, *ReliabilityLayer, *RakNetLayer)
+	// Simply enough, any errors encountered are reported to ErrorHandler.
 	ErrorHandler ErrorHandler
+	// Context is a struct representing the state of the connection. It contains
+	// information such as the addresses of the peers and the state of the DataModel.
 	Context *CommunicationContext
 
-	ServerQueues *Queues
-	ClientQueues *Queues
+	serverQueues *queues
+	clientQueues *queues
 }
 
 func NewPacketReader() *PacketReader {
@@ -140,38 +155,38 @@ func NewPacketReader() *PacketReader {
 	}
 
 	return &PacketReader{
-		ServerQueues: &Queues{
-			RMNumberQueue: &RMNumberQueue{
-				Index: 0,
-				Queue: make(map[uint32]*PacketLayers),
+		serverQueues: &queues{
+			rmNumberQueue: &rmNumberQueue{
+				index: 0,
+				queue: make(map[uint32]*PacketLayers),
 			},
-			SequenceQueue: &SequenceQueue{
-				Index: 0,
-				Queue: make(map[uint32]*PacketLayers),
+			sequenceQueue: &sequenceQueue{
+				index: 0,
+				queue: make(map[uint32]*PacketLayers),
 			},
-			OrderingQueue: &OrderingQueue{
-				Queue: serverOrderingQueue,
+			orderingQueue: &orderingQueue{
+				queue: serverOrderingQueue,
 			},
 		},
-		ClientQueues: &Queues{
-			RMNumberQueue: &RMNumberQueue{
-				Index: 0,
-				Queue: make(map[uint32]*PacketLayers),
+		clientQueues: &queues{
+			rmNumberQueue: &rmNumberQueue{
+				index: 0,
+				queue: make(map[uint32]*PacketLayers),
 			},
-			SequenceQueue: &SequenceQueue{
-				Index: 0,
-				Queue: make(map[uint32]*PacketLayers),
+			sequenceQueue: &sequenceQueue{
+				index: 0,
+				queue: make(map[uint32]*PacketLayers),
 			},
-			OrderingQueue: &OrderingQueue{
-				Queue: clientOrderingQueue,
+			orderingQueue: &orderingQueue{
+				queue: clientOrderingQueue,
 			},
 		},
 	}
 }
 
-func (this *PacketReader) ReadSimple(packetType uint8, layers *PacketLayers, packet *UDPPacket) {
+func (this *PacketReader) readSimple(packetType uint8, layers *PacketLayers, packet *UDPPacket) {
 	var err error
-	decoder := PacketDecoders[packetType]
+	decoder := packetDecoders[packetType]
 	if decoder != nil {
 		layers.Main, err = decoder(packet, this.Context)
 		if err != nil {
@@ -183,16 +198,16 @@ func (this *PacketReader) ReadSimple(packetType uint8, layers *PacketLayers, pac
 	this.SimpleHandler(packetType, packet, layers)
 }
 
-func (this *PacketReader) ReadGeneric(packetType uint8, layers *PacketLayers, packet *UDPPacket) {
+func (this *PacketReader) readGeneric(packetType uint8, layers *PacketLayers, packet *UDPPacket) {
 	var err error
 	if packetType == 0x1B {
-		tsLayer, err := DecodePacket1BLayer(packet, this.Context)
+		tsLayer, err := decodePacket1BLayer(packet, this.Context)
 		if err != nil {
 			this.ErrorHandler(errors.New(fmt.Sprintf("Failed to decode timestamped packet: %s", err.Error())))
 			return
 		}
 		layers.Timestamp = tsLayer.(*Packet1BLayer)
-		packetType, err = packet.Stream.ReadByte()
+		packetType, err = packet.stream.ReadByte()
 		if err != nil {
 			this.ErrorHandler(errors.New(fmt.Sprintf("Failed to decode timestamped packet: %s", err.Error())))
 			return
@@ -202,14 +217,14 @@ func (this *PacketReader) ReadGeneric(packetType uint8, layers *PacketLayers, pa
 	}
 	if packetType == 0x8A {
 		println("will read ", layers.Reliability.LengthInBits)
-		data, err := packet.Stream.ReadString(int((layers.Reliability.LengthInBits+7)/8) - 1)
+		data, err := packet.stream.readString(int((layers.Reliability.LengthInBits+7)/8) - 1)
 		if err != nil {
 			println("failed while reading packet8a")
 			this.ErrorHandler(errors.New(fmt.Sprintf("Failed to decode reliable packet %02X: %s", packetType, err.Error())))
 
 			return
 		}
-		layers.Main, err = DecodePacket8ALayer(packet, this.Context, data)
+		layers.Main, err = decodePacket8ALayer(packet, this.Context, data)
 
 		if err != nil {
 			println("decode fail")
@@ -218,7 +233,7 @@ func (this *PacketReader) ReadGeneric(packetType uint8, layers *PacketLayers, pa
 			return
 		}
 	} else {
-		decoder := PacketDecoders[packetType]
+		decoder := packetDecoders[packetType]
 		if decoder != nil {
 			layers.Main, err = decoder(packet, this.Context)
 
@@ -233,24 +248,24 @@ func (this *PacketReader) ReadGeneric(packetType uint8, layers *PacketLayers, pa
 	this.FullReliableHandler(packetType, packet, layers)
 }
 
-func (this *PacketReader) ReadOrdered(layers *PacketLayers, packet *UDPPacket) {
+func (this *PacketReader) readOrdered(layers *PacketLayers, packet *UDPPacket) {
 	var err error
 	subPacket := layers.Reliability
 	if subPacket.HasPacketType && !subPacket.HasBeenDecoded && subPacket.IsFinal {
 		packetType := subPacket.PacketType
-		_, err = subPacket.FullDataReader.ReadByte()
+		_, err = subPacket.fullDataReader.ReadByte()
 		if err != nil {
 			this.ErrorHandler(errors.New(fmt.Sprintf("Failed to decode reliablePacket %02X: %s", packetType, err.Error())))
 			return
 		}
-		newPacket := &UDPPacket{subPacket.FullDataReader, packet.Source, packet.Destination}
+		newPacket := &UDPPacket{subPacket.fullDataReader, packet.Source, packet.Destination}
 
-		this.ReadGeneric(packetType, layers, newPacket)
+		this.readGeneric(packetType, layers, newPacket)
 	}
 }
 
-func (this *PacketReader) ReadReliable(layers *PacketLayers, packet *UDPPacket) {
-	packet.Stream = layers.RakNet.Payload
+func (this *PacketReader) readReliable(layers *PacketLayers, packet *UDPPacket) {
+	packet.stream = layers.RakNet.payload
 	reliabilityLayer, err := DecodeReliabilityLayer(packet, this.Context, layers.RakNet)
 	if err != nil {
 		this.ErrorHandler(errors.New("Failed to decode reliable packet: " + err.Error()))
@@ -258,38 +273,39 @@ func (this *PacketReader) ReadReliable(layers *PacketLayers, packet *UDPPacket) 
 	}
 
 	isClient := this.Context.IsClient(packet.Source)
-	var queues *Queues
+	var queues *queues
 
 	if isClient {
-		queues = this.ClientQueues
+		queues = this.clientQueues
 	} else {
-		queues = this.ServerQueues
+		queues = this.serverQueues
 	}
 
 	this.ReliabilityLayerHandler(packet, reliabilityLayer, layers.RakNet)
 	for _, subPacket := range reliabilityLayer.Packets {
 		reliablePacketLayers := &PacketLayers{RakNet: layers.RakNet, Reliability: subPacket}
 		this.ReliableHandler(subPacket.PacketType, packet, reliablePacketLayers)
-		queues.Add(reliablePacketLayers)
+		queues.add(reliablePacketLayers)
 		if reliablePacketLayers.Reliability.Reliability == 0 {
-			this.ReadOrdered(reliablePacketLayers, packet)
-			queues.Remove(reliablePacketLayers)
+			this.readOrdered(reliablePacketLayers, packet)
+			queues.remove(reliablePacketLayers)
 			continue
 		}
 
-		reliablePacketLayers = queues.Next(subPacket.OrderingChannel)
+		reliablePacketLayers = queues.next(subPacket.OrderingChannel)
 		for reliablePacketLayers != nil {
-			this.ReadOrdered(reliablePacketLayers, packet)
-			queues.Remove(reliablePacketLayers)
-			reliablePacketLayers = queues.Next(subPacket.OrderingChannel)
+			this.readOrdered(reliablePacketLayers, packet)
+			queues.remove(reliablePacketLayers)
+			reliablePacketLayers = queues.next(subPacket.OrderingChannel)
 		}
 	}
 }
 
+// ReadPacket reads a single packet and invokes all according handler functions
 func (this *PacketReader) ReadPacket(payload []byte, packet *UDPPacket) {
 	context := this.Context
 
-	packet.Stream = BufferToStream(payload)
+	packet.stream = bufferToStream(payload)
 	rakNetLayer, err := DecodeRakNetLayer(payload[0], packet, context)
 	if err != nil {
 		this.ErrorHandler(err)
@@ -302,7 +318,7 @@ func (this *PacketReader) ReadPacket(payload []byte, packet *UDPPacket) {
 	layers := &PacketLayers{RakNet: rakNetLayer}
 	if rakNetLayer.IsSimple {
 		packetType := rakNetLayer.SimpleLayerID
-		this.ReadSimple(packetType, layers, packet)
+		this.readSimple(packetType, layers, packet)
 		return
 	} else if !rakNetLayer.IsValid {
 		this.ErrorHandler(errors.New(fmt.Sprintf("Sent invalid packet (packet header %x)", payload[0])))
@@ -310,7 +326,7 @@ func (this *PacketReader) ReadPacket(payload []byte, packet *UDPPacket) {
 	} else if rakNetLayer.IsACK || rakNetLayer.IsNAK {
 		this.ACKHandler(packet, rakNetLayer)
 	} else {
-		this.ReadReliable(layers, packet)
+		this.readReliable(layers, packet)
 		return
 	}
 }

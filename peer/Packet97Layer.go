@@ -138,6 +138,8 @@ type StaticSchema struct {
 }
 
 
+// ID_NEW_SCHEMA - server -> client
+// Negotiates a network schema with the client
 type Packet97Layer struct {
 	Schema StaticSchema
 }
@@ -146,19 +148,17 @@ func NewPacket97Layer() *Packet97Layer {
 	return &Packet97Layer{}
 }
 
-func DecodePacket97Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
+func decodePacket97Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
 	layer := NewPacket97Layer()
-	thisBitstream := packet.Stream
+	thisBitstream := packet.stream
 
-	context.MSchema.Lock()
-	defer context.MSchema.Unlock()
 	var err error
 	stream, err := thisBitstream.RegionToZStdStream()
 	if err != nil {
 		return layer, err
 	}
 
-	enumArrayLen, err := stream.ReadUintUTF8()
+	enumArrayLen, err := stream.readUintUTF8()
 	if err != nil {
 		return layer, err
 	}
@@ -168,30 +168,30 @@ func DecodePacket97Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	layer.Schema.Enums = make([]StaticEnumSchema, enumArrayLen)
     layer.Schema.EnumsByName = make(map[string]int, enumArrayLen)
 	for i := 0; i < int(enumArrayLen); i++ {
-		stringLen, err := stream.ReadUintUTF8()
+		stringLen, err := stream.readUintUTF8()
 		if err != nil {
 			return layer, err
 		}
-		layer.Schema.Enums[i].Name, err = stream.ReadASCII(int(stringLen))
+		layer.Schema.Enums[i].Name, err = stream.readASCII(int(stringLen))
 		if err != nil {
 			return layer, err
 		}
-		layer.Schema.Enums[i].BitSize, err = stream.ReadUint8()
+		layer.Schema.Enums[i].BitSize, err = stream.readUint8()
 		if err != nil {
 			return layer, err
 		}
         layer.Schema.EnumsByName[layer.Schema.Enums[i].Name] = i
 	}
 
-	classArrayLen, err := stream.ReadUintUTF8()
+	classArrayLen, err := stream.readUintUTF8()
 	if err != nil {
 		return layer, err
 	}
-	propertyArrayLen, err := stream.ReadUintUTF8()
+	propertyArrayLen, err := stream.readUintUTF8()
 	if err != nil {
 		return layer, err
 	}
-	eventArrayLen, err := stream.ReadUintUTF8()
+	eventArrayLen, err := stream.readUintUTF8()
 	if err != nil {
 		return layer, err
 	}
@@ -214,18 +214,18 @@ func DecodePacket97Layer(packet *UDPPacket, context *CommunicationContext) (inte
     classGlobalIndex := 0
     eventGlobalIndex := 0
 	for i := 0; i < int(classArrayLen); i++ {
-		classNameLen, err := stream.ReadUintUTF8()
+		classNameLen, err := stream.readUintUTF8()
 		if err != nil {
 			return layer, err
 		}
 		thisInstance := layer.Schema.Instances[i]
-		thisInstance.Name, err = stream.ReadASCII(int(classNameLen))
+		thisInstance.Name, err = stream.readASCII(int(classNameLen))
 		if err != nil {
 			return layer, err
 		}
         layer.Schema.ClassesByName[thisInstance.Name] = i
 
-		propertyCount, err := stream.ReadUintUTF8()
+		propertyCount, err := stream.readUintUTF8()
 		if err != nil {
 			return layer, err
 		}
@@ -236,11 +236,11 @@ func DecodePacket97Layer(packet *UDPPacket, context *CommunicationContext) (inte
 
 		for j := 0; j < int(propertyCount); j++ {
 			thisProperty := thisInstance.Properties[j]
-			propNameLen, err := stream.ReadUintUTF8()
+			propNameLen, err := stream.readUintUTF8()
 			if err != nil {
 				return layer, err
 			}
-			thisProperty.Name, err = stream.ReadASCII(int(propNameLen))
+			thisProperty.Name, err = stream.readASCII(int(propNameLen))
 			if err != nil {
 				return layer, err
 			}
@@ -250,14 +250,14 @@ func DecodePacket97Layer(packet *UDPPacket, context *CommunicationContext) (inte
             copy(propertyGlobalName[classNameLen+1:], thisProperty.Name)
             layer.Schema.PropertiesByName[string(propertyGlobalName)] = propertyGlobalIndex
 
-			thisProperty.Type, err = stream.ReadUint8()
+			thisProperty.Type, err = stream.readUint8()
 			if err != nil {
 				return layer, err
 			}
 			thisProperty.TypeString = TypeNames[thisProperty.Type]
 
             if thisProperty.Type == 7 {
-                thisProperty.EnumID, err = stream.ReadUint16BE()
+                thisProperty.EnumID, err = stream.readUint16BE()
                 if err != nil {
                     return layer, err
                 }
@@ -273,7 +273,7 @@ func DecodePacket97Layer(packet *UDPPacket, context *CommunicationContext) (inte
             propertyGlobalIndex++
 		}
 
-		thisInstance.Unknown, err = stream.ReadUint16BE()
+		thisInstance.Unknown, err = stream.readUint16BE()
 		if err != nil {
 			return layer, err
 		}
@@ -281,7 +281,7 @@ func DecodePacket97Layer(packet *UDPPacket, context *CommunicationContext) (inte
 			return layer, errors.New("class global index too high")
 		}
 
-		eventCount, err := stream.ReadUintUTF8()
+		eventCount, err := stream.readUintUTF8()
 		if err != nil {
 			return layer, err
 		}
@@ -292,11 +292,11 @@ func DecodePacket97Layer(packet *UDPPacket, context *CommunicationContext) (inte
 
 		for j := 0; j < int(eventCount); j++ {
 			thisEvent := thisInstance.Events[j]
-			eventNameLen, err := stream.ReadUintUTF8()
+			eventNameLen, err := stream.readUintUTF8()
 			if err != nil {
 				return layer, err
 			}
-			thisEvent.Name, err = stream.ReadASCII(int(eventNameLen))
+			thisEvent.Name, err = stream.readASCII(int(eventNameLen))
 			if err != nil {
 				return layer, err
 			}
@@ -306,7 +306,7 @@ func DecodePacket97Layer(packet *UDPPacket, context *CommunicationContext) (inte
             copy(eventGlobalName[classNameLen+1:], thisEvent.Name)
             layer.Schema.EventsByName[string(eventGlobalName)] = eventGlobalIndex
 
-			countArguments, err := stream.ReadUintUTF8()
+			countArguments, err := stream.readUintUTF8()
 			if err != nil {
 				return layer, err
 			}
@@ -317,12 +317,12 @@ func DecodePacket97Layer(packet *UDPPacket, context *CommunicationContext) (inte
 
 			for k := 0; k < int(countArguments); k++ {
 				thisArgument := thisEvent.Arguments[k]
-				thisArgument.Type, err = stream.ReadUint8()
+				thisArgument.Type, err = stream.readUint8()
 				if err != nil {
 					return layer, err
 				}
 				thisArgument.TypeString = TypeNames[thisArgument.Type]
-                thisArgument.EnumID, err = stream.ReadUint16BE()
+                thisArgument.EnumID, err = stream.readUint16BE()
 				if err != nil {
 					return layer, err
 				}
@@ -337,12 +337,11 @@ func DecodePacket97Layer(packet *UDPPacket, context *CommunicationContext) (inte
         classGlobalIndex++
 	}
 	context.StaticSchema = &layer.Schema
-	context.ESchemaParsed.Broadcast()
 
 	return layer, err
 }
 
-func (layer *Packet97Layer) Serialize(isClient bool,context *CommunicationContext, stream *ExtendedWriter) error {
+func (layer *Packet97Layer) serialize(isClient bool,context *CommunicationContext, stream *extendedWriter) error {
     var err error
 
     err = stream.WriteByte(0x97)
@@ -352,51 +351,51 @@ func (layer *Packet97Layer) Serialize(isClient bool,context *CommunicationContex
     gzipBuf := bytes.NewBuffer([]byte{})
     middleStream := gzip.NewWriter(gzipBuf)
     defer middleStream.Close()
-    gzipStream := &ExtendedWriter{bitstream.NewWriter(middleStream)}
+    gzipStream := &extendedWriter{bitstream.NewWriter(middleStream)}
 
     schema := layer.Schema
-    err = gzipStream.WriteUintUTF8(uint32(len(schema.Enums)))
+    err = gzipStream.writeUintUTF8(uint32(len(schema.Enums)))
     if err != nil {
         return err
     }
     for _, enum := range schema.Enums {
-        err = gzipStream.WriteUintUTF8(uint32(len(enum.Name)))
-        err = gzipStream.WriteASCII(enum.Name)
+        err = gzipStream.writeUintUTF8(uint32(len(enum.Name)))
+        err = gzipStream.writeASCII(enum.Name)
         err = gzipStream.WriteByte(enum.BitSize)
     }
 
-    err = gzipStream.WriteUintUTF8(uint32(len(schema.Instances)))
+    err = gzipStream.writeUintUTF8(uint32(len(schema.Instances)))
     if err != nil {
         return err
     }
-    err = gzipStream.WriteUintUTF8(uint32(len(schema.Properties)))
+    err = gzipStream.writeUintUTF8(uint32(len(schema.Properties)))
     if err != nil {
         return err
     }
-    err = gzipStream.WriteUintUTF8(uint32(len(schema.Events)))
+    err = gzipStream.writeUintUTF8(uint32(len(schema.Events)))
     if err != nil {
         return err
     }
     for _, instance := range schema.Instances {
-        err = gzipStream.WriteUintUTF8(uint32(len(instance.Name)))
+        err = gzipStream.writeUintUTF8(uint32(len(instance.Name)))
         if err != nil {
             return err
         }
-        err = gzipStream.WriteASCII(instance.Name)
+        err = gzipStream.writeASCII(instance.Name)
         if err != nil {
             return err
         }
-        err = gzipStream.WriteUintUTF8(uint32(len(instance.Properties)))
+        err = gzipStream.writeUintUTF8(uint32(len(instance.Properties)))
         if err != nil {
             return err
         }
 
         for _, property := range instance.Properties {
-            err = gzipStream.WriteUintUTF8(uint32(len(property.Name)))
+            err = gzipStream.writeUintUTF8(uint32(len(property.Name)))
             if err != nil {
                 return err
             }
-            err = gzipStream.WriteASCII(property.Name)
+            err = gzipStream.writeASCII(property.Name)
             if err != nil {
                 return err
             }
@@ -405,32 +404,32 @@ func (layer *Packet97Layer) Serialize(isClient bool,context *CommunicationContex
                 return err
             }
             if property.Type == 7 {
-                err = gzipStream.WriteUint16BE(property.EnumID)
+                err = gzipStream.writeUint16BE(property.EnumID)
                 if err != nil {
                     return err
                 }
             }
         }
 
-        err = gzipStream.WriteUint16BE(instance.Unknown)
+        err = gzipStream.writeUint16BE(instance.Unknown)
         if err != nil {
             return err
         }
-        err = gzipStream.WriteUintUTF8(uint32(len(instance.Events)))
+        err = gzipStream.writeUintUTF8(uint32(len(instance.Events)))
         if err != nil {
             return err
         }
         for _, event := range instance.Events {
-            err = gzipStream.WriteUintUTF8(uint32(len(event.Name)))
+            err = gzipStream.writeUintUTF8(uint32(len(event.Name)))
             if err != nil {
                 return err
             }
-            err = gzipStream.WriteASCII(event.Name)
+            err = gzipStream.writeASCII(event.Name)
             if err != nil {
                 return err
             }
 
-            err = gzipStream.WriteUintUTF8(uint32(len(event.Arguments)))
+            err = gzipStream.writeUintUTF8(uint32(len(event.Arguments)))
             if err != nil {
                 return err
             }
@@ -439,7 +438,7 @@ func (layer *Packet97Layer) Serialize(isClient bool,context *CommunicationContex
                 if err != nil {
                     return err
                 }
-                err = gzipStream.WriteUint16BE(argument.EnumID)
+                err = gzipStream.writeUint16BE(argument.EnumID)
                 if err != nil {
                     return err
                 }
@@ -459,10 +458,10 @@ func (layer *Packet97Layer) Serialize(isClient bool,context *CommunicationContex
 	if err != nil {
 		return err
 	}
-    err = stream.WriteUint32BE(uint32(gzipBuf.Len()))
+    err = stream.writeUint32BE(uint32(gzipBuf.Len()))
     if err != nil {
         return err
     }
-    err = stream.AllBytes(gzipBuf.Bytes())
+    err = stream.allBytes(gzipBuf.Bytes())
     return err
 }

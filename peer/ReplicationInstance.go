@@ -3,17 +3,17 @@ import "fmt"
 import "errors"
 import "github.com/gskartwii/rbxfile"
 
-func DecodeReplicationInstance(isClient bool, isJoinData bool, packet *UDPPacket, context *CommunicationContext) (*rbxfile.Instance, error) {
+func decodeReplicationInstance(isClient bool, isJoinData bool, packet *UDPPacket, context *CommunicationContext) (*rbxfile.Instance, error) {
 	var err error
-	thisBitstream := packet.Stream
+	thisBitstream := packet.stream
 
-    referent, err := thisBitstream.ReadObject(isClient, isJoinData, context)
+    referent, err := thisBitstream.readObject(isClient, isJoinData, context)
 	if err != nil {
         return nil, errors.New("while parsing self: " + err.Error())
 	}
     thisInstance := context.InstancesByReferent.TryGetInstance(referent)
 
-    schemaIDx, err := thisBitstream.ReadUint16BE()
+    schemaIDx, err := thisBitstream.readUint16BE()
     if int(schemaIDx) > len(context.StaticSchema.Instances) {
         return thisInstance, errors.New(fmt.Sprintf("class idx %d is higher than %d", schemaIDx, len(context.StaticSchema.Instances)))
     }
@@ -23,7 +23,7 @@ func DecodeReplicationInstance(isClient bool, isJoinData bool, packet *UDPPacket
 		println("will parse", referent, schema.Name, isJoinData, len(schema.Properties))
 	}
 
-    _, err = thisBitstream.ReadBool()
+    _, err = thisBitstream.readBool()
     if err != nil {
         return thisInstance, err
     }
@@ -88,7 +88,7 @@ func DecodeReplicationInstance(isClient bool, isJoinData bool, packet *UDPPacket
             }
         }
     }
-    referent, err = thisBitstream.ReadObject(isClient, isJoinData, context)
+    referent, err = thisBitstream.readObject(isClient, isJoinData, context)
     if err != nil {
         return thisInstance, errors.New("while parsing parent: " + err.Error())
     }
@@ -107,19 +107,19 @@ func DecodeReplicationInstance(isClient bool, isJoinData bool, packet *UDPPacket
     return thisInstance, err
 }
 
-func SerializeReplicationInstance(isClient bool, instance *rbxfile.Instance, isJoinData bool, context *CommunicationContext, stream *ExtendedWriter) error {
+func serializeReplicationInstance(isClient bool, instance *rbxfile.Instance, isJoinData bool, context *CommunicationContext, stream *extendedWriter) error {
     var err error
-    err = stream.WriteObject(isClient, instance, isJoinData, context)
+    err = stream.writeObject(isClient, instance, isJoinData, context)
     if err != nil {
         return err
     }
 
     schemaIdx := uint16(context.StaticSchema.ClassesByName[instance.ClassName])
-    err = stream.WriteUint16BE(schemaIdx)
+    err = stream.writeUint16BE(schemaIdx)
     if err != nil {
         return err
     }
-    err = stream.WriteBool(false) // ???
+    err = stream.writeBool(false) // ???
     if err != nil {
         return err
     }
@@ -133,7 +133,7 @@ func SerializeReplicationInstance(isClient bool, instance *rbxfile.Instance, isJ
                 value = rbxfile.DefaultValue
             }
 			println("serializing", schema.Properties[i].Name)
-            err = schema.Properties[i].Serialize(isClient, value, ROUND_JOINDATA, context, stream)
+            err = schema.Properties[i].serialize(isClient, value, ROUND_JOINDATA, context, stream)
 			println("ser done")
             if err != nil {
                 return err
@@ -154,7 +154,7 @@ func SerializeReplicationInstance(isClient bool, instance *rbxfile.Instance, isJ
             }
             if isStringObject {
 				value := instance.Get(schema.Properties[i].Name)
-				err = schema.Properties[i].Serialize(isClient, value, ROUND_STRINGS, context, stream)
+				err = schema.Properties[i].serialize(isClient, value, ROUND_STRINGS, context, stream)
 				if err != nil {
 					return err
 				}
@@ -174,7 +174,7 @@ func SerializeReplicationInstance(isClient bool, instance *rbxfile.Instance, isJ
             }
             if !isStringObject {
 				value := instance.Get(schema.Properties[i].Name)
-				err := schema.Properties[i].Serialize(isClient, value, ROUND_OTHER, context, stream)
+				err := schema.Properties[i].serialize(isClient, value, ROUND_OTHER, context, stream)
 				if err != nil {
 					return err
 				}
@@ -182,7 +182,7 @@ func SerializeReplicationInstance(isClient bool, instance *rbxfile.Instance, isJ
         }
 	}
 
-    err = stream.WriteObject(isClient, instance.Parent(), isJoinData, context)
+    err = stream.writeObject(isClient, instance.Parent(), isJoinData, context)
     if err != nil {
         return err
     }

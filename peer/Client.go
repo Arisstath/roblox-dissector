@@ -5,17 +5,19 @@ import "fmt"
 import "sort"
 import "net/http"
 import "encoding/json"
-import "strings"
 import "github.com/gskartwii/rbxfile"
+import "math/rand"
+import "strconv"
+import "errors"
 
-type PlaceLauncherResponse struct {
+type placeLauncherResponse struct {
 	JobId string
 	Status int
 	JoinScriptUrl string
 	AuthenticationUrl string
 	AuthenticationTicket string
 }
-type JoinAshxResponse struct {
+type joinAshxResponse struct {
 	ClientTicket string
 	NewClientTicket string
 	SessionId string
@@ -33,20 +35,34 @@ type CustomClient struct {
 	Address net.UDPAddr
 	ServerAddress net.UDPAddr
 	Connected bool
-	MustACK []int
-	ClientTicket string
-	SessionId string
+	mustACK []int
+	clientTicket string
+	sessionId string
 	PlayerId int32
 	UserName string
-	CharacterAppearance string
+	characterAppearance string
+	PlaceId uint32
+	httpClient *http.Client
+	GUID uint64
+	BrowserTrackerId uint64
+	GenderId uint8
+	IsPartyLeader bool
+
+	RakPassword []byte
+	GoldenHash uint32
+	SecurityKey string
+	DataModelHash string
+	OsPlatform string
+	instanceIndex uint32
+	scope string
 }
 
 func (client *CustomClient) SendACKs() {
-	if len(client.MustACK) == 0 {
+	if len(client.mustACK) == 0 {
 		return
 	}
-	acks := client.MustACK
-	client.MustACK = []int{}
+	acks := client.mustACK
+	client.mustACK = []int{}
 	var ackStructure []ACKRange
 	sort.Ints(acks)
 
@@ -85,51 +101,66 @@ func (client *CustomClient) SendACKs() {
 }
 
 func (client *CustomClient) Receive(buf []byte) {
-	packet := &UDPPacket{
-		Stream: BufferToStream(buf),
-		Source: client.ServerAddress,
-		Destination: client.Address,
-	}
+	packet := UDPPacketFromBytes(buf)
+	packet.Source = client.ServerAddress
+	packet.Destination = client.Address
 	client.Reader.ReadPacket(buf, packet)
 }
 
-func StartClient() (*CustomClient, error) {
-	context := NewCommunicationContext()
-	client := &CustomClient{}
-	client.PlayerId = -306579839
+func NewCustomClient() *CustomClient {
+	rand.Seed(time.Now().UnixNano())
+	return &CustomClient{
+		httpClient: &http.Client{},
+		Context: NewCommunicationContext(),
+		GUID: rand.Uint64(),
+		instanceIndex: 1000, 
+		scope: "RBX224117",
+	}
+}
 
-	robloxCommClient := &http.Client{}
-	placeLauncherRequest, err := http.NewRequest("GET", "https://assetgame.roblox.com/game/PlaceLauncher.ashx?request=RequestGame&browserTrackerId=9783257674&placeId=211851454&isPartyLeader=false&genderId=2", nil)
+func (client *CustomClient) joinWithPlaceLauncher(url string, cookies []*http.Cookie) error {
+	println("requesting placelauncher", url)
+	robloxCommClient := client.httpClient
+	placeLauncherRequest, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	placeLauncherRequest.Header.Set("User-Agent", "Roblox/WinInet")
-	placeLauncherRequest.Header.Set("Playercount", "0")
-	placeLauncherRequest.Header.Set("Requester", "Client")
-	placeLauncherRequest.AddCookie(&http.Cookie{Name: "GuestData", Value: "UserId=-306579839"})
+	for _, cookie := range cookies {
+		placeLauncherRequest.AddCookie(cookie)
+	}
+
 	resp, err := robloxCommClient.Do(placeLauncherRequest)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	var plResp PlaceLauncherResponse
+	var plResp placeLauncherResponse
 	err = json.NewDecoder(resp.Body).Decode(&plResp)
 	if err != nil {
-		return nil, err
+		return err
+	}
+	if plResp.JoinScriptUrl == "" {
+		println("joinscript failure, status", plResp.Status)
+		return errors.New("couldn't get joinscripturl")
 	}
 
 	joinScriptRequest, err := http.NewRequest("GET", plResp.JoinScriptUrl, nil)
 	if err != nil {
-		return nil, err
-	}
-	userIds := strings.Split(plResp.AuthenticationTicket, ":")
-	if len(userIds) < 2 {
-		println("Oh no! authtick fetch broke!", plResp.AuthenticationTicket)
+		return err
 	}
 
-	joinScriptRequest.AddCookie(&http.Cookie{Name: "GuestData", Value: "UserId=" + userIds[1] + "&Gender=2"})
+	for _, cook := range resp.Cookies() {
+		joinScriptRequest.AddCookie(cook)
+	}
+	for _, cook := range cookies {
+		if x, _ := joinScriptRequest.Cookie(cook.Name); x == nil {
+			joinScriptRequest.AddCookie(cook)
+		}
+	}
+
 	resp, err = robloxCommClient.Do(joinScriptRequest)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	body := resp.Body
 
@@ -141,26 +172,36 @@ func StartClient() (*CustomClient, error) {
 	}
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	var jsResp JoinAshxResponse
+	var jsResp joinAshxResponse
 	err = json.NewDecoder(body).Decode(&jsResp)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	client.ClientTicket = jsResp.ClientTicket
-	client.SessionId = jsResp.SessionId
+	client.clientTicket = jsResp.ClientTicket
+	client.sessionId = jsResp.SessionId
 	client.PlayerId = jsResp.UserId
 	client.UserName = jsResp.UserName
 	addrp, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", jsResp.MachineAddress, jsResp.ServerPort))
 	if err != nil {
-		return nil, err
+		return err
 	}
-	addr := *addrp // Yes, I'm lazy
 
-	client.Context = context
-	client.ServerAddress = addr
+	client.ServerAddress = *addrp
+	return client.RakConnect()
+}
+
+func (client *CustomClient) ConnectGuest(placeId uint32, genderId uint8) error {
+	client.PlaceId = placeId
+	client.GenderId = genderId
+	return client.joinWithPlaceLauncher(fmt.Sprintf("https://assetgame.roblox.com/game/PlaceLauncher.ashx?request=RequestGame&browserTrackerId=%d&placeId=%d&isPartyLeader=false&genderId=%d", client.BrowserTrackerId, client.PlaceId, client.GenderId),[]*http.Cookie{})
+}
+
+func (client *CustomClient) RakConnect() error {
+	context := client.Context
+	addr := client.ServerAddress
 
 	packetReader := NewPacketReader()
 	packetReader.ACKHandler = func(packet *UDPPacket, layer *RakNetLayer) {
@@ -178,7 +219,7 @@ func StartClient() (*CustomClient, error) {
 			client.Connected = true
 
 			response := &Packet07Layer{
-				GUID: 0x1122334455667788, // hahaha
+				GUID: client.GUID,
 				MTU: 1492,
 				IPAddress: &addr,
 			}
@@ -187,8 +228,8 @@ func StartClient() (*CustomClient, error) {
 			println("receive 8!")
 
 			response := &Packet09Layer{
-				GUID: 0x1122334455667788,
-				Timestamp: 117,
+				GUID: client.GUID,
+				Timestamp: uint64(time.Now().Unix()),
 				UseSecurity: false,
 				Password: []byte{0x37, 0x4F, 0x5E, 0x11, 0x6C, 0x45},
 			}
@@ -199,7 +240,7 @@ func StartClient() (*CustomClient, error) {
 	}
 	packetReader.ReliableHandler = func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
 		rakNetLayer := layers.RakNet
-		client.MustACK = append(client.MustACK, int(rakNetLayer.DatagramNumber))
+		client.mustACK = append(client.mustACK, int(rakNetLayer.DatagramNumber))
 	}
 	packetReader.FullReliableHandler = func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
 		if packetType == 0x0 {
@@ -230,7 +271,7 @@ func StartClient() (*CustomClient, error) {
 					nullIP,
 				},
 				SendPingTime: mainLayer.SendPongTime,
-				SendPongTime: 127,
+				SendPongTime: uint64(time.Now().Unix()),
 			}
 
 			client.Writer.WriteGeneric(context, 3, response, 3, &addr)
@@ -259,14 +300,14 @@ func StartClient() (*CustomClient, error) {
 
 			response8A := &Packet8ALayer{
 				PlayerId: client.PlayerId,
-				ClientTicket: []byte(client.ClientTicket),
-				DataModelHash: []byte("4b8387d8b57d73944b33dbe044b3707b"),
+				ClientTicket: []byte(client.clientTicket),
+				DataModelHash: []byte(client.DataModelHash),
 				ProtocolVersion: 36,
-				SecurityKey: []byte("571cb33a3b024d7b8dafb87156909e92b7eaf86d!1ac9a51ce47836b5c1f65dfc441dfa41"),
-				Platform: []byte("Win32"),
+				SecurityKey: []byte(client.SecurityKey),
+				Platform: []byte(client.OsPlatform),
 				RobloxProductName: []byte("?"),
-				SessionId: []byte(client.SessionId),
-				GoldenHash: 19857408,
+				SessionId: []byte(client.sessionId),
+				GoldenHash: client.GoldenHash,
 			}
 			client.Writer.WriteGeneric(context, 3, response8A, 3, &addr)
 
@@ -284,14 +325,13 @@ func StartClient() (*CustomClient, error) {
 				}
 			}
 
-			mainLayer := layers.Main.(*Packet81Layer)
 			myPlayer := &rbxfile.Instance{
 				ClassName: "Player",
-				Reference: string(mainLayer.ReferentString) + "_35000",
+				Reference: client.scope + "_" + strconv.Itoa(int(client.instanceIndex)),
 				IsService: false,
 				Properties: map[string]rbxfile.Value{
 					"Name": rbxfile.ValueString(client.UserName),
-					"CharacterAppearance": rbxfile.ValueString(client.CharacterAppearance),
+					"CharacterAppearance": rbxfile.ValueString(client.characterAppearance),
 					"CharacterAppearanceId": rbxfile.ValueInt(15437777),
 					"ChatPrivacyMode": rbxfile.ValueToken{
 						Value: 0,
@@ -305,6 +345,7 @@ func StartClient() (*CustomClient, error) {
 				},
 			}
 			players.AddChild(myPlayer)
+			client.instanceIndex++
 
 			response83 := &Packet83Layer{
 				SubPackets: []Packet83Subpacket{
@@ -312,6 +353,20 @@ func StartClient() (*CustomClient, error) {
 				},
 			}
 			client.Writer.WriteGeneric(context, 0x83, response83, 3, &addr)
+		} else if packetType == 0x83 {
+			response := &Packet83Layer{make([]Packet83Subpacket, 0)}
+			mainLayer := layers.Main.(*Packet83Layer)
+			for _, packet := range mainLayer.SubPackets {
+				if Packet83ToType(packet) == 5 {
+					response.SubPackets = append(response.SubPackets, &Packet83_06{
+						Timestamp: uint64(time.Now().Unix()),
+						IsPingBack: true,
+					})
+				}
+			}
+			if len(response.SubPackets) > 0 {
+				client.Writer.WriteGeneric(context, 0x83, response, 3, &addr)
+			}
 		} else {
 			println("receive generic unk", packetType)
 		}
@@ -325,7 +380,7 @@ func StartClient() (*CustomClient, error) {
 	conn, err := net.DialUDP("udp", nil, &addr)
 	defer conn.Close()
 	if err != nil {
-		return client, err
+		return err
 	}
 	client.Address = *conn.LocalAddr().(*net.UDPAddr)
 
@@ -366,7 +421,7 @@ func StartClient() (*CustomClient, error) {
 	for {
 		n, _, err := conn.ReadFromUDP(buf)
 		if err != nil {
-			println("Read err:", err.Error())
+			println("read err:", err.Error())
 			continue
 		}
 

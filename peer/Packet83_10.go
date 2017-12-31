@@ -1,14 +1,16 @@
 package peer
 
+// ID_TAG
 type Packet83_10 struct {
+	// 12 or 13
 	TagId uint32
 }
 
-func DecodePacket83_10(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
+func decodePacket83_10(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
 	var err error
 	inner := &Packet83_10{}
-	thisBitstream := packet.Stream
-	inner.TagId, err = thisBitstream.ReadUint32BE()
+	thisBitstream := packet.stream
+	inner.TagId, err = thisBitstream.readUint32BE()
 	if err != nil {
 		return inner, err
 	}
@@ -16,6 +18,6 @@ func DecodePacket83_10(packet *UDPPacket, context *CommunicationContext) (interf
 	return inner, err
 }
 
-func (layer *Packet83_10) Serialize(isClient bool, context *CommunicationContext, stream *ExtendedWriter) error {
-    return stream.WriteUint32BE(layer.TagId)
+func (layer *Packet83_10) serialize(isClient bool, context *CommunicationContext, stream *extendedWriter) error {
+    return stream.writeUint32BE(layer.TagId)
 }

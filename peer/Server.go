@@ -155,31 +155,32 @@ var services = []string{
 	"Workspace",
 }
 
-type Client struct {
-	Context *CommunicationContext
-	Address *net.UDPAddr
-	Reader *PacketReader
-	Writer *PacketWriter
-	Server *ServerPeer
-	MustACK []int
-    InstanceID uint32
+type client struct {
+	context *CommunicationContext
+	address *net.UDPAddr
+	reader *PacketReader
+	writer *PacketWriter
+	server *ServerPeer
+	mustACK []int
+    instanceID uint32
 }
 
+// ServerPeer describes a server that is hosted by roblox-dissector.
 type ServerPeer struct {
 	Connection *net.UDPConn
-	Clients map[string]*Client
+	clients map[string]*client
 	Address *net.UDPAddr
 	GUID uint64
     Dictionaries *Packet82Layer
     Schema *StaticSchema
 }
 
-func (client *Client) SendACKs() {
-	if len(client.MustACK) == 0 {
+func (client *client) sendACKs() {
+	if len(client.mustACK) == 0 {
 		return
 	}
-	acks := client.MustACK
-	client.MustACK = []int{}
+	acks := client.mustACK
+	client.mustACK = []int{}
 	var ackStructure []ACKRange
 	sort.Ints(acks)
 
@@ -214,20 +215,18 @@ func (client *Client) SendACKs() {
 		ACKs: ackStructure,
 	}
 
-	client.Writer.WriteRakNet(result, client.Address)
+	client.writer.WriteRakNet(result, client.address)
 }
 
-func (client *Client) Receive(buf []byte) {
-	packet := &UDPPacket{
-		Stream: BufferToStream(buf),
-		Source: *client.Address,
-		Destination: *client.Server.Address,
-	}
-	client.Reader.ReadPacket(buf, packet)
+func (client *client) receive(buf []byte) {
+	packet := UDPPacketFromBytes(buf)
+	packet.Source = *client.address
+	packet.Destination = *client.server.Address
+	client.reader.ReadPacket(buf, packet)
 }
 
-func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
-	var client *Client
+func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
+	var myClient *client
 	context := NewCommunicationContext() // Peers will be detected by RakNet parser
 	packetReader := &PacketReader{
 		SimpleHandler: func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
@@ -238,7 +237,7 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 					MTU: 1492,
 				}
 
-				client.Writer.WriteSimple(6, response, addr)
+				myClient.writer.WriteSimple(6, response, addr)
 			} else if packetType == 0x7 {
 				response := &Packet08Layer{
 					MTU: 1492,
@@ -246,12 +245,12 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 					IPAddress: addr,
 				}
 
-				client.Writer.WriteSimple(8, response, addr)
+				myClient.writer.WriteSimple(8, response, addr)
 			}
 		},
 		ReliableHandler: func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
 			rakNetLayer := layers.RakNet
-			client.MustACK = append(client.MustACK, int(rakNetLayer.DatagramNumber))
+			myClient.mustACK = append(myClient.mustACK, int(rakNetLayer.DatagramNumber))
 		},
 		FullReliableHandler: func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
 			if packetType == 0x0 {
@@ -261,12 +260,12 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 					SendPongTime: mainLayer.SendPingTime + 10,
 				}
 
-				client.Writer.WriteGeneric(context, 3, response, 2, addr)
+				myClient.writer.WriteGeneric(context, 3, response, 2, addr)
 
 				response2 := &Packet00Layer{
 					SendPingTime: mainLayer.SendPingTime + 10,
 				}
-				client.Writer.WriteGeneric(context, 0, response2, 2, addr)
+				myClient.writer.WriteGeneric(context, 0, response2, 2, addr)
 			} else if packetType == 0x9 {
 				mainLayer := layers.Main.(Packet09Layer)
 				incomingTimestamp := mainLayer.Timestamp
@@ -292,7 +291,7 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 					},
 				}
 
-				client.Writer.WriteGeneric(context, 0x10, response, 2, addr)
+				myClient.writer.WriteGeneric(context, 0x10, response, 2, addr)
 			} else if packetType == 0x90 {
 				response := &Packet93Layer{
 					ProtocolSchemaSync: true,
@@ -308,17 +307,16 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 					},
 				}
 
-				client.Writer.WriteGeneric(context, 0x93, response, 3, addr)
+				myClient.writer.WriteGeneric(context, 0x93, response, 3, addr)
 			} else if packetType == 0x82 {
                 response := server.Dictionaries
 
-                client.Writer.WriteGeneric(context, 0x82, response, 3, addr)
+                myClient.writer.WriteGeneric(context, 0x82, response, 3, addr)
 
                 response2 := &Packet97Layer{*server.Schema}
                 context.StaticSchema = server.Schema
-                context.ESchemaParsed.Broadcast()
 
-                client.Writer.WriteGeneric(context, 0x97, response2, 3, addr)
+                myClient.writer.WriteGeneric(context, 0x97, response2, 3, addr)
 
                 dataModel := &rbxfile.Root{}
                 context.DataModel = dataModel
@@ -341,11 +339,11 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
                     classID := context.StaticSchema.ClassesByName[className]
                     instance := &rbxfile.Instance{
                         ClassName: className,
-                        Reference: strconv.Itoa(int(client.InstanceID)),
+                        Reference: strconv.Itoa(int(myClient.instanceID)),
                         IsService: true,
                         Properties: make(map[string]rbxfile.Value),
                     }
-                    client.InstanceID++
+                    myClient.instanceID++
 
                     item := &Packet81LayerItem{
                         ClassID: uint16(classID),
@@ -362,7 +360,7 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
                     initInstances.Items[i] = item
                 }
 
-                client.Writer.WriteGeneric(context, 0x81, initInstances, 3, addr)
+                myClient.writer.WriteGeneric(context, 0x81, initInstances, 3, addr)
 
 				joinData := &Packet83_0B{make([]*rbxfile.Instance, 0, len(services) + 1)}
                 replicationResponse := &Packet83Layer{
@@ -391,70 +389,70 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 					joinData.Instances = append(joinData.Instances, item.Instance)
                 }
 
-                client.Writer.WriteGeneric(context, 0x83, replicationResponse, 3, addr)
+                myClient.writer.WriteGeneric(context, 0x83, replicationResponse, 3, addr)
 
 				onlyWorkspaceJoinData := &Packet83_0B{make([]*rbxfile.Instance, 0)}
 				InputObject := &rbxfile.Instance{
 					ClassName: "InputObject",
-					Reference: strconv.Itoa(int(client.InstanceID)),
+					Reference: strconv.Itoa(int(myClient.instanceID)),
 					IsService: false,
 					Properties: make(map[string]rbxfile.Value),
 				}
-				client.InstanceID++
+				myClient.instanceID++
 				onlyWorkspaceJoinData.Instances = append(onlyWorkspaceJoinData.Instances, InputObject)
 				workspace.AddChild(InputObject)
 
 				Explosion := &rbxfile.Instance{
 					ClassName: "Explosion",
-					Reference: strconv.Itoa(int(client.InstanceID)),
+					Reference: strconv.Itoa(int(myClient.instanceID)),
 					IsService: false,
 					Properties: make(map[string]rbxfile.Value),
 				}
-				client.InstanceID++
+				myClient.instanceID++
 				onlyWorkspaceJoinData.Instances = append(onlyWorkspaceJoinData.Instances, Explosion)
 				workspace.AddChild(Explosion)
 
 				ParabolaAdornment := &rbxfile.Instance{
 					ClassName: "ParabolaAdornment",
-					Reference: strconv.Itoa(int(client.InstanceID)),
+					Reference: strconv.Itoa(int(myClient.instanceID)),
 					IsService: false,
 					Properties: make(map[string]rbxfile.Value),
 				}
-				client.InstanceID++
+				myClient.instanceID++
 				onlyWorkspaceJoinData.Instances = append(onlyWorkspaceJoinData.Instances, ParabolaAdornment)
 				workspace.AddChild(ParabolaAdornment)
 
 				Terrain := &rbxfile.Instance{
 					ClassName: "Terrain",
-					Reference: strconv.Itoa(int(client.InstanceID)),
+					Reference: strconv.Itoa(int(myClient.instanceID)),
 					IsService: false,
 					Properties: make(map[string]rbxfile.Value),
 				}
-				client.InstanceID++
+				myClient.instanceID++
 				onlyWorkspaceJoinData.Instances = append(onlyWorkspaceJoinData.Instances, Terrain)
 				workspace.AddChild(Terrain)
 
 				Status := &rbxfile.Instance{
 					ClassName: "Status",
-					Reference: strconv.Itoa(int(client.InstanceID)),
+					Reference: strconv.Itoa(int(myClient.instanceID)),
 					IsService: false,
 					Properties: make(map[string]rbxfile.Value),
 				}
-				client.InstanceID++
+				myClient.instanceID++
 				onlyWorkspaceJoinData.Instances = append(onlyWorkspaceJoinData.Instances, Status)
 				workspace.AddChild(Status)
 
 				PlayerGui := &rbxfile.Instance{
 					ClassName: "PlayerGui",
-					Reference: strconv.Itoa(int(client.InstanceID)),
+					Reference: strconv.Itoa(int(myClient.instanceID)),
 					IsService: false,
 					Properties: make(map[string]rbxfile.Value),
 				}
-				client.InstanceID++
+				myClient.instanceID++
 				onlyWorkspaceJoinData.Instances = append(onlyWorkspaceJoinData.Instances, PlayerGui)
 				workspace.AddChild(PlayerGui)
 
-				client.Writer.WriteGeneric(context, 0x83, &Packet83Layer{
+				myClient.writer.WriteGeneric(context, 0x83, &Packet83Layer{
 					[]Packet83Subpacket{onlyWorkspaceJoinData},
 				}, 3, addr)
 
@@ -462,39 +460,39 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 
 				humanoid := &rbxfile.Instance{
 					ClassName: "Humanoid",
-					Reference: strconv.Itoa(int(client.InstanceID)),
+					Reference: strconv.Itoa(int(myClient.instanceID)),
 					IsService: false,
 					Properties: make(map[string]rbxfile.Value),
 				}
-				client.InstanceID++
+				myClient.instanceID++
 				allDefaultsJoinData.Instances = append(allDefaultsJoinData.Instances, humanoid)
 				replicatedStorage.AddChild(humanoid)
 				animator := &rbxfile.Instance{
 					ClassName: "Animator",
-					Reference: strconv.Itoa(int(client.InstanceID)),
+					Reference: strconv.Itoa(int(myClient.instanceID)),
 					IsService: false,
 					Properties: make(map[string]rbxfile.Value),
 				}
-				client.InstanceID++
+				myClient.instanceID++
 				allDefaultsJoinData.Instances = append(allDefaultsJoinData.Instances, animator)
 				humanoid.AddChild(animator)
 
 				part := &rbxfile.Instance{
 					ClassName: "Part",
-					Reference: strconv.Itoa(int(client.InstanceID)),
+					Reference: strconv.Itoa(int(myClient.instanceID)),
 					IsService: false,
 					Properties: make(map[string]rbxfile.Value),
 				}
-				client.InstanceID++
+				myClient.instanceID++
 				allDefaultsJoinData.Instances = append(allDefaultsJoinData.Instances, part)
 				replicatedStorage.AddChild(part)
 				attachment := &rbxfile.Instance{
 					ClassName: "Attachment",
-					Reference: strconv.Itoa(int(client.InstanceID)),
+					Reference: strconv.Itoa(int(myClient.instanceID)),
 					IsService: false,
 					Properties: make(map[string]rbxfile.Value),
 				}
-				client.InstanceID++
+				myClient.instanceID++
 				allDefaultsJoinData.Instances = append(allDefaultsJoinData.Instances, attachment)
 				part.AddChild(attachment)
 
@@ -509,18 +507,18 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 
                     instance := &rbxfile.Instance{
                         ClassName: class.Name,
-                        Reference: strconv.Itoa(int(client.InstanceID)),
+                        Reference: strconv.Itoa(int(myClient.instanceID)),
                         IsService: false,
                         Properties: make(map[string]rbxfile.Value),
                     }
-                    client.InstanceID++
+                    myClient.instanceID++
 
 					allDefaultsJoinData.Instances = append(allDefaultsJoinData.Instances, instance)
 
 					replicatedStorage.AddChild(instance)
 				}
 
-				client.Writer.WriteGeneric(context, 0x83, &Packet83Layer{
+				myClient.writer.WriteGeneric(context, 0x83, &Packet83Layer{
 					[]Packet83Subpacket{allDefaultsJoinData},
 				}, 3, addr)
             }
@@ -542,27 +540,30 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *Client {
 	}
 	
 
-	client = &Client{
-		Reader: packetReader,
-		Writer: packetWriter,
-		Context: context,
-		Address: addr,
-		Server: server,
-        InstanceID: 1000,
+	myClient = &client{
+		reader: packetReader,
+		writer: packetWriter,
+		context: context,
+		address: addr,
+		server: server,
+        instanceID: 1000,
 	}
 
 	ackTicker := time.NewTicker(17)
 	go func() {
 		for {
 			<- ackTicker.C
-			client.SendACKs()
+			myClient.sendACKs()
 		}
 	}()
-	return client
+	return myClient
 }
 
+// StartServer attempts to start a server within roblox-dissector for _Studio_ clients
+// to connect to.
+// Dictionaries and schema should come from gobs dumped by the dissector.
 func StartServer(port uint16, dictionaries *Packet82Layer, schema *StaticSchema) error {
-	server := &ServerPeer{Clients: make(map[string]*Client)}
+	server := &ServerPeer{clients: make(map[string]*client)}
 
 	var err error
 	server.Address, err = net.ResolveUDPAddr("udp", fmt.Sprintf(":%d", port))
@@ -589,11 +590,11 @@ func StartServer(port uint16, dictionaries *Packet82Layer, schema *StaticSchema)
 			continue
 		}
 
-		thisClient, ok := server.Clients[client.String()]
+		thisClient, ok := server.clients[client.String()]
 		if !ok {
 			thisClient = newClient(client, server)
-			server.Clients[client.String()] = thisClient
+			server.clients[client.String()] = thisClient
 		}
-		thisClient.Receive(buf[:n])
+		thisClient.receive(buf[:n])
 	}
 }

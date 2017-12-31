@@ -1,6 +1,7 @@
 package peer
 import "github.com/gskartwii/rbxfile"
 
+// ReplicationEvent describes an event invocation replication packet.
 type ReplicationEvent struct {
 	Arguments []rbxfile.Value
 }
@@ -8,7 +9,7 @@ type ReplicationEvent struct {
 func (schema *StaticEventSchema) Decode(packet *UDPPacket, context *CommunicationContext) (*ReplicationEvent, error) {
 	var err error
     var thisVal rbxfile.Value
-	thisBitstream := packet.Stream
+	thisBitstream := packet.stream
 
 	event := &ReplicationEvent{}
 	event.Arguments = make([]rbxfile.Value, len(schema.Arguments))
@@ -23,7 +24,7 @@ func (schema *StaticEventSchema) Decode(packet *UDPPacket, context *Communicatio
 	return event, nil
 }
 
-func (schema *StaticEventSchema) Serialize(isClient bool, event *ReplicationEvent, context *CommunicationContext, stream *ExtendedWriter) error {
+func (schema *StaticEventSchema) serialize(isClient bool, event *ReplicationEvent, context *CommunicationContext, stream *extendedWriter) error {
 	for i, argSchema := range schema.Arguments {
 		println("Writing argument", argSchema.Type)
 		err := stream.writeSerializedValue(isClient, event.Arguments[i], false, argSchema.Type, context)

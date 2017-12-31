@@ -27,11 +27,11 @@ type Packet83_09_default struct {
 
 type Packet83_09_07 struct{}
 
-func DecodePacket83_09(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
+func decodePacket83_09(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
 	var err error
 	inner := &Packet83_09{}
-	thisBitstream := packet.Stream
-	inner.Type, err = thisBitstream.ReadUint8()
+	thisBitstream := packet.stream
+	inner.Type, err = thisBitstream.readUint8()
 	if err != nil {
 		return inner, err
 	}
@@ -39,30 +39,30 @@ func DecodePacket83_09(packet *UDPPacket, context *CommunicationContext) (interf
 	switch inner.Type {
 	case 1:
 		thisSubpacket := Packet83_09_01{}
-		thisSubpacket.Int1, err = thisBitstream.ReadUint8()
+		thisSubpacket.Int1, err = thisBitstream.readUint8()
 		if err != nil {
 			return inner, err
 		}
-		thisSubpacket.Int2, err = thisBitstream.ReadUint32BE()
+		thisSubpacket.Int2, err = thisBitstream.readUint32BE()
 		if err != nil {
 			return inner, err
 		}
-		thisSubpacket.Int3, err = thisBitstream.ReadUint32BE()
+		thisSubpacket.Int3, err = thisBitstream.readUint32BE()
 		if err != nil {
 			return inner, err
 		}
-		thisSubpacket.Int4, err = thisBitstream.ReadUint32BE()
+		thisSubpacket.Int4, err = thisBitstream.readUint32BE()
 		if err != nil {
 			return inner, err
 		}
-		thisSubpacket.Int5, err = thisBitstream.ReadUint64BE()
+		thisSubpacket.Int5, err = thisBitstream.readUint64BE()
 		if err != nil {
 			return inner, err
 		}
 		subpacket = thisSubpacket
 	case 5:
 		thisSubpacket := Packet83_09_05{}
-		thisSubpacket.Int, err = thisBitstream.ReadUint32BE()
+		thisSubpacket.Int, err = thisBitstream.readUint32BE()
 		if err != nil {
 			return inner, err
 		}
@@ -72,11 +72,11 @@ func DecodePacket83_09(packet *UDPPacket, context *CommunicationContext) (interf
 		subpacket = thisSubpacket
 	default:
 		thisSubpacket := Packet83_09_default{}
-		thisSubpacket.Int1, err = thisBitstream.ReadUint8()
+		thisSubpacket.Int1, err = thisBitstream.readUint8()
 		if err != nil {
 			return inner, err
 		}
-		thisSubpacket.Int2, err = thisBitstream.ReadUint32BE()
+		thisSubpacket.Int2, err = thisBitstream.readUint32BE()
 		if err != nil {
 			return inner, err
 		}
@@ -87,6 +87,6 @@ func DecodePacket83_09(packet *UDPPacket, context *CommunicationContext) (interf
 	return inner, err
 }
 
-func (layer *Packet83_09) Serialize(isClient bool, context *CommunicationContext, stream *ExtendedWriter) error {
+func (layer *Packet83_09) serialize(isClient bool, context *CommunicationContext, stream *extendedWriter) error {
     return errors.New("packet 83_09 not implemented!")
 }

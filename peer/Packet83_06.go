@@ -1,8 +1,8 @@
 package peer
 
-// ID_PING
-type Packet83_05 struct {
-	// Always false
+// ID_PING_BACK
+type Packet83_06 struct {
+	// Always true
 	IsPingBack bool
 	Timestamp uint64
 	SendStats uint32
@@ -10,9 +10,9 @@ type Packet83_05 struct {
 	ExtraStats uint32
 }
 
-func decodePacket83_05(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
+func decodePacket83_06(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
 	var err error
-	inner := &Packet83_05{}
+	inner := &Packet83_06{}
 	thisBitstream := packet.stream
 	inner.IsPingBack, err = thisBitstream.readBool()
 	if err != nil {
@@ -38,7 +38,7 @@ func decodePacket83_05(packet *UDPPacket, context *CommunicationContext) (interf
 	return inner, err
 }
 
-func (layer *Packet83_05) serialize(isClient bool, context *CommunicationContext, stream *extendedWriter) error {
+func (layer *Packet83_06) serialize(isClient bool, context *CommunicationContext, stream *extendedWriter) error {
     var err error
     err = stream.writeBool(layer.IsPingBack)
     if err != nil {
