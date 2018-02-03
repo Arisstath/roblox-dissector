@@ -12,7 +12,10 @@ If you want to capture Roblox Studio traffic on Windows, you must make it flow t
 2. Start a local Studio server listening on port 53641 by choosing Start Roblox -> Start local server...
 3. Start a local Studio clients either from the Studio server or the dissector.
 
-I'm also looking into adding a HTTPS traffic proxy which would be similar to Fiddler while working properly.
+Features not yet implemented:
+
+* HTTPS proxy similar to Fiddler
+* Dissection of hash packets and Rocky packets
 
 ```
 -----BEGIN PGP SIGNED MESSAGE-----
@@ -31,3 +34,4 @@ xxr8kqHetg6eKPckNvCIO1DdvAB7+k24lCjw3aqwp/YIKwVo+LP0yxsS4zq17HEo
 =W5Wq
 -----END PGP SIGNATURE-----
 ```
+
