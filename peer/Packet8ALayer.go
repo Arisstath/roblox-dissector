@@ -34,10 +34,10 @@ type Packet8ALayer struct {
 	PlayerId int32
 	ClientTicket []byte
 	DataModelHash []byte
+	// Always 36?
 	ProtocolVersion uint32
 	SecurityKey []byte
 	Platform []byte
-	// Always 36?
 	RobloxProductName []byte
 	SessionId []byte
 	GoldenHash uint32

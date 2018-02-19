@@ -66,7 +66,7 @@ func NewConnectedPeer(context *CommunicationContext) *ConnectedPeer {
 }
 
 // Receive sends packets to Reader.ReadPacket()
-func (w *ConnectedPeer) Receive(payload []byte, packet *UDPPacket) {
+func (w *ConnectedPeer) receive(payload []byte, packet *UDPPacket) {
 	w.Reader.ReadPacket(payload, packet)
 }
 

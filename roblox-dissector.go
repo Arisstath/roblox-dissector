@@ -422,17 +422,5 @@ func captureFromPlayerProxy(settings *PlayerProxySettings, stopCaptureJob chan s
 }
 
 func main() {
-	go func() {
-		client := peer.NewCustomClient()
-		client.SecurityKey = "571cb33a3b024d7b8dafb87156909e92b7eaf86d!1ac9a51ce47836b5c1f65dfc441dfa41"
-		client.OsPlatform = "Win32"
-		client.GoldenHash = 19857408
-		client.DataModelHash = "4b8387d8b57d73944b33dbe044b3707b"
-		client.BrowserTrackerId = 9783257674
-		err := client.ConnectGuest(12109643, 2)
-		if err != nil {
-			panic(err)
-		}
-	}()
 	GUIMain()
 }

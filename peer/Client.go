@@ -29,9 +29,8 @@ type joinAshxResponse struct {
 }
 
 type CustomClient struct {
+	*ConnectedPeer
 	Context *CommunicationContext
-	Reader *PacketReader
-	Writer *PacketWriter
 	Address net.UDPAddr
 	ServerAddress net.UDPAddr
 	Connected bool
@@ -57,7 +56,7 @@ type CustomClient struct {
 	scope string
 }
 
-func (client *CustomClient) SendACKs() {
+func (client *CustomClient) sendACKs() {
 	if len(client.mustACK) == 0 {
 		return
 	}
@@ -100,7 +99,7 @@ func (client *CustomClient) SendACKs() {
 	client.Writer.WriteRakNet(result, &client.ServerAddress)
 }
 
-func (client *CustomClient) Receive(buf []byte) {
+func (client *CustomClient) receive(buf []byte) {
 	packet := UDPPacketFromBytes(buf)
 	packet.Source = client.ServerAddress
 	packet.Destination = client.Address
@@ -113,14 +112,14 @@ func NewCustomClient() *CustomClient {
 		httpClient: &http.Client{},
 		Context: NewCommunicationContext(),
 		GUID: rand.Uint64(),
-		instanceIndex: 1000, 
+		instanceIndex: 1000,
 		scope: "RBX224117",
 	}
 }
 
-func (client *CustomClient) joinWithPlaceLauncher(url string, cookies []*http.Cookie) error {
+func (myClient *CustomClient) joinWithPlaceLauncher(url string, cookies []*http.Cookie) error {
 	println("requesting placelauncher", url)
-	robloxCommClient := client.httpClient
+	robloxCommClient := myClient.httpClient
 	placeLauncherRequest, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
@@ -180,67 +179,79 @@ func (client *CustomClient) joinWithPlaceLauncher(url string, cookies []*http.Co
 	if err != nil {
 		return err
 	}
-	client.clientTicket = jsResp.ClientTicket
-	client.sessionId = jsResp.SessionId
-	client.PlayerId = jsResp.UserId
-	client.UserName = jsResp.UserName
+	myClient.clientTicket = jsResp.ClientTicket
+	myClient.sessionId = jsResp.SessionId
+	myClient.PlayerId = jsResp.UserId
+	myClient.UserName = jsResp.UserName
 	addrp, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", jsResp.MachineAddress, jsResp.ServerPort))
 	if err != nil {
 		return err
 	}
 
-	client.ServerAddress = *addrp
-	return client.RakConnect()
+	myClient.ServerAddress = *addrp
+	return myClient.rakConnect()
 }
 
-func (client *CustomClient) ConnectGuest(placeId uint32, genderId uint8) error {
-	client.PlaceId = placeId
-	client.GenderId = genderId
-	return client.joinWithPlaceLauncher(fmt.Sprintf("https://assetgame.roblox.com/game/PlaceLauncher.ashx?request=RequestGame&browserTrackerId=%d&placeId=%d&isPartyLeader=false&genderId=%d", client.BrowserTrackerId, client.PlaceId, client.GenderId),[]*http.Cookie{})
+func (myClient *CustomClient) ConnectGuest(placeId uint32, genderId uint8) error {
+	myClient.PlaceId = placeId
+	myClient.GenderId = genderId
+	return myClient.joinWithPlaceLauncher(fmt.Sprintf("https://assetgame.roblox.com/game/PlaceLauncher.ashx?request=RequestGame&browserTrackerId=%d&placeId=%d&isPartyLeader=false&genderId=%d", myClient.BrowserTrackerId, myClient.PlaceId, myClient.GenderId),[]*http.Cookie{})
 }
 
-func (client *CustomClient) RakConnect() error {
-	context := client.Context
-	addr := client.ServerAddress
+func (myClient *CustomClient) rakConnect() error {
+	context := myClient.Context
+	addr := myClient.ServerAddress
 
 	packetReader := NewPacketReader()
 	packetReader.ACKHandler = func(packet *UDPPacket, layer *RakNetLayer) {
 		println("received ack")
+		if myClient.ACKHandler != nil {
+			myClient.ACKHandler(packet, layer)
+		}
 	}
 	packetReader.ReliabilityLayerHandler = func(p *UDPPacket, re *ReliabilityLayer, ra *RakNetLayer) {
 		println("receive reliabilitylayer")
+		if myClient.ReliabilityLayerHandler != nil {
+			myClient.ReliabilityLayerHandler(p, re, ra)
+		}
 	}
 	packetReader.SimpleHandler = func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
 		if packetType == 0x6 {
-			if client.Connected {
+			if myClient.Connected {
 				return
 			}
 			println("receive 6!")
-			client.Connected = true
+			myClient.Connected = true
 
 			response := &Packet07Layer{
-				GUID: client.GUID,
+				GUID: myClient.GUID,
 				MTU: 1492,
 				IPAddress: &addr,
 			}
-			client.Writer.WriteSimple(7, response, &addr)
+			myClient.Writer.WriteSimple(7, response, &addr)
 		} else if packetType == 0x8 {
 			println("receive 8!")
 
 			response := &Packet09Layer{
-				GUID: client.GUID,
+				GUID: myClient.GUID,
 				Timestamp: uint64(time.Now().Unix()),
 				UseSecurity: false,
 				Password: []byte{0x37, 0x4F, 0x5E, 0x11, 0x6C, 0x45},
 			}
-			client.Writer.WriteGeneric(context, 9, response, 3, &addr)
+			myClient.Writer.WriteGeneric(context, 9, response, 3, &addr)
 		} else {
 			println("receive simple unk", packetType)
+		}
+		if myClient.SimpleHandler != nil {
+			myClient.SimpleHandler(packetType, packet, layers)
 		}
 	}
 	packetReader.ReliableHandler = func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
 		rakNetLayer := layers.RakNet
-		client.mustACK = append(client.mustACK, int(rakNetLayer.DatagramNumber))
+		myClient.mustACK = append(myClient.mustACK, int(rakNetLayer.DatagramNumber))
+		if myClient.ReliableHandler != nil {
+			myClient.ReliableHandler(packetType, packet, layers)
+		}
 	}
 	packetReader.FullReliableHandler = func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
 		if packetType == 0x0 {
@@ -250,16 +261,16 @@ func (client *CustomClient) RakConnect() error {
 				SendPongTime: mainLayer.SendPingTime + 10,
 			}
 
-			client.Writer.WriteGeneric(context, 3, response, 3, &addr)
+			myClient.Writer.WriteGeneric(context, 3, response, 3, &addr)
 		} else if packetType == 0x10 {
 			println("receive 10!")
 			mainLayer := layers.Main.(*Packet10Layer)
 			nullIP, _ := net.ResolveUDPAddr("udp", "0.0.0.0:0")
-			client.Address.Port = 0
+			myClient.Address.Port = 0
 			response := &Packet13Layer{
 				IPAddress: &addr,
 				Addresses: [10]*net.UDPAddr{
-					&client.Address,
+					&myClient.Address,
 					nullIP,
 					nullIP,
 					nullIP,
@@ -274,7 +285,7 @@ func (client *CustomClient) RakConnect() error {
 				SendPongTime: uint64(time.Now().Unix()),
 			}
 
-			client.Writer.WriteGeneric(context, 3, response, 3, &addr)
+			myClient.Writer.WriteGeneric(context, 3, response, 3, &addr)
 			response90 := &Packet90Layer{
 				SchemaVersion: 36,
 				RequestedFlags: []string{
@@ -291,30 +302,30 @@ func (client *CustomClient) RakConnect() error {
 					"ReplicatorSupportInt64Type",
 				},
 			}
-			client.Writer.WriteGeneric(context, 3, response90, 3, &addr)
+			myClient.Writer.WriteGeneric(context, 3, response90, 3, &addr)
 
 			response92 := &Packet92Layer{
 				PlaceId: 0,
 			}
-			client.Writer.WriteGeneric(context, 3, response92, 3, &addr)
+			myClient.Writer.WriteGeneric(context, 3, response92, 3, &addr)
 
 			response8A := &Packet8ALayer{
-				PlayerId: client.PlayerId,
-				ClientTicket: []byte(client.clientTicket),
-				DataModelHash: []byte(client.DataModelHash),
+				PlayerId: myClient.PlayerId,
+				ClientTicket: []byte(myClient.clientTicket),
+				DataModelHash: []byte(myClient.DataModelHash),
 				ProtocolVersion: 36,
-				SecurityKey: []byte(client.SecurityKey),
-				Platform: []byte(client.OsPlatform),
+				SecurityKey: []byte(myClient.SecurityKey),
+				Platform: []byte(myClient.OsPlatform),
 				RobloxProductName: []byte("?"),
-				SessionId: []byte(client.sessionId),
-				GoldenHash: client.GoldenHash,
+				SessionId: []byte(myClient.sessionId),
+				GoldenHash: myClient.GoldenHash,
 			}
-			client.Writer.WriteGeneric(context, 3, response8A, 3, &addr)
+			myClient.Writer.WriteGeneric(context, 3, response8A, 3, &addr)
 
 			response8F := &Packet8FLayer{
 				SpawnName: "",
 			}
-			client.Writer.WriteGeneric(context, 3, response8F, 3, &addr)
+			myClient.Writer.WriteGeneric(context, 3, response8F, 3, &addr)
 		} else if packetType == 0x81 {
 			var players *rbxfile.Instance
 			for i := 0; i < len(context.DataModel.Instances); i++ {
@@ -327,11 +338,11 @@ func (client *CustomClient) RakConnect() error {
 
 			myPlayer := &rbxfile.Instance{
 				ClassName: "Player",
-				Reference: client.scope + "_" + strconv.Itoa(int(client.instanceIndex)),
+				Reference: myClient.scope + "_" + strconv.Itoa(int(myClient.instanceIndex)),
 				IsService: false,
 				Properties: map[string]rbxfile.Value{
-					"Name": rbxfile.ValueString(client.UserName),
-					"CharacterAppearance": rbxfile.ValueString(client.characterAppearance),
+					"Name": rbxfile.ValueString(myClient.UserName),
+					"CharacterAppearance": rbxfile.ValueString(myClient.characterAppearance),
 					"CharacterAppearanceId": rbxfile.ValueInt(15437777),
 					"ChatPrivacyMode": rbxfile.ValueToken{
 						Value: 0,
@@ -340,19 +351,19 @@ func (client *CustomClient) RakConnect() error {
 					},
 					"AccountAgeReplicate": rbxfile.ValueInt(0),
 					"OsPlatform": rbxfile.ValueString("Win32"),
-					"userId": rbxfile.ValueInt(client.PlayerId),
-					"UserId": rbxfile.ValueInt(client.PlayerId),
+					"userId": rbxfile.ValueInt(myClient.PlayerId),
+					"UserId": rbxfile.ValueInt(myClient.PlayerId),
 				},
 			}
 			players.AddChild(myPlayer)
-			client.instanceIndex++
+			myClient.instanceIndex++
 
 			response83 := &Packet83Layer{
 				SubPackets: []Packet83Subpacket{
 					&Packet83_0B{[]*rbxfile.Instance{myPlayer}},
 				},
 			}
-			client.Writer.WriteGeneric(context, 0x83, response83, 3, &addr)
+			myClient.Writer.WriteGeneric(context, 0x83, response83, 3, &addr)
 		} else if packetType == 0x83 {
 			response := &Packet83Layer{make([]Packet83Subpacket, 0)}
 			mainLayer := layers.Main.(*Packet83Layer)
@@ -365,46 +376,59 @@ func (client *CustomClient) RakConnect() error {
 				}
 			}
 			if len(response.SubPackets) > 0 {
-				client.Writer.WriteGeneric(context, 0x83, response, 3, &addr)
+				myClient.Writer.WriteGeneric(context, 0x83, response, 3, &addr)
 			}
 		} else {
 			println("receive generic unk", packetType)
 		}
+		if myClient.FullReliableHandler != nil {
+			myClient.FullReliableHandler(packetType, packet, layers)
+		}
 	}
 	packetReader.ErrorHandler = func(err error) {
 		println(err.Error())
+		if myClient.ErrorHandler != nil {
+			myClient.ErrorHandler(err)
+		}
 	}
 	packetReader.Context = context
-	client.Reader = packetReader
+	println("will set reader", myClient, packetReader)
+	myClient.Reader = packetReader
 
 	conn, err := net.DialUDP("udp", nil, &addr)
 	defer conn.Close()
 	if err != nil {
 		return err
 	}
-	client.Address = *conn.LocalAddr().(*net.UDPAddr)
+	myClient.Address = *conn.LocalAddr().(*net.UDPAddr)
 
 	packetWriter := NewPacketWriter()
 	packetWriter.ErrorHandler = func(err error) {
 		println(err.Error())
+		if myClient.ErrorHandler != nil {
+			myClient.ErrorHandler(err)
+		}
 	}
 	packetWriter.OutputHandler = func(payload []byte, dest *net.UDPAddr) {
 		num, err := conn.Write(payload)
 		if err != nil {
 			fmt.Printf("Wrote %d bytes, err: %s\n", num, err.Error())
 		}
+		if myClient.OutputHandler != nil {
+			myClient.OutputHandler(payload, dest)
+		}
 	}
-	client.Writer = packetWriter
+	myClient.Writer = packetWriter
 
 	connreqpacket := &Packet05Layer{ProtocolVersion: 5}
 
 	go func() {
 		for i := 0; i < 5; i++ {
-			if client.Connected {
+			if myClient.Connected {
 				println("successfully dialed")
 				return
 			}
-			client.Writer.WriteSimple(5, connreqpacket, &addr)
+			myClient.Writer.WriteSimple(5, connreqpacket, &addr)
 			time.Sleep(5)
 		}
 		println("dial failed after 5 attempts")
@@ -413,7 +437,7 @@ func (client *CustomClient) RakConnect() error {
 	go func() {
 		for {
 			<- ackTicker.C
-			client.SendACKs()
+			myClient.sendACKs()
 		}
 	}()
 
@@ -425,6 +449,6 @@ func (client *CustomClient) RakConnect() error {
 			continue
 		}
 
-		client.Receive(buf[:n])
+		myClient.receive(buf[:n])
 	}
 }
