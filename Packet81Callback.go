@@ -14,6 +14,8 @@ func ShowPacket81(packetType byte, packet *peer.UDPPacket, context *peer.Communi
 	layerLayout.AddWidget(NewQLabelF("Character auto spawn: %v", MainLayer.CharacterAutoSpawn), 0, 0)
 	referentStringLabel := NewQLabelF("Top replication scope: %s", MainLayer.ReferentString)
 	layerLayout.AddWidget(referentStringLabel, 0, 0)
+	layerLayout.AddWidget(NewQLabelF("Int 1: %X", MainLayer.Int1), 0, 0)
+	layerLayout.AddWidget(NewQLabelF("Int 2: %X", MainLayer.Int2), 0, 0)
 
 	deletedList := widgets.NewQTreeView(nil)
 	standardModel := NewProperSortModel(nil)

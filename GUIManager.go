@@ -746,7 +746,7 @@ func GUIMain() {
 			return
 		}
 
-		stripInvalidTypes(packetViewer.Context.DataModel.Instances, packetViewer.DefaultValues)
+		stripInvalidTypes(packetViewer.Context.DataModel.Instances, packetViewer.DefaultValues, 0)
 
 		err = bin.SerializePlace(writer, nil, packetViewer.Context.DataModel)
 		if err != nil {
