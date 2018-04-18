@@ -526,6 +526,24 @@ func (b *extendedReader) readSintUTF8() (int32, error) {
 	res, err := b.readUintUTF8()
 	return int32((res >> 1) ^ -(res & 1)), err
 }
+func (b *extendedReader) readVarint64() (uint64, error) {
+	var res uint64
+	thisByte, err := b.ReadByte()
+	var shiftIndex uint32 = 0
+	for err == nil {
+		res |= uint64(thisByte & 0x7F) << shiftIndex
+		shiftIndex += 7
+		if thisByte & 0x80 == 0 {
+			break
+		}
+		thisByte, err = b.ReadByte()
+	}
+	return res, err
+}
+func (b *extendedReader) readVarsint64() (int64, error) {
+	res, err := b.readVarint64()
+	return int64((res >> 1) ^ -(res & 1)), err
+}
 
 func (b *extendedReader) readNewPString(isClient bool, isJoinData bool, context *CommunicationContext) (rbxfile.ValueString, error) {
 	if !isJoinData {
@@ -1106,4 +1124,9 @@ func (b *extendedReader) readMotors() ([]PhysicsMotor, error) {
 		}
 	}
 	return motors, nil
+}
+
+func (b *extendedReader) readInt64() (rbxfile.ValueInt64, error) {
+	val, err := b.readVarsint64()
+	return rbxfile.ValueInt64(val), err
 }

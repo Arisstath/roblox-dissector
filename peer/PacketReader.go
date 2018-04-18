@@ -233,12 +233,12 @@ func (this *PacketReader) readGeneric(packetType uint8, layers *PacketLayers, pa
 			return
 		}
 	} else {
-		decoder := packetDecoders[packetType]
+		decoder := packetDecoders[layers.Reliability.PacketType]
 		if decoder != nil {
 			layers.Main, err = decoder(packet, this.Context)
 
 			if err != nil {
-				this.ErrorHandler(errors.New(fmt.Sprintf("Failed to decode reliable packet %02X: %s", packetType, err.Error())))
+				this.ErrorHandler(errors.New(fmt.Sprintf("Failed to decode reliable packet %02X: %s", layers.Reliability.PacketType, err.Error())))
 
 				return
 			}
@@ -287,6 +287,7 @@ func (this *PacketReader) readReliable(layers *PacketLayers, packet *UDPPacket) 
 		this.ReliableHandler(subPacket.PacketType, packet, reliablePacketLayers)
 		queues.add(reliablePacketLayers)
 		if reliablePacketLayers.Reliability.Reliability == 0 {
+			print("read UNRELI")
 			this.readOrdered(reliablePacketLayers, packet)
 			queues.remove(reliablePacketLayers)
 			continue

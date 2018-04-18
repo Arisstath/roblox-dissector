@@ -48,11 +48,15 @@ func decodePacket83_12(packet *UDPPacket, context *CommunicationContext) (interf
 	if err != nil {
 		return inner, err
 	}
+
+	hasExtra := false
+
 	if numItems == 0xFF {
 		println("noextranumitem")
+		hasExtra = true
 		numItems = 0
 	} else {
-		numItems, err = stream.ReadUint8()
+		numItems, err = stream.readUint8()
 		if err != nil {
 			return inner, err
 		}
@@ -63,28 +67,33 @@ func decodePacket83_12(packet *UDPPacket, context *CommunicationContext) (interf
 		return inner, err
 	}
 	hashList := make([]uint32, numItems)
-	for i := 0; i < int(numItems); i++ {
-		hashList[i], err = stream.readUint32BE()
-		if err != nil {
-			return inner, err
+	if numItems >= 3 {
+		for i := 0; i < int(numItems); i++ {
+			hashList[i], err = stream.readUint32BE()
+			if err != nil {
+				return inner, err
+			}
 		}
-	}
-	var tokens [3]uint32
-	for i := 0; i < 3; i++ {
-		tokens[i], err = stream.readUint32BE()
-		if err != nil {
-			return inner, err
+
+		if hasExtra {
+			var tokens [3]uint64
+			for i := 0; i < 3; i++ {
+				tokens[i], err = stream.readUint64BE()
+				if err != nil {
+					return inner, err
+				}
+			}
 		}
-	}
 
-	for i := numItems - 2; i > 0; i-- {
-		hashList[i] ^= hashList[i - 1]
-	}
-	hashList[0] ^= nonce
-	nonce ^= hashList[numItems - 1]
-	nonceDiff := nonce - getRbxNonce(hashList[1], hashList[2])
+		for i := numItems - 2; i > 0; i-- {
+			hashList[i] ^= hashList[i - 1]
+		}
+		hashList[0] ^= nonce
+		nonce ^= hashList[numItems - 1]
+		nonceDiff := nonce - getRbxNonce(hashList[1], hashList[2])
 
-	fmt.Println("hashlist", hashList, nonce, nonceDiff)
+		fmt.Println("hashlist", hashList, nonce, nonceDiff)
+	}
 
 	return inner, nil
 }

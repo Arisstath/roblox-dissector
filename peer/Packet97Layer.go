@@ -47,6 +47,9 @@ const (
 	PROP_TYPE_COLORSEQUENCEKEYPOINT = iota
 	PROP_TYPE_RECT2D = iota
 	PROP_TYPE_PHYSICALPROPERTIES = iota
+	PROP_TYPE_REGION3 = iota
+	PROP_TYPE_REGION3INT16 = iota
+	PROP_TYPE_INT64 = iota
 )
 
 var TypeNames = map[uint8]string{
