@@ -15,7 +15,7 @@ var Packet83Subpackets map[uint8]string = map[uint8]string{
 	0x06: "ID_REPLIC_PING_BACK",
 	0x07: "ID_REPLIC_EVENT",
 	0x08: "ID_REPLIC_REQUEST_CHAR",
-	0x09: "ID_REPLIC_CHEATER",
+	0x09: "ID_REPLIC_ROCKY",
 	0x0A: "ID_REPLIC_PROP_ACK",
 	0x0B: "ID_REPLIC_GZIP_JOINDATA",
 	0x0C: "ID_REPLIC_UPDATE_CLIENT_QUOTA",
@@ -55,6 +55,8 @@ func Packet83ToType(this Packet83Subpacket) uint8 {
 			return 0x10
 		case *Packet83_11:
 			return 0x11
+		case *Packet83_12:
+			return 0x12
 		default:
 			return 0xFF
 	}
@@ -131,6 +133,9 @@ func decodePacket83Layer(packet *UDPPacket, context *CommunicationContext) (inte
 			break
 		case 0x09:
 			inner, err = decodePacket83_09(packet, context)
+			break
+		case 0x12:
+			inner, err = decodePacket83_12(packet, context)
 			break
 		default:
 			return layer, errors.New("don't know how to parse replication subpacket: " + strconv.Itoa(int(packetType)))

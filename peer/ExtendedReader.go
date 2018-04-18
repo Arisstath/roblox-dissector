@@ -14,7 +14,7 @@ import "github.com/DataDog/zstd"
 var englishTree *huffmanEncodingTree
 
 func init() {
-	englishTree = GenerateHuffmanFromFrequencyTable([]uint32{
+	englishTree = generateHuffmanFromFrequencyTable([]uint32{
 		0,
 		0,
 		0,

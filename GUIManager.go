@@ -746,7 +746,7 @@ func GUIMain() {
 			return
 		}
 
-		stripInvalidTypes(packetViewer.Context.DataModel.Instances, packetViewer.DefaultValues)
+		stripInvalidTypes(packetViewer.Context.DataModel.Instances, packetViewer.DefaultValues, 0)
 
 		err = bin.SerializePlace(writer, nil, packetViewer.Context.DataModel)
 		if err != nil {
@@ -815,7 +815,8 @@ func GUIMain() {
 	})
 
 	peersBar := window.MenuBar().AddMenu2("&Peers...")
-	startSelfServer := peersBar.AddAction("Start self &server")
+	startSelfServer := peersBar.AddAction("Start self &server...")
+	startSelfClient := peersBar.AddAction("Start self &client...")
 	startSelfServer.ConnectTriggered(func(checked bool)() {
         NewServerStartWidget(window, packetViewer.ServerSettings, func(settings *ServerSettings) {
             port, _ := strconv.Atoi(settings.Port)
@@ -848,6 +849,12 @@ func GUIMain() {
 
             go peer.StartServer(uint16(port), &dictionaries, &schema)
         })
+	})
+	startSelfClient.ConnectTriggered(func(checked bool)() {
+		customClient := peer.NewCustomClient()
+        NewClientStartWidget(window, customClient, func(placeId uint32) {
+			go customClient.ConnectGuest(placeId, 2)
+		})
 	})
 
 	window.Show()

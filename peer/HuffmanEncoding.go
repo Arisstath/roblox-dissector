@@ -1,8 +1,8 @@
-// Ported from https://github.com/facebookarchive/RakNet/blob/1a169895a900c9fc4841c556e16514182b75faf8/Source/DS_HuffmanEncodingTree.cpp
 package peer
 import "container/list"
 import "errors"
 
+// Ported from https://github.com/facebookarchive/RakNet/blob/1a169895a900c9fc4841c556e16514182b75faf8/Source/DS_HuffmanEncodingTree.cpp
 type huffmanEncodingTreeNode struct {
 	value byte
 	weight uint32
@@ -40,7 +40,7 @@ type huffmanEncodingTree struct {
 	})
 }
 
-func GenerateHuffmanFromFrequencyTable(frequencyTable []uint32) *huffmanEncodingTree {
+func generateHuffmanFromFrequencyTable(frequencyTable []uint32) *huffmanEncodingTree {
 	var counter uint64
 	var node *huffmanEncodingTreeNode
 	var leafList [256]*huffmanEncodingTreeNode

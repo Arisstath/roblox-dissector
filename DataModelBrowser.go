@@ -6,6 +6,7 @@ import "github.com/gskartwii/rbxfile"
 import "github.com/gskartwii/rbxfile/bin"
 import "github.com/gskartwii/roblox-dissector/peer"
 import "os"
+import "fmt"
 
 func showChildren(rootNode *gui.QStandardItem, children []*rbxfile.Instance) {
 	for _, instance := range(children) {
@@ -19,7 +20,7 @@ func showChildren(rootNode *gui.QStandardItem, children []*rbxfile.Instance) {
 	}
 }
 
-func stripInvalidTypes(instances []*rbxfile.Instance, defaultValues DefaultValues) {
+func stripInvalidTypes(instances []*rbxfile.Instance, defaultValues DefaultValues, i int) int {
 	for _, instance := range instances {
 		color, ok := instance.Properties["Color3uint8"]
 		if ok {
@@ -38,26 +39,42 @@ func stripInvalidTypes(instances []*rbxfile.Instance, defaultValues DefaultValue
 			if thisType == rbxfile.TypeDefault {
 				class, ok := defaultValues[instance.ClassName]
 				if !ok {
-					println("stripping instance", instance.ClassName)
 					delete(instance.Properties, name)
 					continue
 				}
 				value, ok := class[name]
 				if !ok {
-					println("stripping because nodef", instance.ClassName, name)
 					delete(instance.Properties, name)
 					continue
 				}
 				instance.Properties[name] = value
 			} else if thisType >= rbxfile.TypeNumberSequenceKeypoint ||
 			   thisType == rbxfile.TypeVector2int16 {
-				println("stripping property", instance.ClassName, name, thisType.String())
 				delete(instance.Properties, name)
 				continue
+			} else if thisType == rbxfile.TypeProtectedString {
+				println("dumping protectedstring", instance.ClassName, name, thisType.String())
+				file, err := os.Create(fmt.Sprintf("dumps/%s.%d", instance.GetFullName(), i))
+				if err != nil {
+					println(err.Error())
+					continue
+				}
+				i++
+				_, err = file.Write([]byte(instance.Properties[name].(rbxfile.ValueProtectedString)))
+				if err != nil {
+					println(err.Error())
+					continue
+				}
+				err = file.Close()
+				if err != nil {
+					println(err.Error())
+					continue
+				}
 			}
 		}
-		stripInvalidTypes(instance.Children, defaultValues)
+		i = stripInvalidTypes(instance.Children, defaultValues, i)
 	}
+	return i
 }
 
 func NewDataModelBrowser(context *peer.CommunicationContext, dataModel *rbxfile.Root, defaultValues DefaultValues) {
@@ -78,7 +95,7 @@ func NewDataModelBrowser(context *peer.CommunicationContext, dataModel *rbxfile.
 		}
 
 		writableClone := children.Copy()
-		stripInvalidTypes(writableClone.Instances, defaultValues)
+		stripInvalidTypes(writableClone.Instances, defaultValues, 0)
 
 		err = bin.SerializePlace(writer, nil, writableClone)
 		if err != nil {

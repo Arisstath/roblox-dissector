@@ -135,8 +135,8 @@ func (b *extendedWriter) writeUintUTF8(value uint32) error {
     return nil
 }
 
-type CacheWriteCallback func(*extendedWriter, interface{})(error)
-func (b *extendedWriter) writeWithCache(value interface{}, cache Cache, writeCallback CacheWriteCallback) error {
+type cacheWriteCallback func(*extendedWriter, interface{})(error)
+func (b *extendedWriter) writeWithCache(value interface{}, cache Cache, writeCallback cacheWriteCallback) error {
 	if value == nil {
 		return b.WriteByte(0x00)
 	}
