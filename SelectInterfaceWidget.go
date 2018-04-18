@@ -21,17 +21,22 @@ func NewSelectInterfaceWidget(parent widgets.QWidget_ITF, callback func (string,
 	standardModel.SetHorizontalHeaderLabels([]string{"Interface Name", "IP address"})
 	rootNode := standardModel.InvisibleRootItem()
 
-    interfaceList, _ := pcap.FindAllDevs()
-    for i := 0; i < len(interfaceList); i++ {
-        if len(interfaceList[i].Addresses) < 1 {
-            println("skip", interfaceList[i].Name)
-            continue
-        }
-        ipAddr := interfaceList[i].Addresses[0].IP.String()
+	devs, err := pcap.FindAllDevs()
+	if err != nil {
+		println("trying to get devs: " + err.Error())
+		return
+	}
+
+	for _, dev := range devs {
+		if len(dev.Addresses) < 1 {
+			println("skip", dev.Name)
+			continue
+		}
 		rootNode.AppendRow([]*gui.QStandardItem{
-			NewQStandardItemF(interfaceList[i].Name),
-			NewQStandardItemF(ipAddr),
+			NewQStandardItemF(dev.Name),
+			NewQStandardItemF(dev.Addresses[0].IP.String()),
 		})
+
 	}
 
 	interfaces.SetModel(standardModel)

@@ -1,6 +1,5 @@
 package peer
 import "github.com/gskartwii/rbxfile"
-import "errors"
 
 // History waypoint in the movement of a mechanism
 type PhysicsHistoryWaypoint struct {
@@ -39,10 +38,6 @@ func NewPacket85Layer() *Packet85Layer {
 
 func decodePacket85Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
 	thisBitstream := packet.stream
-
-	if true {
-		return nil, errors.New("not implemented!")
-	}
 
 	layer := NewPacket85Layer()
 	for {

@@ -99,6 +99,12 @@ func readSerializedValue(isClient bool, isJoinData bool, enumId uint16, valueTyp
 		result, err = thisBitstream.readRect2D()
 	case PROP_TYPE_PHYSICALPROPERTIES:
 		result, err = thisBitstream.readPhysicalProperties()
+	case PROP_TYPE_REGION3:
+		result, err = thisBitstream.readRegion3()
+	case PROP_TYPE_REGION3INT16:
+		result, err = thisBitstream.readRegion3int16()
+	case PROP_TYPE_INT64:
+		result, err = thisBitstream.readInt64()
 	default:
 		return nil, errors.New("Unsupported property type: " + strconv.Itoa(int(valueType)))
 	}
@@ -113,17 +119,17 @@ func (schema StaticPropertySchema) Decode(isClient bool, round int, packet *UDPP
         var isDefault bool
         isDefault, err = thisBitstream.readBool()
 		if isDefault || err != nil {
-			if DEBUG && round == ROUND_JOINDATA && isClient {
-				println("read", schema.Name, "default")
-			}
+			//if DEBUG && round == ROUND_JOINDATA && isClient {
+				//println("read", schema.Name, "default")
+			//}
 			return rbxfile.DefaultValue, err
 		}
 	}
 
     val, err := readSerializedValue(isClient, isJoinData, schema.EnumID, schema.Type, thisBitstream, context)
-    if val.Type().String() != "ProtectedString" && round == ROUND_JOINDATA && DEBUG && isClient {
-        println("read", schema.Name, val.String())
-    }
+    //if val.Type().String() != "ProtectedString" && round == ROUND_JOINDATA && DEBUG && isClient {
+        //println("read", schema.Name, val.String())
+    //}
     if err != nil {
         return val, errors.New("while parsing " + schema.Name + ": " + err.Error())
     }
