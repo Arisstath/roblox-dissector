@@ -92,6 +92,10 @@ func extractPacketType(stream *extendedReader) (uint8, error) {
 }
 
 func decodePacket83Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
+    if context.StaticSchema == nil {
+        return nil, errors.New("packet 83 before schema is initialized!");
+    }
+
 	layer := NewPacket83Layer()
 	thisBitstream := packet.stream
 
