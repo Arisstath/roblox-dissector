@@ -534,9 +534,9 @@ func (b *extendedReader) RegionToZStdStream() (*extendedReader, error) {
 	decompressed, err := zstd.Decompress(nil, compressed)
 	println("decomp len", len(decompressed))
 	if len(decompressed) > 0x20 {
-		fmt.Println("first bytes", decompressed[:0x20])
+		fmt.Printf("first bytes %#X\n", decompressed[:0x20])
 	} else {
-		fmt.Println("first bytes", decompressed)
+		fmt.Printf("first bytes %#X\n", decompressed)
 	}
 
 	zstdStream := zstd.NewReader(bytes.NewReader(compressed))
@@ -554,6 +554,9 @@ func (b *extendedReader) readJoinReferent(context *CommunicationContext) (string
 	var ref string
 	if stringLen != 0xFF {
 		ref, err = b.readASCII(int(stringLen))
+		if len(ref) != 0x23 {
+			println("WARN: wrong ref len!! this should never happen, unless you are communicating with a non-standard peer")
+		}
 		if err != nil {
 			return "", 0, err
 		}

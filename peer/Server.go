@@ -333,7 +333,7 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 					CharacterAutoSpawn: false,
                     Int1: 0,
                     Int2: 0,
-                    ReferentString: []byte("RBX0123456789ABCDEF"),
+                    ReferentString: "RBX0123456789ABCDEF",
                 }
                 for i, className := range services {
                     classID := context.StaticSchema.ClassesByName[className]

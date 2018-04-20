@@ -17,8 +17,8 @@ var packetDecoders = map[byte]decoderFunc{
 	0x81: decodePacket81Layer,
 	0x82: decodePacket82Layer,
 	0x83: decodePacket83Layer,
-	0x85: decodePacket85Layer,
-	0x86: decodePacket86Layer,
+	//0x85: decodePacket85Layer,
+	//0x86: decodePacket86Layer,
 	0x8F: decodePacket8FLayer,
 	0x90: decodePacket90Layer,
 	0x92: decodePacket92Layer,
@@ -203,12 +203,14 @@ func (this *PacketReader) readGeneric(packetType uint8, layers *PacketLayers, pa
 	if packetType == 0x1B {
 		tsLayer, err := decodePacket1BLayer(packet, this.Context)
 		if err != nil {
+			packet.Logger.Println("error:", err.Error())
 			this.ErrorHandler(errors.New(fmt.Sprintf("Failed to decode timestamped packet: %s", err.Error())))
 			return
 		}
 		layers.Timestamp = tsLayer.(*Packet1BLayer)
 		packetType, err = packet.stream.ReadByte()
 		if err != nil {
+			packet.Logger.Println("error:", err.Error())
 			this.ErrorHandler(errors.New(fmt.Sprintf("Failed to decode timestamped packet: %s", err.Error())))
 			return
 		}
@@ -216,10 +218,9 @@ func (this *PacketReader) readGeneric(packetType uint8, layers *PacketLayers, pa
 		layers.Reliability.HasPacketType = true
 	}
 	if packetType == 0x8A {
-		println("will read ", layers.Reliability.LengthInBits)
 		data, err := packet.stream.readString(int((layers.Reliability.LengthInBits+7)/8) - 1)
 		if err != nil {
-			println("failed while reading packet8a")
+			packet.Logger.Println("error:", err.Error())
 			this.ErrorHandler(errors.New(fmt.Sprintf("Failed to decode reliable packet %02X: %s", packetType, err.Error())))
 
 			return
@@ -227,7 +228,7 @@ func (this *PacketReader) readGeneric(packetType uint8, layers *PacketLayers, pa
 		layers.Main, err = decodePacket8ALayer(packet, this.Context, data)
 
 		if err != nil {
-			println("decode fail")
+			packet.Logger.Println("error:", err.Error())
 			this.ErrorHandler(errors.New(fmt.Sprintf("Failed to decode reliable packet %02X: %s", packetType, err.Error())))
 
 			return
@@ -238,6 +239,7 @@ func (this *PacketReader) readGeneric(packetType uint8, layers *PacketLayers, pa
 			layers.Main, err = decoder(packet, this.Context)
 
 			if err != nil {
+				packet.Logger.Println("error:", err.Error())
 				this.ErrorHandler(errors.New(fmt.Sprintf("Failed to decode reliable packet %02X: %s", layers.Reliability.PacketType, err.Error())))
 
 				return
@@ -255,6 +257,7 @@ func (this *PacketReader) readOrdered(layers *PacketLayers, packet *UDPPacket) {
 		packetType := subPacket.PacketType
 		_, err = subPacket.fullDataReader.ReadByte()
 		if err != nil {
+			packet.Logger.Println("error:", err.Error())
 			this.ErrorHandler(errors.New(fmt.Sprintf("Failed to decode reliablePacket %02X: %s", packetType, err.Error())))
 			return
 		}
@@ -287,7 +290,7 @@ func (this *PacketReader) readReliable(layers *PacketLayers, packet *UDPPacket) 
 		this.ReliableHandler(subPacket.PacketType, packet, reliablePacketLayers)
 		queues.add(reliablePacketLayers)
 		if reliablePacketLayers.Reliability.Reliability == 0 {
-			print("read UNRELI")
+			//println("read UNRELI")
 			this.readOrdered(reliablePacketLayers, packet)
 			queues.remove(reliablePacketLayers)
 			continue

@@ -197,17 +197,27 @@ func NewBasicPacketViewer(packetType byte, packet *peer.UDPPacket, context *peer
 
 	subWindowLayout.AddWidget(datagramNumberLabel, 0, 0)
 
-	tabWidget := widgets.NewQTabWidget(nil)
+	tabWidget := widgets.NewQTabWidget(SubWindowLayout)
 	subWindowLayout.AddWidget(tabWidget, 0, 0)
 
 	subWindow.SetWindowTitle("Packet Window: " + PacketNames[packetType])
 	subWindow.Show()
 
-	layerWidget := widgets.NewQWidget(nil, 0)
+	layerWidget := widgets.NewQWidget(tabWidget, 0)
 	layerLayout := widgets.NewQVBoxLayout()
 	layerWidget.SetLayout(layerLayout)
 
 	tabWidget.AddTab(layerWidget, PacketNames[packetType])
+	
+	logWidget := widgets.NewQWidget(tabWidget, 0)
+	logLayout := widgets.NewQVBoxLayout()
+
+	logBox := widgets.NewQTextEdit2(packet.GetLog(), logLayout)
+	logBox.SetReadOnly(true)
+	logLayout.AddWidget(logBox, 0, 0)
+
+	logWidget.SetLayout(logLayout)
+	tabWidget.AddTab(logWidget, "Parser log")
 
 	return layerLayout
 }

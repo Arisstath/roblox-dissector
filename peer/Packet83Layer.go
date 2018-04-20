@@ -2,6 +2,7 @@ package peer
 import "errors"
 import "strconv"
 import "io"
+import "reflect"
 
 // List of string names for all 0x83 subpackets
 var Packet83Subpackets map[uint8]string = map[uint8]string{
@@ -64,6 +65,10 @@ func Packet83ToType(this Packet83Subpacket) uint8 {
 
 // Looks up a string name for a packet
 func Packet83ToTypeString(this Packet83Subpacket) string {
+	ttype := Packet83ToType(this)
+	if ttype == 0xFF {
+		return reflect.TypeOf(this).String()
+	}
 	return Packet83Subpackets[Packet83ToType(this)]
 }
 
@@ -77,18 +82,7 @@ func NewPacket83Layer() *Packet83Layer {
 }
 
 func extractPacketType(stream *extendedReader) (uint8, error) {
-	ret, err := stream.bits(2)
-	if err != nil {
-		return 0, err
-	} else if ret != 0 {
-		return uint8(ret), err
-	}
-
-	ret, err = stream.bits(5)
-	if err != nil {
-		return 0, err
-	}
-	return uint8(ret), err
+	return stream.readUint8()
 }
 
 func decodePacket83Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
@@ -107,6 +101,7 @@ func decodePacket83Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	var inner interface{}
 
 	for packetType != 0 {
+		//println("parsing subpacket", packetType)
 		switch packetType {
 		case 0x04:
 			inner, err = decodePacket83_04(packet, context)
@@ -134,9 +129,6 @@ func decodePacket83Layer(packet *UDPPacket, context *CommunicationContext) (inte
 			break
 		case 0x07:
 			inner, err = decodePacket83_07(packet, context)
-			break
-		case 0x09:
-			inner, err = decodePacket83_09(packet, context)
 			break
 		case 0x12:
 			inner, err = decodePacket83_12(packet, context)

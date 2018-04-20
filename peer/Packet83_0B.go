@@ -23,6 +23,10 @@ func decodePacket83_0B(packet *UDPPacket, context *CommunicationContext) (interf
 	if err != nil {
 		return layer, err
 	}
+	if arrayLen == 0 {
+		return layer, nil // no joindata? why is the subpacket sent then?
+	}
+
 	if arrayLen > 0x100000 {
 		return layer, errors.New("sanity check: array len too long")
 	}

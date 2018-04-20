@@ -6,7 +6,7 @@ import "io/ioutil"
 import "errors"
 
 // DEBUG decides whether debug mode should be on or not.
-const DEBUG bool = false
+const DEBUG bool = true
 // RakNetPacket describes any packet that can be serialized and written to UDP
 type RakNetPacket interface {
 	serialize(bool, *CommunicationContext, *extendedWriter) error

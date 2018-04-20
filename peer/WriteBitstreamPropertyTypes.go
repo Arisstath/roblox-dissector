@@ -196,15 +196,20 @@ func (b *extendedWriter) writeBrickColor(val rbxfile.ValueBrickColor) error {
 	return b.bits(7, uint64(val))
 }
 
-func (b *extendedWriter) writeNewPString(isClient bool, val rbxfile.ValueString, isJoinData bool, context *CommunicationContext) (error) {
-	if !isJoinData {
-		return b.writeCached(isClient, string(val), context)
-	}
+func (b *extendedWriter) writeVarLengthString(val string) error {
 	err := b.writeUintUTF8(uint32(len(val)))
 	if err != nil {
 		return err
 	}
-	return b.writeASCII(string(val))
+	return b.writeASCII(val)
+}
+
+func (b *extendedWriter) writeNewPString(isClient bool, val rbxfile.ValueString, isJoinData bool, context *CommunicationContext) (error) {
+	if !isJoinData {
+		return b.writeCached(isClient, string(val), context)
+	}
+
+	return b.writeVarLengthString(string(val))
 }
 
 func (b *extendedWriter) writeNewProtectedString(isClient bool, val rbxfile.ValueProtectedString, isJoinData bool, context *CommunicationContext) error {
@@ -259,6 +264,30 @@ func (b *extendedWriter) writeSintUTF8(val int32) error {
 }
 func (b *extendedWriter) writeNewPSint(val rbxfile.ValueInt) error {
 	return b.writeSintUTF8(int32(val))
+}
+func (b *extendedWriter) writeVarint64(value uint64) error {
+    if value == 0 {
+        return b.WriteByte(0)
+    }
+    for value != 0 {
+        nextValue := value >> 7
+        if nextValue != 0 {
+            err := b.WriteByte(byte(value&0x7F|0x80))
+            if err != nil {
+                return err
+            }
+        } else {
+            err := b.WriteByte(byte(value&0x7F))
+            if err != nil {
+                return err
+            }
+        }
+        value = nextValue
+    }
+    return nil
+}
+func (b *extendedWriter) writeVarsint64(val int64) error {
+	return b.writeVarint64(uint64(val) << 1 ^ - (uint64(val) >> 63))
 }
 
 var typeToNetworkConvTable = map[rbxfile.Type]uint8{

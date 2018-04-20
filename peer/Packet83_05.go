@@ -14,7 +14,7 @@ func decodePacket83_05(packet *UDPPacket, context *CommunicationContext) (interf
 	var err error
 	inner := &Packet83_05{}
 	thisBitstream := packet.stream
-	inner.IsPingBack, err = thisBitstream.readBool()
+	inner.IsPingBack, err = thisBitstream.readBoolByte()
 	if err != nil {
 		return inner, err
 	}

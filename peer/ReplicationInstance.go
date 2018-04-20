@@ -19,85 +19,50 @@ func decodeReplicationInstance(isClient bool, isJoinData bool, packet *UDPPacket
     }
     schema := context.StaticSchema.Instances[schemaIDx]
     thisInstance.ClassName = schema.Name
-	if DEBUG && isJoinData && isClient {
-		println("will parse", referent, schema.Name, isJoinData, len(schema.Properties))
-	}
+	packet.Logger.Println("will parse", referent, schema.Name, isJoinData, len(schema.Properties))
 
-    _, err = thisBitstream.readBool()
+    _, err = thisBitstream.readBoolByte()
     if err != nil {
         return thisInstance, err
     }
     thisInstance.Properties = make(map[string]rbxfile.Value, len(schema.Properties))
 
-    if isJoinData {
-        for i := 0; i < len(schema.Properties); i++ {
-            propertyName := schema.Properties[i].Name
-			value, err := schema.Properties[i].Decode(isClient, ROUND_JOINDATA, packet, context)
+	round := ROUND_STRINGS
+	countOfRounds := 2
+	if isJoinData {
+		round = ROUND_JOINDATA
+		countOfRounds = 1
+	}
+
+	for i := 0; i < countOfRounds; i++ {
+		propertyIndex, err := thisBitstream.readUint8()
+		last := "none"
+		for err == nil && propertyIndex != 0xFF {
+			if int(propertyIndex) > len(schema.Properties) {
+				return thisInstance, errors.New("prop index oob, last was " + last)
+			}
+
+			value, err := schema.Properties[propertyIndex].Decode(isClient, round, packet, context)
 			if err != nil {
 				return thisInstance, err
 			}
-			if value != nil {
-				thisInstance.Properties[propertyName] = value
-			}
-        }
-    } else {
-        for i := 0; i < len(schema.Properties); i++ {
-            isStringObject := false
-            if  schema.Properties[i].Type == 0x21 ||
-                schema.Properties[i].Type == 0x01 ||
-                schema.Properties[i].Type == 0x1C ||
-                schema.Properties[i].Type == 0x22 ||
-                schema.Properties[i].Type == 0x06 ||
-                schema.Properties[i].Type == 0x04 ||
-                schema.Properties[i].Type == 0x05 ||
-                schema.Properties[i].Type == 0x03 {
-                    isStringObject = true
-            }
-            if isStringObject {
-                propertyName := schema.Properties[i].Name
-				value, err := schema.Properties[i].Decode(isClient, ROUND_STRINGS, packet, context)
-				if err != nil {
-					return thisInstance, err
-				}
-				if value != nil {
-					thisInstance.Properties[propertyName] = value
-				}
-            }
-        }
-        for i := 0; i < len(schema.Properties); i++ {
-            isStringObject := false
-            if  schema.Properties[i].Type == 0x21 ||
-                schema.Properties[i].Type == 0x01 ||
-                schema.Properties[i].Type == 0x1C ||
-                schema.Properties[i].Type == 0x22 ||
-                schema.Properties[i].Type == 0x06 ||
-                schema.Properties[i].Type == 0x04 ||
-                schema.Properties[i].Type == 0x05 ||
-                schema.Properties[i].Type == 0x03 {
-                    isStringObject = true
-            }
-            if !isStringObject {
-                propertyName := schema.Properties[i].Name
-				value, err := schema.Properties[i].Decode(isClient, ROUND_OTHER, packet, context)
-				if err != nil {
-					return thisInstance, err
-				}
-				if value != nil {
-					thisInstance.Properties[propertyName] = value
-				}
-            }
-        }
-    }
+			thisInstance.Properties[schema.Properties[propertyIndex].Name] = value
+			last = schema.Properties[propertyIndex].Name
+			propertyIndex, err = thisBitstream.readUint8()
+		}
+		if err != nil {
+			return thisInstance, err
+		}
+	}
+
     referent, err = thisBitstream.readObject(isClient, isJoinData, context)
     if err != nil {
         return thisInstance, errors.New("while parsing parent: " + err.Error())
     }
-	if DEBUG && isJoinData && isClient {
-		if len(referent) > 0x50 {
-			println("Parent: (invalid), ", len(referent), len(thisInstance.Get("Source").(rbxfile.ValueProtectedString)))
-		} else {
-			println("Parent: ", referent)
-		}
+	if len(referent) > 0x50 {
+		packet.Logger.Println("Parent: (invalid), ", len(referent))
+	} else {
+		packet.Logger.Println("Parent: ", referent)
 	}
 
     context.InstancesByReferent.AddInstance(Referent(thisInstance.Reference), thisInstance)

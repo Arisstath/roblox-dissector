@@ -23,7 +23,7 @@ type joinAshxResponse struct {
 	SessionId string
 	MachineAddress string
 	ServerPort uint16
-	UserId int32
+	UserId int64
 	UserName string
 	CharacterAppearance string
 }
@@ -37,7 +37,7 @@ type CustomClient struct {
 	mustACK []int
 	clientTicket string
 	sessionId string
-	PlayerId int32
+	PlayerId int64
 	UserName string
 	characterAppearance string
 	PlaceId uint32
@@ -311,13 +311,13 @@ func (myClient *CustomClient) rakConnect() error {
 
 			response8A := &Packet8ALayer{
 				PlayerId: myClient.PlayerId,
-				ClientTicket: []byte(myClient.clientTicket),
-				DataModelHash: []byte(myClient.DataModelHash),
+				ClientTicket: myClient.clientTicket,
+				DataModelHash: myClient.DataModelHash,
 				ProtocolVersion: 36,
-				SecurityKey: []byte(myClient.SecurityKey),
-				Platform: []byte(myClient.OsPlatform),
-				RobloxProductName: []byte("?"),
-				SessionId: []byte(myClient.sessionId),
+				SecurityKey: myClient.SecurityKey,
+				Platform: myClient.OsPlatform,
+				RobloxProductName: "?",
+				SessionId: myClient.sessionId,
 				GoldenHash: myClient.GoldenHash,
 			}
 			myClient.Writer.WriteGeneric(context, 3, response8A, 3, &addr)

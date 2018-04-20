@@ -215,7 +215,7 @@ func (b *extendedReader) readVector3int16() (rbxfile.ValueVector3int16, error) {
 }
 
 func (b *extendedReader) readPBool() (rbxfile.ValueBool, error) {
-	val, err := b.readBool()
+	val, err := b.readBoolByte()
 	return rbxfile.ValueBool(val), err
 }
 // reads a signed integer
@@ -403,21 +403,24 @@ func lookupRotMatrix(special uint64) [9]float32 {
 func (b *extendedReader) readCFrame() (rbxfile.ValueCFrame, error) {
 	var err error
 	val := rbxfile.ValueCFrame{}
-	val.Position, err = b.readVector3()
+	val.Position, err = b.readVector3Simple()
 	if err != nil {
 		return val, err
 	}
 
-	isLookup, err := b.readBool()
+	special, err := b.readUint8()
 	if err != nil {
 		return val, err
 	}
-	if isLookup {
-        special, err := b.bits(6)
+	if special > 0 {
         if err != nil {
             return val, err
         }
-        val.Rotation = lookupRotMatrix(special)
+		if special > 36 {
+			println("oob, special", special)
+			return val, errors.New("special rotmatrix oob")
+		}
+        val.Rotation = lookupRotMatrix(uint64(special - 1))
 	} else {
         var matrix [4]float32
 		matrix[3], err = b.readFloat16BE(-1.0, 1.0)
@@ -545,16 +548,20 @@ func (b *extendedReader) readVarsint64() (int64, error) {
 	return int64((res >> 1) ^ -(res & 1)), err
 }
 
+func (b *extendedReader) readVarLengthString() (string, error) {
+	stringLen, err := b.readUintUTF8()
+	if err != nil {
+		return "", err
+	}
+	return b.readASCII(int(stringLen))
+}
+
 func (b *extendedReader) readNewPString(isClient bool, isJoinData bool, context *CommunicationContext) (rbxfile.ValueString, error) {
 	if !isJoinData {
 		val, err := b.readCached(isClient, context)
 		return rbxfile.ValueString(val), err
 	}
-	stringLen, err := b.readUintUTF8()
-	if err != nil {
-		return rbxfile.ValueString(""), err
-	}
-	val, err := b.readASCII(int(stringLen))
+	val, err := b.readVarLengthString()
 	return rbxfile.ValueString(val), err
 }
 func (b *extendedReader) readNewProtectedString(isClient bool, isJoinData bool, context *CommunicationContext) (rbxfile.ValueProtectedString, error) {

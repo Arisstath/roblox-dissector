@@ -23,7 +23,7 @@ type Packet81Layer struct {
 	AllowThirdPartySales bool
 	CharacterAutoSpawn bool
 	// Server's scope
-	ReferentString []byte
+	ReferentString string
 	Int1 uint32
 	Int2 uint32
 	// List of services to be set
@@ -39,23 +39,23 @@ func decodePacket81Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	thisBitstream := packet.stream
 	var err error
 
-	layer.DistributedPhysicsEnabled, err = thisBitstream.readBool()
+	layer.DistributedPhysicsEnabled, err = thisBitstream.readBoolByte()
 	if err != nil {
 		return layer, err
 	}
-	layer.StreamJob, err = thisBitstream.readBool()
+	layer.StreamJob, err = thisBitstream.readBoolByte()
 	if err != nil {
 		return layer, err
 	}
-	layer.FilteringEnabled, err = thisBitstream.readBool()
+	layer.FilteringEnabled, err = thisBitstream.readBoolByte()
 	if err != nil {
 		return layer, err
 	}
-	layer.AllowThirdPartySales, err = thisBitstream.readBool()
+	layer.AllowThirdPartySales, err = thisBitstream.readBoolByte()
 	if err != nil {
 		return layer, err
 	}
-	layer.CharacterAutoSpawn, err = thisBitstream.readBool()
+	layer.CharacterAutoSpawn, err = thisBitstream.readBoolByte()
 	if err != nil {
 		return layer, err
 	}
@@ -63,11 +63,11 @@ func decodePacket81Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	if err != nil {
 		return layer, err
 	}
-	layer.ReferentString, err = thisBitstream.readString(int(stringLen))
+	layer.ReferentString, err = thisBitstream.readASCII(int(stringLen))
 	if err != nil {
 		return layer, err
 	}
-	context.InstanceTopScope = string(layer.ReferentString)
+	context.InstanceTopScope = layer.ReferentString
 	if !context.IsStudio {
 		layer.Int1, err = thisBitstream.readUint32BE()
 		if err != nil {
@@ -117,11 +117,11 @@ func decodePacket81Layer(packet *UDPPacket, context *CommunicationContext) (inte
         context.InstancesByReferent.AddInstance(referent, thisService)
         thisItem.Instance = thisService
 
-        thisItem.Bool1, err = thisBitstream.readBool()
+        thisItem.Bool1, err = thisBitstream.readBoolByte()
         if err != nil {
             return layer, err
         }
-        thisItem.Bool2, err = thisBitstream.readBool()
+        thisItem.Bool2, err = thisBitstream.readBoolByte()
         if err != nil {
             return layer, err
         }
@@ -162,7 +162,7 @@ func (layer *Packet81Layer) serialize(isClient bool,context *CommunicationContex
     if err != nil {
         return err
     }
-    err = stream.allBytes(layer.ReferentString)
+    err = stream.writeASCII(layer.ReferentString)
     if err != nil {
         return err
     }

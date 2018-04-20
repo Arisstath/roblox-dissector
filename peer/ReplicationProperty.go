@@ -115,21 +115,11 @@ func (schema StaticPropertySchema) Decode(isClient bool, round int, packet *UDPP
 	var err error
 	thisBitstream := packet.stream
 	isJoinData := round == ROUND_JOINDATA
-	if round != ROUND_UPDATE {
-        var isDefault bool
-        isDefault, err = thisBitstream.readBool()
-		if isDefault || err != nil {
-			//if DEBUG && round == ROUND_JOINDATA && isClient {
-				//println("read", schema.Name, "default")
-			//}
-			return rbxfile.DefaultValue, err
-		}
-	}
 
     val, err := readSerializedValue(isClient, isJoinData, schema.EnumID, schema.Type, thisBitstream, context)
-    //if val.Type().String() != "ProtectedString" && round == ROUND_JOINDATA && DEBUG && isClient {
-        //println("read", schema.Name, val.String())
-    //}
+    if val.Type().String() != "ProtectedString" && DEBUG && !isClient {
+        println("read", schema.Name, val.String())
+    }
     if err != nil {
         return val, errors.New("while parsing " + schema.Name + ": " + err.Error())
     }

@@ -79,8 +79,10 @@ func show83_0B(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	standardModel.SetHorizontalHeaderLabels([]string{"Name", "Type", "Value", "Referent", "Parent", "Path"})
 
 	rootNode := standardModel.InvisibleRootItem()
-	for _, instance := range(this.Instances) {
-		rootNode.AppendRow(showReplicationInstance(instance))
+	if this != nil && this.Instances != nil { // if arraylen == 0, this is nil
+		for _, instance := range(this.Instances) {
+			rootNode.AppendRow(showReplicationInstance(instance))
+		}
 	}
 	instanceList.SetModel(standardModel)
 	instanceList.SetSelectionMode(0)

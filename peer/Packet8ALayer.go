@@ -31,15 +31,15 @@ func calculateChecksum(data []byte) uint32 {
 
 // ID_SUBMIT_TICKET - client -> server
 type Packet8ALayer struct {
-	PlayerId int32
-	ClientTicket []byte
-	DataModelHash []byte
+	PlayerId int64
+	ClientTicket string
+	DataModelHash string
 	// Always 36?
 	ProtocolVersion uint32
-	SecurityKey []byte
-	Platform []byte
-	RobloxProductName []byte
-	SessionId []byte
+	SecurityKey string
+	Platform string
+	RobloxProductName string
+	SessionId string
 	GoldenHash uint32
 }
 
@@ -93,16 +93,16 @@ func decodePacket8ALayer(packet *UDPPacket, context *CommunicationContext, data 
 		return layer, err
 	}
 
-	playerId, err := thisBitstream.readUint32BE()
+	playerId, err := thisBitstream.readVarsint64()
 	if err != nil {
 		return layer, err
 	}
-	layer.PlayerId = int32(playerId)
-	layer.ClientTicket, err = thisBitstream.readHuffman()
+	layer.PlayerId = playerId
+	layer.ClientTicket, err = thisBitstream.readVarLengthString()
 	if err != nil {
 		return layer, err
 	}
-	layer.DataModelHash, err = thisBitstream.readHuffman()
+	layer.DataModelHash, err = thisBitstream.readVarLengthString()
 	if err != nil {
 		return layer, err
 	}
@@ -110,25 +110,25 @@ func decodePacket8ALayer(packet *UDPPacket, context *CommunicationContext, data 
 	if err != nil {
 		return layer, err
 	}
-	layer.SecurityKey, err = thisBitstream.readHuffman()
+	layer.SecurityKey, err = thisBitstream.readVarLengthString()
 	if err != nil {
 		return layer, err
 	}
-	layer.Platform, err = thisBitstream.readHuffman()
+	layer.Platform, err = thisBitstream.readVarLengthString()
 	if err != nil {
 		return layer, err
 	}
-	layer.RobloxProductName, err = thisBitstream.readHuffman()
+	layer.RobloxProductName, err = thisBitstream.readVarLengthString()
 	if err == io.EOF {
 		return layer, nil
 	} else if err != nil {
 		return layer, err
 	}
-	layer.SessionId, err = thisBitstream.readHuffman()
+	layer.SessionId, err = thisBitstream.readVarLengthString()
 	if err != nil {
 		return layer, err
 	}
-	layer.GoldenHash, err = thisBitstream.readUint32BE()
+	layer.GoldenHash, err = thisBitstream.readUint32BE() // 0xc001cafe on android - cool cafe!
 	if err != nil {
 		return layer, err
 	}
@@ -148,11 +148,11 @@ func (layer *Packet8ALayer) serialize(isClient bool, context *CommunicationConte
 	if err != nil {
 		return err
 	}
-	err = rawStream.writeHuffman(layer.ClientTicket)
+	err = rawStream.writeVarLengthString(layer.ClientTicket)
 	if err != nil {
 		return err
 	}
-	err = rawStream.writeHuffman(layer.DataModelHash)
+	err = rawStream.writeVarLengthString(layer.DataModelHash)
 	if err != nil {
 		return err
 	}
@@ -160,19 +160,19 @@ func (layer *Packet8ALayer) serialize(isClient bool, context *CommunicationConte
 	if err != nil {
 		return err
 	}
-	err = rawStream.writeHuffman(layer.SecurityKey)
+	err = rawStream.writeVarLengthString(layer.SecurityKey)
 	if err != nil {
 		return err
 	}
-	err = rawStream.writeHuffman(layer.Platform)
+	err = rawStream.writeVarLengthString(layer.Platform)
 	if err != nil {
 		return err
 	}
-	err = rawStream.writeHuffman(layer.RobloxProductName)
+	err = rawStream.writeVarLengthString(layer.RobloxProductName)
 	if err != nil {
 		return err
 	}
-	err = rawStream.writeHuffman(layer.SessionId)
+	err = rawStream.writeVarLengthString(layer.SessionId)
 	if err != nil {
 		return err
 	}

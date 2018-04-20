@@ -4,10 +4,14 @@ import "github.com/google/gopacket/layers"
 import "bytes"
 import "net"
 import "github.com/gskartwii/go-bitstream"
+import "log"
+import "strings"
 
 // An UDPPacket describes a packet with a source and a destination, along with
 // containing its contents internally.
 type UDPPacket struct {
+	logBuffer *strings.Builder
+	Log *log.Logger
 	stream *extendedReader
 	Source net.UDPAddr
 	Destination net.UDPAddr
@@ -15,6 +19,10 @@ type UDPPacket struct {
 
 func bufferToStream(buffer []byte) *extendedReader {
 	return &extendedReader{bitstream.NewReader(bytes.NewReader(buffer))}
+}
+
+func (packet *UDPPacket) GetLog() string {
+	return packet.logBuffer.String()
 }
 
 func UDPPacketFromGoPacket(packet gopacket.Packet) *UDPPacket {
@@ -34,6 +42,8 @@ func UDPPacketFromGoPacket(packet gopacket.Packet) *UDPPacket {
 		int(packet.Layer(layers.LayerTypeUDP).(*layers.UDP).DstPort),
 		"udp",
 	}
+	ret.Log = log.New(ret.logBuffer, "", log.Lmicroseconds | log.Ltime)
+
 
 	return ret
 }

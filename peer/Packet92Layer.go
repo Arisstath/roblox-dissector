@@ -2,7 +2,7 @@ package peer
 
 // ID_PLACEID_VERIFICATION - client -> server
 type Packet92Layer struct {
-	PlaceId uint32
+	PlaceId int64
 }
 
 func NewPacket92Layer() *Packet92Layer {
@@ -14,7 +14,7 @@ func decodePacket92Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	thisBitstream := packet.stream
 
 	var err error
-	layer.PlaceId, err = thisBitstream.readUint32BE()
+	layer.PlaceId, err = thisBitstream.readVarsint64()
 	return layer, err
 }
 
@@ -23,5 +23,5 @@ func (layer *Packet92Layer) serialize(isClient bool,context *CommunicationContex
 	if err != nil {
 		return err
 	}
-	return stream.writeUint32BE(layer.PlaceId)
+	return stream.writeVarsint64(layer.PlaceId)
 }

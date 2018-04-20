@@ -14,7 +14,7 @@ func decodePacket8FLayer(packet *UDPPacket, context *CommunicationContext) (inte
 	thisBitstream := packet.stream
 
 	var err error
-	spawnName, err := thisBitstream.readHuffman()
+	spawnName, err := thisBitstream.readVarLengthString()
 	layer.SpawnName = string(spawnName)
 	return layer, err
 }
@@ -24,5 +24,5 @@ func (layer *Packet8FLayer) serialize(isClient bool,context *CommunicationContex
 	if err != nil {
 		return err
 	}
-	return stream.writeHuffman([]byte(layer.SpawnName))
+	return stream.writeVarLengthString(layer.SpawnName)
 }
