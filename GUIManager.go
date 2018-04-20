@@ -170,54 +170,12 @@ func NewQStandardItemF(format string, args ...interface{}) *gui.QStandardItem {
 }
 
 func NewBasicPacketViewer(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) *widgets.QVBoxLayout {
-	subWindow := widgets.NewQWidget(window, core.Qt__Window)
-	subWindowLayout := widgets.NewQVBoxLayout2(subWindow)
-
-	isClient := context.IsClient(packet.Source)
-	isServer := context.IsServer(packet.Source)
-
-	var direction string
-	if isClient {
-		direction = "Direction: Client -> Server"
-	} else if isServer {
-		direction = "Direction: Server -> Client"
-	} else {
-		direction = "Direction: Unknown"
-	}
-	directionLabel := widgets.NewQLabel2(direction, nil, 0)
-	subWindowLayout.AddWidget(directionLabel, 0, 0)
-
-	var datagramNumberLabel *widgets.QLabel
-	if layers.Reliability != nil && layers.Reliability.HasSplitPacket {
-		allRakNetLayers := layers.Reliability.AllRakNetLayers
-		datagramNumberLabel = NewQLabelF("Datagrams: %d - %d", allRakNetLayers[0].DatagramNumber, allRakNetLayers[len(allRakNetLayers) - 1].DatagramNumber)
-	} else {
-		datagramNumberLabel = NewQLabelF("Datagram: %d", layers.RakNet.DatagramNumber)
-	}
-
-	subWindowLayout.AddWidget(datagramNumberLabel, 0, 0)
-
-	tabWidget := widgets.NewQTabWidget(SubWindowLayout)
-	subWindowLayout.AddWidget(tabWidget, 0, 0)
-
-	subWindow.SetWindowTitle("Packet Window: " + PacketNames[packetType])
-	subWindow.Show()
+	tabWidget := NewDefaultPacketViewer(packetType, packet, context, layers)
 
 	layerWidget := widgets.NewQWidget(tabWidget, 0)
 	layerLayout := widgets.NewQVBoxLayout()
 	layerWidget.SetLayout(layerLayout)
-
-	tabWidget.AddTab(layerWidget, PacketNames[packetType])
-	
-	logWidget := widgets.NewQWidget(tabWidget, 0)
-	logLayout := widgets.NewQVBoxLayout()
-
-	logBox := widgets.NewQTextEdit2(packet.GetLog(), logLayout)
-	logBox.SetReadOnly(true)
-	logLayout.AddWidget(logBox, 0, 0)
-
-	logWidget.SetLayout(logLayout)
-	tabWidget.AddTab(logWidget, "Parser log")
+	tabWidget.InsertTab(0, layerWidget, PacketNames[packetType])
 
 	return layerLayout
 }
@@ -327,6 +285,7 @@ func (m *MyPacketListView) registerSplitPacketRow(row []*gui.QStandardItem, pack
 func (m *MyPacketListView) AddSplitPacket(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
 	if layers.Reliability.IsFirst {
 		m.AddFullPacket(packetType, packet, context, layers, nil)
+		m.BindDefaultCallback(packetType, packet, context, layers)
 	} else {
 		m.handleSplitPacket(packetType, packet, context, layers)
 	}
@@ -356,6 +315,69 @@ func (m *MyPacketListView) BindCallback(packetType byte, packet *peer.UDPPacket,
 	for _, item := range row {
 		item.SetBackground(gui.NewQBrush2(core.Qt__NoBrush))
 	}
+}
+
+func NewDefaultPacketViewer(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) *widgets.QTabWidget {
+	subWindow := widgets.NewQWidget(window, core.Qt__Window)
+	subWindowLayout := widgets.NewQVBoxLayout2(subWindow)
+
+	isClient := context.IsClient(packet.Source)
+	isServer := context.IsServer(packet.Source)
+
+	var direction string
+	if isClient {
+		direction = "Direction: Client -> Server"
+	} else if isServer {
+		direction = "Direction: Server -> Client"
+	} else {
+		direction = "Direction: Unknown"
+	}
+	directionLabel := widgets.NewQLabel2(direction, nil, 0)
+	subWindowLayout.AddWidget(directionLabel, 0, 0)
+
+	var datagramNumberLabel *widgets.QLabel
+	if layers.Reliability != nil && layers.Reliability.HasSplitPacket {
+		allRakNetLayers := layers.Reliability.AllRakNetLayers
+		datagramNumberLabel = NewQLabelF("Datagrams: %d - %d", allRakNetLayers[0].DatagramNumber, allRakNetLayers[len(allRakNetLayers) - 1].DatagramNumber)
+	} else {
+		datagramNumberLabel = NewQLabelF("Datagram: %d", layers.RakNet.DatagramNumber)
+	}
+
+	subWindowLayout.AddWidget(datagramNumberLabel, 0, 0)
+
+	tabWidget := widgets.NewQTabWidget(subWindow)
+	subWindowLayout.AddWidget(tabWidget, 0, 0)
+
+	logWidget := widgets.NewQWidget(tabWidget, 0)
+	logLayout := widgets.NewQVBoxLayout()
+
+	logBox := widgets.NewQTextEdit(logWidget)
+	logBox.SetReadOnly(true)
+	logBox.SetPlainText(packet.GetLog())
+	logLayout.AddWidget(logBox, 0, 0)
+
+	logWidget.SetLayout(logLayout)
+	tabWidget.AddTab(logWidget, "Parser log")
+
+	subWindow.SetWindowTitle("Packet Window: " + PacketNames[packetType])
+	subWindow.Show()
+
+	return tabWidget
+}
+
+func (m *MyPacketListView) BindDefaultCallback(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
+	isClient := context.IsClient(packet.Source)
+	isServer := context.IsServer(packet.Source)
+
+	row := m.packetRowsByUniqueID.Get(layers.Reliability.UniqueID, isClient, isServer)
+	index, _ := strconv.Atoi(row[0].Data(0).ToString())
+
+	m.MSelectionHandlers.Lock()
+	m.SelectionHandlers[uint64(index)] = func () {
+		m.clearACKSelection()
+		NewDefaultPacketViewer(packetType, packet, context, layers)
+	}
+	m.MSelectionHandlers.Unlock()
 }
 
 func (m *MyPacketListView) handleSplitPacket(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {

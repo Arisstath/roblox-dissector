@@ -10,8 +10,8 @@ import "strings"
 // An UDPPacket describes a packet with a source and a destination, along with
 // containing its contents internally.
 type UDPPacket struct {
-	logBuffer *strings.Builder
-	Log *log.Logger
+	logBuffer *strings.Builder // must be a pointer because it may be copied!
+	Logger *log.Logger
 	stream *extendedReader
 	Source net.UDPAddr
 	Destination net.UDPAddr
@@ -25,12 +25,21 @@ func (packet *UDPPacket) GetLog() string {
 	return packet.logBuffer.String()
 }
 
+func NewUDPPacket() *UDPPacket {
+	ret := &UDPPacket{}
+	// nothing should ever use loggers that are not created by reliabilitylayer handlers!
+	//ret.logBuffer = new(strings.Builder)
+	//ret.Logger = log.New(ret.logBuffer, "", log.Lmicroseconds | log.Ltime)
+
+	return ret
+}
+
 func UDPPacketFromGoPacket(packet gopacket.Packet) *UDPPacket {
 	if packet.Layer(layers.LayerTypeIPv4) == nil {
 		return nil
 	}
 
-	ret := &UDPPacket{}
+	ret := NewUDPPacket()
 	ret.stream = bufferToStream(packet.ApplicationLayer().Payload())
 	ret.Source = net.UDPAddr{
 		packet.Layer(layers.LayerTypeIPv4).(*layers.IPv4).SrcIP,
@@ -42,7 +51,6 @@ func UDPPacketFromGoPacket(packet gopacket.Packet) *UDPPacket {
 		int(packet.Layer(layers.LayerTypeUDP).(*layers.UDP).DstPort),
 		"udp",
 	}
-	ret.Log = log.New(ret.logBuffer, "", log.Lmicroseconds | log.Ltime)
 
 
 	return ret
@@ -50,5 +58,7 @@ func UDPPacketFromGoPacket(packet gopacket.Packet) *UDPPacket {
 
 // Constructs a UDPPacket from a buffer of bytes
 func UDPPacketFromBytes(buf []byte) *UDPPacket {
-	return &UDPPacket{stream: bufferToStream(buf)}
+	packet := NewUDPPacket()
+	packet.stream = bufferToStream(buf)
+	return packet
 }

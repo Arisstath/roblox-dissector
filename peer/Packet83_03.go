@@ -55,7 +55,7 @@ func decodePacket83_03(packet *UDPPacket, context *CommunicationContext) (interf
     schema := context.StaticSchema.Properties[propertyIDx]
     layer.PropertyName = schema.Name
 
-    layer.Bool1, err = thisBitstream.readBool()
+    layer.Bool1, err = thisBitstream.readBoolByte()
     if err != nil {
         return layer, err
     }

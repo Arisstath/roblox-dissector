@@ -255,7 +255,7 @@ func (b *extendedReader) readFaces() (rbxfile.ValueFaces, error) {
 	return facesVal, err
 }
 func (b *extendedReader) readBrickColor() (rbxfile.ValueBrickColor, error) {
-	val, err := b.bits(7)
+	val, err := b.readUint16BE()
 	return rbxfile.ValueBrickColor(val), err
 }
 
@@ -788,7 +788,7 @@ func (b *extendedReader) readRect2D() (rbxfile.ValueRect2D, error) {
 func (b *extendedReader) readPhysicalProperties() (rbxfile.ValuePhysicalProperties, error) {
 	var err error
 	props := rbxfile.ValuePhysicalProperties{}
-	props.CustomPhysics, err = b.readBool()
+	props.CustomPhysics, err = b.readBoolByte()
 	if props.CustomPhysics {
 		if err != nil {
 			return props, err

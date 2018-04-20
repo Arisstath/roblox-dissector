@@ -38,7 +38,7 @@ func decodePacket83_0B(packet *UDPPacket, context *CommunicationContext) (interf
 		return layer, err
 	}
 
-	newPacket := &UDPPacket{zstdStream, packet.Source, packet.Destination}
+	newPacket := &UDPPacket{Logger: packet.Logger, stream: zstdStream, Source: packet.Source, Destination: packet.Destination, logBuffer: packet.logBuffer}
 
 	var i uint32
 	for i = 0; i < arrayLen; i++ {

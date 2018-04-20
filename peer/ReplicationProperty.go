@@ -117,8 +117,8 @@ func (schema StaticPropertySchema) Decode(isClient bool, round int, packet *UDPP
 	isJoinData := round == ROUND_JOINDATA
 
     val, err := readSerializedValue(isClient, isJoinData, schema.EnumID, schema.Type, thisBitstream, context)
-    if val.Type().String() != "ProtectedString" && DEBUG && !isClient {
-        println("read", schema.Name, val.String())
+    if val.Type().String() != "ProtectedString" {
+        packet.Logger.Println("read", schema.Name, val.String())
     }
     if err != nil {
         return val, errors.New("while parsing " + schema.Name + ": " + err.Error())

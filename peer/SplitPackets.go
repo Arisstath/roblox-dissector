@@ -1,6 +1,8 @@
 package peer
 import "bytes"
 import "github.com/gskartwii/go-bitstream"
+import "log"
+import "strings"
 
 type splitPacketBuffer struct {
 	reliablePackets []*ReliablePacket
@@ -31,29 +33,29 @@ func (list *splitPacketBuffer) addPacket(packet *ReliablePacket, rakNetPacket *R
 	list.rakNetPackets[index] = rakNetPacket
 }
 
+func initPacketForSplitPackets(packet *ReliablePacket, rakNetPacket *RakNetLayer, splitPacketIndex uint32) {
+	packet.buffer = newSplitPacketBuffer(packet)
+	packet.IsFirst = true
+	packet.fullDataReader = packet.buffer.dataReader
+	packet.buffer.addPacket(packet, rakNetPacket, splitPacketIndex)
+	packet.logBuffer = new(strings.Builder)
+	packet.Logger = log.New(packet.logBuffer, "", log.Lmicroseconds | log.Ltime)
+}
+
 func (context *CommunicationContext) addSplitPacket(source string, packet *ReliablePacket, rakNetPacket *RakNetLayer) *ReliablePacket {
 	splitPacketId := packet.SplitPacketID
 	splitPacketIndex := packet.SplitPacketIndex
 
 	if context.splitPackets == nil {
-		packet.buffer = newSplitPacketBuffer(packet)
-		packet.IsFirst = true
-		packet.fullDataReader = packet.buffer.dataReader
-		packet.buffer.addPacket(packet, rakNetPacket, splitPacketIndex)
+		initPacketForSplitPackets(packet, rakNetPacket, splitPacketIndex)
 
 		context.splitPackets = splitPacketList{source: map[uint16]*ReliablePacket{splitPacketId: packet}}
 	} else if context.splitPackets[source] == nil {
-		packet.buffer = newSplitPacketBuffer(packet)
-		packet.IsFirst = true
-		packet.fullDataReader = packet.buffer.dataReader
-		packet.buffer.addPacket(packet, rakNetPacket, splitPacketIndex)
+		initPacketForSplitPackets(packet, rakNetPacket, splitPacketIndex)
 
 		context.splitPackets[source] = map[uint16]*ReliablePacket{splitPacketId: packet}
 	} else if context.splitPackets[source][splitPacketId] == nil {
-		packet.buffer = newSplitPacketBuffer(packet)
-		packet.IsFirst = true
-		packet.fullDataReader = packet.buffer.dataReader
-		packet.buffer.addPacket(packet, rakNetPacket, splitPacketIndex)
+		initPacketForSplitPackets(packet, rakNetPacket, splitPacketIndex)
 
 		context.splitPackets[source][splitPacketId] = packet
 	} else {
@@ -70,6 +72,9 @@ func (context *CommunicationContext) handleSplitPacket(reliablePacket *ReliableP
 	fullPacket := context.addSplitPacket(source, reliablePacket, rakNetPacket)
 	packetBuffer := fullPacket.buffer
 	expectedPacket := packetBuffer.nextExpectedPacket
+
+	packet.logBuffer = fullPacket.logBuffer
+	packet.Logger = fullPacket.Logger
 
 	fullPacket.AllReliablePackets = append(fullPacket.AllReliablePackets, reliablePacket)
 	fullPacket.AllRakNetLayers = append(fullPacket.AllRakNetLayers, rakNetPacket)

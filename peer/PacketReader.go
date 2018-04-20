@@ -261,7 +261,12 @@ func (this *PacketReader) readOrdered(layers *PacketLayers, packet *UDPPacket) {
 			this.ErrorHandler(errors.New(fmt.Sprintf("Failed to decode reliablePacket %02X: %s", packetType, err.Error())))
 			return
 		}
-		newPacket := &UDPPacket{subPacket.fullDataReader, packet.Source, packet.Destination}
+		newPacket := &UDPPacket{}
+		newPacket.stream = subPacket.fullDataReader
+		newPacket.Source = packet.Source
+		newPacket.Destination = packet.Destination
+		newPacket.logBuffer = packet.logBuffer
+		newPacket.Logger = packet.Logger
 
 		this.readGeneric(packetType, layers, newPacket)
 	}
@@ -290,7 +295,6 @@ func (this *PacketReader) readReliable(layers *PacketLayers, packet *UDPPacket) 
 		this.ReliableHandler(subPacket.PacketType, packet, reliablePacketLayers)
 		queues.add(reliablePacketLayers)
 		if reliablePacketLayers.Reliability.Reliability == 0 {
-			//println("read UNRELI")
 			this.readOrdered(reliablePacketLayers, packet)
 			queues.remove(reliablePacketLayers)
 			continue

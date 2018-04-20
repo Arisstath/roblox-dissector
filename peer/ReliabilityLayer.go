@@ -3,6 +3,8 @@ import "github.com/gskartwii/go-bitstream"
 import "bytes"
 import "io"
 import "errors"
+import "log"
+import "strings"
 
 // ReliablePacket describes a packet within a ReliabilityLayer
 type ReliablePacket struct {
@@ -50,6 +52,8 @@ type ReliablePacket struct {
 	PacketType byte
 
 	buffer *splitPacketBuffer
+	logBuffer *strings.Builder // must be a pointer because it may be copied!
+	Logger *log.Logger
 }
 
 type ReliabilityLayer struct {
@@ -61,6 +65,10 @@ func NewReliabilityLayer() *ReliabilityLayer {
 }
 func NewReliablePacket() *ReliablePacket {
 	return &ReliablePacket{SelfData: make([]byte, 0)}
+}
+
+func (packet *ReliablePacket) GetLog() string {
+	return packet.logBuffer.String()
 }
 
 func DecodeReliabilityLayer(packet *UDPPacket, context *CommunicationContext, rakNetPacket *RakNetLayer) (*ReliabilityLayer, error) {
@@ -151,6 +159,8 @@ func DecodeReliabilityLayer(packet *UDPPacket, context *CommunicationContext, ra
 			reliablePacket.IsFinal = true
 			reliablePacket.AllReliablePackets = []*ReliablePacket{reliablePacket}
 			reliablePacket.AllRakNetLayers = []*RakNetLayer{rakNetPacket}
+			packet.logBuffer = new(strings.Builder)
+			packet.Logger = log.New(packet.logBuffer, "", log.Lmicroseconds | log.Ltime)
 		}
 
 		layer.Packets = append(layer.Packets, reliablePacket)
