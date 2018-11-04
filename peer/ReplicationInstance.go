@@ -1,155 +1,105 @@
 package peer
-import "fmt"
-import "errors"
-import "github.com/gskartwii/rbxfile"
 
-func decodeReplicationInstance(isClient bool, isJoinData bool, packet *UDPPacket, context *CommunicationContext) (*rbxfile.Instance, error) {
+import (
+	"errors"
+	"fmt"
+
+	"github.com/gskartwii/rbxfile"
+)
+
+func is2ndRoundType(typeId uint8) bool {
+	id := uint32(typeId)
+	return ((id-3) > 0x1F || ((1<<(id-3))&uint32(0xC200000F)) == 0) && (id != 1) // thank you ARM compiler for optimizing this <3
+}
+
+func decodeReplicationInstance(reader PacketReader, packet *UDPPacket, thisBitstream InstanceReader) (*rbxfile.Instance, error) {
 	var err error
-	thisBitstream := packet.stream
+	var referent Referent
+	context := reader.Context()
 
-    referent, err := thisBitstream.readObject(isClient, isJoinData, context)
+	referent, err = thisBitstream.ReadObject(reader)
 	if err != nil {
-        return nil, errors.New("while parsing self: " + err.Error())
+		return nil, errors.New("while parsing self: " + err.Error())
 	}
-    thisInstance := context.InstancesByReferent.TryGetInstance(referent)
-
-    schemaIDx, err := thisBitstream.readUint16BE()
-    if int(schemaIDx) > len(context.StaticSchema.Instances) {
-        return thisInstance, errors.New(fmt.Sprintf("class idx %d is higher than %d", schemaIDx, len(context.StaticSchema.Instances)))
-    }
-    schema := context.StaticSchema.Instances[schemaIDx]
-    thisInstance.ClassName = schema.Name
-	packet.Logger.Println("will parse", referent, schema.Name, isJoinData, len(schema.Properties))
-
-    _, err = thisBitstream.readBoolByte()
-    if err != nil {
-        return thisInstance, err
-    }
-    thisInstance.Properties = make(map[string]rbxfile.Value, len(schema.Properties))
-
-	round := ROUND_STRINGS
-	countOfRounds := 2
-	if isJoinData {
-		round = ROUND_JOINDATA
-		countOfRounds = 1
+	if referent.IsNull() {
+		return nil, errors.New("self is nil in decodeReplicationInstance")
+	}
+	thisInstance, err := context.InstancesByReferent.CreateInstance(referent)
+	if err != nil {
+		return nil, err
 	}
 
-	for i := 0; i < countOfRounds; i++ {
-		propertyIndex, err := thisBitstream.readUint8()
-		last := "none"
-		for err == nil && propertyIndex != 0xFF {
-			if int(propertyIndex) > len(schema.Properties) {
-				return thisInstance, errors.New("prop index oob, last was " + last)
-			}
+	schemaIDx, err := thisBitstream.readUint16BE()
+	if int(schemaIDx) > len(context.StaticSchema.Instances) {
+		return thisInstance, fmt.Errorf("class idx %d is higher than %d", schemaIDx, len(context.StaticSchema.Instances))
+	}
+	schema := context.StaticSchema.Instances[schemaIDx]
+	thisInstance.ClassName = schema.Name
+	packet.Logger.Println("will parse", referent, schema.Name, len(schema.Properties))
 
-			value, err := schema.Properties[propertyIndex].Decode(isClient, round, packet, context)
-			if err != nil {
-				return thisInstance, err
-			}
-			thisInstance.Properties[schema.Properties[propertyIndex].Name] = value
-			last = schema.Properties[propertyIndex].Name
-			propertyIndex, err = thisBitstream.readUint8()
-		}
-		if err != nil {
-			return thisInstance, err
-		}
+	unkBool, err := thisBitstream.readBoolByte()
+	if err != nil {
+		return thisInstance, err
+	}
+	packet.Logger.Println("unkbool:", unkBool)
+	thisInstance.Properties = make(map[string]rbxfile.Value, len(schema.Properties))
+
+	err = thisBitstream.ReadProperties(schema.Properties, thisInstance.Properties, reader)
+	if err != nil {
+		return thisInstance, err
 	}
 
-    referent, err = thisBitstream.readObject(isClient, isJoinData, context)
-    if err != nil {
-        return thisInstance, errors.New("while parsing parent: " + err.Error())
-    }
+	referent, err = thisBitstream.ReadObject(reader)
+	if err != nil {
+		return thisInstance, errors.New("while parsing parent: " + err.Error())
+	}
+	if referent.IsNull() {
+		return thisInstance, errors.New("parent is null")
+	}
 	if len(referent) > 0x50 {
 		packet.Logger.Println("Parent: (invalid), ", len(referent))
 	} else {
 		packet.Logger.Println("Parent: ", referent)
 	}
 
-    context.InstancesByReferent.AddInstance(Referent(thisInstance.Reference), thisInstance)
-    parent := context.InstancesByReferent.TryGetInstance(referent)
-    err = parent.AddChild(thisInstance)
-
-    return thisInstance, err
-}
-
-func serializeReplicationInstance(isClient bool, instance *rbxfile.Instance, isJoinData bool, context *CommunicationContext, stream *extendedWriter) error {
-    var err error
-    err = stream.writeObject(isClient, instance, isJoinData, context)
-    if err != nil {
-        return err
-    }
-
-    schemaIdx := uint16(context.StaticSchema.ClassesByName[instance.ClassName])
-    err = stream.writeUint16BE(schemaIdx)
-    if err != nil {
-        return err
-    }
-    err = stream.writeBool(false) // ???
-    if err != nil {
-        return err
-    }
-
-    schema := context.StaticSchema.Instances[schemaIdx]
-    if isJoinData {
-        for i := 0; i < len(schema.Properties); i++ {
-            value := instance.Get(schema.Properties[i].Name)
-            if value == nil {
-				println(schema.Properties[i].Name, "was nil")
-                value = rbxfile.DefaultValue
-            }
-			println("serializing", schema.Properties[i].Name)
-            err = schema.Properties[i].serialize(isClient, value, ROUND_JOINDATA, context, stream)
-			println("ser done")
-            if err != nil {
-                return err
-            }
-        }
-    } else {
-        for i := 0; i < len(schema.Properties); i++ {
-            isStringObject := false
-            if  schema.Properties[i].Type == 0x21 ||
-                schema.Properties[i].Type == 0x01 ||
-                schema.Properties[i].Type == 0x1C ||
-                schema.Properties[i].Type == 0x22 ||
-                schema.Properties[i].Type == 0x06 ||
-                schema.Properties[i].Type == 0x04 ||
-                schema.Properties[i].Type == 0x05 ||
-                schema.Properties[i].Type == 0x03 {
-                    isStringObject = true
-            }
-            if isStringObject {
-				value := instance.Get(schema.Properties[i].Name)
-				err = schema.Properties[i].serialize(isClient, value, ROUND_STRINGS, context, stream)
-				if err != nil {
-					return err
-				}
-            }
-        }
-        for i := 0; i < len(schema.Properties); i++ {
-            isStringObject := false
-            if  schema.Properties[i].Type == 0x21 ||
-                schema.Properties[i].Type == 0x01 ||
-                schema.Properties[i].Type == 0x1C ||
-                schema.Properties[i].Type == 0x22 ||
-                schema.Properties[i].Type == 0x06 ||
-                schema.Properties[i].Type == 0x04 ||
-                schema.Properties[i].Type == 0x05 ||
-                schema.Properties[i].Type == 0x03 {
-                    isStringObject = true
-            }
-            if !isStringObject {
-				value := instance.Get(schema.Properties[i].Name)
-				err := schema.Properties[i].serialize(isClient, value, ROUND_OTHER, context, stream)
-				if err != nil {
-					return err
-				}
-            }
-        }
+	context.InstancesByReferent.AddInstance(Referent(thisInstance.Reference), thisInstance)
+	parent, err := context.InstancesByReferent.TryGetInstance(referent)
+	if parent != nil {
+		return thisInstance, parent.AddChild(thisInstance)
+	}
+	if err != nil && !thisInstance.IsService {
+		return thisInstance, errors.New("not service yet parent doesn't exist") // the parents of services don't exist
 	}
 
-    err = stream.writeObject(isClient, instance.Parent(), isJoinData, context)
-    if err != nil {
-        return err
-    }
-    return nil
+	return thisInstance, nil
+}
+
+func serializeReplicationInstance(instance *rbxfile.Instance, writer PacketWriter, stream InstanceWriter) error {
+	var err error
+	if instance == nil {
+		return errors.New("self is nil in serialize repl inst")
+	}
+	err = stream.WriteObject(instance, writer)
+	if err != nil {
+		return err
+	}
+
+	context := writer.Context()
+	schemaIdx := uint16(context.StaticSchema.ClassesByName[instance.ClassName])
+	err = stream.writeUint16BE(schemaIdx)
+	if err != nil {
+		return err
+	}
+	err = stream.writeBoolByte(true) // ???
+	if err != nil {
+		return err
+	}
+
+	schema := context.StaticSchema.Instances[schemaIdx]
+	err = stream.WriteProperties(schema.Properties, instance.Properties, writer)
+	if err != nil {
+		return err
+	}
+
+	return stream.WriteObject(instance.Parent(), writer)
 }

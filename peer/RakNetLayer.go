@@ -1,15 +1,17 @@
 // The peer package can be used for communication with Roblox servers, as well as
 // parsing packets captured from Roblox network traffic.
 package peer
+
 import "bytes"
 import "io/ioutil"
 import "errors"
 
 // DEBUG decides whether debug mode should be on or not.
 const DEBUG bool = true
+
 // RakNetPacket describes any packet that can be serialized and written to UDP
 type RakNetPacket interface {
-	serialize(bool, *CommunicationContext, *extendedWriter) error
+	Serialize(writer PacketWriter, stream *extendedWriter) error
 }
 
 // PacketLayers contains the different layers a packet can have.
@@ -19,6 +21,8 @@ type PacketLayers struct {
 	// Most packets have a ReliabilityLayer. The exceptions to this are ACKs, NAKs and
 	// pre-connection packets.
 	Reliability *ReliablePacket
+	// Contains data about the split packets this packet has.
+	SplitPacket *SplitPacketBuffer
 	// Timestamped packets (i.e. physics packets) may have a Timestamp layer.
 	Timestamp *Packet1BLayer
 	// Almost all packets have a Main layer. The exceptions to this are ACKs and NAKs.
@@ -43,14 +47,14 @@ type RakNetLayer struct {
 	// If IsSimple is true, this is the packet type.
 	SimpleLayerID uint8
 	// Drop any non-simple packets which don't have IsValid set.
-	IsValid bool
-	IsACK bool
-	IsNAK bool
-	HasBAndAS bool
-	ACKs []ACKRange
-	IsPacketPair bool
+	IsValid          bool
+	IsACK            bool
+	IsNAK            bool
+	HasBAndAS        bool
+	ACKs             []ACKRange
+	IsPacketPair     bool
 	IsContinuousSend bool
-	NeedsBAndAS bool
+	NeedsBAndAS      bool
 	// A datagram number that is used to keep the packets in order.
 	DatagramNumber uint32
 }
@@ -60,7 +64,7 @@ func NewRakNetLayer() *RakNetLayer {
 }
 
 // The offline message contained in pre-connection packets.
-var OfflineMessageID = []byte{0x00,0xFF,0xFF,0x00,0xFE,0xFE,0xFE,0xFE,0xFD,0xFD,0xFD,0xFD,0x12,0x34,0x56,0x78}
+var OfflineMessageID = []byte{0x00, 0xFF, 0xFF, 0x00, 0xFE, 0xFE, 0xFE, 0xFE, 0xFD, 0xFD, 0xFD, 0xFD, 0x12, 0x34, 0x56, 0x78}
 
 func DecodeRakNetLayer(packetType byte, packet *UDPPacket, context *CommunicationContext) (*RakNetLayer, error) {
 	layer := NewRakNetLayer()
@@ -183,7 +187,7 @@ func DecodeRakNetLayer(packetType byte, packet *UDPPacket, context *Communicatio
 	}
 }
 
-func (layer *RakNetLayer) serialize(isClient bool, context *CommunicationContext, outStream *extendedWriter) (error) {
+func (layer *RakNetLayer) Serialize(writer PacketWriter, outStream *extendedWriter) error {
 	var err error
 	err = outStream.writeBool(layer.IsValid)
 	if err != nil {
@@ -262,7 +266,7 @@ func (layer *RakNetLayer) serialize(isClient bool, context *CommunicationContext
 		if err != nil {
 			return err
 		}
-		
+
 		content, err := ioutil.ReadAll(layer.payload.GetReader())
 		if err != nil {
 			return err

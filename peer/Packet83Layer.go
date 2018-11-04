@@ -1,8 +1,11 @@
 package peer
-import "errors"
-import "strconv"
-import "io"
-import "reflect"
+
+import (
+	"errors"
+	"io"
+	"reflect"
+	"strconv"
+)
 
 // List of string names for all 0x83 subpackets
 var Packet83Subpackets map[uint8]string = map[uint8]string{
@@ -29,37 +32,41 @@ var Packet83Subpackets map[uint8]string = map[uint8]string{
 }
 
 // A subpacket contained within a 0x83 (ID_DATA) packet
-type Packet83Subpacket interface{
-    serialize(bool, *CommunicationContext, *extendedWriter) error
+type Packet83Subpacket interface {
+	Serialize(writer PacketWriter, stream *extendedWriter) error
 }
 
 // Extracts a type identifier from a packet
 func Packet83ToType(this Packet83Subpacket) uint8 {
 	switch this.(type) {
-		case *Packet83_01:
-			return 1
-		case *Packet83_02:
-			return 2
-		case *Packet83_03:
-			return 3
-		case *Packet83_04:
-			return 4
-		case *Packet83_05:
-			return 5
-		case *Packet83_06:
-			return 6
-		case *Packet83_07:
-			return 7
-		case *Packet83_0B:
-			return 0xB
-		case *Packet83_10:
-			return 0x10
-		case *Packet83_11:
-			return 0x11
-		case *Packet83_12:
-			return 0x12
-		default:
-			return 0xFF
+	case *Packet83_01:
+		return 1
+	case *Packet83_02:
+		return 2
+	case *Packet83_03:
+		return 3
+	case *Packet83_04:
+		return 4
+	case *Packet83_05:
+		return 5
+	case *Packet83_06:
+		return 6
+	case *Packet83_07:
+		return 7
+	case *Packet83_09:
+		return 9
+	case *Packet83_0A:
+		return 0xA
+	case *Packet83_0B:
+		return 0xB
+	case *Packet83_10:
+		return 0x10
+	case *Packet83_11:
+		return 0x11
+	case *Packet83_12:
+		return 0x12
+	default:
+		return 0xFF
 	}
 }
 
@@ -85,11 +92,7 @@ func extractPacketType(stream *extendedReader) (uint8, error) {
 	return stream.readUint8()
 }
 
-func decodePacket83Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
-    if context.StaticSchema == nil {
-        return nil, errors.New("packet 83 before schema is initialized!");
-    }
-
+func DecodePacket83Layer(reader PacketReader, packet *UDPPacket) (RakNetPacket, error) {
 	layer := NewPacket83Layer()
 	thisBitstream := packet.stream
 
@@ -104,35 +107,40 @@ func decodePacket83Layer(packet *UDPPacket, context *CommunicationContext) (inte
 		//println("parsing subpacket", packetType)
 		switch packetType {
 		case 0x04:
-			inner, err = decodePacket83_04(packet, context)
+			inner, err = DecodePacket83_04(reader, packet)
 			break
 		case 0x10:
-			inner, err = decodePacket83_10(packet, context)
+			inner, err = DecodePacket83_10(reader, packet)
 			break
 		case 0x05:
-			inner, err = decodePacket83_05(packet, context)
+			inner, err = DecodePacket83_05(reader, packet)
 			break
 		case 0x06:
-			inner, err = decodePacket83_06(packet, context)
+			inner, err = DecodePacket83_06(reader, packet)
 			break
 		case 0x0B:
-			inner, err = decodePacket83_0B(packet, context)
+			inner, err = DecodePacket83_0B(reader, packet)
 			break
 		case 0x02:
-			inner, err = decodePacket83_02(packet, context)
+			inner, err = DecodePacket83_02(reader, packet)
 			break
 		case 0x01:
-			inner, err = decodePacket83_01(packet, context)
+			inner, err = DecodePacket83_01(reader, packet)
 			break
 		case 0x03:
-			inner, err = decodePacket83_03(packet, context)
+			inner, err = DecodePacket83_03(reader, packet)
 			break
 		case 0x07:
-			inner, err = decodePacket83_07(packet, context)
+			inner, err = DecodePacket83_07(reader, packet)
 			break
 		case 0x12:
-			inner, err = decodePacket83_12(packet, context)
+			inner, err = DecodePacket83_12(reader, packet)
 			break
+		case 0x09:
+			inner, err = DecodePacket83_09(reader, packet)
+			break
+		case 0x0A:
+			inner, err = DecodePacket83_0A(reader, packet)
 		default:
 			return layer, errors.New("don't know how to parse replication subpacket: " + strconv.Itoa(int(packetType)))
 		}
@@ -153,30 +161,22 @@ func decodePacket83Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	return layer, nil
 }
 
-func (layer *Packet83Layer) serialize(isClient bool, context *CommunicationContext, stream *extendedWriter) error {
-    var err error
-    err = stream.WriteByte(0x83)
-    if err != nil {
-        return err
-    }
-    for _, subpacket := range layer.SubPackets {
-        thisType := Packet83ToType(subpacket)
-        if thisType < 4 {
-            err = stream.bits(2, uint64(thisType))
-        } else {
-            err = stream.bits(2, 0)
-            if err != nil {
-                return err
-            }
-            err = stream.bits(5, uint64(thisType))
-        }
-        if err != nil {
-            return err
-        }
-        err = subpacket.serialize(isClient, context, stream)
-        if err != nil {
-            return err
-        }
-    }
-    return stream.bits(2, 0)
+func (layer *Packet83Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
+	var err error
+	err = stream.WriteByte(0x83)
+	if err != nil {
+		return err
+	}
+	for _, subpacket := range layer.SubPackets {
+		thisType := Packet83ToType(subpacket)
+		stream.WriteByte(uint8(thisType))
+		if err != nil {
+			return err
+		}
+		err = subpacket.Serialize(writer, stream)
+		if err != nil {
+			return err
+		}
+	}
+	return stream.WriteByte(0)
 }

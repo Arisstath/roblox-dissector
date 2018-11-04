@@ -1,277 +1,226 @@
 package peer
-import "github.com/gskartwii/rbxfile"
 
-// History waypoint in the movement of a mechanism
-type PhysicsHistoryWaypoint struct {
-	// Position at that point
-	Position rbxfile.ValueVector3
-	// Level of precision. Smaller = higher precision
-	PrecisionLevel uint8
-	// Interval to previous waypoint in ms
-	Interval uint8
-}
+import (
+	"github.com/gskartwii/rbxfile"
+)
 
-// Physics replication for one instance
+// Packet85LayerSubpacket represents physics replication for one instance
 type Packet85LayerSubpacket struct {
-	Instance *rbxfile.Instance
+	Data PhysicsData
 	// See http://wiki.roblox.com/index.php?title=API:Enum/HumanoidStateType
 	NetworkHumanoidState uint8
-	CFrame rbxfile.ValueCFrame
-	LinearVelocity rbxfile.ValueVector3
-	RotationalVelocity rbxfile.ValueVector3
 	// CFrames for any motors attached
-	Motors []PhysicsMotor
 	// Any other parts attached to this mechanism
-	Children []Packet85LayerSubpacket
-	// Movement history
-	HistoryWaypoints []PhysicsHistoryWaypoint
+	Children []*PhysicsData
+	History  []*PhysicsData
 }
 
-// ID_PHYSICS - client <-> server
+// PhysicsData represents generic physics data
+type PhysicsData struct {
+	Instance           *rbxfile.Instance
+	CFrame             rbxfile.ValueCFrame
+	LinearVelocity     rbxfile.ValueVector3
+	RotationalVelocity rbxfile.ValueVector3
+	Motors             []PhysicsMotor
+	Interval           float32
+}
+
+// Packet85Layer ID_PHYSICS - client <-> server
 type Packet85Layer struct {
 	SubPackets []*Packet85LayerSubpacket
 }
 
+// NewPacket85Layer Initializes a new Packet85Layer
 func NewPacket85Layer() *Packet85Layer {
 	return &Packet85Layer{}
 }
 
-func decodePacket85Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
+func (b *extendedReader) readPhysicsData(data *PhysicsData, motors bool) error {
+	var err error
+	if motors {
+		data.Motors, err = b.readMotors()
+		if err != nil {
+			return err
+		}
+	}
+
+	data.CFrame, err = b.readPhysicsCFrame()
+	if err != nil {
+		return err
+	}
+	data.LinearVelocity, err = b.readPhysicsVelocity()
+	if err != nil {
+		return err
+	}
+	data.RotationalVelocity, err = b.readPhysicsVelocity()
+	return err
+}
+
+func DecodePacket85Layer(reader PacketReader, packet *UDPPacket) (RakNetPacket, error) {
 	thisBitstream := packet.stream
 
+	context := reader.Context()
 	layer := NewPacket85Layer()
 	for {
-		subpacket := &Packet85LayerSubpacket{}
-		referent, err := thisBitstream.readObject(context.IsClient(packet.Source), false, context)
+		referent, err := thisBitstream.readObject(reader.Caches())
 		if err != nil {
 			return layer, err
 		}
-		if referent == "null" {
+		if referent.IsNull() {
 			break
 		}
-		subpacket.Instance = context.InstancesByReferent.TryGetInstance(referent)
-
-		hasState, err := thisBitstream.readBool()
+		packet.Logger.Println("reading physics for ref", referent.String())
+		subpacket := &Packet85LayerSubpacket{}
+		subpacket.Data.Instance, err = context.InstancesByReferent.TryGetInstance(referent)
 		if err != nil {
 			return layer, err
 		}
-		if hasState {
-			subpacket.NetworkHumanoidState, err = thisBitstream.ReadByte()
-			if err != nil {
-				return layer, err
-			}
+
+		myFlags, err := thisBitstream.readUint8()
+		if err != nil {
+			return layer, err
 		}
-		
-		if !context.IsClient(packet.Source) { // packet came from server: must read movement history
-			println("from server")
-			hasHistory, err := thisBitstream.readBool()
+		subpacket.NetworkHumanoidState = myFlags & 0x1F
+
+		if reader.IsClient() {
+			err = thisBitstream.readPhysicsData(&subpacket.Data, true)
 			if err != nil {
 				return layer, err
 			}
-			if !hasHistory {
-				println("no history")
-				subpacket.Motors, err = thisBitstream.readMotors()
-				if err != nil {
-					return layer, err
-				}
-			} else {
-				println("has history")
-				xPacketCompression, err := thisBitstream.readBool()
-				if err != nil {
-					return layer, err
-				}
-
-				if !xPacketCompression {
-					println("use compr")
-					subpacket.CFrame, err = thisBitstream.readPhysicsCFrame()
-					if err != nil {
-						return layer, err
-					}
-					println("cf", subpacket.CFrame.String())
-					subpacket.LinearVelocity, err = thisBitstream.readCoordsMode1()
-					if err != nil {
-						return layer, err
-					}
-					println("lv", subpacket.LinearVelocity.String())
-					subpacket.RotationalVelocity, err = thisBitstream.readCoordsMode1()
-					if err != nil {
-						return layer, err
-					}
-					println("rv", subpacket.RotationalVelocity.String())
-				} else {
-					matrix, err := thisBitstream.readPhysicsMatrix()
-					if err != nil {
-						return layer, err
-					}
-					subpacket.CFrame = rbxfile.ValueCFrame{rbxfile.ValueVector3{}, matrix}
-					println("cf", subpacket.CFrame.String())
-				}
-				subpacket.Motors, err = thisBitstream.readMotors()
-				if err != nil {
-					return layer, err
-				}
-				println("motor succ")
-
-				numNodes, err := thisBitstream.readUintUTF8()
-				if err != nil {
-					return layer, err
-				}
-				println("numnod", numNodes)
-				
-				currentPosition := subpacket.CFrame.Position
-
-				subpacket.HistoryWaypoints = make([]PhysicsHistoryWaypoint, numNodes)
-				for i := 0; i < int(numNodes); i++ {
-					subpacket.HistoryWaypoints[i].PrecisionLevel, err = thisBitstream.ReadByte()
-					if err != nil {
-						return layer, err
-					}
-					deltaX, err := thisBitstream.ReadByte()
-					if err != nil {
-						return layer, err
-					}
-					deltaY, err := thisBitstream.ReadByte()
-					if err != nil {
-						return layer, err
-					}
-					deltaZ, err := thisBitstream.ReadByte()
-					if err != nil {
-						return layer, err
-					}
-					subpacket.HistoryWaypoints[i].Interval, err = thisBitstream.ReadByte()
-					if err != nil {
-						return layer, err
-					}
-					currentPosition.X -= float32(int8(deltaX) * int8(subpacket.HistoryWaypoints[i].PrecisionLevel + 1)) * 0.01
-					currentPosition.Y -= float32(int8(deltaY) * int8(subpacket.HistoryWaypoints[i].PrecisionLevel + 1)) * 0.01
-					currentPosition.Z -= float32(int8(deltaZ) * int8(subpacket.HistoryWaypoints[i].PrecisionLevel + 1)) * 0.01
-					subpacket.HistoryWaypoints[i].Position = currentPosition
-				}
-			} // hasHistory
 		} else {
-			// packet came from client, just read the assembly
-			subpacket.CFrame, err = thisBitstream.readPhysicsCFrame()
+			subpacket.Data.Motors, err = thisBitstream.readMotors()
 			if err != nil {
 				return layer, err
 			}
-			subpacket.LinearVelocity, err = thisBitstream.readCoordsMode1()
+			numEntries, err := thisBitstream.readUint8()
 			if err != nil {
 				return layer, err
 			}
-			subpacket.RotationalVelocity, err = thisBitstream.readCoordsMode1()
-			if err != nil {
-				return layer, err
-			}
-			subpacket.Motors, err = thisBitstream.readMotors()
-			if err != nil {
-				return layer, err
+			packet.Logger.Println("reading movement history,", numEntries, "entries")
+			subpacket.History = make([]*PhysicsData, numEntries)
+			for i := 0; i < int(numEntries); i++ {
+				subpacket.History[i] = new(PhysicsData)
+				subpacket.History[i].Interval, err = thisBitstream.readFloat32BE()
+				if err != nil {
+					return layer, err
+				}
+				thisBitstream.readPhysicsData(subpacket.History[i], false)
+				if err != nil {
+					return layer, err
+				}
 			}
 		}
 
-		isSolo, err := thisBitstream.readBool()
-		if err != nil {
-			return layer, err
-		}
-		if !isSolo {
-			for {
-				child := Packet85LayerSubpacket{}
-				referent, err := thisBitstream.readObject(context.IsClient(packet.Source), false, context)
+		if (myFlags>>5)&1 == 0 { // has children
+			var object Referent
+			for object, err = thisBitstream.readObject(reader.Caches()); err == nil && !object.IsNull(); object, err = thisBitstream.readObject(reader.Caches()) {
+				packet.Logger.Println("reading physics child for ref", object.String())
+				child := new(PhysicsData)
+				child.Instance, err = context.InstancesByReferent.TryGetInstance(referent)
 				if err != nil {
 					return layer, err
 				}
-				child.Instance = context.InstancesByReferent.TryGetInstance(referent)
-				child.CFrame, err = thisBitstream.readPhysicsCFrame()
+
+				err = thisBitstream.readPhysicsData(child, true)
 				if err != nil {
 					return layer, err
 				}
-				child.LinearVelocity, err = thisBitstream.readCoordsMode1()
-				if err != nil {
-					return layer, err
-				}
-				child.RotationalVelocity, err = thisBitstream.readCoordsMode1()
-				if err != nil {
-					return layer, err
-				}
-				child.Motors, err = thisBitstream.readMotors()
-				if err != nil {
-					return layer, err
-				}
-				isEOF, err := thisBitstream.readBool()
-				if isEOF {
-					break
-				}
+
 				subpacket.Children = append(subpacket.Children, child)
 			}
+			if err != nil {
+				return layer, err
+			}
 		}
+
 		layer.SubPackets = append(layer.SubPackets, subpacket)
 	}
 	return layer, nil
 }
 
-func (layer *Packet85Layer) serialize(isClient bool, context *CommunicationContext, stream *extendedWriter) error {
+func (b *extendedWriter) writePhysicsData(val *PhysicsData, motors bool) error {
+	var err error
+	if motors {
+		err = b.writeMotors(val.Motors)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = b.writePhysicsCFrame(val.CFrame)
+	if err != nil {
+		return err
+	}
+
+	err = b.writePhysicsVelocity(val.LinearVelocity)
+	if err != nil {
+		return err
+	}
+
+	err = b.writePhysicsVelocity(val.RotationalVelocity)
+	return err
+}
+
+func (layer *Packet85Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
+	err := stream.WriteByte(0x85)
+	if err != nil {
+		return err
+	}
 	for i := 0; i < len(layer.SubPackets); i++ {
 		subpacket := layer.SubPackets[i]
-		err := stream.writeObject(isClient, subpacket.Instance, false, context)
+		err = stream.writeObject(subpacket.Data.Instance, writer.Caches())
 		if err != nil {
 			return err
 		}
-		err = stream.writeBool(subpacket.NetworkHumanoidState != 0)
+		var header uint8
+		header = subpacket.NetworkHumanoidState
+		if len(subpacket.Children) != 0 {
+			header |= 1 << 5
+		}
+		err = stream.WriteByte(header)
 		if err != nil {
 			return err
 		}
-		if subpacket.NetworkHumanoidState != 0 {
-			err = stream.WriteByte(subpacket.NetworkHumanoidState)
+
+		if writer.ToClient() {
+			err = stream.writePhysicsData(&subpacket.Data, true)
 			if err != nil {
 				return err
 			}
-		}
-
-		err = stream.writePhysicsCFrame(subpacket.CFrame)
-		if err != nil {
-			return err
-		}
-		err = stream.writeCoordsMode1(subpacket.LinearVelocity)
-		if err != nil {
-			return err
-		}
-		err = stream.writeCoordsMode1(subpacket.RotationalVelocity)
-		if err != nil {
-			return err
-		}
-		err = stream.writeMotors(subpacket.Motors)
-		if err != nil {
-			return err
+		} else {
+			err = stream.writeMotors(subpacket.Data.Motors)
+			if err != nil {
+				return err
+			}
+			err = stream.WriteByte(uint8(len(subpacket.History)))
+			if err != nil {
+				return err
+			}
+			for i := 0; i < int(len(subpacket.History)); i++ {
+				err = stream.writeFloat32BE(subpacket.History[i].Interval)
+				if err != nil {
+					return err
+				}
+				err = stream.writePhysicsData(subpacket.History[i], false)
+				if err != nil {
+					return err
+				}
+			}
 		}
 
 		for j := 0; j < len(subpacket.Children); j++ {
 			child := subpacket.Children[j]
-			err = stream.writeBool(true)
-			if err != nil {
-				return err
-			}
-			err = stream.writeObject(isClient, child.Instance, false, context)
+			err = stream.writeObject(child.Instance, writer.Caches())
 			if err != nil {
 				return err
 			}
 
-			err = stream.writePhysicsCFrame(child.CFrame)
-			if err != nil {
-				return err
-			}
-			err = stream.writeCoordsMode1(child.LinearVelocity)
-			if err != nil {
-				return err
-			}
-			err = stream.writeCoordsMode1(child.RotationalVelocity)
-			if err != nil {
-				return err
-			}
-			err = stream.writeMotors(child.Motors)
+			err = stream.writePhysicsData(child, true)
 			if err != nil {
 				return err
 			}
 		}
-		err = stream.writeBool(false) // Terminator for children
+		err = stream.writeObject(nil, writer.Caches()) // Terminator for children
 		if err != nil {
 			return err
 		}

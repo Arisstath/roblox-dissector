@@ -1,4 +1,7 @@
 package peer
+
+// Outdated!!
+/*
 import "net"
 import "fmt"
 import "math/rand"
@@ -9,124 +12,124 @@ import "strconv"
 
 var empty = struct{}{}
 var noLocalDefaults = map[string]struct{}{
-	"AdService": empty,
+	"AdService":     empty,
 	"JointsService": empty,
-	"Players": empty,
-	"StarterGui": empty,
-	"StarterPack": empty,
-	"Workspace": empty,
+	"Players":       empty,
+	"StarterGui":    empty,
+	"StarterPack":   empty,
+	"Workspace":     empty,
 }
 var noncreatable = map[string]struct{}{
-	"AnalyticsService": empty,
-	"AssetService": empty,
-    "BadgeService": empty,
-	"CacheableContentProvider": empty,
-	"ContentProvider": empty,
-	"ChangeHistoryService": empty,
-    "Chat": empty,
-	"CollectionService": empty,
-	"ContextActionService": empty,
-	"CoreGui": empty,
-    "CSGDictionaryService": empty,
-	"ControllerService": empty,
-	"CookiesService": empty,
-	"DataStoreService": empty,
-	"Debris": empty,
-	"DebugSettings": empty,
-	"FlagStandService": empty,
-	"FlyweightService": empty,
-    "FriendService": empty,
-	"GamepadService": empty,
-	"GamePassService": empty,
-	"GameSettings": empty,
-	"Geometry": empty,
-	"GlobalSettings": empty,
-	"GoogleAnalyticsConfiguration": empty,
-	"GroupService": empty,
-	"GuiRoot": empty,
-	"GuidRegistryService": empty,
-	"GuiService": empty,
-	"HapticService": empty,
-	"Hopper": empty,
-	"HttpRbxApiService": empty,
-	"HttpService": empty,
-    "InsertService": empty,
-	"InstancePacketCache": empty,
-	"JointsService": empty,
-	"KeyframeSequenceProvider": empty,
-    "Lighting": empty,
-	"LobbyService": empty,
-    "LocalizationService": empty,
-    "LogService": empty,
-	"LoginService": empty,
-	"LuaSettings": empty,
-	"LuaWebService": empty,
-    "MarketplaceService": empty,
-	"MeshContentProvider": empty,
-	"NetworkClient": empty,
-	"NetworkServer": empty,
-	"NetworkSettings": empty,
+	"AnalyticsService":                  empty,
+	"AssetService":                      empty,
+	"BadgeService":                      empty,
+	"CacheableContentProvider":          empty,
+	"ContentProvider":                   empty,
+	"ChangeHistoryService":              empty,
+	"Chat":                              empty,
+	"CollectionService":                 empty,
+	"ContextActionService":              empty,
+	"CoreGui":                           empty,
+	"CSGDictionaryService":              empty,
+	"ControllerService":                 empty,
+	"CookiesService":                    empty,
+	"DataStoreService":                  empty,
+	"Debris":                            empty,
+	"DebugSettings":                     empty,
+	"FlagStandService":                  empty,
+	"FlyweightService":                  empty,
+	"FriendService":                     empty,
+	"GamepadService":                    empty,
+	"GamePassService":                   empty,
+	"GameSettings":                      empty,
+	"Geometry":                          empty,
+	"GlobalSettings":                    empty,
+	"GoogleAnalyticsConfiguration":      empty,
+	"GroupService":                      empty,
+	"GuiRoot":                           empty,
+	"GuidRegistryService":               empty,
+	"GuiService":                        empty,
+	"HapticService":                     empty,
+	"Hopper":                            empty,
+	"HttpRbxApiService":                 empty,
+	"HttpService":                       empty,
+	"InsertService":                     empty,
+	"InstancePacketCache":               empty,
+	"JointsService":                     empty,
+	"KeyframeSequenceProvider":          empty,
+	"Lighting":                          empty,
+	"LobbyService":                      empty,
+	"LocalizationService":               empty,
+	"LogService":                        empty,
+	"LoginService":                      empty,
+	"LuaSettings":                       empty,
+	"LuaWebService":                     empty,
+	"MarketplaceService":                empty,
+	"MeshContentProvider":               empty,
+	"NetworkClient":                     empty,
+	"NetworkServer":                     empty,
+	"NetworkSettings":                   empty,
 	"NonReplicatedCSGDictionaryService": empty,
-	"NotificationService": empty,
-	"OneQuarterClusterPacketCacheBase": empty,
-	"ParallelRampPart": empty,
-	"PathfindingService": empty,
-	"PersonalServerService": empty,
-	"PhysicsPacketCache": empty,
-	"PhysicsService": empty,
-	"PhysicsSettings": empty,
-	"Platform": empty,
-	"Players": empty,
-    "PointsService": empty,
-	"PrismPart": empty,
-	"PyramidPart": empty,
-	"RenderHooksService": empty,
-	"RenderSettings": empty,
-    "ReplicatedFirst": empty,
-    "ReplicatedStorage": empty,
-	"RightAngleRampPart": empty,
-    "RobloxReplicatedStorage": empty,
-	"RunService": empty,
-	"RuntimeScriptService": empty,
-	"ScriptContext": empty,
-	"ScriptService": empty,
-	"Selection": empty,
-	"ServerScriptService": empty,
-	"ServerStorage": empty,
-	"SolidModelContentProvider": empty,
-    "SoundService": empty,
-	"SpawnerService": empty,
-	"StarterGui": empty,
-	"StarterPack": empty,
-    "StarterPlayer": empty,
-	"Stats": empty,
-	"Studio": empty,
-	"TaskScheduler": empty,
-    "Teams": empty,
-	"TeleportService": empty,
-    "TestService": empty,
-	"TextService": empty,
-	"TextureContentProvider": empty,
-	"ThirdPartyUserService": empty,
-	"TimerService": empty,
-	"TouchInputService": empty,
-	"TouchInputUserService": empty,
-	"TweenService": empty,
-	"UserGameSettings": empty,
-	"UserInputService": empty,
-	"UserSettings": empty,
-	"VirtualUser": empty,
-	"Visit": empty,
-	"VRService": empty,
-    "Workspace": empty,
+	"NotificationService":               empty,
+	"OneQuarterClusterPacketCacheBase":  empty,
+	"ParallelRampPart":                  empty,
+	"PathfindingService":                empty,
+	"PersonalServerService":             empty,
+	"PhysicsPacketCache":                empty,
+	"PhysicsService":                    empty,
+	"PhysicsSettings":                   empty,
+	"Platform":                          empty,
+	"Players":                           empty,
+	"PointsService":                     empty,
+	"PrismPart":                         empty,
+	"PyramidPart":                       empty,
+	"RenderHooksService":                empty,
+	"RenderSettings":                    empty,
+	"ReplicatedFirst":                   empty,
+	"ReplicatedStorage":                 empty,
+	"RightAngleRampPart":                empty,
+	"RobloxReplicatedStorage":           empty,
+	"RunService":                        empty,
+	"RuntimeScriptService":              empty,
+	"ScriptContext":                     empty,
+	"ScriptService":                     empty,
+	"Selection":                         empty,
+	"ServerScriptService":               empty,
+	"ServerStorage":                     empty,
+	"SolidModelContentProvider":         empty,
+	"SoundService":                      empty,
+	"SpawnerService":                    empty,
+	"StarterGui":                        empty,
+	"StarterPack":                       empty,
+	"StarterPlayer":                     empty,
+	"Stats":                             empty,
+	"Studio":                            empty,
+	"TaskScheduler":                     empty,
+	"Teams":                             empty,
+	"TeleportService":                   empty,
+	"TestService":                       empty,
+	"TextService":                       empty,
+	"TextureContentProvider":            empty,
+	"ThirdPartyUserService":             empty,
+	"TimerService":                      empty,
+	"TouchInputService":                 empty,
+	"TouchInputUserService":             empty,
+	"TweenService":                      empty,
+	"UserGameSettings":                  empty,
+	"UserInputService":                  empty,
+	"UserSettings":                      empty,
+	"VirtualUser":                       empty,
+	"Visit":                             empty,
+	"VRService":                         empty,
+	"Workspace":                         empty,
 
-	"InputObject": empty,
+	"InputObject":       empty,
 	"ParabolaAdornment": empty,
-	"Camera": empty,
-	"Terrain": empty,
-	"TouchInterest": empty,
-	"Status": empty,
-	"PlayerGui": empty,
+	"Camera":            empty,
+	"Terrain":           empty,
+	"TouchInterest":     empty,
+	"Status":            empty,
+	"PlayerGui":         empty,
 }
 
 var services = []string{
@@ -156,23 +159,23 @@ var services = []string{
 }
 
 type client struct {
-	context *CommunicationContext
-	address *net.UDPAddr
-	reader *PacketReader
-	writer *PacketWriter
-	server *ServerPeer
-	mustACK []int
-    instanceID uint32
+	context    *CommunicationContext
+	address    *net.UDPAddr
+	reader     *PacketReader
+	writer     *PacketWriter
+	server     *ServerPeer
+	mustACK    []int
+	instanceID uint32
 }
 
 // ServerPeer describes a server that is hosted by roblox-dissector.
 type ServerPeer struct {
 	Connection *net.UDPConn
-	clients map[string]*client
-	Address *net.UDPAddr
-	GUID uint64
-    Dictionaries *Packet82Layer
-    Schema *StaticSchema
+	clients    map[string]*client
+	Address    *net.UDPAddr
+	GUID       uint64
+	//Dictionaries *Packet82Layer
+	Schema *StaticSchema
 }
 
 func (client *client) sendACKs() {
@@ -194,12 +197,12 @@ func (client *client) sendACKs() {
 		for i, ackRange := range ackStructure {
 			if int(ackRange.Max) == ack {
 				inserted = true
-                break
+				break
 			}
-			if int(ackRange.Max + 1) == ack {
+			if int(ackRange.Max+1) == ack {
 				ackStructure[i].Max++
 				inserted = true
-                break
+				break
 			}
 		}
 		if inserted {
@@ -211,8 +214,8 @@ func (client *client) sendACKs() {
 
 	result := &RakNetLayer{
 		IsValid: true,
-		IsACK: true,
-		ACKs: ackStructure,
+		IsACK:   true,
+		ACKs:    ackStructure,
 	}
 
 	client.writer.WriteRakNet(result, client.address)
@@ -232,17 +235,17 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 		SimpleHandler: func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
 			if packetType == 0x5 {
 				response := &Packet06Layer{
-					GUID: server.GUID,
+					GUID:        server.GUID,
 					UseSecurity: false,
-					MTU: 1492,
+					MTU:         1492,
 				}
 
 				myClient.writer.WriteSimple(6, response, addr)
 			} else if packetType == 0x7 {
 				response := &Packet08Layer{
-					MTU: 1492,
+					MTU:         1492,
 					UseSecurity: false,
-					IPAddress: addr,
+					IPAddress:   addr,
 				}
 
 				myClient.writer.WriteSimple(8, response, addr)
@@ -273,10 +276,10 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 				nullIP, _ := net.ResolveUDPAddr("udp", "255.255.255.255:0")
 				loIP, _ := net.ResolveUDPAddr("udp", "127.0.0.1:0")
 				response := &Packet10Layer{
-					IPAddress: addr,
+					IPAddress:    addr,
 					SendPingTime: incomingTimestamp,
 					SendPongTime: incomingTimestamp + 10,
-					SystemIndex: 0,
+					SystemIndex:  0,
 					Addresses: [10]*net.UDPAddr{
 						loIP,
 						nullIP,
@@ -294,108 +297,104 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 				myClient.writer.WriteGeneric(context, 0x10, response, 2, addr)
 			} else if packetType == 0x90 {
 				response := &Packet93Layer{
-					ProtocolSchemaSync: true,
+					ProtocolSchemaSync:       true,
 					ApiDictionaryCompression: true,
 					Params: map[string]bool{
 						"BodyColorsColor3PropertyReplicationEnabled": false,
-						"PartColor3Uint8Enabled": false,
-						"SendAdditionalNonAdjustedTimeStamp": true,
-						"UseNewProtocolForStreaming": true,
-						"UseNewPhysicsSender": false,
-						"FixWeldedHumanoidsDeath": false,
-						"UseNetworkSchema2": true,
+						"PartColor3Uint8Enabled":                     false,
+						"SendAdditionalNonAdjustedTimeStamp":         true,
+						"UseNewProtocolForStreaming":                 true,
+						"UseNewPhysicsSender":                        false,
+						"FixWeldedHumanoidsDeath":                    false,
+						"UseNetworkSchema2":                          true,
 					},
 				}
 
 				myClient.writer.WriteGeneric(context, 0x93, response, 3, addr)
-			} else if packetType == 0x82 {
-                response := server.Dictionaries
+			} else if packetType == 0x82 { // TODO: What packet should the server react to when communication with Studio?
+				response2 := &Packet97Layer{*server.Schema}
+				context.StaticSchema = server.Schema
 
-                myClient.writer.WriteGeneric(context, 0x82, response, 3, addr)
+				myClient.writer.WriteGeneric(context, 0x97, response2, 3, addr)
 
-                response2 := &Packet97Layer{*server.Schema}
-                context.StaticSchema = server.Schema
-
-                myClient.writer.WriteGeneric(context, 0x97, response2, 3, addr)
-
-                dataModel := &rbxfile.Root{}
-                context.DataModel = dataModel
+				dataModel := &rbxfile.Root{}
+				context.DataModel = dataModel
 
 				var workspace *rbxfile.Instance
 				var replicatedStorage *rbxfile.Instance
 
-                initInstances := &Packet81Layer{
-                    Items: make([]*Packet81LayerItem, len(services)),
+				initInstances := &Packet81Layer{
+					Items: make([]*Packet81LayerItem, len(services)),
 					DistributedPhysicsEnabled: true,
-					StreamJob: false,
-					FilteringEnabled: false,
-					AllowThirdPartySales: false,
-					CharacterAutoSpawn: false,
-                    Int1: 0,
-                    Int2: 0,
-                    ReferentString: "RBX0123456789ABCDEF",
-                }
-                for i, className := range services {
-                    classID := context.StaticSchema.ClassesByName[className]
-                    instance := &rbxfile.Instance{
-                        ClassName: className,
-                        Reference: strconv.Itoa(int(myClient.instanceID)),
-                        IsService: true,
-                        Properties: make(map[string]rbxfile.Value),
-                    }
-                    myClient.instanceID++
+					StreamJob:                 false,
+					FilteringEnabled:          false,
+					AllowThirdPartySales:      false,
+					CharacterAutoSpawn:        false,
+					Int1:                      0,
+					Int2:                      0,
+					ReferentString:            "RBX0123456789ABCDEF",
+				}
+				for i, className := range services {
+					classID := context.StaticSchema.ClassesByName[className]
+					instance := &rbxfile.Instance{
+						ClassName:  className,
+						Reference:  strconv.Itoa(int(myClient.instanceID)),
+						IsService:  true,
+						Properties: make(map[string]rbxfile.Value),
+					}
+					myClient.instanceID++
 
-                    item := &Packet81LayerItem{
-                        ClassID: uint16(classID),
-                        Instance: instance,
-                        Bool1: false,
-                        Bool2: false,
-                    }
+					item := &Packet81LayerItem{
+						ClassID:  uint16(classID),
+						Instance: instance,
+						Bool1:    false,
+						Bool2:    false,
+					}
 					if className == "Workspace" {
 						workspace = instance
 					} else if className == "ReplicatedStorage" {
 						replicatedStorage = instance
 					}
 
-                    initInstances.Items[i] = item
-                }
+					initInstances.Items[i] = item
+				}
 
-                myClient.writer.WriteGeneric(context, 0x81, initInstances, 3, addr)
+				myClient.writer.WriteGeneric(context, 0x81, initInstances, 3, addr)
 
-				joinData := &Packet83_0B{make([]*rbxfile.Instance, 0, len(services) + 1)}
-                replicationResponse := &Packet83Layer{
-                    SubPackets: []Packet83Subpacket{
-                        &Packet83_10{
-                            TagId: 12,
-                        },
+				joinData := &Packet83_0B{make([]*rbxfile.Instance, 0, len(services)+1)}
+				replicationResponse := &Packet83Layer{
+					SubPackets: []Packet83Subpacket{
+						&Packet83_10{
+							TagId: 12,
+						},
 						joinData,
-                        &Packet83_05{
-                            false,
-                            294470000,
-                            0,
-                            0,
-                        },
-                        &Packet83_10{
-                            TagId: 13,
-                        },
-                    },
-                }
+						&Packet83_05{
+							false,
+							294470000,
+							0,
+							0,
+						},
+						&Packet83_10{
+							TagId: 13,
+						},
+					},
+				}
 
-                for _, item := range initInstances.Items {
-					
+				for _, item := range initInstances.Items {
+
 					if _, ok := noLocalDefaults[item.Instance.ClassName]; ok {
 						continue
 					}
 					joinData.Instances = append(joinData.Instances, item.Instance)
-                }
+				}
 
-                myClient.writer.WriteGeneric(context, 0x83, replicationResponse, 3, addr)
+				myClient.writer.WriteGeneric(context, 0x83, replicationResponse, 3, addr)
 
 				onlyWorkspaceJoinData := &Packet83_0B{make([]*rbxfile.Instance, 0)}
 				InputObject := &rbxfile.Instance{
-					ClassName: "InputObject",
-					Reference: strconv.Itoa(int(myClient.instanceID)),
-					IsService: false,
+					ClassName:  "InputObject",
+					Reference:  strconv.Itoa(int(myClient.instanceID)),
+					IsService:  false,
 					Properties: make(map[string]rbxfile.Value),
 				}
 				myClient.instanceID++
@@ -403,9 +402,9 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 				workspace.AddChild(InputObject)
 
 				Explosion := &rbxfile.Instance{
-					ClassName: "Explosion",
-					Reference: strconv.Itoa(int(myClient.instanceID)),
-					IsService: false,
+					ClassName:  "Explosion",
+					Reference:  strconv.Itoa(int(myClient.instanceID)),
+					IsService:  false,
 					Properties: make(map[string]rbxfile.Value),
 				}
 				myClient.instanceID++
@@ -413,9 +412,9 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 				workspace.AddChild(Explosion)
 
 				ParabolaAdornment := &rbxfile.Instance{
-					ClassName: "ParabolaAdornment",
-					Reference: strconv.Itoa(int(myClient.instanceID)),
-					IsService: false,
+					ClassName:  "ParabolaAdornment",
+					Reference:  strconv.Itoa(int(myClient.instanceID)),
+					IsService:  false,
 					Properties: make(map[string]rbxfile.Value),
 				}
 				myClient.instanceID++
@@ -423,9 +422,9 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 				workspace.AddChild(ParabolaAdornment)
 
 				Terrain := &rbxfile.Instance{
-					ClassName: "Terrain",
-					Reference: strconv.Itoa(int(myClient.instanceID)),
-					IsService: false,
+					ClassName:  "Terrain",
+					Reference:  strconv.Itoa(int(myClient.instanceID)),
+					IsService:  false,
 					Properties: make(map[string]rbxfile.Value),
 				}
 				myClient.instanceID++
@@ -433,9 +432,9 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 				workspace.AddChild(Terrain)
 
 				Status := &rbxfile.Instance{
-					ClassName: "Status",
-					Reference: strconv.Itoa(int(myClient.instanceID)),
-					IsService: false,
+					ClassName:  "Status",
+					Reference:  strconv.Itoa(int(myClient.instanceID)),
+					IsService:  false,
 					Properties: make(map[string]rbxfile.Value),
 				}
 				myClient.instanceID++
@@ -443,9 +442,9 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 				workspace.AddChild(Status)
 
 				PlayerGui := &rbxfile.Instance{
-					ClassName: "PlayerGui",
-					Reference: strconv.Itoa(int(myClient.instanceID)),
-					IsService: false,
+					ClassName:  "PlayerGui",
+					Reference:  strconv.Itoa(int(myClient.instanceID)),
+					IsService:  false,
 					Properties: make(map[string]rbxfile.Value),
 				}
 				myClient.instanceID++
@@ -459,18 +458,18 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 				allDefaultsJoinData := &Packet83_0B{make([]*rbxfile.Instance, 0, len(context.StaticSchema.Instances))}
 
 				humanoid := &rbxfile.Instance{
-					ClassName: "Humanoid",
-					Reference: strconv.Itoa(int(myClient.instanceID)),
-					IsService: false,
+					ClassName:  "Humanoid",
+					Reference:  strconv.Itoa(int(myClient.instanceID)),
+					IsService:  false,
 					Properties: make(map[string]rbxfile.Value),
 				}
 				myClient.instanceID++
 				allDefaultsJoinData.Instances = append(allDefaultsJoinData.Instances, humanoid)
 				replicatedStorage.AddChild(humanoid)
 				animator := &rbxfile.Instance{
-					ClassName: "Animator",
-					Reference: strconv.Itoa(int(myClient.instanceID)),
-					IsService: false,
+					ClassName:  "Animator",
+					Reference:  strconv.Itoa(int(myClient.instanceID)),
+					IsService:  false,
 					Properties: make(map[string]rbxfile.Value),
 				}
 				myClient.instanceID++
@@ -478,24 +477,23 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 				humanoid.AddChild(animator)
 
 				part := &rbxfile.Instance{
-					ClassName: "Part",
-					Reference: strconv.Itoa(int(myClient.instanceID)),
-					IsService: false,
+					ClassName:  "Part",
+					Reference:  strconv.Itoa(int(myClient.instanceID)),
+					IsService:  false,
 					Properties: make(map[string]rbxfile.Value),
 				}
 				myClient.instanceID++
 				allDefaultsJoinData.Instances = append(allDefaultsJoinData.Instances, part)
 				replicatedStorage.AddChild(part)
 				attachment := &rbxfile.Instance{
-					ClassName: "Attachment",
-					Reference: strconv.Itoa(int(myClient.instanceID)),
-					IsService: false,
+					ClassName:  "Attachment",
+					Reference:  strconv.Itoa(int(myClient.instanceID)),
+					IsService:  false,
 					Properties: make(map[string]rbxfile.Value),
 				}
 				myClient.instanceID++
 				allDefaultsJoinData.Instances = append(allDefaultsJoinData.Instances, attachment)
 				part.AddChild(attachment)
-
 
 				for _, class := range context.StaticSchema.Instances {
 					if _, ok := noncreatable[class.Name]; ok {
@@ -505,13 +503,13 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 						continue
 					}
 
-                    instance := &rbxfile.Instance{
-                        ClassName: class.Name,
-                        Reference: strconv.Itoa(int(myClient.instanceID)),
-                        IsService: false,
-                        Properties: make(map[string]rbxfile.Value),
-                    }
-                    myClient.instanceID++
+					instance := &rbxfile.Instance{
+						ClassName:  class.Name,
+						Reference:  strconv.Itoa(int(myClient.instanceID)),
+						IsService:  false,
+						Properties: make(map[string]rbxfile.Value),
+					}
+					myClient.instanceID++
 
 					allDefaultsJoinData.Instances = append(allDefaultsJoinData.Instances, instance)
 
@@ -521,9 +519,9 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 				myClient.writer.WriteGeneric(context, 0x83, &Packet83Layer{
 					[]Packet83Subpacket{allDefaultsJoinData},
 				}, 3, addr)
-            }
+			}
 		},
-		ErrorHandler: func(err error) {
+		ErrorHandler: func(err error, packet *UDPPacket) {
 			println(err.Error())
 		},
 		Context: context,
@@ -538,21 +536,20 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 			fmt.Printf("Wrote %d bytes, err: %s", num, err.Error())
 		}
 	}
-	
 
 	myClient = &client{
-		reader: packetReader,
-		writer: packetWriter,
-		context: context,
-		address: addr,
-		server: server,
-        instanceID: 1000,
+		reader:     packetReader,
+		writer:     packetWriter,
+		context:    context,
+		address:    addr,
+		server:     server,
+		instanceID: 1000,
 	}
 
 	ackTicker := time.NewTicker(17)
 	go func() {
 		for {
-			<- ackTicker.C
+			<-ackTicker.C
 			myClient.sendACKs()
 		}
 	}()
@@ -562,7 +559,7 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 // StartServer attempts to start a server within roblox-dissector for _Studio_ clients
 // to connect to.
 // Dictionaries and schema should come from gobs dumped by the dissector.
-func StartServer(port uint16, dictionaries *Packet82Layer, schema *StaticSchema) error {
+func StartServer(port uint16 /*dictionaries *Packet82Layer,, schema *StaticSchema) error {
 	server := &ServerPeer{clients: make(map[string]*client)}
 
 	var err error
@@ -578,8 +575,7 @@ func StartServer(port uint16, dictionaries *Packet82Layer, schema *StaticSchema)
 	}
 	server.Connection = conn
 	server.GUID = rand.Uint64()
-    server.Dictionaries = dictionaries
-    server.Schema = schema
+	server.Schema = schema
 
 	buf := make([]byte, 1492)
 
@@ -590,11 +586,12 @@ func StartServer(port uint16, dictionaries *Packet82Layer, schema *StaticSchema)
 			continue
 		}
 
-		thisClient, ok := server.clients[client.String()]
+		thcacheName, ok := server.clients[client.String()]
 		if !ok {
-			thisClient = newClient(client, server)
-			server.clients[client.String()] = thisClient
+			thcacheName = newClient(client, server)
+			server.clients[client.String()] = thcacheName
 		}
-		thisClient.receive(buf[:n])
+		thcacheName.receive(buf[:n])
 	}
 }
+*/

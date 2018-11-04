@@ -1,32 +1,34 @@
 package peer
-import "github.com/gskartwii/go-bitstream"
-import "bytes"
+
 import "io"
 import "errors"
-import "log"
-import "strings"
+
+const (
+	UNRELIABLE              = iota
+	UNRELIABLE_SEQ          = iota
+	RELIABLE                = iota
+	RELIABLE_ORD            = iota
+	RELIABLE_SEQ            = iota
+	UNRELIABLE_ACK_RECP     = iota
+	UNRELIABLE_SEQ_ACK_RECP = iota
+	RELIABLE_ACK_RECP       = iota
+	RELIABLE_ORD_ACK_RECP   = iota
+	RELIABLE_SEQ_ACK_RECP   = iota
+)
 
 // ReliablePacket describes a packet within a ReliabilityLayer
 type ReliablePacket struct {
-	// Have all splits been received?
-	IsFinal bool
-	// Is this the first split?
-	IsFirst bool
-	// Unique ID given to each packet. Splits of the same packet have the same ID.
-	UniqueID uint32
 	// Reliability ID: (un)reliable? ordered? sequenced?
-	Reliability uint32
+	Reliability    uint32
 	HasSplitPacket bool
 	// Length of this split in bits
 	LengthInBits uint16
-	// Total length received so far, in bytes
-	RealLength uint32
 	// Unique ID given to each packet. Splits of the same packet have a different ID.
 	ReliableMessageNumber uint32
 	// Unchannelled sequencing index
 	SequencingIndex uint32
 	// Channelled ordering index
-	OrderingIndex uint32
+	OrderingIndex   uint32
 	OrderingChannel uint8
 	// Count of splits this packet has
 	SplitPacketCount uint32
@@ -34,26 +36,13 @@ type ReliablePacket struct {
 	SplitPacketID uint16
 	// 0 <= SplitPacketIndex < SplitPacketCount
 	SplitPacketIndex uint32
-	// Number of _ordered_ splits we have received so far
-	NumReceivedSplits uint32
-	AllRakNetLayers []*RakNetLayer
-	AllReliablePackets []*ReliablePacket
+	// The RakNet layer containing this packet
+	RakNetLayer *RakNetLayer
 
-	// Has a decoder routine started decoding this packet yet?
-	HasBeenDecoded bool
-
-	fullDataReader *extendedReader
 	// Data contained by this split
 	SelfData []byte
 
-	// Has received packet type yet? Set to true when the first split of this packet
-	// is received
-	HasPacketType bool
-	PacketType byte
-
-	buffer *splitPacketBuffer
-	logBuffer *strings.Builder // must be a pointer because it may be copied!
-	Logger *log.Logger
+	SplitBuffer *SplitPacketBuffer
 }
 
 type ReliabilityLayer struct {
@@ -64,11 +53,21 @@ func NewReliabilityLayer() *ReliabilityLayer {
 	return &ReliabilityLayer{Packets: make([]*ReliablePacket, 0)}
 }
 func NewReliablePacket() *ReliablePacket {
-	return &ReliablePacket{SelfData: make([]byte, 0)}
+	return &ReliablePacket{SelfData: []byte{}}
 }
 
 func (packet *ReliablePacket) GetLog() string {
-	return packet.logBuffer.String()
+	return packet.SplitBuffer.logBuffer.String()
+}
+
+func (packet *ReliablePacket) IsReliable() bool {
+	return packet.Reliability == RELIABLE || packet.Reliability == RELIABLE_SEQ || packet.Reliability == RELIABLE_ORD
+}
+func (packet *ReliablePacket) IsSequenced() bool {
+	return packet.Reliability == UNRELIABLE_SEQ || packet.Reliability == RELIABLE_SEQ
+}
+func (packet *ReliablePacket) IsOrdered() bool {
+	return packet.Reliability == UNRELIABLE_SEQ || packet.Reliability == RELIABLE_SEQ || packet.Reliability == RELIABLE_ORD || packet.Reliability == RELIABLE_ORD_ACK_RECP
 }
 
 func DecodeReliabilityLayer(packet *UDPPacket, context *CommunicationContext, rakNetPacket *RakNetLayer) (*ReliabilityLayer, error) {
@@ -79,6 +78,8 @@ func DecodeReliabilityLayer(packet *UDPPacket, context *CommunicationContext, ra
 	var err error
 	for reliability, err = thisBitstream.bits(3); err == nil; reliability, err = thisBitstream.bits(3) {
 		reliablePacket := NewReliablePacket()
+		reliablePacket.RakNetLayer = rakNetPacket
+
 		reliablePacket.Reliability = uint32(reliability)
 		reliablePacket.HasSplitPacket, err = thisBitstream.readBool()
 		if err != nil {
@@ -94,20 +95,19 @@ func DecodeReliabilityLayer(packet *UDPPacket, context *CommunicationContext, ra
 			return layer, errors.New("Invalid length of 0!")
 		}
 
-		reliablePacket.RealLength = uint32((reliablePacket.LengthInBits + 7) / 8)
-		if reliability >= 2 && reliability <= 4 {
+		if reliablePacket.IsReliable() {
 			reliablePacket.ReliableMessageNumber, err = thisBitstream.readUint24LE()
 			if err != nil {
 				return layer, err
 			}
 		}
-		if reliability == 1 || reliability == 4 {
+		if reliablePacket.IsSequenced() {
 			reliablePacket.SequencingIndex, err = thisBitstream.readUint24LE()
 			if err != nil {
 				return layer, err
 			}
 		}
-		if reliability == 1 || reliability == 3 || reliability == 4 || reliability == 7 {
+		if reliablePacket.IsOrdered() {
 			reliablePacket.OrderingIndex, err = thisBitstream.readUint24LE()
 			if err != nil {
 				return layer, err
@@ -131,36 +131,12 @@ func DecodeReliabilityLayer(packet *UDPPacket, context *CommunicationContext, ra
 				return layer, err
 			}
 		}
-		reliablePacket.SelfData, err = thisBitstream.readString(int((reliablePacket.LengthInBits + 7)/8))
+		reliablePacket.SelfData, err = thisBitstream.readString(int((reliablePacket.LengthInBits + 7) / 8))
 		if err != nil {
 			return layer, err
 		}
-		if reliablePacket.SplitPacketIndex == 0 {
-			reliablePacket.PacketType = reliablePacket.SelfData[0]
-			reliablePacket.HasPacketType = true
-		}
-		if !reliablePacket.HasPacketType {
-			reliablePacket.PacketType = 0xFF
-		}
-
-		reliablePacket.UniqueID = context.UniqueID
-		context.UniqueID++
-
-		if reliablePacket.HasSplitPacket {
-			reliablePacket, err = context.handleSplitPacket(reliablePacket, rakNetPacket, packet)
-			if err != nil {
-				return layer, err
-			}
-		} else {
+		if !reliablePacket.HasSplitPacket {
 			reliablePacket.SplitPacketCount = 1
-			reliablePacket.NumReceivedSplits = 1
-			reliablePacket.fullDataReader = &extendedReader{bitstream.NewReader(bytes.NewReader(reliablePacket.SelfData))}
-			reliablePacket.IsFirst = true
-			reliablePacket.IsFinal = true
-			reliablePacket.AllReliablePackets = []*ReliablePacket{reliablePacket}
-			reliablePacket.AllRakNetLayers = []*RakNetLayer{rakNetPacket}
-			packet.logBuffer = new(strings.Builder)
-			packet.Logger = log.New(packet.logBuffer, "", log.Lmicroseconds | log.Ltime)
 		}
 
 		layer.Packets = append(layer.Packets, reliablePacket)
@@ -171,7 +147,7 @@ func DecodeReliabilityLayer(packet *UDPPacket, context *CommunicationContext, ra
 	return layer, nil
 }
 
-func (layer *ReliabilityLayer) serialize(isClient bool, context *CommunicationContext, outputStream *extendedWriter) error {
+func (layer *ReliabilityLayer) Serialize(writer PacketWriter, outputStream *extendedWriter) error {
 	var err error
 	for _, packet := range layer.Packets {
 		reliability := uint64(packet.Reliability)
@@ -187,7 +163,7 @@ func (layer *ReliabilityLayer) serialize(isClient bool, context *CommunicationCo
 		if err != nil {
 			return err
 		}
-        packet.LengthInBits = uint16(len(packet.SelfData) * 8)
+		packet.LengthInBits = uint16(len(packet.SelfData) * 8)
 		err = outputStream.writeUint16BE(packet.LengthInBits)
 		if err != nil {
 			return err

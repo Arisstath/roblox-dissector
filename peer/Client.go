@@ -1,163 +1,225 @@
 package peer
+
 import "time"
 import "net"
 import "fmt"
-import "sort"
 import "net/http"
 import "encoding/json"
-import "github.com/gskartwii/rbxfile"
 import "math/rand"
-import "strconv"
 import "errors"
+import "encoding/hex"
+import "log"
+import "github.com/gskartwii/rbxfile"
+import "sync"
+
+var LauncherStatuses = [...]string{
+	"Wait",
+	"Wait (2)",
+	"Success",
+	"Maintenance",
+	"Error",
+	"Game ended",
+	"Game is full",
+	"Roblox is updating",
+	"Requesting a server",
+	"Unknown 9",
+	"User left",
+	"Game blocked on this platform",
+	"Unauthorized",
+}
 
 type placeLauncherResponse struct {
-	JobId string
-	Status int
-	JoinScriptUrl string
-	AuthenticationUrl string
+	JobId                string
+	Status               int
+	JoinScriptUrl        string
+	AuthenticationUrl    string
 	AuthenticationTicket string
 }
-type joinAshxResponse struct {
-	ClientTicket string
-	NewClientTicket string
-	SessionId string
-	MachineAddress string
-	ServerPort uint16
-	UserId int64
-	UserName string
-	CharacterAppearance string
+type JoinAshxResponse struct {
+	ClientTicket          string
+	NewClientTicket       string
+	SessionId             string
+	MachineAddress        string
+	ServerPort            uint16
+	UserId                int64
+	UserName              string
+	CharacterAppearance   string
+	CharacterAppearanceId int64
+	PingInterval          int
+	AccountAge            int
+}
+
+type SecuritySettings struct {
+	RakPassword         []byte
+	GoldenHash          uint32
+	SecurityKey         string
+	DataModelHash       string
+	OsPlatform          string
+	IdChallengeResponse uint32
+	UserAgent           string
 }
 
 type CustomClient struct {
 	*ConnectedPeer
-	Context *CommunicationContext
-	Address net.UDPAddr
-	ServerAddress net.UDPAddr
-	Connected bool
-	mustACK []int
-	clientTicket string
-	sessionId string
-	PlayerId int64
-	UserName string
-	characterAppearance string
-	PlaceId uint32
-	httpClient *http.Client
-	GUID uint64
-	BrowserTrackerId uint64
-	GenderId uint8
-	IsPartyLeader bool
+	Context               *CommunicationContext
+	Address               net.UDPAddr
+	ServerAddress         net.UDPAddr
+	Connected             bool
+	clientTicket          string
+	sessionId             string
+	PlayerId              int64
+	UserName              string
+	characterAppearance   string
+	characterAppearanceId int64
+	pingInterval          int
+	PlaceId               uint32
+	httpClient            *http.Client
+	GUID                  uint64
+	BrowserTrackerId      uint64
+	GenderId              uint8
+	IsPartyLeader         bool
+	AccountAge            int
 
-	RakPassword []byte
-	GoldenHash uint32
-	SecurityKey string
-	DataModelHash string
-	OsPlatform string
+	SecuritySettings SecuritySettings
+
 	instanceIndex uint32
-	scope string
+	scope         string
+
+	ackTicker      *time.Ticker
+	dataPingTicker *time.Ticker
+
+	Connection *net.UDPConn
+	Logger     *log.Logger
+
+	handlers         *RawPacketHandlerMap
+	dataHandlers     *DataPacketHandlerMap
+	instanceHandlers *NewInstanceHandlerMap
+	deleteHandlers   *DeleteInstanceHandlerMap
+	eventHandlers    *EventHandlerMap
+
+	remoteIndices map[*rbxfile.Instance]uint32
+	remoteLock    *sync.Mutex
+
+	LocalPlayer *rbxfile.Instance
 }
 
-func (client *CustomClient) sendACKs() {
-	if len(client.mustACK) == 0 {
-		return
-	}
-	acks := client.mustACK
-	client.mustACK = []int{}
-	var ackStructure []ACKRange
-	sort.Ints(acks)
-
-	for _, ack := range acks {
-		if len(ackStructure) == 0 {
-			ackStructure = append(ackStructure, ACKRange{uint32(ack), uint32(ack)})
-			continue
-		}
-
-		inserted := false
-		for i, ackRange := range ackStructure {
-			if int(ackRange.Max) == ack {
-				inserted = true
-                break
-			}
-			if int(ackRange.Max + 1) == ack {
-				ackStructure[i].Max++
-				inserted = true
-                break
-			}
-		}
-		if inserted {
-			continue
-		}
-
-		ackStructure = append(ackStructure, ACKRange{uint32(ack), uint32(ack)})
-	}
-
-	result := &RakNetLayer{
-		IsValid: true,
-		IsACK: true,
-		ACKs: ackStructure,
-	}
-
-	client.Writer.WriteRakNet(result, &client.ServerAddress)
+func (myClient *CustomClient) RegisterPacketHandler(packetType uint8, handler ReceiveHandler) {
+	myClient.handlers.Bind(packetType, handler)
+}
+func (myClient *CustomClient) RegisterDataHandler(packetType uint8, handler DataReceiveHandler) {
+	myClient.dataHandlers.Bind(packetType, handler)
+}
+func (myClient *CustomClient) RegisterInstanceHandler(path *InstancePath, handler NewInstanceHandler) {
+	myClient.instanceHandlers.Bind(path, handler)
 }
 
-func (client *CustomClient) receive(buf []byte) {
+func (myClient *CustomClient) ReadPacket(buf []byte) {
 	packet := UDPPacketFromBytes(buf)
-	packet.Source = client.ServerAddress
-	packet.Destination = client.Address
-	client.Reader.ReadPacket(buf, packet)
+	packet.Source = myClient.ServerAddress
+	packet.Destination = myClient.Address
+	myClient.ConnectedPeer.ReadPacket(buf, packet)
 }
 
 func NewCustomClient() *CustomClient {
 	rand.Seed(time.Now().UnixNano())
+	context := NewCommunicationContext()
+
+	scope := make([]byte, 0x10)
+	n, err := rand.Read(scope)
+	if n < 0x10 && err != nil {
+		panic(err)
+	}
+
 	return &CustomClient{
-		httpClient: &http.Client{},
-		Context: NewCommunicationContext(),
-		GUID: rand.Uint64(),
+		ConnectedPeer: NewConnectedPeer(context),
+		httpClient:    &http.Client{},
+		Context:       context,
+		GUID:          rand.Uint64(),
 		instanceIndex: 1000,
-		scope: "RBX224117",
+		scope:         "RBX" + hex.EncodeToString(scope),
+
+		handlers:         NewRawPacketHandlerMap(),
+		dataHandlers:     NewDataHandlerMap(),
+		instanceHandlers: NewNewInstanceHandlerMap(),
+		deleteHandlers:   NewDeleteInstanceHandlerMap(),
+		eventHandlers:    NewEventHandlerMap(),
+
+		remoteIndices: make(map[*rbxfile.Instance]uint32),
+		remoteLock:    &sync.Mutex{},
 	}
 }
 
-func (myClient *CustomClient) joinWithPlaceLauncher(url string, cookies []*http.Cookie) error {
-	println("requesting placelauncher", url)
+func (myClient *CustomClient) GetLocalPlayer() *rbxfile.Instance { // may yield! do not call from main thread
+	return <-myClient.WaitForInstance("Players", myClient.UserName)
+}
+
+// call this asynchronously! it will wait a lot
+func (myClient *CustomClient) setupChat() {
+	getInitDataRequest := <-myClient.WaitForInstance("ReplicatedStorage", "DefaultChatSystemChatEvents", "GetInitDataRequest")
+	println("got req")
+
+	_, err := myClient.InvokeRemote(getInitDataRequest, []rbxfile.Value{})
+	if err != "" {
+		myClient.ErrorHandler(errors.New(err), nil)
+		return
+	}
+	// unimportant
+	//myClient.Logger.Printf("chat init data 0: %s\n", initData.String())
+
+	/*_, newMessageChan := myClient.MakeEventChan( // never unbind
+		<- myClient.WaitForInstance("ReplicatedStorage", "DefaultChatSystemChatEvents", "OnNewMessage"),
+		"OnClientEvent",
+	)*/
+
+	_, newFilteredMessageChan := myClient.MakeEventChan(
+		<-myClient.WaitForInstance("ReplicatedStorage", "DefaultChatSystemChatEvents", "OnMessageDoneFiltering"),
+		"OnClientEvent",
+	)
+
+	playerJoinChan := myClient.MakeChildChan(myClient.FindService("Players"))
+	playerLeaveChan := myClient.MakeGroupDeleteChan(myClient.FindService("Players").Children)
+
+	for true {
+		select {
+		case message := <-newFilteredMessageChan:
+			dict := message.Arguments[0].(rbxfile.ValueTuple)[0].(rbxfile.ValueDictionary)
+			myClient.Logger.Printf("<%s (%s)> %s\n", dict["FromSpeaker"].(rbxfile.ValueString), dict["MessageType"].(rbxfile.ValueString), dict["Message"].(rbxfile.ValueString))
+		case player := <-playerJoinChan:
+			myClient.Logger.Printf("SYSTEM: %s has joined the game.\n", player.Name())
+			playerLeaveChan.AddInstances(player)
+		case player := <-playerLeaveChan.C:
+			myClient.Logger.Printf("SYSTEM: %s has left the game.\n", player.Name())
+		}
+	}
+}
+
+func (myClient *CustomClient) SendChat(message string, toPlayer string, channel string) {
+	if channel == "" {
+		channel = "All" // assume default channel
+	}
+
+	remote := <-myClient.WaitForInstance("ReplicatedStorage", "DefaultChatSystemChatEvents", "SayMessageRequest")
+	if toPlayer != "" {
+		message = "/w " + toPlayer + " " + message
+	}
+
+	myClient.FireRemote(remote, rbxfile.ValueString(message), rbxfile.ValueString(channel))
+}
+
+func (myClient *CustomClient) joinWithJoinScript(url string, cookies []*http.Cookie) error {
+	joinScriptRequest, err := http.NewRequest("GET", url, nil)
 	robloxCommClient := myClient.httpClient
-	placeLauncherRequest, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return err
-	}
-	placeLauncherRequest.Header.Set("User-Agent", "Roblox/WinInet")
-	for _, cookie := range cookies {
-		placeLauncherRequest.AddCookie(cookie)
-	}
-
-	resp, err := robloxCommClient.Do(placeLauncherRequest)
-	if err != nil {
-		return err
-	}
-	var plResp placeLauncherResponse
-	err = json.NewDecoder(resp.Body).Decode(&plResp)
-	if err != nil {
-		return err
-	}
-	if plResp.JoinScriptUrl == "" {
-		println("joinscript failure, status", plResp.Status)
-		return errors.New("couldn't get joinscripturl")
-	}
-
-	joinScriptRequest, err := http.NewRequest("GET", plResp.JoinScriptUrl, nil)
 	if err != nil {
 		return err
 	}
 
-	for _, cook := range resp.Cookies() {
-		joinScriptRequest.AddCookie(cook)
-	}
 	for _, cook := range cookies {
 		if x, _ := joinScriptRequest.Cookie(cook.Name); x == nil {
 			joinScriptRequest.AddCookie(cook)
 		}
 	}
 
-	resp, err = robloxCommClient.Do(joinScriptRequest)
+	resp, err := robloxCommClient.Do(joinScriptRequest)
 	if err != nil {
 		return err
 	}
@@ -174,281 +236,308 @@ func (myClient *CustomClient) joinWithPlaceLauncher(url string, cookies []*http.
 		return err
 	}
 
-	var jsResp joinAshxResponse
+	var jsResp JoinAshxResponse
 	err = json.NewDecoder(body).Decode(&jsResp)
 	if err != nil {
 		return err
 	}
+	myClient.characterAppearance = jsResp.CharacterAppearance
+	myClient.characterAppearanceId = jsResp.CharacterAppearanceId
 	myClient.clientTicket = jsResp.ClientTicket
 	myClient.sessionId = jsResp.SessionId
 	myClient.PlayerId = jsResp.UserId
 	myClient.UserName = jsResp.UserName
+	myClient.pingInterval = jsResp.PingInterval
+	myClient.AccountAge = jsResp.AccountAge
+
 	addrp, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", jsResp.MachineAddress, jsResp.ServerPort))
 	if err != nil {
 		return err
 	}
 
+	myClient.Logger.Println("Connecting to", jsResp.MachineAddress)
+
 	myClient.ServerAddress = *addrp
 	return myClient.rakConnect()
 }
 
-func (myClient *CustomClient) ConnectGuest(placeId uint32, genderId uint8) error {
-	myClient.PlaceId = placeId
-	myClient.GenderId = genderId
-	return myClient.joinWithPlaceLauncher(fmt.Sprintf("https://assetgame.roblox.com/game/PlaceLauncher.ashx?request=RequestGame&browserTrackerId=%d&placeId=%d&isPartyLeader=false&genderId=%d", myClient.BrowserTrackerId, myClient.PlaceId, myClient.GenderId),[]*http.Cookie{})
+func (myClient *CustomClient) joinWithPlaceLauncher(url string, cookies []*http.Cookie) error {
+	var plResp placeLauncherResponse
+	var resp *http.Response
+	robloxCommClient := myClient.httpClient
+	for i := 0; i < 5; i++ {
+		myClient.Logger.Println("requesting placelauncher", url, "attempt", i)
+		placeLauncherRequest, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			return err
+		}
+		placeLauncherRequest.Header.Set("User-Agent", myClient.SecuritySettings.UserAgent)
+		for _, cookie := range cookies {
+			placeLauncherRequest.AddCookie(cookie)
+		}
+
+		resp, err = robloxCommClient.Do(placeLauncherRequest)
+		if err != nil {
+			return err
+		}
+		err = json.NewDecoder(resp.Body).Decode(&plResp)
+		if err != nil {
+			return err
+		}
+		if plResp.Status == 0 || plResp.Status == 1 { // status: wait
+			myClient.Logger.Println("status=0 --> retrying after 5s")
+			time.Sleep(time.Second * 5)
+			continue
+		} else if plResp.Status != 2 { // status: success
+			myClient.Logger.Println("failed to connect, reason: ", LauncherStatuses[plResp.Status])
+			return errors.New("PlaceLauncher returned fatal status")
+		}
+
+		if plResp.JoinScriptUrl == "" {
+			myClient.Logger.Println("joinscript failure, status", plResp.Status)
+			return errors.New("couldn't get joinscripturl")
+		} else {
+			break
+		}
+	}
+
+	for _, cook := range resp.Cookies() {
+		cookies = append(cookies, cook)
+	}
+
+	return myClient.joinWithJoinScript(plResp.JoinScriptUrl, cookies)
 }
 
-func (myClient *CustomClient) rakConnect() error {
-	context := myClient.Context
-	addr := myClient.ServerAddress
-
-	packetReader := NewPacketReader()
-	packetReader.ACKHandler = func(packet *UDPPacket, layer *RakNetLayer) {
-		println("received ack")
-		if myClient.ACKHandler != nil {
-			myClient.ACKHandler(packet, layer)
-		}
-	}
-	packetReader.ReliabilityLayerHandler = func(p *UDPPacket, re *ReliabilityLayer, ra *RakNetLayer) {
-		println("receive reliabilitylayer")
-		if myClient.ReliabilityLayerHandler != nil {
-			myClient.ReliabilityLayerHandler(p, re, ra)
-		}
-	}
-	packetReader.SimpleHandler = func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
-		if packetType == 0x6 {
-			if myClient.Connected {
-				return
-			}
-			println("receive 6!")
-			myClient.Connected = true
-
-			response := &Packet07Layer{
-				GUID: myClient.GUID,
-				MTU: 1492,
-				IPAddress: &addr,
-			}
-			myClient.Writer.WriteSimple(7, response, &addr)
-		} else if packetType == 0x8 {
-			println("receive 8!")
-
-			response := &Packet09Layer{
-				GUID: myClient.GUID,
-				Timestamp: uint64(time.Now().Unix()),
-				UseSecurity: false,
-				Password: []byte{0x37, 0x4F, 0x5E, 0x11, 0x6C, 0x45},
-			}
-			myClient.Writer.WriteGeneric(context, 9, response, 3, &addr)
-		} else {
-			println("receive simple unk", packetType)
-		}
-		if myClient.SimpleHandler != nil {
-			myClient.SimpleHandler(packetType, packet, layers)
-		}
-	}
-	packetReader.ReliableHandler = func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
-		rakNetLayer := layers.RakNet
-		myClient.mustACK = append(myClient.mustACK, int(rakNetLayer.DatagramNumber))
-		if myClient.ReliableHandler != nil {
-			myClient.ReliableHandler(packetType, packet, layers)
-		}
-	}
-	packetReader.FullReliableHandler = func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
-		if packetType == 0x0 {
-			mainLayer := layers.Main.(*Packet00Layer)
-			response := &Packet03Layer{
-				SendPingTime: mainLayer.SendPingTime,
-				SendPongTime: mainLayer.SendPingTime + 10,
-			}
-
-			myClient.Writer.WriteGeneric(context, 3, response, 3, &addr)
-		} else if packetType == 0x10 {
-			println("receive 10!")
-			mainLayer := layers.Main.(*Packet10Layer)
-			nullIP, _ := net.ResolveUDPAddr("udp", "0.0.0.0:0")
-			myClient.Address.Port = 0
-			response := &Packet13Layer{
-				IPAddress: &addr,
-				Addresses: [10]*net.UDPAddr{
-					&myClient.Address,
-					nullIP,
-					nullIP,
-					nullIP,
-					nullIP,
-					nullIP,
-					nullIP,
-					nullIP,
-					nullIP,
-					nullIP,
-				},
-				SendPingTime: mainLayer.SendPongTime,
-				SendPongTime: uint64(time.Now().Unix()),
-			}
-
-			myClient.Writer.WriteGeneric(context, 3, response, 3, &addr)
-			response90 := &Packet90Layer{
-				SchemaVersion: 36,
-				RequestedFlags: []string{
-					"AllowMoreAngles",
-					"UseNewProtocolForStreaming",
-					"ReplicatorSupportRegion3Types",
-					"SendAdditionalNonAdjustedTimeStamp",
-					"SendPlayerGuiEarly2",
-					"UseNewPhysicsSender6",
-					"FixWeldedHumanoidsDeath",
-					"PartColor3Uint8Enabled",
-					"ReplicatorUseZstd",
-					"BodyColorsColor3PropertyReplicationEnabled",
-					"ReplicatorSupportInt64Type",
-				},
-			}
-			myClient.Writer.WriteGeneric(context, 3, response90, 3, &addr)
-
-			response92 := &Packet92Layer{
-				PlaceId: 0,
-			}
-			myClient.Writer.WriteGeneric(context, 3, response92, 3, &addr)
-
-			response8A := &Packet8ALayer{
-				PlayerId: myClient.PlayerId,
-				ClientTicket: myClient.clientTicket,
-				DataModelHash: myClient.DataModelHash,
-				ProtocolVersion: 36,
-				SecurityKey: myClient.SecurityKey,
-				Platform: myClient.OsPlatform,
-				RobloxProductName: "?",
-				SessionId: myClient.sessionId,
-				GoldenHash: myClient.GoldenHash,
-			}
-			myClient.Writer.WriteGeneric(context, 3, response8A, 3, &addr)
-
-			response8F := &Packet8FLayer{
-				SpawnName: "",
-			}
-			myClient.Writer.WriteGeneric(context, 3, response8F, 3, &addr)
-		} else if packetType == 0x81 {
-			var players *rbxfile.Instance
-			for i := 0; i < len(context.DataModel.Instances); i++ {
-				instance := context.DataModel.Instances[i]
-				if instance.Name() == "Players" {
-					players = instance
-					break
-				}
-			}
-
-			myPlayer := &rbxfile.Instance{
-				ClassName: "Player",
-				Reference: myClient.scope + "_" + strconv.Itoa(int(myClient.instanceIndex)),
-				IsService: false,
-				Properties: map[string]rbxfile.Value{
-					"Name": rbxfile.ValueString(myClient.UserName),
-					"CharacterAppearance": rbxfile.ValueString(myClient.characterAppearance),
-					"CharacterAppearanceId": rbxfile.ValueInt(15437777),
-					"ChatPrivacyMode": rbxfile.ValueToken{
-						Value: 0,
-						ID: uint16(context.StaticSchema.EnumsByName["ChatPrivacyMode"]),
-						Name: "ChatPrivacyMode",
-					},
-					"AccountAgeReplicate": rbxfile.ValueInt(0),
-					"OsPlatform": rbxfile.ValueString("Win32"),
-					"userId": rbxfile.ValueInt(myClient.PlayerId),
-					"UserId": rbxfile.ValueInt(myClient.PlayerId),
-				},
-			}
-			players.AddChild(myPlayer)
-			myClient.instanceIndex++
-
-			response83 := &Packet83Layer{
-				SubPackets: []Packet83Subpacket{
-					&Packet83_0B{[]*rbxfile.Instance{myPlayer}},
-				},
-			}
-			myClient.Writer.WriteGeneric(context, 0x83, response83, 3, &addr)
-		} else if packetType == 0x83 {
-			response := &Packet83Layer{make([]Packet83Subpacket, 0)}
-			mainLayer := layers.Main.(*Packet83Layer)
-			for _, packet := range mainLayer.SubPackets {
-				if Packet83ToType(packet) == 5 {
-					response.SubPackets = append(response.SubPackets, &Packet83_06{
-						Timestamp: uint64(time.Now().Unix()),
-						IsPingBack: true,
-					})
-				}
-			}
-			if len(response.SubPackets) > 0 {
-				myClient.Writer.WriteGeneric(context, 0x83, response, 3, &addr)
-			}
-		} else {
-			println("receive generic unk", packetType)
-		}
-		if myClient.FullReliableHandler != nil {
-			myClient.FullReliableHandler(packetType, packet, layers)
-		}
-	}
-	packetReader.ErrorHandler = func(err error) {
-		println(err.Error())
-		if myClient.ErrorHandler != nil {
-			myClient.ErrorHandler(err)
-		}
-	}
-	packetReader.Context = context
-	println("will set reader", myClient, packetReader)
-	myClient.Reader = packetReader
-
-	conn, err := net.DialUDP("udp", nil, &addr)
-	defer conn.Close()
+func (myClient *CustomClient) ConnectWithAuthTicket(placeId uint32, ticket string) error {
+	myClient.PlaceId = placeId
+	robloxCommClient := myClient.httpClient
+	negotiationRequest, err := http.NewRequest("POST", "https://www.roblox.com/Login/Negotiate.ashx?suggest="+ticket, nil)
 	if err != nil {
 		return err
 	}
-	myClient.Address = *conn.LocalAddr().(*net.UDPAddr)
 
-	packetWriter := NewPacketWriter()
-	packetWriter.ErrorHandler = func(err error) {
-		println(err.Error())
-		if myClient.ErrorHandler != nil {
-			myClient.ErrorHandler(err)
+	negotiationRequest.Header.Set("Playercount", "0")
+	negotiationRequest.Header.Set("Requester", "Client")
+	negotiationRequest.Header.Set("User-Agent", myClient.SecuritySettings.UserAgent)
+	negotiationRequest.Header.Set("Content-Length", "0")
+	negotiationRequest.Header.Set("X-Csrf-Token", "")
+	negotiationRequest.Header.Set("Rbxauthenticationnegotiation", "www.roblox.com")
+	negotiationRequest.Header.Set("Host", "www.roblox.com")
+
+	resp, err := robloxCommClient.Do(negotiationRequest)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode == 403 { // token verification failed
+		negotiationRequest.Header.Set("X-Csrf-Token", resp.Header.Get("X-Csrf-Token"))
+		myClient.Logger.Println("Set csrftoken:", resp.Header.Get("X-Csrf-Token"))
+
+		resp, err = robloxCommClient.Do(negotiationRequest)
+		if err != nil {
+			return err
+		}
+		if resp.StatusCode == 403 {
+			return errors.New("couldn't negotiate ticket: " + resp.Status)
 		}
 	}
-	packetWriter.OutputHandler = func(payload []byte, dest *net.UDPAddr) {
-		num, err := conn.Write(payload)
+	cookies := resp.Cookies()
+
+	return myClient.joinWithPlaceLauncher(fmt.Sprintf("https://www.roblox.com/game/PlaceLauncher.ashx?request=RequestGame&browserTrackerId=%d&placeId=%d&isPartyLeader=false&genderId=%d", myClient.BrowserTrackerId, myClient.PlaceId, myClient.GenderId), cookies)
+}
+
+// Automatically fills in any needed hashes/key for Windows 10 clients
+func (settings *SecuritySettings) InitWin10() {
+	settings.SecurityKey = "2e427f51c4dab762fe9e3471c6cfa1650841723b!c41c6af331e84e7d96dca37f759078fa\002"
+	settings.OsPlatform = "Windows_Universal"
+	settings.GoldenHash = 0xC001CAFE
+	settings.DataModelHash = "ios,ios"
+	settings.UserAgent = "Roblox/WinINet"
+	settings.IdChallengeResponse = 0x512265E4
+}
+
+// Automatically fills in any needed hashes/key for Android clients
+func (settings *SecuritySettings) InitAndroid() {
+	// good job on your security :-p
+	settings.SecurityKey = "2e427f51c4dab762fe9e3471c6cfa1650841723b!10ddf3176164dab2c7b4ba9c0e986001"
+	settings.OsPlatform = "Android"
+	settings.GoldenHash = 0xC001CAFE
+	settings.DataModelHash = "ios,ios"
+	settings.UserAgent = "Mozilla/5.0 (512MB; 576x480; 300x300; 300x300; Samsung Galaxy S8; 6.0.1 Marshmallow) AppleWebKit/537.36 (KHTML, like Gecko) Roblox Android App 0.334.0.195932 Phone Hybrid()"
+	settings.IdChallengeResponse = 0xBA4CE5C4
+}
+
+// genderId 1 ==> default genderless
+// genderId 2 ==> Billy
+// genderId 3 ==> Betty
+func (myClient *CustomClient) ConnectGuest(placeId uint32, genderId uint8) error {
+	myClient.PlaceId = placeId
+	myClient.GenderId = genderId
+	return myClient.joinWithPlaceLauncher(fmt.Sprintf("https://assetgame.roblox.com/game/PlaceLauncher.ashx?request=RequestGame&browserTrackerId=%d&placeId=%d&isPartyLeader=false&genderId=%d", myClient.BrowserTrackerId, myClient.PlaceId, myClient.GenderId), []*http.Cookie{})
+}
+
+func (myClient *CustomClient) defaultAckHandler(packet *UDPPacket, layer *RakNetLayer) {
+	if myClient.ACKHandler != nil {
+		myClient.ACKHandler(packet, layer)
+	}
+}
+func (myClient *CustomClient) defaultReliabilityLayerHandler(p *UDPPacket, re *ReliabilityLayer, ra *RakNetLayer) {
+	myClient.mustACK = append(myClient.mustACK, int(ra.DatagramNumber))
+	if myClient.ReliabilityLayerHandler != nil {
+		myClient.ReliabilityLayerHandler(p, re, ra)
+	}
+}
+func (myClient *CustomClient) defaultSimpleHandler(packetType byte, packet *UDPPacket, layers *PacketLayers) {
+	if myClient.SimpleHandler != nil {
+		myClient.SimpleHandler(packetType, packet, layers)
+	}
+	myClient.handlers.Fire(packetType, packet, layers)
+}
+func (myClient *CustomClient) defaultReliableHandler(packetType byte, packet *UDPPacket, layers *PacketLayers) {
+	if myClient.ReliableHandler != nil {
+		myClient.ReliableHandler(packetType, packet, layers)
+	}
+}
+func (myClient *CustomClient) defaultFullReliableHandler(packetType byte, packet *UDPPacket, layers *PacketLayers) {
+	if myClient.FullReliableHandler != nil {
+		myClient.FullReliableHandler(packetType, packet, layers)
+	}
+	if layers.Main != nil {
+		myClient.handlers.Fire(packetType, packet, layers)
+	}
+}
+
+func (myClient *CustomClient) createReader() {
+	packetReader := myClient.Reader
+	packetReader.ACKHandler = myClient.defaultAckHandler
+	packetReader.ReliabilityLayerHandler = myClient.defaultReliabilityLayerHandler
+	packetReader.SimpleHandler = myClient.defaultSimpleHandler
+	packetReader.ReliableHandler = myClient.defaultReliableHandler
+	packetReader.FullReliableHandler = myClient.defaultFullReliableHandler
+
+	packetReader.ErrorHandler = func(err error, packet *UDPPacket) {
+		myClient.Logger.Println(err.Error())
+		if myClient.ErrorHandler != nil {
+			myClient.ErrorHandler(err, packet)
+		}
+	}
+
+	packetReader.ValContext = myClient.Context
+}
+
+func (myClient *CustomClient) createWriter() {
+	packetWriter := myClient.Writer
+	packetWriter.ErrorHandler = func(err error) {
+		myClient.Logger.Println(err.Error())
+		if myClient.ErrorHandler != nil {
+			myClient.ErrorHandler(err, nil)
+		}
+	}
+	packetWriter.OutputHandler = func(payload []byte) {
+		num, err := myClient.Connection.Write(payload)
 		if err != nil {
 			fmt.Printf("Wrote %d bytes, err: %s\n", num, err.Error())
 		}
 		if myClient.OutputHandler != nil {
-			myClient.OutputHandler(payload, dest)
+			myClient.OutputHandler(payload)
 		}
 	}
-	myClient.Writer = packetWriter
+}
 
-	connreqpacket := &Packet05Layer{ProtocolVersion: 5}
-
+func (myClient *CustomClient) dial() {
+	connreqpacket := &Packet05Layer{ProtocolVersion: 5, maxLength: 1492}
 	go func() {
 		for i := 0; i < 5; i++ {
 			if myClient.Connected {
-				println("successfully dialed")
+				myClient.Logger.Println("successfully dialed")
 				return
 			}
-			myClient.Writer.WriteSimple(5, connreqpacket, &addr)
-			time.Sleep(5)
+			myClient.WriteSimple(connreqpacket)
+			time.Sleep(5 * time.Second)
+			if i > 2 {
+				connreqpacket.maxLength = 576 // try smaller mtu, is this why our packets are getting lost?
+			}
 		}
-		println("dial failed after 5 attempts")
+		myClient.Logger.Println("dial failed after 5 attempts")
 	}()
-	ackTicker := time.NewTicker(17)
+}
+
+func (myClient *CustomClient) startAcker() {
+	myClient.ackTicker = time.NewTicker(500 * time.Millisecond)
 	go func() {
 		for {
-			<- ackTicker.C
+			<-myClient.ackTicker.C
 			myClient.sendACKs()
 		}
 	}()
 
+}
+func (myClient *CustomClient) startDataPing() {
+	// boot up dataping
+	myClient.dataPingTicker = time.NewTicker(time.Duration(myClient.pingInterval) * time.Millisecond)
+	go func() {
+		for {
+			<-myClient.dataPingTicker.C
+
+			myClient.WritePacket(&Packet83Layer{
+				[]Packet83Subpacket{&Packet83_05{
+					SendStats:  8,
+					Timestamp:  uint64(time.Now().Unix()),
+					IsPingBack: false,
+				}},
+			})
+		}
+	}()
+}
+
+func (myClient *CustomClient) mainReadLoop() error {
 	buf := make([]byte, 1492)
 	for {
-		n, _, err := conn.ReadFromUDP(buf)
+		n, _, err := myClient.Connection.ReadFromUDP(buf)
 		if err != nil {
-			println("read err:", err.Error())
-			continue
+			myClient.Logger.Println("fatal read err:", err.Error(), "read", n, "bytes")
+			return err // a read error may be a sign that the connection was closed
+			// hence we can't run this loop anymore; we would get infinitely many errors
 		}
 
-		myClient.receive(buf[:n])
+		myClient.ReadPacket(buf[:n])
 	}
+}
+
+func (myClient *CustomClient) disconnectInternal() {
+	myClient.ackTicker.Stop()
+	myClient.dataPingTicker.Stop()
+	err := myClient.Connection.Close()
+	if err != nil {
+		myClient.ErrorHandler(err, nil)
+	}
+}
+
+func (myClient *CustomClient) Disconnect() {
+	myClient.WritePacket(&Packet15Layer{
+		Reason: 0xFFFFFFFF,
+	})
+
+	myClient.disconnectInternal()
+}
+
+func (myClient *CustomClient) rakConnect() error {
+	var err error
+	addr := myClient.ServerAddress
+
+	myClient.createReader()
+	myClient.bindDefaultHandlers()
+	myClient.Connection, err = net.DialUDP("udp", nil, &addr)
+	defer myClient.Connection.Close()
+	if err != nil {
+		return err
+	}
+	myClient.Address = *myClient.Connection.LocalAddr().(*net.UDPAddr)
+	myClient.createWriter()
+
+	myClient.dial()
+	myClient.startAcker()
+
+	go myClient.setupChat() // needs to run async; does a lot of waiting for instances
+
+	return myClient.mainReadLoop()
 }

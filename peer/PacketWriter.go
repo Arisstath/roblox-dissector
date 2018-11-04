@@ -1,7 +1,7 @@
 package peer
+
 import "github.com/gskartwii/go-bitstream"
 import "bytes"
-import "net"
 
 func min(x, y uint) uint {
 	if x < y {
@@ -10,69 +10,82 @@ func min(x, y uint) uint {
 	return y
 }
 
+type PacketWriter interface {
+	Context() *CommunicationContext
+	ToClient() bool
+	Caches() *Caches
+}
+
 // PacketWriter is a struct used to write packets to a peer
 // Pass packets in using WriteSimple/WriteGeneric/etc.
 // and bind to the given callbacks
-type PacketWriter struct {
+type DefaultPacketWriter struct {
 	// Any errors that are encountered are passed to ErrorHandler.
 	ErrorHandler func(error)
 	// OutputHandler sends the data for all packets to be written.
-	OutputHandler func([]byte, *net.UDPAddr)
-	orderingIndex uint32
+	OutputHandler   func([]byte)
+	orderingIndex   uint32
 	sequencingIndex uint32
-	splitPacketID uint16
-	reliableNumber uint32
-	datagramNumber uint32
-	// Set this to true if you're a server.
-	ToClient bool
+	splitPacketID   uint16
+	reliableNumber  uint32
+	datagramNumber  uint32
+	// Set this to true if the packets produced by this writer are sent to a client.
+	ValToClient bool
+	ValCaches   *Caches
+	ValContext  *CommunicationContext
 }
 
-func NewPacketWriter() *PacketWriter {
-	return &PacketWriter{}
+func NewPacketWriter() *DefaultPacketWriter {
+	return &DefaultPacketWriter{}
+}
+func (writer *DefaultPacketWriter) ToClient() bool {
+	return writer.ValToClient
+}
+func (writer *DefaultPacketWriter) Caches() *Caches {
+	return writer.ValCaches
+}
+func (writer *DefaultPacketWriter) Context() *CommunicationContext {
+	return writer.ValContext
 }
 
 // WriteSimple is used to write pre-connection packets (IDs 5-8). It doesn't use a
 // ReliabilityLayer.
-func (this *PacketWriter) WriteSimple(packetType byte, packet RakNetPacket, dest *net.UDPAddr) {
+func (writer *DefaultPacketWriter) WriteSimple(packet RakNetPacket) {
 	output := make([]byte, 0, 1492)
 	buffer := bytes.NewBuffer(output)
 	stream := &extendedWriter{bitstream.NewWriter(buffer)}
-	err := stream.WriteByte(packetType)
+	err := packet.Serialize(writer, stream)
 	if err != nil {
-		this.ErrorHandler(err)
-		return
-	}
-	err = packet.serialize(this.ToClient, nil, stream)
-	if err != nil {
-		this.ErrorHandler(err)
+		writer.ErrorHandler(err)
 		return
 	}
 
 	stream.Flush(bitstream.Bit(false))
-	this.OutputHandler(buffer.Bytes(), dest)
+	writer.OutputHandler(buffer.Bytes())
 }
-// Write RakNet is used to write raw RakNet packets to the client. You aren't probably
+
+// WriteRakNet is used to write raw RakNet packets to the client. You aren't probably
 // going to need it.
-func (this *PacketWriter) WriteRakNet(packet *RakNetLayer, dest *net.UDPAddr) {
+func (writer *DefaultPacketWriter) WriteRakNet(packet *RakNetLayer) {
 	output := make([]byte, 0, 1492)
 	buffer := bytes.NewBuffer(output)
 	stream := &extendedWriter{bitstream.NewWriter(buffer)}
-	err := packet.serialize(this.ToClient, nil, stream)
+	err := packet.Serialize(writer, stream)
 	if err != nil {
-		this.ErrorHandler(err)
+		writer.ErrorHandler(err)
 		return
 	}
 
 	stream.Flush(bitstream.Bit(false))
-	this.OutputHandler(buffer.Bytes(), dest)
+	writer.OutputHandler(buffer.Bytes())
 }
-func (this *PacketWriter) writeReliable(packet *ReliabilityLayer, dest *net.UDPAddr) {
+func (writer *DefaultPacketWriter) writeReliable(packet *ReliabilityLayer) {
 	output := make([]byte, 0, 1492)
 	buffer := bytes.NewBuffer(output)
 	stream := &extendedWriter{bitstream.NewWriter(buffer)}
-	err := packet.serialize(this.ToClient, nil, stream)
+	err := packet.Serialize(writer, stream)
 	if err != nil {
-		this.ErrorHandler(err)
+		writer.ErrorHandler(err)
 		return
 	}
 
@@ -80,21 +93,21 @@ func (this *PacketWriter) writeReliable(packet *ReliabilityLayer, dest *net.UDPA
 
 	payload := buffer.Bytes()
 	raknet := &RakNetLayer{
-		payload: bufferToStream(payload),
-		IsValid: true,
-		DatagramNumber: this.datagramNumber,
+		payload:        bufferToStream(payload),
+		IsValid:        true,
+		DatagramNumber: writer.datagramNumber,
 	}
-	this.datagramNumber++
+	writer.datagramNumber++
 
-	this.WriteRakNet(raknet, dest)
+	writer.WriteRakNet(raknet)
 }
-func (this *PacketWriter) writeReliableWithDN(packet *ReliabilityLayer, dest *net.UDPAddr, dn uint32) {
+func (writer *DefaultPacketWriter) writeReliableWithDN(packet *ReliabilityLayer, dn uint32) {
 	output := make([]byte, 0, 1492)
 	buffer := bytes.NewBuffer(output)
 	stream := &extendedWriter{bitstream.NewWriter(buffer)}
-	err := packet.serialize(this.ToClient, nil, stream)
+	err := packet.Serialize(writer, stream)
 	if err != nil {
-		this.ErrorHandler(err)
+		writer.ErrorHandler(err)
 		return
 	}
 
@@ -102,91 +115,120 @@ func (this *PacketWriter) writeReliableWithDN(packet *ReliabilityLayer, dest *ne
 
 	payload := buffer.Bytes()
 	raknet := &RakNetLayer{
-		payload: bufferToStream(payload),
-		IsValid: true,
+		payload:        bufferToStream(payload),
+		IsValid:        true,
 		DatagramNumber: dn,
 	}
-	if dn >= this.datagramNumber {
-		this.datagramNumber = dn + 1
+	if dn >= writer.datagramNumber {
+		writer.datagramNumber = dn + 1
 	}
 
-	this.WriteRakNet(raknet, dest)
+	writer.WriteRakNet(raknet)
 }
 
-// WriteGeneric is used to write packets after the pre-connection. You want to use it
-// for most of your packets.
-func (this *PacketWriter) WriteGeneric(context *CommunicationContext, packetType byte, generic RakNetPacket, reliability uint32, dest *net.UDPAddr) {
-	output := make([]byte, 0, 1492)
-	buffer := bytes.NewBuffer(output) // Will allocate more if needed
-	stream := &extendedWriter{bitstream.NewWriter(buffer)}
-	err := generic.serialize(this.ToClient, context, stream)
-	if err != nil {
-		this.ErrorHandler(err)
-		return
-	}
-
-	stream.Flush(bitstream.Bit(false))
-	result := buffer.Bytes()
-	realLen := len(result)
-
-	packet := &ReliablePacket{
-		IsFinal: true,
-		IsFirst: true,
-		Reliability: reliability,
-		RealLength: uint32(realLen),
-	}
+func (writer *DefaultPacketWriter) WriteReliablePacket(data []byte, packet *ReliablePacket) {
+	reliability := packet.Reliability
+	realLen := len(data)
 	estHeaderLength := 0x1C // UDP
-	estHeaderLength += 4 // RakNet
-	estHeaderLength += 1 // Reliability, has split
-	estHeaderLength += 2 // len
+	estHeaderLength += 4    // RakNet
+	estHeaderLength += 1    // Reliability, has split
+	estHeaderLength += 2    // len
 
 	if reliability >= 2 && reliability <= 4 {
-		packet.ReliableMessageNumber = this.reliableNumber
-		this.reliableNumber++
+		packet.ReliableMessageNumber = writer.reliableNumber
+		writer.reliableNumber++
 		estHeaderLength += 3
 	}
 	if reliability == 1 || reliability == 4 {
-		packet.SequencingIndex = this.sequencingIndex
-		this.sequencingIndex++
+		packet.SequencingIndex = writer.sequencingIndex
+		writer.sequencingIndex++
 		estHeaderLength += 3
 	}
 	if reliability == 1 || reliability == 3 || reliability == 4 || reliability == 7 {
 		packet.OrderingChannel = 0
-		packet.OrderingIndex = this.orderingIndex
-		this.orderingIndex++
+		packet.OrderingIndex = writer.orderingIndex
+		writer.orderingIndex++
 		estHeaderLength += 7
 	}
 
-	if realLen <= 1492 - estHeaderLength { // Don't need to split
-		println("Writing normal packet")
-		packet.SelfData = result
+	if realLen <= 1492-estHeaderLength { // Don't need to split
+		packet.SelfData = data
 		packet.LengthInBits = uint16(realLen * 8)
 
-		this.writeReliable(&ReliabilityLayer{[]*ReliablePacket{packet}}, dest)
+		writer.writeReliable(&ReliabilityLayer{[]*ReliablePacket{packet}})
 	} else {
 		packet.HasSplitPacket = true
-		packet.SplitPacketID = this.splitPacketID
-		this.splitPacketID++
+		packet.SplitPacketID = writer.splitPacketID
+		writer.splitPacketID++
 		packet.SplitPacketIndex = 0
 		estHeaderLength += 10
 
 		splitBandwidth := 1472 - estHeaderLength
 		requiredSplits := (realLen + splitBandwidth - 1) / splitBandwidth
 		packet.SplitPacketCount = uint32(requiredSplits)
-		println("Writing split", 0, "/", requiredSplits)
-		packet.SelfData = result[:splitBandwidth]
-		this.writeReliable(&ReliabilityLayer{[]*ReliablePacket{packet}}, dest)
+		packet.SelfData = data[:splitBandwidth]
+		writer.writeReliable(&ReliabilityLayer{[]*ReliablePacket{packet}})
 
 		for i := 1; i < requiredSplits; i++ {
-			println("Writing split", i, "/", requiredSplits)
 			packet.SplitPacketIndex = uint32(i)
 			if reliability >= 2 && reliability <= 4 {
-				packet.ReliableMessageNumber = this.reliableNumber
-				this.reliableNumber++
+				packet.ReliableMessageNumber = writer.reliableNumber
+				writer.reliableNumber++
 			}
 
-			packet.SelfData = result[splitBandwidth*i:min(uint(realLen), uint(splitBandwidth*(i + 1)))]
-			this.writeReliable(&ReliabilityLayer{[]*ReliablePacket{packet}}, dest)
+			packet.SelfData = data[splitBandwidth*i : min(uint(realLen), uint(splitBandwidth*(i+1)))]
+			writer.writeReliable(&ReliabilityLayer{[]*ReliablePacket{packet}})
 		}
 	}
+}
+
+func (writer *DefaultPacketWriter) WriteTimestamped(timestamp *Packet1BLayer, generic RakNetPacket, reliability uint32) []byte {
+	output := make([]byte, 0, 1492)
+	buffer := bytes.NewBuffer(output) // Will allocate more if needed
+	stream := &extendedWriter{bitstream.NewWriter(buffer)}
+	err := timestamp.Serialize(writer, stream)
+	if err != nil {
+		writer.ErrorHandler(err)
+		return nil
+	}
+	err = generic.Serialize(writer, stream)
+	if err != nil {
+		writer.ErrorHandler(err)
+		return nil
+	}
+
+	stream.Flush(bitstream.Bit(false))
+	result := buffer.Bytes()
+
+	packet := &ReliablePacket{
+		Reliability: reliability,
+	}
+
+	writer.WriteReliablePacket(result, packet)
+
+	return result
+}
+
+// WriteGeneric is used to write packets after the pre-connection. You want to use it
+// for most of your packets.
+func (writer *DefaultPacketWriter) WriteGeneric(generic RakNetPacket, reliability uint32) []byte {
+	output := make([]byte, 0, 1492)
+	buffer := bytes.NewBuffer(output) // Will allocate more if needed
+	stream := &extendedWriter{bitstream.NewWriter(buffer)}
+	err := generic.Serialize(writer, stream)
+	if err != nil {
+		writer.ErrorHandler(err)
+		return nil
+	}
+
+	stream.Flush(bitstream.Bit(false))
+	result := buffer.Bytes()
+
+	packet := &ReliablePacket{
+		Reliability: reliability,
+	}
+
+	writer.WriteReliablePacket(result, packet)
+
+	return result
 }

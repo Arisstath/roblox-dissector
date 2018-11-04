@@ -6,7 +6,7 @@ type Packet83_10 struct {
 	TagId uint32
 }
 
-func decodePacket83_10(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
+func DecodePacket83_10(reader PacketReader, packet *UDPPacket) (Packet83Subpacket, error) {
 	var err error
 	inner := &Packet83_10{}
 	thisBitstream := packet.stream
@@ -18,6 +18,6 @@ func decodePacket83_10(packet *UDPPacket, context *CommunicationContext) (interf
 	return inner, err
 }
 
-func (layer *Packet83_10) serialize(isClient bool, context *CommunicationContext, stream *extendedWriter) error {
-    return stream.writeUint32BE(layer.TagId)
+func (layer *Packet83_10) Serialize(writer PacketWriter, stream *extendedWriter) error {
+	return stream.writeUint32BE(layer.TagId)
 }

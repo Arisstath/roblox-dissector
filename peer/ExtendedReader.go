@@ -1,4 +1,5 @@
 package peer
+
 import "github.com/gskartwii/go-bitstream"
 import "encoding/binary"
 import "errors"
@@ -6,7 +7,6 @@ import "net"
 import "math"
 import "bytes"
 import "compress/gzip"
-import "strconv"
 import "io"
 import "fmt"
 import "github.com/DataDog/zstd"
@@ -270,7 +270,7 @@ func init() {
 		0,
 		0,
 		0,
-		0,})
+		0})
 }
 
 type extendedReader struct {
@@ -281,7 +281,7 @@ func (b *extendedReader) bits(len int) (uint64, error) {
 	return b.ReadBits(len)
 }
 
-func (b *extendedReader) bytes(dest []byte, len int) (error) {
+func (b *extendedReader) bytes(dest []byte, len int) error {
 	var Byte byte
 	for i := 0; i < len; i++ {
 		res, err := b.bits(8)
@@ -360,7 +360,7 @@ func (b *extendedReader) readCompressed(dest []byte, size uint32, unsignedData b
 			dest[currentByte] = byteMatch
 			currentByte--
 		} else {
-			err = b.bytes(dest, int(currentByte + 1))
+			err = b.bytes(dest, int(currentByte+1))
 			return err
 		}
 	}
@@ -531,16 +531,16 @@ func (b *extendedReader) RegionToZStdStream() (*extendedReader, error) {
 	if err != nil {
 		return nil, err
 	}
-	decompressed, err := zstd.Decompress(nil, compressed)
+	/*decompressed, err := zstd.Decompress(nil, compressed)
 	println("decomp len", len(decompressed))
 	if len(decompressed) > 0x20 {
 		fmt.Printf("first bytes %#X\n", decompressed[:0x20])
 	} else {
 		fmt.Printf("first bytes %#X\n", decompressed)
-	}
+	}*/
 
 	zstdStream := zstd.NewReader(bytes.NewReader(compressed))
-	return &extendedReader{bitstream.NewReader(zstdStream)}, err
+	return &extendedReader{bitstream.NewReader(zstdStream)}, nil
 }
 
 func (b *extendedReader) readJoinReferent(context *CommunicationContext) (string, uint32, error) {
@@ -578,7 +578,7 @@ func (b *extendedReader) readFloat16BE(floatMin float32, floatMax float32) (floa
 		return 0.0, err
 	}
 
-	outFloat := float32(scale) / 65535.0 * (floatMax - floatMin) + floatMin
+	outFloat := float32(scale)/65535.0*(floatMax-floatMin) + floatMin
 	if outFloat < floatMin {
 		return floatMin, nil
 	} else if outFloat > floatMax {
@@ -587,7 +587,8 @@ func (b *extendedReader) readFloat16BE(floatMin float32, floatMax float32) (floa
 	return outFloat, nil
 }
 
-type cacheReadCallback func(*extendedReader)(interface{}, error)
+type cacheReadCallback func(*extendedReader) (interface{}, error)
+
 func (b *extendedReader) readWithCache(cache Cache, readCallback cacheReadCallback) (interface{}, error) {
 	var result interface{}
 	var err error
@@ -606,11 +607,12 @@ func (b *extendedReader) readWithCache(cache Cache, readCallback cacheReadCallba
 		if err != nil {
 			return "", err
 		}
-		cache.Put(result, cacheIndex & 0x7F)
+		cache.Put(result, cacheIndex&0x7F)
 	}
 
 	if result == nil {
-		return "WARN_UNASSIGNED_" + strconv.Itoa(int(cacheIndex)), nil
+		println("cached read:", cacheIndex)
+		return "", errors.New("Cache read is out of bounds")
 	}
 
 	return result, err
@@ -624,51 +626,31 @@ func (b *extendedReader) readUint32AndString() (interface{}, error) {
 	return b.readASCII(int(stringLen))
 }
 
-func (b *extendedReader) readCached(isClient bool, context *CommunicationContext) (string, error) {
-	var cache Cache
-	if isClient {
-		cache = &context.ClientCaches.String
-	} else {
-		cache = &context.ServerCaches.String
-	}
+// TODO: Perhaps make readWithCache() operate with a member function of the cache instead?
+func (b *extendedReader) readCached(caches *Caches) (string, error) {
+	cache := &caches.String
 
 	thisString, err := b.readWithCache(cache, (*extendedReader).readUint32AndString)
 	return thisString.(string), err
 }
 
-func (b *extendedReader) readCachedObject(isClient bool, context *CommunicationContext) (string, error) {
-	var cache Cache
-	if isClient {
-		cache = &context.ClientCaches.Object
-	} else {
-		cache = &context.ServerCaches.Object
-	}
+func (b *extendedReader) readCachedScope(caches *Caches) (string, error) {
+	cache := &caches.Object
+	thisString, err := b.readWithCache(cache, (*extendedReader).readUint32AndString)
+	return thisString.(string), err
+}
+
+func (b *extendedReader) readCachedContent(caches *Caches) (string, error) {
+	cache := &caches.Content
 
 	thisString, err := b.readWithCache(cache, (*extendedReader).readUint32AndString)
 	return thisString.(string), err
 }
 
-func (b *extendedReader) readCachedContent(isClient bool, context *CommunicationContext) (string, error) {
-	var cache Cache
-	if isClient {
-		cache = &context.ClientCaches.Content
-	} else {
-		cache = &context.ServerCaches.Content
-	}
+func (b *extendedReader) readNewCachedProtectedString(caches *Caches) ([]byte, error) {
+	cache := &caches.ProtectedString
 
-	thisString, err := b.readWithCache(cache, (*extendedReader).readUint32AndString)
-	return thisString.(string), err
-}
-
-func (b *extendedReader) readNewCachedProtectedString(isClient bool, context *CommunicationContext) ([]byte, error) {
-	var cache Cache
-	if isClient {
-		cache = &context.ClientCaches.ProtectedString
-	} else {
-		cache = &context.ServerCaches.ProtectedString
-	}
-
-	thisString, err := b.readWithCache(cache, func(b *extendedReader)(interface{}, error) {
+	thisString, err := b.readWithCache(cache, func(b *extendedReader) (interface{}, error) {
 		stringLen, err := b.readUint32BE()
 		if err != nil {
 			return []byte{}, err

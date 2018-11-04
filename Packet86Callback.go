@@ -1,7 +1,7 @@
 package main
 import "github.com/therecipe/qt/widgets"
 import "github.com/therecipe/qt/gui"
-import "github.com/gskartwii/roblox-dissector/peer"
+import "roblox-dissector/peer"
 
 func ShowPacket86(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
 	MainLayer := layers.Main.(*peer.Packet86Layer)
@@ -17,9 +17,10 @@ func ShowPacket86(packetType byte, packet *peer.UDPPacket, context *peer.Communi
 
 	rootNode := standardModel.InvisibleRootItem()
 	for _, item := range MainLayer.SubPackets {
-		name1Item := NewQStandardItemF(item.Instance1.GetFullName())
+		var name1Item, name2Item *gui.QStandardItem
+		name1Item = NewQStandardItemF(item.Instance1.GetFullName())
 		reference1Item := NewQStandardItemF(item.Instance1.Reference)
-		name2Item := NewQStandardItemF(item.Instance2.GetFullName())
+		name2Item = NewQStandardItemF(item.Instance2.GetFullName())
 		reference2Item := NewQStandardItemF(item.Instance2.Reference)
 		var typeItem *gui.QStandardItem
 		if item.IsTouch {

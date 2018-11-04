@@ -1,4 +1,5 @@
 package peer
+
 import "net"
 import "errors"
 import "github.com/gskartwii/rbxfile"
@@ -11,7 +12,16 @@ import "strings"
 // Other Referents are of the the form "RBX123456789ABCDEF_1234", consisting of
 // a scope and an index number
 type Referent string
-// PhysicsMotors are an alias type for rbxfile.ValueCFrames. They are used to
+
+// IsNull checks if a a Referent refers to a NULL/nil instance.
+func (ref Referent) IsNull() bool {
+	return ref == "null" || ref == "NULL2"
+}
+func (ref Referent) String() string {
+	return string(ref)
+}
+
+// PhysicsMotor is an alias type for rbxfile.ValueCFrames. They are used to
 // describe motors in physics packets
 type PhysicsMotor rbxfile.ValueCFrame
 
@@ -103,15 +113,15 @@ func (b *extendedReader) readColor3() (rbxfile.ValueColor3, error) {
 func (b *extendedReader) readColor3uint8() (rbxfile.ValueColor3uint8, error) {
 	var err error
 	val := rbxfile.ValueColor3uint8{}
-	val.R, err = b.ReadByte()
+	val.R, err = b.readUint8()
 	if err != nil {
 		return val, err
 	}
-	val.G, err = b.ReadByte()
+	val.G, err = b.readUint8()
 	if err != nil {
 		return val, err
 	}
-	val.B, err = b.ReadByte()
+	val.B, err = b.readUint8()
 	return val, err
 }
 
@@ -150,66 +160,64 @@ func (b *extendedReader) readVector3() (rbxfile.ValueVector3, error) {
 	}
 	if !isInteger {
 		return b.readVector3Simple()
-	} else {
-		var err error
-		val := rbxfile.ValueVector3{}
-		x, err := b.bits(11)
-		if err != nil {
-			return val, err
-		}
-		x_short := uint16((x >> 3) | ((x & 7) << 8))
-		if x_short & 0x400 != 0 {
-			x_short |= 0xFC00
-		}
-
-		y, err := b.bits(11)
-		if err != nil {
-			return val, err
-		}
-		y_short := uint16((y >> 3) | ((y & 7) << 8))
-
-		z, err := b.bits(11)
-		if err != nil {
-			return val, err
-		}
-
-		z_short := uint16((z >> 3) | ((z & 7) << 8))
-		if z_short & 0x400 != 0 {
-			z_short |= 0xFC00
-		}
-
-		val.X = float32(int16(x_short)) * 0.5
-		val.Y = float32(y_short) * 0.1
-		val.Z = float32(int16(z_short)) * 0.5
+	}
+	val := rbxfile.ValueVector3{}
+	x, err := b.bits(11)
+	if err != nil {
 		return val, err
 	}
+	xShort := uint16((x >> 3) | ((x & 7) << 8))
+	if xShort&0x400 != 0 {
+		xShort |= 0xFC00
+	}
+
+	y, err := b.bits(11)
+	if err != nil {
+		return val, err
+	}
+	yShort := uint16((y >> 3) | ((y & 7) << 8))
+
+	z, err := b.bits(11)
+	if err != nil {
+		return val, err
+	}
+
+	zShort := uint16((z >> 3) | ((z & 7) << 8))
+	if zShort&0x400 != 0 {
+		zShort |= 0xFC00
+	}
+
+	val.X = float32(int16(xShort)) * 0.5
+	val.Y = float32(yShort) * 0.1
+	val.Z = float32(int16(zShort)) * 0.5
+	return val, err
 }
 
 func (b *extendedReader) readVector2int16() (rbxfile.ValueVector2int16, error) {
 	var err error
 	val := rbxfile.ValueVector2int16{}
-    valX, err := b.readUint16BE()
+	valX, err := b.readUint16BE()
 	if err != nil {
 		return val, err
 	}
-    valY, err := b.readUint16BE()
-    val.X = int16(valX)
-    val.Y = int16(valY)
+	valY, err := b.readUint16BE()
+	val.X = int16(valX)
+	val.Y = int16(valY)
 	return val, err
 }
 
 func (b *extendedReader) readVector3int16() (rbxfile.ValueVector3int16, error) {
 	var err error
-    var val rbxfile.ValueVector3int16
-    valX, err := b.readUint16BE()
+	var val rbxfile.ValueVector3int16
+	valX, err := b.readUint16BE()
 	if err != nil {
 		return val, err
 	}
-    valY, err := b.readUint16BE()
+	valY, err := b.readUint16BE()
 	if err != nil {
 		return val, err
 	}
-    valZ, err := b.readUint16BE()
+	valZ, err := b.readUint16BE()
 	val = rbxfile.ValueVector3int16{int16(valX), int16(valY), int16(valZ)}
 	return val, err
 }
@@ -218,16 +226,19 @@ func (b *extendedReader) readPBool() (rbxfile.ValueBool, error) {
 	val, err := b.readBoolByte()
 	return rbxfile.ValueBool(val), err
 }
+
 // reads a signed integer
 func (b *extendedReader) readPSInt() (rbxfile.ValueInt, error) {
 	val, err := b.readUint32BE()
 	return rbxfile.ValueInt(val), err
 }
+
 // reads a single-precision float
 func (b *extendedReader) readPFloat() (rbxfile.ValueFloat, error) {
 	val, err := b.readFloat32BE()
 	return rbxfile.ValueFloat(val), err
 }
+
 // reads a double-precision float
 func (b *extendedReader) readPDouble() (rbxfile.ValueDouble, error) {
 	val, err := b.readFloat64BE()
@@ -235,23 +246,23 @@ func (b *extendedReader) readPDouble() (rbxfile.ValueDouble, error) {
 }
 func (b *extendedReader) readAxes() (rbxfile.ValueAxes, error) {
 	val, err := b.readUint32BE()
-    axesVal := rbxfile.ValueAxes{
-        X: val & 4 != 0,
-        Y: val & 2 != 0,
-        Z: val & 1 != 0,
-    }
+	axesVal := rbxfile.ValueAxes{
+		X: val&4 != 0,
+		Y: val&2 != 0,
+		Z: val&1 != 0,
+	}
 	return axesVal, err
 }
 func (b *extendedReader) readFaces() (rbxfile.ValueFaces, error) {
 	val, err := b.readUint32BE()
-    facesVal := rbxfile.ValueFaces{
-        Right: val & 32 != 0,
-        Top: val & 16 != 0,
-        Back: val & 8 != 0,
-        Left: val & 4 != 0,
-        Bottom: val & 2 != 0,
-        Front: val & 1 != 0,
-    }
+	facesVal := rbxfile.ValueFaces{
+		Right:  val&32 != 0,
+		Top:    val&16 != 0,
+		Back:   val&8 != 0,
+		Left:   val&4 != 0,
+		Bottom: val&2 != 0,
+		Front:  val&1 != 0,
+	}
 	return facesVal, err
 }
 func (b *extendedReader) readBrickColor() (rbxfile.ValueBrickColor, error) {
@@ -262,82 +273,81 @@ func (b *extendedReader) readBrickColor() (rbxfile.ValueBrickColor, error) {
 func formatBindable(obj rbxfile.ValueReference) string {
 	return obj.String()
 }
-func objectToRef(referent string, referentInt uint32) string {
+func objectToRef(referent string, referentInt uint32) Referent {
 	if referentInt == 0 {
 		return "null"
-	} else {
-		return fmt.Sprintf("%s_%d", referent, referentInt)
 	}
+	return Referent(fmt.Sprintf("%s_%d", referent, referentInt))
 }
-func refToObject(refString string) (string, uint32) {
-	if refString == "null" {
+func refToObject(refString Referent) (string, uint32) {
+	if refString.IsNull() {
 		return "NULL2", 0
 	}
-	components := strings.Split(refString, "_")
+	components := strings.Split(string(refString), "_")
 	return components[0], uint32(mustAtoi(components[1]))
 }
 
-func (b *extendedReader) readObject(isClient bool, isJoinData bool, context *CommunicationContext) (Referent, error) {
-	var err error
-    var referent string
-    var referentInt uint32
-    var Object Referent
-	if isJoinData {
-		referent, referentInt, err = b.readJoinReferent(context)
-	} else {
-		referent, err = b.readCachedObject(isClient, context)
-		if err != nil {
-			return Object, err
-		}
-		if referent != "" {
-			referentInt, err = b.readUint32LE()
-		}
-	}
-
-    serialized := objectToRef(referent, referentInt)
+func (b *extendedReader) readJoinObject(context *CommunicationContext) (Referent, error) {
+	referent, referentInt, err := b.readJoinReferent(context)
+	serialized := objectToRef(referent, referentInt)
 
 	return Referent(serialized), err
 }
+func (b *extendedReader) readObject(caches *Caches) (Referent, error) {
+	var referentInt uint32
+	referent, err := b.readCachedScope(caches)
+	if err != nil {
+		return "", err
+	}
+	if referent != "" {
+		referentInt, err = b.readUint32LE()
+	}
+
+	serialized := objectToRef(referent, referentInt)
+
+	return Referent(serialized), err
+}
+
 func (b *extendedReader) readCFrameSimple() (rbxfile.ValueCFrame, error) {
 	return rbxfile.ValueCFrame{}, nil // nop for now, since nothing uses this
 }
 
 func quaternionToRotMatrix(q [4]float32) [9]float32 {
-    X  := q[0]
-    Y  := q[1]
-    Z  := q[2]
-    W  := q[3]
-    XS := X * 2
-    YS := Y * 2
-    ZS := Z * 2
-    WX := W * XS
-    WY := W * YS
-    WZ := W * ZS
+	X := q[0]
+	Y := q[1]
+	Z := q[2]
+	W := q[3]
+	XS := X * 2
+	YS := Y * 2
+	ZS := Z * 2
+	WX := W * XS
+	WY := W * YS
+	WZ := W * ZS
 
-    XX := XS * X
-    XY := YS * X
-    XZ := ZS * X
-    YY := YS * Y
-    YZ := ZS * Y
-    ZZ := ZS * Z
+	XX := XS * X
+	XY := YS * X
+	XZ := ZS * X
+	YY := YS * Y
+	YZ := ZS * Y
+	ZZ := ZS * Z
 
 	return [9]float32{
-        1-(YY+ZZ),
-        XY-WZ,
-        XZ+WY,
-        XY+WZ,
-        1-(XX+ZZ),
-        YZ-WX,
-        XZ-WY,
-        YZ+WX,
-        1-(XX+YY),
-    }
+		1 - (YY + ZZ),
+		XY - WZ,
+		XZ + WY,
+		XY + WZ,
+		1 - (XX + ZZ),
+		YZ - WX,
+		XZ - WY,
+		YZ + WX,
+		1 - (XX + YY),
+	}
 }
 
 func transformQuaternionToMatrix(q [4]float32) [9]float32 {
 	midresult := quaternionToRotMatrix(q)
 
-	xScaleFactor := float32(1.0/math.Sqrt(float64(midresult[0]*midresult[0] + midresult[3]*midresult[3] + midresult[6]*midresult[6])))
+	xScaleFactor := float32(1.0 / math.Sqrt(float64(midresult[0]*midresult[0]+midresult[3]*midresult[3]+midresult[6]*midresult[6])))
 
 	result := [9]float32{
 		xScaleFactor * midresult[0], 0, 0,
@@ -345,23 +355,23 @@ func transformQuaternionToMatrix(q [4]float32) [9]float32 {
 		xScaleFactor * midresult[6], 0, 0,
 	} // X has been normalized
 
-	sx_ySum := result[0]*midresult[1] + result[3]*midresult[4] + result[6]*midresult[7]
-	trueR01 := midresult[1] - result[0]*sx_ySum
-	trueR11 := midresult[4] - result[3]*sx_ySum
-	trueR21 := midresult[7] - result[6]*sx_ySum
+	sXYSum := result[0]*midresult[1] + result[3]*midresult[4] + result[6]*midresult[7]
+	trueR01 := midresult[1] - result[0]*sXYSum
+	trueR11 := midresult[4] - result[3]*sXYSum
+	trueR21 := midresult[7] - result[6]*sXYSum
 
-	yScaleFactor := float32(1.0/math.Sqrt(float64(trueR01*trueR01 + trueR11*trueR11 + trueR21*trueR21)))
+	yScaleFactor := float32(1.0 / math.Sqrt(float64(trueR01*trueR01+trueR11*trueR11+trueR21*trueR21)))
 	result[1] = trueR01 * yScaleFactor
 	result[4] = trueR11 * yScaleFactor
 	result[7] = trueR21 * yScaleFactor
 
-	sy_zSum := result[1]*midresult[2] + result[4]*midresult[5] + result[7]*midresult[8]
-	sx_zSum := result[0]*midresult[2] + result[3]*midresult[5] + result[6]*midresult[8]
-	trueR02 := midresult[2] - result[0]*sx_zSum - result[1]*sy_zSum
-	trueR12 := midresult[5] - result[3]*sx_zSum - result[4]*sy_zSum
-	trueR22 := midresult[8] - result[6]*sx_zSum - result[7]*sy_zSum
+	sYZSum := result[1]*midresult[2] + result[4]*midresult[5] + result[7]*midresult[8]
+	sXZSum := result[0]*midresult[2] + result[3]*midresult[5] + result[6]*midresult[8]
+	trueR02 := midresult[2] - result[0]*sXZSum - result[1]*sYZSum
+	trueR12 := midresult[5] - result[3]*sXZSum - result[4]*sYZSum
+	trueR22 := midresult[8] - result[6]*sXZSum - result[7]*sYZSum
 
-	zScaleFactor := float32(1.0/math.Sqrt(float64(trueR02*trueR02 + trueR12*trueR12 + trueR22*trueR22)))
+	zScaleFactor := float32(1.0 / math.Sqrt(float64(trueR02*trueR02+trueR12*trueR12+trueR22*trueR22)))
 	result[2] = trueR02 * zScaleFactor
 	result[5] = trueR12 * zScaleFactor
 	result[8] = trueR22 * zScaleFactor
@@ -370,26 +380,26 @@ func transformQuaternionToMatrix(q [4]float32) [9]float32 {
 }
 
 var specialRows = [6][3]float32{
-    [3]float32{1,0,0},
-    [3]float32{0,1,0},
-    [3]float32{0,0,1},
-    [3]float32{-1,0,0},
-    [3]float32{0,-1,0},
-    [3]float32{0,0,-1},
+	[3]float32{1, 0, 0},
+	[3]float32{0, 1, 0},
+	[3]float32{0, 0, 1},
+	[3]float32{-1, 0, 0},
+	[3]float32{0, -1, 0},
+	[3]float32{0, 0, -1},
 }
 
 func lookupRotMatrix(special uint64) [9]float32 {
-    specialRowDiv6 := specialRows[special/6]
-    specialRowMod6 := specialRows[special%6]
+	specialRowDiv6 := specialRows[special/6]
+	specialRowMod6 := specialRows[special%6]
 
-    ret := [9]float32{
-        0,0,0,
-        specialRowMod6[0],specialRowMod6[1],specialRowMod6[2],
-        specialRowDiv6[0],specialRowDiv6[1],specialRowDiv6[2],
-    }
-    ret[0] = ret[2*3+1]*ret[1*3+2] - ret[2*3+2]*ret[1*3+1]
-    ret[1] = ret[1*3+0]*ret[2*3+2] - ret[2*3+0]*ret[1*3+2]
-    ret[2] = ret[2*3+0]*ret[1*3+1] - ret[1*3+0]*ret[2*3+1]
+	ret := [9]float32{
+		0, 0, 0,
+		specialRowMod6[0], specialRowMod6[1], specialRowMod6[2],
+		specialRowDiv6[0], specialRowDiv6[1], specialRowDiv6[2],
+	}
+	ret[0] = ret[2*3+1]*ret[1*3+2] - ret[2*3+2]*ret[1*3+1]
+	ret[1] = ret[1*3+0]*ret[2*3+2] - ret[2*3+0]*ret[1*3+2]
+	ret[2] = ret[2*3+0]*ret[1*3+1] - ret[1*3+0]*ret[2*3+1]
 
 	trueRet := [9]float32{
 		ret[6], ret[7], ret[8],
@@ -397,7 +407,7 @@ func lookupRotMatrix(special uint64) [9]float32 {
 		ret[0], ret[1], ret[2],
 	}
 
-    return trueRet
+	return trueRet
 }
 
 func (b *extendedReader) readCFrame() (rbxfile.ValueCFrame, error) {
@@ -413,43 +423,22 @@ func (b *extendedReader) readCFrame() (rbxfile.ValueCFrame, error) {
 		return val, err
 	}
 	if special > 0 {
-        if err != nil {
-            return val, err
-        }
+		if err != nil {
+			return val, err
+		}
 		if special > 36 {
 			println("oob, special", special)
 			return val, errors.New("special rotmatrix oob")
 		}
-        val.Rotation = lookupRotMatrix(uint64(special - 1))
+		val.Rotation = lookupRotMatrix(uint64(special - 1))
 	} else {
-        var matrix [4]float32
-		matrix[3], err = b.readFloat16BE(-1.0, 1.0)
-		if err != nil {
-			return val, err
-		}
-		matrix[0], err = b.readFloat16BE(-1.0, 1.0)
-		if err != nil {
-			return val, err
-		}
-		matrix[1], err = b.readFloat16BE(-1.0, 1.0)
-		if err != nil {
-			return val, err
-		}
-		matrix[2], err = b.readFloat16BE(-1.0, 1.0)
-		if err != nil {
-			return val, err
-		}
-        val.Rotation = quaternionToRotMatrix(matrix)
+		val.Rotation, err = b.readPhysicsMatrix()
 	}
 
-	return val, nil
+	return val, err
 }
 
-func (b *extendedReader) readContent(isClient bool, isJoinData bool, context *CommunicationContext) (rbxfile.ValueContent, error) {
-	if !isJoinData {
-		val, err := b.readCachedContent(isClient, context)
-		return rbxfile.ValueContent(val), err
-	}
+func (b *JoinSerializeReader) readContent() (rbxfile.ValueContent, error) {
 	var result string
 	stringLen, err := b.readUint32BE()
 	if err != nil {
@@ -459,36 +448,34 @@ func (b *extendedReader) readContent(isClient bool, isJoinData bool, context *Co
 	return rbxfile.ValueContent(result), err
 }
 
-func (b *extendedReader) readSystemAddress(isClient bool, isJoinData bool, context *CommunicationContext) (rbxfile.ValueSystemAddress, error) {
-	var cache *SysAddrCache
+func (b *extendedReader) readContent(caches *Caches) (rbxfile.ValueContent, error) {
+	val, err := b.readCachedContent(caches)
+	return rbxfile.ValueContent(val), err
+}
 
-	if isClient {
-		cache = &context.ClientCaches.SystemAddress
-	} else {
-		cache = &context.ServerCaches.SystemAddress
-	}
+// TODO: Make this function uniform with other cache functions
+func (b *extendedReader) readSystemAddress(caches *Caches) (rbxfile.ValueSystemAddress, error) {
+	cache := &caches.SystemAddress
 
 	thisAddress := rbxfile.ValueSystemAddress("0.0.0.0:0")
 	var err error
 	var cacheIndex uint8
-	if !isJoinData {
-		cacheIndex, err = b.readUint8()
-		if err != nil {
-			return thisAddress, err
-		}
-		if cacheIndex == 0x00 {
-			return thisAddress, err
-		}
-
-		if cacheIndex < 0x80 {
-			result, ok := cache.Get(cacheIndex)
-			if !ok {
-                return thisAddress, nil
-			}
-			return result.(rbxfile.ValueSystemAddress), nil
-		}
+	cacheIndex, err = b.readUint8()
+	if err != nil {
+		return thisAddress, err
 	}
-    thisAddr := net.UDPAddr{}
+	if cacheIndex == 0x00 {
+		return thisAddress, err
+	}
+
+	if cacheIndex < 0x80 {
+		result, ok := cache.Get(cacheIndex)
+		if !ok {
+			return thisAddress, nil
+		}
+		return result.(rbxfile.ValueSystemAddress), nil
+	}
+	thisAddr := net.UDPAddr{}
 	thisAddr.IP = make([]byte, 4)
 	err = b.bytes(thisAddr.IP, 4)
 	if err != nil {
@@ -504,21 +491,40 @@ func (b *extendedReader) readSystemAddress(isClient bool, isJoinData bool, conte
 		return thisAddress, err
 	}
 
-	if !isJoinData {
-		cache.Put(thisAddress, cacheIndex - 0x80)
+	cache.Put(thisAddress, cacheIndex-0x80)
+
+	return rbxfile.ValueSystemAddress(thisAddr.String()), nil
+}
+
+func (b *JoinSerializeReader) readSystemAddress() (rbxfile.ValueSystemAddress, error) {
+	var err error
+	thisAddress := rbxfile.ValueSystemAddress("0.0.0.0:0")
+	thisAddr := net.UDPAddr{}
+	thisAddr.IP = make([]byte, 4)
+	err = b.bytes(thisAddr.IP, 4)
+	if err != nil {
+		return thisAddress, err
+	}
+	for i := 0; i < 4; i++ {
+		thisAddr.IP[i] = thisAddr.IP[i] ^ 0xFF // bitwise NOT
 	}
 
+	port, err := b.readUint16BE()
+	thisAddr.Port = int(port)
+	if err != nil {
+		return thisAddress, err
+	}
 	return rbxfile.ValueSystemAddress(thisAddr.String()), nil
 }
 
 func (b *extendedReader) readUintUTF8() (uint32, error) {
 	var res uint32
 	thisByte, err := b.ReadByte()
-	var shiftIndex uint32 = 0
+	var shiftIndex uint32
 	for err == nil {
-		res |= uint32(thisByte & 0x7F) << shiftIndex
+		res |= uint32(thisByte&0x7F) << shiftIndex
 		shiftIndex += 7
-		if thisByte & 0x80 == 0 {
+		if thisByte&0x80 == 0 {
 			break
 		}
 		thisByte, err = b.ReadByte()
@@ -532,11 +538,11 @@ func (b *extendedReader) readSintUTF8() (int32, error) {
 func (b *extendedReader) readVarint64() (uint64, error) {
 	var res uint64
 	thisByte, err := b.ReadByte()
-	var shiftIndex uint32 = 0
+	var shiftIndex uint32
 	for err == nil {
-		res |= uint64(thisByte & 0x7F) << shiftIndex
+		res |= uint64(thisByte&0x7F) << shiftIndex
 		shiftIndex += 7
-		if thisByte & 0x80 == 0 {
+		if thisByte&0x80 == 0 {
 			break
 		}
 		thisByte, err = b.ReadByte()
@@ -556,41 +562,44 @@ func (b *extendedReader) readVarLengthString() (string, error) {
 	return b.readASCII(int(stringLen))
 }
 
-func (b *extendedReader) readNewPString(isClient bool, isJoinData bool, context *CommunicationContext) (rbxfile.ValueString, error) {
-	if !isJoinData {
-		val, err := b.readCached(isClient, context)
-		return rbxfile.ValueString(val), err
-	}
+func (b *JoinSerializeReader) readNewPString() (rbxfile.ValueString, error) {
 	val, err := b.readVarLengthString()
 	return rbxfile.ValueString(val), err
 }
-func (b *extendedReader) readNewProtectedString(isClient bool, isJoinData bool, context *CommunicationContext) (rbxfile.ValueProtectedString, error) {
-	if !isJoinData {
-		res, err := b.readNewCachedProtectedString(isClient, context)
-		return rbxfile.ValueProtectedString(res), err
-	}
-	res, err := b.readNewPString(isClient, true, context)
+func (b *extendedReader) readNewPString(caches *Caches) (rbxfile.ValueString, error) {
+	val, err := b.readCached(caches)
+	return rbxfile.ValueString(val), err
+}
+
+func (b *JoinSerializeReader) readNewProtectedString() (rbxfile.ValueProtectedString, error) {
+	res, err := b.readNewPString()
 	return rbxfile.ValueProtectedString(res), err
 }
-func (b *extendedReader) readNewContent(isClient bool, isJoinData bool, context *CommunicationContext) (rbxfile.ValueContent, error) {
-	if !isJoinData {
-		res, err := b.readCachedContent(isClient, context)
-		return rbxfile.ValueContent(res), err
-	}
-	res, err := b.readNewPString(isClient, true, context)
+func (b *extendedReader) readNewProtectedString(caches *Caches) (rbxfile.ValueProtectedString, error) {
+	res, err := b.readNewCachedProtectedString(caches)
+	return rbxfile.ValueProtectedString(res), err
+}
+
+func (b *JoinSerializeReader) readNewContent() (rbxfile.ValueContent, error) {
+	res, err := b.readNewPString()
+	return rbxfile.ValueContent(res), err
+}
+func (b *extendedReader) readNewContent(caches *Caches) (rbxfile.ValueContent, error) {
+	res, err := b.readCachedContent(caches)
 	return rbxfile.ValueContent(res), err
 }
 func (b *extendedReader) readNewBinaryString() (rbxfile.ValueBinaryString, error) {
-	res, err := b.readNewPString(false, true, nil) // hack: isClient doesn't matter because caching isn't used
+	res, err := b.readVarLengthString()
 	return rbxfile.ValueBinaryString(res), err
 }
 
+// TODO: Remove context argument dependency
 func (b *extendedReader) readNewEnumValue(enumID uint16, context *CommunicationContext) (rbxfile.ValueToken, error) {
 	val, err := b.readUintUTF8()
 	token := rbxfile.ValueToken{
 		Value: val,
-		ID: enumID,
-		Name: getEnumName(context, enumID),
+		ID:    enumID,
+		Name:  getEnumName(context, enumID),
 	}
 	return token, err
 }
@@ -604,26 +613,27 @@ func getEnumName(context *CommunicationContext, id uint16) string {
 	return context.StaticSchema.Enums[id].Name
 }
 
-func (b *extendedReader) readNewTypeAndValue(isClient bool, isJoinData bool, context *CommunicationContext) (rbxfile.Value, error) {
-    var val rbxfile.Value
+// readNewTypeAndValue is never used by join data!
+func (b *extendedReader) readNewTypeAndValue(reader PacketReader) (rbxfile.Value, error) {
+	var val rbxfile.Value
 	thisType, err := b.readUint8()
 	if err != nil {
 		return val, err
 	}
 
 	var enumID uint16
-	if thisType == 7 {
+	if thisType == PROP_TYPE_ENUM {
 		enumID, err = b.readUint16BE()
 		if err != nil {
 			return val, err
 		}
 	}
 
-	val, err = readSerializedValue(isClient, isJoinData, enumID, thisType, b, context)
+	val, err = b.ReadSerializedValue(reader, thisType, enumID)
 	return val, err
 }
 
-func (b *extendedReader) readNewTuple(isClient bool, isJoinData bool, context *CommunicationContext) (rbxfile.ValueTuple, error) {
+func (b *extendedReader) readNewTuple(reader PacketReader) (rbxfile.ValueTuple, error) {
 	var tuple rbxfile.ValueTuple
 	tupleLen, err := b.readUintUTF8()
 	if err != nil {
@@ -634,7 +644,7 @@ func (b *extendedReader) readNewTuple(isClient bool, isJoinData bool, context *C
 	}
 	tuple = make(rbxfile.ValueTuple, tupleLen)
 	for i := 0; i < int(tupleLen); i++ {
-		val, err := b.readNewTypeAndValue(isClient, isJoinData, context)
+		val, err := b.readNewTypeAndValue(reader)
 		if err != nil {
 			return tuple, err
 		}
@@ -644,12 +654,12 @@ func (b *extendedReader) readNewTuple(isClient bool, isJoinData bool, context *C
 	return tuple, nil
 }
 
-func (b *extendedReader) readNewArray(isClient bool, isJoinData bool, context *CommunicationContext) (rbxfile.ValueArray, error) {
-	array, err := b.readNewTuple(isClient, isJoinData, context)
+func (b *extendedReader) readNewArray(reader PacketReader) (rbxfile.ValueArray, error) {
+	array, err := b.readNewTuple(reader)
 	return rbxfile.ValueArray(array), err
 }
 
-func (b *extendedReader) readNewDictionary(isClient bool, isJoinData bool, context *CommunicationContext) (rbxfile.ValueDictionary, error) {
+func (b *extendedReader) readNewDictionary(reader PacketReader) (rbxfile.ValueDictionary, error) {
 	var dictionary rbxfile.ValueDictionary
 	dictionaryLen, err := b.readUintUTF8()
 	if err != nil {
@@ -668,7 +678,7 @@ func (b *extendedReader) readNewDictionary(isClient bool, isJoinData bool, conte
 		if err != nil {
 			return dictionary, err
 		}
-		dictionary[key], err = b.readNewTypeAndValue(isClient, isJoinData, context)
+		dictionary[key], err = b.readNewTypeAndValue(reader)
 		if err != nil {
 			return dictionary, err
 		}
@@ -677,8 +687,8 @@ func (b *extendedReader) readNewDictionary(isClient bool, isJoinData bool, conte
 	return dictionary, nil
 }
 
-func (b *extendedReader) readNewMap(isClient bool, isJoinData bool, context *CommunicationContext) (rbxfile.ValueMap, error) {
-	thisMap, err := b.readNewDictionary(isClient, isJoinData, context)
+func (b *extendedReader) readNewMap(reader PacketReader) (rbxfile.ValueMap, error) {
+	thisMap, err := b.readNewDictionary(reader)
 	return rbxfile.ValueMap(thisMap), err
 }
 
@@ -825,7 +835,7 @@ func (b *extendedReader) readCoordsMode1() (rbxfile.ValueVector3, error) {
 		return value, err
 	}
 	if cRange <= 0.0000099999997 { // Has to be precise
-		return rbxfile.ValueVector3{0,0,0}, nil
+		return rbxfile.ValueVector3{0, 0, 0}, nil
 	}
 	x, err := b.readUint16BE()
 	if err != nil {
@@ -839,9 +849,9 @@ func (b *extendedReader) readCoordsMode1() (rbxfile.ValueVector3, error) {
 	if err != nil {
 		return value, err
 	}
-	value.X = (float32(x) / 32767.0 - 1.0) * cRange
-	value.Y = (float32(y) / 32767.0 - 1.0) * cRange
-	value.Z = (float32(z) / 32767.0 - 1.0) * cRange
+	value.X = (float32(x)/32767.0 - 1.0) * cRange
+	value.Y = (float32(y)/32767.0 - 1.0) * cRange
+	value.Z = (float32(z)/32767.0 - 1.0) * cRange
 	return value, nil
 }
 func (b *extendedReader) readCoordsMode2() (rbxfile.ValueVector3, error) {
@@ -850,38 +860,99 @@ func (b *extendedReader) readCoordsMode2() (rbxfile.ValueVector3, error) {
 	if err != nil {
 		return val, err
 	}
-	x_short := uint16((x >> 7) | ((x & 0x7F) << 8))
+	xShort := uint16((x >> 7) | ((x & 0x7F) << 8))
 	y, err := b.bits(14)
 	if err != nil {
 		return val, err
 	}
-	y_short := uint16((y >> 6) | ((y & 0x3F) >> 8))
+	yShort := uint16((y >> 6) | ((y & 0x3F) >> 8))
 	z, err := b.bits(15)
 	if err != nil {
 		return val, err
 	}
-	z_short := uint16((z >> 7) | ((z & 0x7F) << 8))
-	
-	val.X = float32(x_short) * 0.0625 - 1024.0
-	val.Y = float32(y_short) * 0.0625 - 512.0
-	val.Z = float32(z_short) * 0.0625 - 1024.0
+	zShort := uint16((z >> 7) | ((z & 0x7F) << 8))
+
+	val.X = float32(xShort)*0.0625 - 2048.0
+	val.Y = float32(yShort)*0.0625 - 2048.0
+	val.Z = float32(zShort)*0.0625 - 2048.0
 	return val, nil
 }
 
 func (b *extendedReader) readPhysicsCoords() (rbxfile.ValueVector3, error) {
 	var val rbxfile.ValueVector3
-	mode, err := b.bits(2)
+	flags, err := b.readUint8()
 	if err != nil {
 		return val, err
 	}
+	exp := flags >> 3 // void signs
+	scale := float32(math.Exp2(float64(exp)))
 
-	switch mode {
-	case 0:
-		return b.readCoordsMode0()
-	case 1:
-		return b.readCoordsMode1()
-	case 2:
-		return b.readCoordsMode2()
+	// nice bitpacking!
+	if exp > 4 {
+		if exp > 10 { // when scale is > 0x400
+			// minimum precision is 2^11/2^21 = 2^-10
+			// 21 bits per value
+			val1, err := b.readUint32BE()
+			if err != nil {
+				return val, err
+			}
+			val2, err := b.readUint32BE()
+			if err != nil {
+				return val, err
+			}
+			xSign := uint32((flags >> 2) & 1)
+			ySign := uint32((flags >> 1) & 1)
+			zSign := uint32((flags >> 0) & 1)
+
+			v22 := (xSign << 21) | (val1 >> 11)
+			v25 := int32(v22<<10) >> 10
+			v26 := int32(((val2>>21)|(((ySign<<11)|val1&0x7FF)<<10))<<10) >> 10
+			v27 := val2&0x1FFFFF | (zSign << 31 >> 10)
+			val.X = float32(float32(v25)*0.00000047683739) * scale
+			val.Y = float32(float32(v26)*0.00000047683739) * scale
+			val.Y = float32(float32(v27)*0.00000047683739) * scale
+		} else { // when scale is in range 0x10 < scale <= 0x400
+			// 16 bits per value (and sign), precision ranges from 1/4096 to 1/128
+			// 2^16 = 65536, so values range from -16~16 to -512~512
+			x, err := b.readUint16BE()
+			if err != nil {
+				return val, err
+			}
+			y, err := b.readUint16BE()
+			if err != nil {
+				return val, err
+			}
+			z, err := b.readUint16BE()
+			if err != nil {
+				return val, err
+			}
+			xSign := uint32((flags >> 2) & 1)
+			ySign := uint32((flags >> 1) & 1)
+			zSign := uint32((flags >> 0) & 1)
+			rx := uint32(x)
+			ry := uint32(y)
+			rz := uint32(z)
+
+			v20 := int32((ry|(ySign<<16))<<15) >> 15
+			v21 := int32(((rz)|(zSign<<16))<<15) >> 15 // for some reason IDA doesn't show this as signed, despite that fact that it's created by a sar instruction!
+			val.X = float32(float32(int32((rx|(xSign<<16))<<15)>>15) * 0.000015259022 * scale)
+			val.Y = float32(float32(v20) * 0.000015259022 * scale)
+			val.Z = float32(float32(v21) * 0.000015259022 * scale)
+		}
+	} else { // when scale is in range 0 <= scale <= 0x10
+		val1, err := b.readUint32BE()
+		if err != nil {
+			return val, err
+		}
+		xSign := uint32((flags >> 2) & 1)
+		ySign := uint32((flags >> 1) & 1)
+		zSign := uint32((flags >> 0) & 1)
+
+		res := (int32(ySign<<31) >> 21) | int32((val1>>10)&0x3FF)
+		v17 := int32(val1&0x3FF) | (int32(zSign<<31) >> 21)
+		val.X = float32(float32(int32(((xSign<<10)|(val1>>20))<<21)>>21)*0.00097751711) * scale
+		val.Y = float32(float32(res)*0.00097751711) * scale
+		val.Z = float32(float32(v17)*0.00097751711) * scale
 	}
 	return val, err
 }
@@ -954,7 +1025,7 @@ func (b *extendedReader) readMatrixMode1() ([9]float32, error) {
 	if invertZ {
 		zs = -zs
 	}
-	w := float32(math.Sqrt(math.Max(0.0, float64(1.0 - xs - ys - zs))))
+	w := float32(math.Sqrt(math.Max(0.0, float64(1.0-xs-ys-zs))))
 	if invertW {
 		w = -w
 	}
@@ -965,22 +1036,47 @@ func (b *extendedReader) readMatrixMode2() ([9]float32, error) {
 	return b.readMatrixMode1()
 }
 
-func (b *extendedReader) readPhysicsMatrix() ([9]float32, error) {
-	var val [9]float32
-	mode, err := b.bits(2)
-	if err != nil {
-		return val, err
-	}
+var quaternionIndices = [4][3]int{
+	// the index is the number that is omitted
+	[3]int{1, 2, 3}, // index 0
+	[3]int{0, 2, 3}, // index 1
+	[3]int{0, 1, 3}, // index 2
+	[3]int{0, 1, 2}, // index 3
+}
 
-	switch mode {
-	case 0:
-		return b.readMatrixMode0()
-	case 1:
-		return b.readMatrixMode1()
-	case 2:
-		return b.readMatrixMode2()
+func (b *extendedReader) readPhysicsMatrix() ([9]float32, error) {
+	var quat [4]float32
+	var err error
+
+	val1, err := b.readUint16BE()
+	if err != nil {
+		return [9]float32{}, err
 	}
-	return val, err
+	val2, err := b.readUint32BE()
+	if err != nil {
+		return [9]float32{}, err
+	}
+	mode := val2 >> 0x1E
+	indexSet := quaternionIndices[mode]
+
+	//		16 bits for val 1
+	// +	2 bits for mode from val 2
+	// +	17 bits from val 2
+	// +	17 bits from val 2
+	//		52 bits
+	xmm4 := float32(int32(uint32(val1)<<17) >> 17)
+	xmm4 = xmm4 / (16383.0 * math.Sqrt2)
+	xmm3 := float32(int32(val2<<2) >> 17)
+	xmm3 = xmm3 / (16383.0 * math.Sqrt2)
+	xmm2 := float32(int32(val2<<17) >> 17)
+	xmm2 = xmm2 / (16383.0 * math.Sqrt2)
+
+	quat[indexSet[0]] = xmm4
+	quat[indexSet[1]] = xmm3
+	quat[indexSet[2]] = xmm2
+	quat[mode] = float32(math.Sqrt(math.Max(0.0, float64(1.0-xmm4*xmm4-xmm3*xmm3-xmm2*xmm2))))
+
+	return quaternionToRotMatrix(quat), err
 }
 
 func (b *extendedReader) readPhysicsCFrame() (rbxfile.ValueCFrame, error) {
@@ -997,133 +1093,88 @@ func (b *extendedReader) readPhysicsCFrame() (rbxfile.ValueCFrame, error) {
 }
 
 /* code to convert compact cf to real:
-	fCos := math.Cos(realAngleRadians)
-	fSin := math.Sin(realAngleRadians)
-	fOneMinusCos := 1 - fCos
+fCos := math.Cos(realAngleRadians)
+fSin := math.Sin(realAngleRadians)
+fOneMinusCos := 1 - fCos
 
-	fX2 := unitVector.X ** 2
-	fY2 := unitVector.Y ** 2
-	fZ2 := unitVector.Z ** 2
-	fXYM := unitVector.X * unitVector.Y * fOneMinusCos
-	fXZM := unitVector.X * unitVector.Z * fOneMinusCos
-	fYZM := unitVector.Y * unitVector.Z * fOneMinusCos
-	fXSin := unitVector.X * fSin
-	fYSin := unitVector.Y * fSin
-	fZSin := unitVector.Z * fSin
+fX2 := unitVector.X ** 2
+fY2 := unitVector.Y ** 2
+fZ2 := unitVector.Z ** 2
+fXYM := unitVector.X * unitVector.Y * fOneMinusCos
+fXZM := unitVector.X * unitVector.Z * fOneMinusCos
+fYZM := unitVector.Y * unitVector.Z * fOneMinusCos
+fXSin := unitVector.X * fSin
+fYSin := unitVector.Y * fSin
+fZSin := unitVector.Z * fSin
 
-	return PhysicsMotor{rbxfile.ValueVector3{}, [9]float32{
-		fX2 * fOneMinusCos + fCos,
-		fXYM - fZSin,
-		fXZM + fYSin,
+return PhysicsMotor{rbxfile.ValueVector3{}, [9]float32{
+	fX2 * fOneMinusCos + fCos,
+	fXYM - fZSin,
+	fXZM + fYSin,
 
-		fXYM + fZSin,
-		fY2 * fOneMinusCos + fCos,
-		FYZM + fXSin,
+	fXYM + fZSin,
+	fY2 * fOneMinusCos + fCos,
+	FYZM + fXSin,
 
-		fXZM - fYSin,
-		fYZM + fXSin,
-		fZ2 * fOneMinusCos + fCos,
-	}}
+	fXZM - fYSin,
+	fYZM + fXSin,
+	fZ2 * fOneMinusCos + fCos,
+}}
 */
 func (b *extendedReader) readPhysicsMotor() (PhysicsMotor, error) {
 	var motor PhysicsMotor
-	isSimpleZAngle, err := b.readBool()
+	flags, err := b.readUint8()
 	if err != nil {
 		return motor, err
 	}
-	if isSimpleZAngle {
-		angle, err := b.ReadByte()
+
+	if flags&1 == 1 {
+		motor.Position, err = b.readPhysicsCoords()
 		if err != nil {
 			return motor, err
 		}
-
-		segSizeRadians := math.Pi * 2 / 256.0
-		realAngleRadians := float64(angle) * float64(segSizeRadians) - math.Pi
-
-		// skipping a few steps here
-		fCos := float32(math.Cos(realAngleRadians))
-		fSin := float32(math.Sin(realAngleRadians))
-		return PhysicsMotor{rbxfile.ValueVector3{}, [9]float32{
-			fCos,
-			-fSin,
-			0,
-			fSin,
-			fCos,
-			0,
-			0,
-			0,
-			1,
-		}}, nil
-	} else {
-		hasTranslation, err := b.readBool()
-		if err != nil {
-			return motor, err
-		}
-		hasRotation, err := b.readBool()
-		if err != nil {
-			return motor, err
-		}
-		if hasTranslation {
-			motor.Position, err = b.readPhysicsCoords()
-			if err != nil {
-				return motor, err
-			}
-		}
-
-		unitVector := rbxfile.ValueVector3{1,0,0}
-		var angle byte
-		if hasRotation {
-			unitVector, err = b.readCoordsMode1()
-			if err != nil {
-				return motor, err
-			}
-			angle, err = b.ReadByte()
-			if err != nil {
-				return motor, err
-			}
-		}
-		segSizeRadians := math.Pi * 2 / 256.0
-		realAngleRadians := float64(angle) * float64(segSizeRadians) - math.Pi
-		fCos := math.Cos(realAngleRadians)
-		fSin := math.Sin(realAngleRadians)
-		fOneMinusCos := 1 - fCos
-
-		fX2 := math.Pow(float64(unitVector.X), 2)
-		fY2 := math.Pow(float64(unitVector.Y), 2)
-		fZ2 := math.Pow(float64(unitVector.Z), 2)
-		fXYM := float64(unitVector.X) * float64(unitVector.Y) * fOneMinusCos
-		fXZM := float64(unitVector.X) * float64(unitVector.Z) * fOneMinusCos
-		fYZM := float64(unitVector.Y) * float64(unitVector.Z) * fOneMinusCos
-		fXSin := float64(unitVector.X) * fSin
-		fYSin := float64(unitVector.Y) * fSin
-		fZSin := float64(unitVector.Z) * fSin
-
-		motor.Rotation = [9]float32{
-			float32(fX2 * fOneMinusCos + fCos),
-			float32(fXYM - fZSin),
-			float32(fXZM + fYSin),
-
-			float32(fXYM + fZSin),
-			float32(fY2 * fOneMinusCos + fCos),
-			float32(fYZM + fXSin),
-
-			float32(fXZM - fYSin),
-			float32(fYZM + fXSin),
-			float32(fZ2 * fOneMinusCos + fCos),
-		}
-		return motor, nil
 	}
+
+	if flags&2 == 2 {
+		var quat [4]float32
+
+		val1, err := b.readUint32BE()
+		if err != nil {
+			return motor, err
+		}
+		mode := val1 >> 0x1E
+		indexSet := quaternionIndices[mode]
+
+		xmm4 := float32(int32(uint32(val1)<<2) >> 22)
+		xmm4 = xmm4 / (511.0 * math.Sqrt2)
+		xmm3 := float32(int32(val1<<12) >> 22)
+		xmm3 = xmm3 / (511.0 * math.Sqrt2)
+		xmm2 := float32(int32(val1<<22) >> 22)
+		xmm2 = xmm2 / (511.0 * math.Sqrt2)
+
+		quat[indexSet[0]] = xmm4
+		quat[indexSet[1]] = xmm3
+		quat[indexSet[2]] = xmm2
+		quat[mode] = float32(math.Sqrt(math.Max(0.0, float64(1.0-xmm4*xmm4-xmm3*xmm3-xmm2*xmm2))))
+
+		motor.Rotation = quaternionToRotMatrix(quat)
+	}
+
+	return motor, nil
 }
 
 func (b *extendedReader) readMotors() ([]PhysicsMotor, error) {
-	countMotors, err := b.ReadByte()
+	countMotors, err := b.readVarint64()
 	if err != nil {
 		return nil, err
 	}
-	println("reading", countMotors, "motors")
+	//println("reading", countMotors, "motors")
+	if countMotors > 0x10000 {
+		return nil, errors.New("numMotors is excessive")
+	}
 
 	motors := make([]PhysicsMotor, countMotors)
-	var i uint8
+	var i uint64
 	for i = 0; i < countMotors; i++ {
 		motors[i], err = b.readPhysicsMotor()
 		if err != nil {
@@ -1136,4 +1187,103 @@ func (b *extendedReader) readMotors() ([]PhysicsMotor, error) {
 func (b *extendedReader) readInt64() (rbxfile.ValueInt64, error) {
 	val, err := b.readVarsint64()
 	return rbxfile.ValueInt64(val), err
+}
+
+func (b *extendedReader) readPhysicsVelocity() (rbxfile.ValueVector3, error) {
+	var val rbxfile.ValueVector3
+	flags, err := b.readUint8()
+	if err != nil || flags == 0 {
+		return val, err
+	}
+	exp := flags>>4 - 1
+	scale := float32(math.Exp2(float64(exp)))
+	val1 := flags & 0xF
+	val2, err := b.readUint32BE()
+	if err != nil {
+		return val, err
+	}
+	res := int32(val2<<12) >> 20
+	v9 := int32(val1) | (int32(val2<<24) >> 20)
+	val.X = float32(int32(val2)>>20) * 0.00048851978 * scale
+	val.Y = float32(res) * 0.00048851978 * scale
+	val.Z = float32(v9) * 0.00048851978 * scale
+
+	return val, err
+}
+
+func (b *extendedReader) readSerializedValueGeneric(reader PacketReader, valueType uint8, enumId uint16) (rbxfile.Value, error) {
+	var err error
+	var result rbxfile.Value
+	var temp string
+	switch valueType {
+	case PROP_TYPE_INVALID: // I assume this is how it works, anyway
+		result = nil
+		err = nil
+	case PROP_TYPE_STRING_NO_CACHE:
+		temp, err = b.readVarLengthString()
+		result = rbxfile.ValueString(temp)
+	case PROP_TYPE_ENUM:
+		result, err = b.readNewEnumValue(enumId, reader.Context())
+	case PROP_TYPE_BINARYSTRING:
+		result, err = b.readNewBinaryString()
+	case PROP_TYPE_PBOOL:
+		result, err = b.readPBool()
+	case PROP_TYPE_PSINT:
+		result, err = b.readNewPSint()
+	case PROP_TYPE_PFLOAT:
+		result, err = b.readPFloat()
+	case PROP_TYPE_PDOUBLE:
+		result, err = b.readPDouble()
+	case PROP_TYPE_UDIM:
+		result, err = b.readUDim()
+	case PROP_TYPE_UDIM2:
+		result, err = b.readUDim2()
+	case PROP_TYPE_RAY:
+		result, err = b.readRay()
+	case PROP_TYPE_FACES:
+		result, err = b.readFaces()
+	case PROP_TYPE_AXES:
+		result, err = b.readAxes()
+	case PROP_TYPE_BRICKCOLOR:
+		result, err = b.readBrickColor()
+	case PROP_TYPE_COLOR3:
+		result, err = b.readColor3()
+	case PROP_TYPE_COLOR3UINT8:
+		result, err = b.readColor3uint8()
+	case PROP_TYPE_VECTOR2:
+		result, err = b.readVector2()
+	case PROP_TYPE_VECTOR3_SIMPLE:
+		result, err = b.readVector3Simple()
+	case PROP_TYPE_VECTOR3_COMPLICATED:
+		result, err = b.readVector3()
+	case PROP_TYPE_VECTOR2UINT16:
+		result, err = b.readVector2int16()
+	case PROP_TYPE_VECTOR3UINT16:
+		result, err = b.readVector3int16()
+	case PROP_TYPE_CFRAME_SIMPLE:
+		result, err = b.readCFrameSimple()
+	case PROP_TYPE_CFRAME_COMPLICATED:
+		result, err = b.readCFrame()
+	case PROP_TYPE_NUMBERSEQUENCE:
+		result, err = b.readNumberSequence()
+	case PROP_TYPE_NUMBERSEQUENCEKEYPOINT:
+		result, err = b.readNumberSequenceKeypoint()
+	case PROP_TYPE_NUMBERRANGE:
+		result, err = b.readNumberRange()
+	case PROP_TYPE_COLORSEQUENCE:
+		result, err = b.readColorSequence()
+	case PROP_TYPE_COLORSEQUENCEKEYPOINT:
+		result, err = b.readColorSequenceKeypoint()
+	case PROP_TYPE_RECT2D:
+		result, err = b.readRect2D()
+	case PROP_TYPE_PHYSICALPROPERTIES:
+		result, err = b.readPhysicalProperties()
+	case PROP_TYPE_REGION3:
+		result, err = b.readRegion3()
+	case PROP_TYPE_REGION3INT16:
+		result, err = b.readRegion3int16()
+	case PROP_TYPE_INT64:
+		result, err = b.readInt64()
+	}
+	return result, err
 }

@@ -1,12 +1,18 @@
 package peer
-import "github.com/gskartwii/go-bitstream"
-import "bytes"
-import "crypto/aes"
-import "crypto/cipher"
-import "io"
-import "errors"
 
-func shuffleSlice(src []byte) ([]byte) {
+import (
+	"bytes"
+	"crypto/aes"
+	"crypto/cipher"
+	"errors"
+	"io"
+	"math/bits"
+
+	"github.com/gskartwii/go-bitstream"
+	"github.com/pierrec/xxHash/xxHash32"
+)
+
+func shuffleSlice(src []byte) []byte {
 	ShuffledSrc := make([]byte, 0, len(src))
 	ShuffledSrc = append(ShuffledSrc, src[:0x10]...)
 	for j := len(src) - 0x10; j >= 0x10; j -= 0x10 {
@@ -22,32 +28,52 @@ func calculateChecksum(data []byte) uint32 {
 	var c2 uint16 = 22719
 	for i := 0; i < len(data); i++ {
 		char := data[i]
-		cipher := (char ^ byte(r >> 8)) & 0xFF
-		r = (uint16(cipher) + r)*c1 + c2
+		cipher := (char ^ byte(r>>8)) & 0xFF
+		r = (uint16(cipher)+r)*c1 + c2
 		sum += uint32(cipher)
 	}
 	return sum
 }
 
+func hashClientTicket(ticket string) uint32 {
+	var ecxHash uint32
+	initHash := xxHash32.Checksum([]byte(ticket), 1)
+	initHash += 0x557BB5D7
+	initHash = bits.RotateLeft32(initHash, -7)
+	initHash -= 0x557BB5D7
+	initHash *= 0x443921D5
+	initHash = bits.RotateLeft32(initHash, 0xD)
+	ecxHash = 0x443921D5 - initHash
+	ecxHash ^= 0x557BB5D7
+	ecxHash = bits.RotateLeft32(ecxHash, -0x11)
+	ecxHash += 0x11429402
+	ecxHash = bits.RotateLeft32(ecxHash, 0x17)
+	initHash = 0x99B4D7AC - ecxHash
+	initHash = bits.RotateLeft32(initHash, -0x1D)
+	initHash ^= 0x557BB5D7
+
+	return initHash
+}
+
 // ID_SUBMIT_TICKET - client -> server
 type Packet8ALayer struct {
-	PlayerId int64
-	ClientTicket string
+	PlayerId      int64
+	ClientTicket  string
 	DataModelHash string
 	// Always 36?
-	ProtocolVersion uint32
-	SecurityKey string
-	Platform string
+	ProtocolVersion   uint32
+	SecurityKey       string
+	Platform          string
 	RobloxProductName string
-	SessionId string
-	GoldenHash uint32
+	SessionId         string
+	GoldenHash        uint32
 }
 
-func NewPacket8ALayer() Packet8ALayer {
-	return Packet8ALayer{}
+func NewPacket8ALayer() *Packet8ALayer {
+	return &Packet8ALayer{}
 }
 
-func decodePacket8ALayer(packet *UDPPacket, context *CommunicationContext, data []byte) (interface{}, error) {
+func DecodePacket8ALayer(reader PacketReader, packet *UDPPacket, data []byte) (RakNetPacket, error) {
 	layer := NewPacket8ALayer()
 	block, e := aes.NewCipher([]byte{0xFE, 0xF9, 0xF0, 0xEB, 0xE2, 0xDD, 0xD4, 0xCF, 0xC6, 0xC1, 0xB8, 0xB3, 0xAA, 0xA5, 0x9C, 0x97})
 
@@ -59,7 +85,7 @@ func decodePacket8ALayer(packet *UDPPacket, context *CommunicationContext, data 
 	for i, _ := range dest {
 		dest[i] = 0xBA
 	}
-	c := cipher.NewCBCDecrypter(block, []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0})
+	c := cipher.NewCBCDecrypter(block, []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
 
 	ShuffledSrc := shuffleSlice(data)
 
@@ -124,6 +150,17 @@ func decodePacket8ALayer(packet *UDPPacket, context *CommunicationContext, data 
 	} else if err != nil {
 		return layer, err
 	}
+	hash, err := thisBitstream.readUintUTF8()
+	if err != nil {
+		return layer, err
+	}
+	clientTicketHash := hashClientTicket(layer.ClientTicket)
+	if hash != clientTicketHash {
+		packet.Logger.Printf("hash mismatch: read %8X != generated %8X\n", hash, clientTicketHash)
+	} else {
+		packet.Logger.Printf("hash ok: %8X\n", hash)
+	}
+
 	layer.SessionId, err = thisBitstream.readVarLengthString()
 	if err != nil {
 		return layer, err
@@ -132,10 +169,12 @@ func decodePacket8ALayer(packet *UDPPacket, context *CommunicationContext, data 
 	if err != nil {
 		return layer, err
 	}
-	
+
 	return layer, nil
 }
-func (layer *Packet8ALayer) serialize(isClient bool, context *CommunicationContext, stream *extendedWriter) error {
+
+// FIXME: client ticket hash generation
+func (layer *Packet8ALayer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	rawBuffer := new(bytes.Buffer)
 	rawStream := &extendedWriter{bitstream.NewWriter(rawBuffer)}
 	var err error
@@ -144,7 +183,7 @@ func (layer *Packet8ALayer) serialize(isClient bool, context *CommunicationConte
 	if err != nil {
 		return err
 	}
-	err = rawStream.writeUint32BE(uint32(layer.PlayerId))
+	err = rawStream.writeVarsint64(layer.PlayerId)
 	if err != nil {
 		return err
 	}
@@ -172,6 +211,10 @@ func (layer *Packet8ALayer) serialize(isClient bool, context *CommunicationConte
 	if err != nil {
 		return err
 	}
+	err = rawStream.writeVarint64(uint64(hashClientTicket(layer.ClientTicket)))
+	if err != nil {
+		return err
+	}
 	err = rawStream.writeVarLengthString(layer.SessionId)
 	if err != nil {
 		return err
@@ -184,8 +227,8 @@ func (layer *Packet8ALayer) serialize(isClient bool, context *CommunicationConte
 
 	// create slice with 6-byte header and padding to align to 0x10-byte blocks
 	length := rawBuffer.Len()
-	paddingSize := 0xF - (length + 5)%0x10
-	rawCopy := make([]byte, length + 6 + paddingSize)
+	paddingSize := 0xF - (length+5)%0x10
+	rawCopy := make([]byte, length+6+paddingSize)
 	rawCopy[5] = byte(paddingSize & 0xF)
 	copy(rawCopy[6+paddingSize:], rawBuffer.Bytes())
 
@@ -202,7 +245,7 @@ func (layer *Packet8ALayer) serialize(isClient bool, context *CommunicationConte
 	if err != nil {
 		return err
 	}
-	c := cipher.NewCBCEncrypter(block, []byte{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0})
+	c := cipher.NewCBCEncrypter(block, []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
 	c.CryptBlocks(dest, shuffledEncryptable)
 	dest = shuffleSlice(dest) // shuffle back to correct order
 

@@ -1,11 +1,17 @@
 package peer
-import "net"
+
+import (
+	"net"
+)
 
 // ID_OPEN_CONNECTION_REQUEST_1 - client -> server
 type Packet05Layer struct {
 	// RakNet protocol version, always 5
 	ProtocolVersion uint8
+	// internal
+	maxLength uint
 }
+
 // ID_OPEN_CONNECTION_REPLY_1 - server -> client
 type Packet06Layer struct {
 	// Server GUID
@@ -15,6 +21,7 @@ type Packet06Layer struct {
 	// MTU in bytes
 	MTU uint16
 }
+
 // ID_OPEN_CONNECTION_REQUEST_2 - client -> server
 type Packet07Layer struct {
 	// Server external IP address
@@ -24,6 +31,7 @@ type Packet07Layer struct {
 	// Client GUID
 	GUID uint64
 }
+
 // ID_OPEN_CONNECTION_REPLY_2 - server -> client
 type Packet08Layer struct {
 	// Server GUID
@@ -35,6 +43,7 @@ type Packet08Layer struct {
 	// Use libcat encryption? Always false
 	UseSecurity bool
 }
+
 // ID_CONNECTION_REQUEST - client -> server
 type Packet09Layer struct {
 	// Client GUID
@@ -46,17 +55,19 @@ type Packet09Layer struct {
 	// Password: 2 or 6 bytes, always {0x5E, 0x11} in Studio, varies in real clients
 	Password []byte
 }
+
 // ID_CONNECTION_REQUEST_ACCEPTED - server -> client
 type Packet10Layer struct {
 	// Client IP address
-	IPAddress *net.UDPAddr
+	IPAddress   *net.UDPAddr
 	SystemIndex uint16
-	Addresses [10]*net.UDPAddr
+	Addresses   [10]*net.UDPAddr
 	// Timestamp from ID_CONNECTION_REQUEST
 	SendPingTime uint64
 	// Timestamp of sending reply (seconds)
 	SendPongTime uint64
 }
+
 // ID_NEW_INCOMING_CONNECTION - client -> server
 type Packet13Layer struct {
 	// Server IP address
@@ -89,9 +100,10 @@ func NewPacket10Layer() *Packet10Layer {
 func NewPacket13Layer() *Packet13Layer {
 	return &Packet13Layer{}
 }
+
 var voidOfflineMessage []byte = make([]byte, 0x10)
 
-func decodePacket05Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
+func DecodePacket05Layer(reader PacketReader, packet *UDPPacket) (RakNetPacket, error) {
 	var err error
 	layer := NewPacket05Layer()
 	thisBitstream := packet.stream
@@ -99,8 +111,12 @@ func decodePacket05Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	return layer, err
 }
 
-func (layer *Packet05Layer) serialize(isClient bool,context *CommunicationContext, stream *extendedWriter) error {
-	err := stream.allBytes(OfflineMessageID)
+func (layer *Packet05Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
+	err := stream.WriteByte(0x05)
+	if err != nil {
+		return err
+	}
+	err = stream.allBytes(OfflineMessageID)
 	if err != nil {
 		return err
 	}
@@ -108,12 +124,12 @@ func (layer *Packet05Layer) serialize(isClient bool,context *CommunicationContex
 	if err != nil {
 		return err
 	}
-	empty := make([]byte, 1492 - 0x10 - 1 - 0x1C)
+	empty := make([]byte, 1492-0x10-2-0x2A)
 	err = stream.allBytes(empty)
 	return err
 }
 
-func decodePacket06Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
+func DecodePacket06Layer(reader PacketReader, packet *UDPPacket) (RakNetPacket, error) {
 	layer := NewPacket06Layer()
 	thisBitstream := packet.stream
 
@@ -134,8 +150,12 @@ func decodePacket06Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	return layer, err
 }
 
-func (layer *Packet06Layer) serialize(isClient bool,context *CommunicationContext, stream *extendedWriter) error {
+func (layer *Packet06Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
+	err = stream.WriteByte(0x06)
+	if err != nil {
+		return err
+	}
 	err = stream.allBytes(OfflineMessageID)
 	if err != nil {
 		return err
@@ -152,7 +172,7 @@ func (layer *Packet06Layer) serialize(isClient bool,context *CommunicationContex
 	return err
 }
 
-func decodePacket07Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
+func DecodePacket07Layer(reader PacketReader, packet *UDPPacket) (RakNetPacket, error) {
 	layer := NewPacket07Layer()
 	thisBitstream := packet.stream
 
@@ -173,8 +193,12 @@ func decodePacket07Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	return layer, err
 }
 
-func (layer *Packet07Layer) serialize(isClient bool,context *CommunicationContext, stream *extendedWriter) error {
+func (layer *Packet07Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
+	err = stream.WriteByte(0x07)
+	if err != nil {
+		return err
+	}
 	err = stream.allBytes(OfflineMessageID)
 	if err != nil {
 		return err
@@ -191,7 +215,7 @@ func (layer *Packet07Layer) serialize(isClient bool,context *CommunicationContex
 	return err
 }
 
-func decodePacket08Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
+func DecodePacket08Layer(reader PacketReader, packet *UDPPacket) (RakNetPacket, error) {
 	layer := NewPacket08Layer()
 	thisBitstream := packet.stream
 
@@ -216,8 +240,12 @@ func decodePacket08Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	return layer, err
 }
 
-func (layer *Packet08Layer) serialize(isClient bool,context *CommunicationContext, stream *extendedWriter) error {
+func (layer *Packet08Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
+	err = stream.WriteByte(0x08)
+	if err != nil {
+		return err
+	}
 	err = stream.allBytes(OfflineMessageID)
 	if err != nil {
 		return err
@@ -238,7 +266,7 @@ func (layer *Packet08Layer) serialize(isClient bool,context *CommunicationContex
 	return err
 }
 
-func decodePacket09Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
+func DecodePacket09Layer(reader PacketReader, packet *UDPPacket) (RakNetPacket, error) {
 	layer := NewPacket09Layer()
 	thisBitstream := packet.stream
 
@@ -257,11 +285,11 @@ func decodePacket09Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	}
 	layer.Password, err = thisBitstream.readString(2)
 	if layer.Password[0] == 0x5E && layer.Password[1] == 0x11 {
-		context.IsStudio = true
+		reader.Context().IsStudio = true
 	}
 	return layer, err
 }
-func (layer *Packet09Layer) serialize(isClient bool, context *CommunicationContext, stream *extendedWriter) error {
+func (layer *Packet09Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
 	err = stream.WriteByte(0x09)
 	if err != nil {
@@ -282,7 +310,7 @@ func (layer *Packet09Layer) serialize(isClient bool, context *CommunicationConte
 	return stream.allBytes(layer.Password)
 }
 
-func decodePacket10Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
+func DecodePacket10Layer(reader PacketReader, packet *UDPPacket) (RakNetPacket, error) {
 	layer := NewPacket10Layer()
 	thisBitstream := packet.stream
 
@@ -308,7 +336,7 @@ func decodePacket10Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	layer.SendPongTime, err = thisBitstream.readUint64BE()
 	return layer, err
 }
-func (layer *Packet10Layer) serialize(isClient bool,context *CommunicationContext, stream *extendedWriter) error {
+func (layer *Packet10Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
 	err = stream.WriteByte(0x10)
 	if err != nil {
@@ -340,7 +368,7 @@ func (layer *Packet10Layer) serialize(isClient bool,context *CommunicationContex
 	return err
 }
 
-func decodePacket13Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
+func DecodePacket13Layer(reader PacketReader, packet *UDPPacket) (RakNetPacket, error) {
 	layer := NewPacket13Layer()
 	thisBitstream := packet.stream
 
@@ -362,7 +390,7 @@ func decodePacket13Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	layer.SendPongTime, err = thisBitstream.readUint64BE()
 	return layer, err
 }
-func (layer *Packet13Layer) serialize(isClient bool,context *CommunicationContext, stream *extendedWriter) error {
+func (layer *Packet13Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
 	err = stream.WriteByte(0x13)
 	if err != nil {

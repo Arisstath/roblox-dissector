@@ -1,95 +1,148 @@
 package peer
-import "errors"
-import "fmt"
-import "github.com/gskartwii/rbxfile"
 
-// ID_CHANGE_PROPERTY
+import (
+	"errors"
+	"fmt"
+
+	"github.com/gskartwii/rbxfile"
+)
+
+// Packet83_03 describes an ID_CHANGE_PROPERTY data subpacket.
 type Packet83_03 struct {
 	// Instance that had the property change
-	Instance *rbxfile.Instance
-	Bool1 bool
+	Instance    *rbxfile.Instance
+	Bool1       bool
+	Int1        int32
+	DoWriteInt1 bool
 	// Name of the property
 	PropertyName string
 	// New value
 	Value rbxfile.Value
 }
 
-func decodePacket83_03(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
+func DecodePacket83_03(reader PacketReader, packet *UDPPacket) (Packet83Subpacket, error) {
 	var err error
-	isClient := context.IsClient(packet.Source)
-
 	layer := &Packet83_03{}
 	thisBitstream := packet.stream
-    referent, err := thisBitstream.readObject(isClient, false, context)
+	referent, err := thisBitstream.readObject(reader.Caches())
+	if err != nil {
+		return layer, err
+	}
+	if referent.IsNull() {
+		return layer, errors.New("self is null in repl property")
+	}
+	instance, err := reader.Context().InstancesByReferent.TryGetInstance(referent)
+	if err != nil {
+		return layer, err
+	}
+	layer.Instance = instance
+	instance.Properties[layer.PropertyName] = layer.Value
+
+	propertyIDx, err := thisBitstream.readUint16BE()
 	if err != nil {
 		return layer, err
 	}
 
-    propertyIDx, err := thisBitstream.readUint16BE()
-    if err != nil {
-        return layer, err
-    }
-
-    if int(propertyIDx) == int(len(context.StaticSchema.Properties)) { // explicit Parent property system
-		layer.Bool1, err = thisBitstream.readBool()
+	layer.Bool1, err = thisBitstream.readBoolByte()
+	if err != nil {
+		return layer, err
+	}
+	if layer.Bool1 && reader.IsClient() {
+		layer.Int1, err = thisBitstream.readSintUTF8()
 		if err != nil {
 			return layer, err
 		}
+	}
 
-        var referent Referent
-        referent, err = thisBitstream.readObject(isClient, false, context)
-        instance := context.InstancesByReferent.TryGetInstance(referent)
-		result := rbxfile.ValueReference{instance}
+	context := reader.Context()
+	if int(propertyIDx) == int(len(context.StaticSchema.Properties)) { // explicit Parent property system
+		var referent Referent
+		referent, err = thisBitstream.readObject(reader.Caches())
+		parent, err := context.InstancesByReferent.TryGetInstance(referent)
+		if err != nil {
+			return layer, errors.New("parent doesn't exist in repl property")
+		}
+		result := rbxfile.ValueReference{parent}
 		layer.Value = result
 		layer.PropertyName = "Parent"
 
-		context.InstancesByReferent.OnAddInstance(referent, func(instance *rbxfile.Instance) {
-			result.AddChild(instance)
-		})
+		if referent.IsNull() { // NULL is a valid referent; think about :Remove()!
+			return layer, instance.SetParent(nil)
+		}
+		err = parent.AddChild(instance)
 		return layer, err
-    }
+	}
 
-    if int(propertyIDx) > int(len(context.StaticSchema.Properties)) {
-        return layer, errors.New(fmt.Sprintf("prop idx %d is higher than %d", propertyIDx, len(context.StaticSchema.Properties)))
-    }
-    schema := context.StaticSchema.Properties[propertyIDx]
-    layer.PropertyName = schema.Name
+	if int(propertyIDx) > int(len(context.StaticSchema.Properties)) {
+		return layer, fmt.Errorf("prop idx %d is higher than %d", propertyIDx, len(context.StaticSchema.Properties))
+	}
+	schema := context.StaticSchema.Properties[propertyIDx]
+	layer.PropertyName = schema.Name
 
-    layer.Bool1, err = thisBitstream.readBoolByte()
-    if err != nil {
-        return layer, err
-    }
+	layer.Value, err = schema.Decode(reader, packet, thisBitstream)
 
-    layer.Value, err = schema.Decode(isClient, ROUND_UPDATE, packet, context)
-
-    context.InstancesByReferent.OnAddInstance(referent, func(instance *rbxfile.Instance) {
-        layer.Instance = instance
-        instance.Properties[layer.PropertyName] = layer.Value
-    })
-
-    return layer, err
+	return layer, err
 }
 
-func (layer *Packet83_03) serialize(isClient bool, context *CommunicationContext, stream *extendedWriter) error {
-	err := stream.writeObject(isClient, layer.Instance, false, context)
+func (layer *Packet83_03) Serialize(writer PacketWriter, stream *extendedWriter) error {
+	if layer.Instance == nil {
+		return errors.New("self is nil in serialize repl prop")
+	}
+
+	err := stream.writeObject(layer.Instance, writer.Caches())
 	if err != nil {
 		return err
 	}
 
-	if layer.PropertyName == "Parent" {
+	context := writer.Context()
+	if layer.PropertyName == "Parent" { // explicit system for this
 		err = stream.writeUint16BE(uint16(len(context.StaticSchema.Properties)))
-	} else {
-		err = stream.writeUint16BE(uint16(context.StaticSchema.PropertiesByName[layer.Instance.ClassName + "." + layer.PropertyName]))
+		if err != nil {
+			return err
+		}
+		err = stream.writeBoolByte(layer.Bool1)
+		if err != nil {
+			return err
+		}
+		if writer.ToClient() {
+			err = stream.writeSintUTF8(layer.Int1)
+			if err != nil {
+				return err
+			}
+		}
+
+		return stream.writeObject(layer.Value.(rbxfile.ValueReference).Instance, writer.Caches())
 	}
+
+	err = stream.writeUint16BE(uint16(context.StaticSchema.PropertiesByName[layer.Instance.ClassName+"."+layer.PropertyName]))
 	if err != nil {
 		return err
 	}
 
-	err = stream.writeBool(layer.Bool1)
+	err = stream.writeBoolByte(layer.Bool1)
 	if err != nil {
 		return err
 	}
+	if writer.ToClient() { // TODO: Serializers should be able to access PacketWriter
+		err = stream.writeSintUTF8(layer.Int1)
+		if err != nil {
+			return err
+		}
+	}
 
-	err = context.StaticSchema.Properties[context.StaticSchema.PropertiesByName[layer.PropertyName]].serialize(isClient, layer.Value, ROUND_UPDATE, context, stream)
+	//println("serializing property", layer.PropertyName, layer.Instance.Name(), layer.Value.String())
+	if layer.Instance == nil {
+		return errors.New("cannot serialize property because instance is nil")
+	}
+
+	// Shun Go for silently ignoring nil map values and just returning 0 instead
+	// TODO improve this
+	propertyID, ok := context.StaticSchema.PropertiesByName[layer.Instance.ClassName+"."+layer.PropertyName]
+	if !ok {
+		return errors.New("unrecognized property " + layer.Instance.ClassName + "." + layer.PropertyName)
+	}
+
+	// TODO: A different system for this?
+	err = context.StaticSchema.Properties[propertyID].Serialize(layer.Value, writer, stream)
 	return err
 }

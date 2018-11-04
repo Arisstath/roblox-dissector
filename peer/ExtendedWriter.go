@@ -1,4 +1,5 @@
 package peer
+
 import "github.com/gskartwii/go-bitstream"
 import "encoding/binary"
 import "net"
@@ -113,29 +114,29 @@ func (b *extendedWriter) writeASCII(value string) error {
 }
 
 func (b *extendedWriter) writeUintUTF8(value uint32) error {
-    if value == 0 {
-        return b.WriteByte(0)
-    }
-    for value != 0 {
-		print("new round because", value)
-        nextValue := value >> 7
-        if nextValue != 0 {
-            err := b.WriteByte(byte(value&0x7F|0x80))
-            if err != nil {
-                return err
-            }
-        } else {
-            err := b.WriteByte(byte(value&0x7F))
-            if err != nil {
-                return err
-            }
-        }
-        value = nextValue
-    }
-    return nil
+	if value == 0 {
+		return b.WriteByte(0)
+	}
+	for value != 0 {
+		nextValue := value >> 7
+		if nextValue != 0 {
+			err := b.WriteByte(byte(value&0x7F | 0x80))
+			if err != nil {
+				return err
+			}
+		} else {
+			err := b.WriteByte(byte(value & 0x7F))
+			if err != nil {
+				return err
+			}
+		}
+		value = nextValue
+	}
+	return nil
 }
 
-type cacheWriteCallback func(*extendedWriter, interface{})(error)
+type cacheWriteCallback func(*extendedWriter, interface{}) error
+
 func (b *extendedWriter) writeWithCache(value interface{}, cache Cache, writeCallback cacheWriteCallback) error {
 	if value == nil {
 		return b.WriteByte(0x00)
@@ -153,8 +154,7 @@ func (b *extendedWriter) writeWithCache(value interface{}, cache Cache, writeCal
 		}
 	}
 	if matchedIndex == 0 {
-		cache.Put(value, cache.LastWrite() % 0x7F + 1)
-		println("Writing new value to cache: ", cache.LastWrite())
+		cache.Put(value, cache.LastWrite()%0x7F+1)
 		err := b.WriteByte(cache.LastWrite() | 0x80)
 		if err != nil {
 			return err
@@ -174,45 +174,25 @@ func (b *extendedWriter) writeUint32AndString(val interface{}) error {
 	return b.writeASCII(str)
 }
 
-func (b *extendedWriter) writeCached(isClient bool, val string, context *CommunicationContext) error {
-	var cache Cache
-	if isClient {
-		cache = &context.ClientCaches.String
-	} else {
-		cache = &context.ServerCaches.String
-	}
+func (b *extendedWriter) writeCached(val string, caches *Caches) error {
+	cache := &caches.String
 
 	return b.writeWithCache(val, cache, (*extendedWriter).writeUint32AndString)
 }
-func (b *extendedWriter) writeCachedObject(isClient bool, val string, context *CommunicationContext) error {
-	var cache Cache
-	if isClient {
-		cache = &context.ClientCaches.Object
-	} else {
-		cache = &context.ServerCaches.Object
-	}
+func (b *extendedWriter) writeCachedObject(val string, caches *Caches) error {
+	cache := &caches.Object
 
 	return b.writeWithCache(val, cache, (*extendedWriter).writeUint32AndString)
 }
-func (b *extendedWriter) writeCachedContent(isClient bool, val string, context *CommunicationContext) error {
-	var cache Cache
-	if isClient {
-		cache = &context.ClientCaches.Content
-	} else {
-		cache = &context.ServerCaches.Content
-	}
+func (b *extendedWriter) writeCachedContent(val string, caches *Caches) error {
+	cache := &caches.Content
 
 	return b.writeWithCache(val, cache, (*extendedWriter).writeUint32AndString)
 }
-func (b *extendedWriter) writeNewCachedProtectedString(isClient bool, val string, context *CommunicationContext) error {
-	var cache Cache
-	if isClient {
-		cache = &context.ClientCaches.ProtectedString
-	} else {
-		cache = &context.ServerCaches.ProtectedString
-	}
+func (b *extendedWriter) writeNewCachedProtectedString(val []byte, caches *Caches) error {
+	cache := &caches.ProtectedString
 
-	return b.writeWithCache(val, cache, func(b *extendedWriter, val interface{})(error) {
+	return b.writeWithCache(val, cache, func(b *extendedWriter, val interface{}) error {
 		str := val.([]byte)
 		err := b.writeUint32BE(uint32(len(str)))
 		if err != nil {
@@ -221,55 +201,59 @@ func (b *extendedWriter) writeNewCachedProtectedString(isClient bool, val string
 		return b.allBytes(val.([]byte))
 	})
 }
-func (b *extendedWriter) writeCachedSystemAddress(isClient bool, val rbxfile.ValueSystemAddress, context *CommunicationContext) error {
-	var cache Cache
-	if isClient {
-		cache = &context.ClientCaches.SystemAddress
-	} else {
-		cache = &context.ServerCaches.SystemAddress
-	}
+func (b *extendedWriter) writeCachedSystemAddress(val rbxfile.ValueSystemAddress, caches *Caches) error {
+	cache := &caches.SystemAddress
 
-	return b.writeWithCache(val, cache, func(b *extendedWriter, val interface{})(error) {
-		return b.writeSystemAddress(isClient, val.(rbxfile.ValueSystemAddress), true, nil)
+	return b.writeWithCache(val, cache, func(b *extendedWriter, val interface{}) error {
+		return b.writeSystemAddressRaw(val.(rbxfile.ValueSystemAddress))
 	})
 }
 
-func (b *extendedWriter) writeObject(isClient bool, object *rbxfile.Instance, isJoinData bool, context *CommunicationContext) error {
-    var err error
-    if object == nil {
-        return b.WriteByte(0)
-    }
-
-	referentString, referent := refToObject(object.Reference)
-    if isJoinData {
-        if referentString == "NULL2" {
-            err = b.WriteByte(0)
-            return err
-		} else if referentString == context.InstanceTopScope {
-            err = b.WriteByte(0xFF)
-        } else {
-            err = b.WriteByte(uint8(len(referentString)))
-            if err != nil {
-                return err
-            }
-            err = b.writeASCII(referentString)
-		}
-		if err != nil {
-            return err
-        }
-
-        return b.writeUint32LE(referent)
-    } else {
-		if referentString == "NULL2" || referentString == "null" {
-			return b.WriteByte(0x00)
-		}
-		err = b.writeCachedObject(isClient, referentString, context)
+func (b *extendedWriter) writeJoinObject(object *rbxfile.Instance, context *CommunicationContext) error {
+	var err error
+	if object == nil || Referent(object.Reference).IsNull() {
+		err = b.WriteByte(0)
+		return err
+	}
+	referentString, referent := refToObject(Referent(object.Reference))
+	if referentString == context.InstanceTopScope {
+		err = b.WriteByte(0xFF)
+	} else {
+		err = b.WriteByte(uint8(len(referentString)))
 		if err != nil {
 			return err
 		}
-		return b.writeUint32LE(referent)
+		err = b.writeASCII(referentString)
 	}
-    return nil
+	if err != nil {
+		return err
+	}
+
+	return b.writeUint32LE(referent)
+}
+
+// TODO: Remove refToObject, store scope and number separately, as a struct
+// TODO: Implement a similar system for readers, where it simply returns an instance
+func (b *extendedWriter) writeObject(object *rbxfile.Instance, caches *Caches) error {
+	var err error
+	if object == nil {
+		return b.WriteByte(0)
+	}
+	if Referent(object.Reference).IsNull() {
+		return b.WriteByte(0x00)
+	}
+	scope, referent := refToObject(Referent(object.Reference))
+	err = b.writeCachedObject(scope, caches)
+	if err != nil {
+		return err
+	}
+	return b.writeUint32LE(referent)
+}
+func (b *extendedWriter) writeAnyObject(object *rbxfile.Instance, writer PacketWriter, isJoinData bool) error {
+	if isJoinData {
+		return b.writeJoinObject(object, writer.Context())
+	}
+	return b.writeObject(object, writer.Caches())
 }
 
 func (b *extendedWriter) writeHuffman(value []byte) error {
@@ -304,7 +288,7 @@ func (b *extendedWriter) writeCompressed(value []byte, length uint32, isUnsigned
 		halfByteMatch = 0xF0
 	}
 	var currentByte uint32
-	for currentByte = length >> 3 - 1; currentByte > 0; currentByte-- {
+	for currentByte = length>>3 - 1; currentByte > 0; currentByte-- {
 		isMatch := value[currentByte] == byteMatch
 		err = b.writeBool(isMatch)
 		if err != nil {
@@ -315,7 +299,7 @@ func (b *extendedWriter) writeCompressed(value []byte, length uint32, isUnsigned
 		}
 	}
 	lastByte := value[0]
-	if lastByte & 0xF0 == halfByteMatch {
+	if lastByte&0xF0 == halfByteMatch {
 		err = b.writeBool(true)
 		if err != nil {
 			return err
@@ -329,7 +313,6 @@ func (b *extendedWriter) writeCompressed(value []byte, length uint32, isUnsigned
 	return b.WriteByte(lastByte)
 }
 func (b *extendedWriter) writeUint32BECompressed(value uint32) error {
-	println("writing compressed val", value)
 	val := make([]byte, 4)
 	binary.BigEndian.PutUint32(val, value)
 	return b.writeCompressed(val, 32, true)

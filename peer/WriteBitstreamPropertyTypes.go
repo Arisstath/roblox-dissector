@@ -1,4 +1,5 @@
 package peer
+
 import "math"
 import "github.com/gskartwii/rbxfile"
 import "errors"
@@ -85,43 +86,43 @@ func (b *extendedWriter) writeVector3Simple(val rbxfile.ValueVector3) error {
 	return b.writeFloat32BE(val.Z)
 }
 func (b *extendedWriter) writeVector3(val rbxfile.ValueVector3) error {
+	var err error
 	if math.Mod(float64(val.X), 0.5) != 0 ||
-	   math.Mod(float64(val.Y), 0.1) != 0 ||
-	   math.Mod(float64(val.Z), 0.5) != 0 ||
-	   val.X >  511.5	||
-	   val.X < -511.5	||
-	   val.Y >  204.7	||
-	   val.Y <      0	||
-	   val.Z >  511.5	||
-	   val.Z < -511.5	{
-		err := b.writeBool(false)
+		math.Mod(float64(val.Y), 0.1) != 0 ||
+		math.Mod(float64(val.Z), 0.5) != 0 ||
+		val.X > 511.5 ||
+		val.X < -511.5 ||
+		val.Y > 204.7 ||
+		val.Y < 0 ||
+		val.Z > 511.5 ||
+		val.Z < -511.5 {
+		err = b.writeBoolByte(false)
 		if err != nil {
 			return err
 		}
 		err = b.writeVector3Simple(val)
 		return err
-	} else {
-		err := b.writeBool(true)
-		if err != nil {
-			return err
-		}
-		x_scaled := uint16(val.X * 2)
-		y_scaled := uint16(val.Y * 10)
-		z_scaled := uint16(val.Z * 2)
-		x_scaled = (x_scaled >> 8 & 7) | ((x_scaled & 0xFF) << 3)
-		y_scaled = (y_scaled >> 8 & 7) | ((y_scaled & 0xFF) << 3)
-		z_scaled = (z_scaled >> 8 & 7) | ((z_scaled & 0xFF) << 3)
-		err = b.bits(11, uint64(x_scaled))
-		if err != nil {
-			return err
-		}
-		err = b.bits(11, uint64(y_scaled))
-		if err != nil {
-			return err
-		}
-		err = b.bits(11, uint64(z_scaled))
+	}
+	err = b.writeBoolByte(true)
+	if err != nil {
 		return err
 	}
+	xScaled := uint16(val.X * 2)
+	yScaled := uint16(val.Y * 10)
+	zScaled := uint16(val.Z * 2)
+	xScaled = (xScaled >> 8 & 7) | ((xScaled & 0xFF) << 3)
+	yScaled = (yScaled >> 8 & 7) | ((yScaled & 0xFF) << 3)
+	zScaled = (zScaled >> 8 & 7) | ((zScaled & 0xFF) << 3)
+	err = b.bits(11, uint64(xScaled))
+	if err != nil {
+		return err
+	}
+	err = b.bits(11, uint64(yScaled))
+	if err != nil {
+		return err
+	}
+	err = b.bits(11, uint64(zScaled))
+	return err
 }
 
 func (b *extendedWriter) writeVector2int16(val rbxfile.ValueVector2int16) error {
@@ -144,7 +145,7 @@ func (b *extendedWriter) writeVector3int16(val rbxfile.ValueVector3int16) error 
 }
 
 func (b *extendedWriter) writePBool(val rbxfile.ValueBool) error {
-	return b.writeBool(bool(val))
+	return b.writeBoolByte(bool(val))
 }
 func (b *extendedWriter) writePSint(val rbxfile.ValueInt) error {
 	return b.writeUint32BE(uint32(val))
@@ -193,7 +194,7 @@ func (b *extendedWriter) writeFaces(val rbxfile.ValueFaces) error {
 }
 
 func (b *extendedWriter) writeBrickColor(val rbxfile.ValueBrickColor) error {
-	return b.bits(7, uint64(val))
+	return b.writeUint16BE(uint16(val))
 }
 
 func (b *extendedWriter) writeVarLengthString(val string) error {
@@ -204,46 +205,52 @@ func (b *extendedWriter) writeVarLengthString(val string) error {
 	return b.writeASCII(val)
 }
 
-func (b *extendedWriter) writeNewPString(isClient bool, val rbxfile.ValueString, isJoinData bool, context *CommunicationContext) (error) {
-	if !isJoinData {
-		return b.writeCached(isClient, string(val), context)
-	}
-
+func (b *extendedWriter) writeNewPString(val rbxfile.ValueString, caches *Caches) error {
+	return b.writeCached(string(val), caches)
+}
+func (b *extendedWriter) writePStringNoCache(val rbxfile.ValueString) error {
 	return b.writeVarLengthString(string(val))
 }
 
-func (b *extendedWriter) writeNewProtectedString(isClient bool, val rbxfile.ValueProtectedString, isJoinData bool, context *CommunicationContext) error {
-	if !isJoinData {
-		return b.writeNewCachedProtectedString(isClient, string(val), context)
-	}
-	return b.writeNewPString(isClient, rbxfile.ValueString(val), true, context)
+func (b *extendedWriter) writeNewProtectedString(val rbxfile.ValueProtectedString, caches *Caches) error {
+	return b.writeNewCachedProtectedString([]byte(val), caches)
 }
 func (b *extendedWriter) writeNewBinaryString(val rbxfile.ValueBinaryString) error {
-	return b.writeNewPString(false, rbxfile.ValueString(val), true, nil) // hack: isClient doesn't matter because cache isn't used
+	return b.writeVarLengthString(string(val))
 }
-func (b *extendedWriter) writeNewContent(isClient bool, val rbxfile.ValueContent, isJoinData bool, context *CommunicationContext) error {
-	return b.writeNewPString(isClient, rbxfile.ValueString(val), isJoinData, context)
+func (b *extendedWriter) writeNewContent(val rbxfile.ValueContent, caches *Caches) error {
+	return b.writeCachedContent(string(val), caches)
+}
+
+func (b *JoinSerializeWriter) writeNewPString(val rbxfile.ValueString) error {
+	return b.extendedWriter.writePStringNoCache(val)
+}
+func (b *JoinSerializeWriter) writeNewProtectedString(val rbxfile.ValueProtectedString) error {
+	return b.extendedWriter.writePStringNoCache(rbxfile.ValueString(val))
+}
+func (b *JoinSerializeWriter) writeNewContent(val rbxfile.ValueContent) error {
+	return b.writeUint32AndString(string(val))
 }
 
 func (b *extendedWriter) writeCFrameSimple(val rbxfile.ValueCFrame) error {
-	return nil
+	return errors.New("not implemented!")
 }
 
 func rotMatrixToQuaternion(r [9]float32) [4]float32 {
-	q := float32(math.Sqrt(float64(1 + r[0*3+0] + r[1*3+1] + r[2*3+2]))/2)
+	q := float32(math.Sqrt(float64(1+r[0*3+0]+r[1*3+1]+r[2*3+2])) / 2)
 	return [4]float32{
-		(r[2*3+1]-r[1*3+2])/(4*q),
-		(r[0*3+2]-r[2*3+0])/(4*q),
-		(r[1*3+0]-r[0*3+1])/(4*q),
+		(r[2*3+1] - r[1*3+2]) / (4 * q),
+		(r[0*3+2] - r[2*3+0]) / (4 * q),
+		(r[1*3+0] - r[0*3+1]) / (4 * q),
 		q,
 	}
 } // So nice to not have to worry about normalization on this side!
 func (b *extendedWriter) writeCFrame(val rbxfile.ValueCFrame) error {
-	err := b.writeVector3(val.Position)
+	err := b.writeVector3Simple(val.Position)
 	if err != nil {
 		return err
 	}
-	err = b.writeBool(false) // Not going to bother with lookup stuff
+	err = b.writeBoolByte(false) // Not going to bother with lookup stuff
 	if err != nil {
 		return err
 	}
@@ -260,91 +267,86 @@ func (b *extendedWriter) writeCFrame(val rbxfile.ValueCFrame) error {
 }
 
 func (b *extendedWriter) writeSintUTF8(val int32) error {
-	return b.writeUintUTF8(uint32(val) << 1 ^ -(uint32(val) >> 31))
+	return b.writeUintUTF8(uint32(val)<<1 ^ -(uint32(val) >> 31))
 }
 func (b *extendedWriter) writeNewPSint(val rbxfile.ValueInt) error {
 	return b.writeSintUTF8(int32(val))
 }
 func (b *extendedWriter) writeVarint64(value uint64) error {
-    if value == 0 {
-        return b.WriteByte(0)
-    }
-    for value != 0 {
-        nextValue := value >> 7
-        if nextValue != 0 {
-            err := b.WriteByte(byte(value&0x7F|0x80))
-            if err != nil {
-                return err
-            }
-        } else {
-            err := b.WriteByte(byte(value&0x7F))
-            if err != nil {
-                return err
-            }
-        }
-        value = nextValue
-    }
-    return nil
+	if value == 0 {
+		return b.WriteByte(0)
+	}
+	for value != 0 {
+		nextValue := value >> 7
+		if nextValue != 0 {
+			err := b.WriteByte(byte(value&0x7F | 0x80))
+			if err != nil {
+				return err
+			}
+		} else {
+			err := b.WriteByte(byte(value & 0x7F))
+			if err != nil {
+				return err
+			}
+		}
+		value = nextValue
+	}
+	return nil
 }
 func (b *extendedWriter) writeVarsint64(val int64) error {
-	return b.writeVarint64(uint64(val) << 1 ^ - (uint64(val) >> 63))
+	return b.writeVarint64(uint64(val)<<1 ^ -(uint64(val) >> 63))
 }
 
 var typeToNetworkConvTable = map[rbxfile.Type]uint8{
-	rbxfile.TypeString: PROP_TYPE_STRING,
-	rbxfile.TypeBinaryString: PROP_TYPE_BINARYSTRING,
-	rbxfile.TypeProtectedString: PROP_TYPE_PROTECTEDSTRING_0,
-	rbxfile.TypeContent: PROP_TYPE_CONTENT,
-	rbxfile.TypeBool: PROP_TYPE_PBOOL,
-	rbxfile.TypeInt: PROP_TYPE_PSINT,
-	rbxfile.TypeFloat: PROP_TYPE_PFLOAT,
-	rbxfile.TypeDouble: PROP_TYPE_PDOUBLE,
-	rbxfile.TypeUDim: PROP_TYPE_UDIM,
-	rbxfile.TypeUDim2: PROP_TYPE_UDIM2,
-	rbxfile.TypeRay: PROP_TYPE_RAY,
-	rbxfile.TypeFaces: PROP_TYPE_FACES,
-	rbxfile.TypeAxes: PROP_TYPE_AXES,
-	rbxfile.TypeBrickColor: PROP_TYPE_BRICKCOLOR,
-	rbxfile.TypeColor3: PROP_TYPE_COLOR3,
-	rbxfile.TypeVector2: PROP_TYPE_VECTOR2,
-	rbxfile.TypeVector3: PROP_TYPE_VECTOR3_COMPLICATED,
-	rbxfile.TypeCFrame: PROP_TYPE_CFRAME_COMPLICATED,
-	rbxfile.TypeToken: PROP_TYPE_ENUM,
-	rbxfile.TypeReference: PROP_TYPE_INSTANCE,
-	rbxfile.TypeVector3int16: PROP_TYPE_VECTOR3UINT16,
-	rbxfile.TypeVector2int16: PROP_TYPE_VECTOR2UINT16,
-	rbxfile.TypeNumberSequence: PROP_TYPE_NUMBERSEQUENCE,
-	rbxfile.TypeColorSequence: PROP_TYPE_COLORSEQUENCE,
-	rbxfile.TypeNumberRange: PROP_TYPE_NUMBERRANGE,
-	rbxfile.TypeRect2D: PROP_TYPE_RECT2D,
-	rbxfile.TypePhysicalProperties: PROP_TYPE_PHYSICALPROPERTIES,
-	rbxfile.TypeColor3uint8: PROP_TYPE_COLOR3UINT8,
+	rbxfile.TypeString:                 PROP_TYPE_STRING,
+	rbxfile.TypeBinaryString:           PROP_TYPE_BINARYSTRING,
+	rbxfile.TypeProtectedString:        PROP_TYPE_PROTECTEDSTRING_0,
+	rbxfile.TypeContent:                PROP_TYPE_CONTENT,
+	rbxfile.TypeBool:                   PROP_TYPE_PBOOL,
+	rbxfile.TypeInt:                    PROP_TYPE_PSINT,
+	rbxfile.TypeFloat:                  PROP_TYPE_PFLOAT,
+	rbxfile.TypeDouble:                 PROP_TYPE_PDOUBLE,
+	rbxfile.TypeUDim:                   PROP_TYPE_UDIM,
+	rbxfile.TypeUDim2:                  PROP_TYPE_UDIM2,
+	rbxfile.TypeRay:                    PROP_TYPE_RAY,
+	rbxfile.TypeFaces:                  PROP_TYPE_FACES,
+	rbxfile.TypeAxes:                   PROP_TYPE_AXES,
+	rbxfile.TypeBrickColor:             PROP_TYPE_BRICKCOLOR,
+	rbxfile.TypeColor3:                 PROP_TYPE_COLOR3,
+	rbxfile.TypeVector2:                PROP_TYPE_VECTOR2,
+	rbxfile.TypeVector3:                PROP_TYPE_VECTOR3_COMPLICATED,
+	rbxfile.TypeCFrame:                 PROP_TYPE_CFRAME_COMPLICATED,
+	rbxfile.TypeToken:                  PROP_TYPE_ENUM,
+	rbxfile.TypeReference:              PROP_TYPE_INSTANCE,
+	rbxfile.TypeVector3int16:           PROP_TYPE_VECTOR3UINT16,
+	rbxfile.TypeVector2int16:           PROP_TYPE_VECTOR2UINT16,
+	rbxfile.TypeNumberSequence:         PROP_TYPE_NUMBERSEQUENCE,
+	rbxfile.TypeColorSequence:          PROP_TYPE_COLORSEQUENCE,
+	rbxfile.TypeNumberRange:            PROP_TYPE_NUMBERRANGE,
+	rbxfile.TypeRect2D:                 PROP_TYPE_RECT2D,
+	rbxfile.TypePhysicalProperties:     PROP_TYPE_PHYSICALPROPERTIES,
+	rbxfile.TypeColor3uint8:            PROP_TYPE_COLOR3UINT8,
 	rbxfile.TypeNumberSequenceKeypoint: PROP_TYPE_NUMBERSEQUENCEKEYPOINT,
-	rbxfile.TypeColorSequenceKeypoint: PROP_TYPE_COLORSEQUENCEKEYPOINT,
-	rbxfile.TypeSystemAddress: PROP_TYPE_SYSTEMADDRESS,
-	rbxfile.TypeMap: PROP_TYPE_MAP,
-	rbxfile.TypeDictionary: PROP_TYPE_DICTIONARY,
-	rbxfile.TypeArray: PROP_TYPE_ARRAY,
-	rbxfile.TypeTuple: PROP_TYPE_TUPLE,
+	rbxfile.TypeColorSequenceKeypoint:  PROP_TYPE_COLORSEQUENCEKEYPOINT,
+	rbxfile.TypeSystemAddress:          PROP_TYPE_SYSTEMADDRESS,
+	rbxfile.TypeMap:                    PROP_TYPE_MAP,
+	rbxfile.TypeDictionary:             PROP_TYPE_DICTIONARY,
+	rbxfile.TypeArray:                  PROP_TYPE_ARRAY,
+	rbxfile.TypeTuple:                  PROP_TYPE_TUPLE,
 }
+
 func typeToNetwork(val rbxfile.Value) uint8 {
+	if val == nil {
+		return 0
+	}
 	return typeToNetworkConvTable[val.Type()]
 }
-func (b *extendedWriter) writeSerializedValue(isClient bool, val rbxfile.Value, isJoinData bool, valueType uint8, context *CommunicationContext) error {
+func (b *extendedWriter) writeSerializedValueGeneric(val rbxfile.Value, valueType uint8) error {
+	if val == nil {
+		return nil
+	}
 	var err error
 	switch valueType {
-	case PROP_TYPE_STRING:
-		err = b.writeNewPString(isClient, val.(rbxfile.ValueString), isJoinData, context)
-	case PROP_TYPE_STRING_NO_CACHE:
-		err = b.writeNewPString(isClient, val.(rbxfile.ValueString), true, context)
-	case PROP_TYPE_PROTECTEDSTRING_0:
-		err = b.writeNewProtectedString(isClient, val.(rbxfile.ValueProtectedString), isJoinData, context)
-	case PROP_TYPE_PROTECTEDSTRING_1:
-		err = b.writeNewProtectedString(isClient, val.(rbxfile.ValueProtectedString), isJoinData, context)
-	case PROP_TYPE_PROTECTEDSTRING_2:
-		err = b.writeNewProtectedString(isClient, val.(rbxfile.ValueProtectedString), isJoinData, context)
-	case PROP_TYPE_PROTECTEDSTRING_3:
-		err = b.writeNewProtectedString(isClient, val.(rbxfile.ValueProtectedString), isJoinData, context)
 	case PROP_TYPE_ENUM:
 		err = b.writeNewEnumValue(val.(rbxfile.ValueToken))
 	case PROP_TYPE_BINARYSTRING:
@@ -387,20 +389,6 @@ func (b *extendedWriter) writeSerializedValue(isClient bool, val rbxfile.Value, 
 		err = b.writeCFrameSimple(val.(rbxfile.ValueCFrame))
 	case PROP_TYPE_CFRAME_COMPLICATED:
 		err = b.writeCFrame(val.(rbxfile.ValueCFrame))
-	case PROP_TYPE_INSTANCE:
-        err = b.writeObject(isClient, val.(rbxfile.ValueReference).Instance, isJoinData, context)
-	case PROP_TYPE_CONTENT:
-		err = b.writeNewContent(isClient, val.(rbxfile.ValueContent), isJoinData, context)
-	case PROP_TYPE_SYSTEMADDRESS:
-		err = b.writeSystemAddress(isClient, val.(rbxfile.ValueSystemAddress), isJoinData, context)
-	case PROP_TYPE_TUPLE:
-		err = b.writeNewTuple(isClient, val.(rbxfile.ValueTuple), isJoinData, context)
-	case PROP_TYPE_ARRAY:
-		err = b.writeNewArray(isClient, val.(rbxfile.ValueArray), isJoinData, context)
-	case PROP_TYPE_DICTIONARY:
-		err = b.writeNewDictionary(isClient, val.(rbxfile.ValueDictionary), isJoinData, context)
-	case PROP_TYPE_MAP:
-		err = b.writeNewMap(isClient, val.(rbxfile.ValueMap), isJoinData, context)
 	case PROP_TYPE_NUMBERSEQUENCE:
 		err = b.writeNumberSequence(val.(rbxfile.ValueNumberSequence))
 	case PROP_TYPE_NUMBERSEQUENCEKEYPOINT:
@@ -415,15 +403,20 @@ func (b *extendedWriter) writeSerializedValue(isClient bool, val rbxfile.Value, 
 		err = b.writeRect2D(val.(rbxfile.ValueRect2D))
 	case PROP_TYPE_PHYSICALPROPERTIES:
 		err = b.writePhysicalProperties(val.(rbxfile.ValuePhysicalProperties))
+	case PROP_TYPE_INT64:
+		err = b.writeVarsint64(int64(val.(rbxfile.ValueInt64)))
+	case PROP_TYPE_STRING_NO_CACHE:
+		err = b.writePStringNoCache(val.(rbxfile.ValueString))
 	default:
 		return errors.New("Unsupported property type: " + strconv.Itoa(int(valueType)))
 	}
 	return err
 }
-func (b *extendedWriter) writeNewTypeAndValue(isClient bool, val rbxfile.Value, isJoinData bool, context *CommunicationContext) error {
+
+func (b *extendedWriter) writeNewTypeAndValue(val rbxfile.Value, writer PacketWriter) error {
 	var err error
 	valueType := typeToNetwork(val)
-	println("Writing typeandvalue", valueType)
+	//println("Writing typeandvalue", valueType)
 	err = b.WriteByte(uint8(valueType))
 	if valueType == 7 {
 		err = b.writeUint16BE(val.(rbxfile.ValueToken).ID)
@@ -431,27 +424,27 @@ func (b *extendedWriter) writeNewTypeAndValue(isClient bool, val rbxfile.Value, 
 			return err
 		}
 	}
-	return b.writeSerializedValue(isClient, val, isJoinData, valueType, context)
+	return b.WriteSerializedValue(val, writer, valueType)
 }
 
-func (b *extendedWriter) writeNewTuple(isClient bool, val rbxfile.ValueTuple, isJoinData bool, context *CommunicationContext) error {
+func (b *extendedWriter) writeNewTuple(val rbxfile.ValueTuple, writer PacketWriter) error {
 	err := b.writeUintUTF8(uint32(len(val)))
 	if err != nil {
 		return err
 	}
 	for i := 0; i < len(val); i++ {
-		err = b.writeNewTypeAndValue(isClient, val[i], isJoinData, context)
+		err = b.writeNewTypeAndValue(val[i], writer)
 		if err != nil {
 			return err
 		}
 	}
 	return nil
 }
-func (b *extendedWriter) writeNewArray(isClient bool, val rbxfile.ValueArray, isJoinData bool, context *CommunicationContext) error {
-	return b.writeNewTuple(isClient, rbxfile.ValueTuple(val), isJoinData, context)
+func (b *extendedWriter) writeNewArray(val rbxfile.ValueArray, writer PacketWriter) error {
+	return b.writeNewTuple(rbxfile.ValueTuple(val), writer)
 }
 
-func (b *extendedWriter) writeNewDictionary(isClient bool, val rbxfile.ValueDictionary, isJoinData bool, context *CommunicationContext) error {
+func (b *extendedWriter) writeNewDictionary(val rbxfile.ValueDictionary, writer PacketWriter) error {
 	err := b.writeUintUTF8(uint32(len(val)))
 	if err != nil {
 		return err
@@ -465,15 +458,15 @@ func (b *extendedWriter) writeNewDictionary(isClient bool, val rbxfile.ValueDict
 		if err != nil {
 			return err
 		}
-		err = b.writeNewTypeAndValue(isClient, value, isJoinData, context)
+		err = b.writeNewTypeAndValue(value, writer)
 		if err != nil {
 			return err
 		}
 	}
 	return nil
 }
-func (b *extendedWriter) writeNewMap(isClient bool, val rbxfile.ValueMap, isJoinData bool, context *CommunicationContext) error {
-	return b.writeNewDictionary(isClient, rbxfile.ValueDictionary(val), isJoinData, context)
+func (b *extendedWriter) writeNewMap(val rbxfile.ValueMap, writer PacketWriter) error {
+	return b.writeNewDictionary(rbxfile.ValueDictionary(val), writer)
 }
 
 func (b *extendedWriter) writeNumberSequenceKeypoint(val rbxfile.ValueNumberSequenceKeypoint) error {
@@ -538,10 +531,7 @@ func (b *extendedWriter) writeNewEnumValue(val rbxfile.ValueToken) error {
 	return b.writeUintUTF8(val.Value)
 }
 
-func (b *extendedWriter) writeSystemAddress(isClient bool, val rbxfile.ValueSystemAddress, isJoinData bool, context *CommunicationContext) error {
-	if !isJoinData {
-		return b.writeCachedSystemAddress(isClient, val, context)
-	}
+func (b *extendedWriter) writeSystemAddressRaw(val rbxfile.ValueSystemAddress) error {
 	addr, err := net.ResolveUDPAddr("udp", string(val))
 	if err != nil {
 		return err
@@ -563,6 +553,13 @@ func (b *extendedWriter) writeSystemAddress(isClient bool, val rbxfile.ValueSyst
 	return b.writeUint16BE(uint16(addr.Port))
 }
 
+func (b *extendedWriter) writeSystemAddress(val rbxfile.ValueSystemAddress, caches *Caches) error {
+	return b.writeCachedSystemAddress(val, caches)
+}
+func (b *JoinSerializeWriter) writeSystemAddress(val rbxfile.ValueSystemAddress) error {
+	return b.writeSystemAddressRaw(val)
+}
+
 func (b *extendedWriter) writeRect2D(val rbxfile.ValueRect2D) error {
 	err := b.writeFloat32BE(val.Min.X)
 	if err != nil {
@@ -581,7 +578,7 @@ func (b *extendedWriter) writeRect2D(val rbxfile.ValueRect2D) error {
 }
 
 func (b *extendedWriter) writePhysicalProperties(val rbxfile.ValuePhysicalProperties) error {
-	err := b.writeBool(val.CustomPhysics)
+	err := b.writeBoolByte(val.CustomPhysics)
 	if err != nil {
 		return err
 	}
@@ -619,62 +616,210 @@ func (b *extendedWriter) writeCoordsMode1(val rbxfile.ValueVector3) error {
 	if valRange <= 0.0000099999997 {
 		return nil
 	}
-	err = b.writeUint16BE(uint16(val.X / valRange * 32767.0 + 32767.0))
+	err = b.writeUint16BE(uint16(val.X/valRange*32767.0 + 32767.0))
 	if err != nil {
 		return err
 	}
-	err = b.writeUint16BE(uint16(val.Y / valRange * 32767.0 + 32767.0))
+	err = b.writeUint16BE(uint16(val.Y/valRange*32767.0 + 32767.0))
 	if err != nil {
 		return err
 	}
-	err = b.writeUint16BE(uint16(val.Z / valRange * 32767.0 + 32767.0))
+	err = b.writeUint16BE(uint16(val.Z/valRange*32767.0 + 32767.0))
 	return err
 }
 func (b *extendedWriter) writeCoordsMode2(val rbxfile.ValueVector3) error {
-	x_short := uint16((val.X + 1024.0) * 16.0)
-	y_short := uint16((val.Y + 1024.0) * 16.0)
-	z_short := uint16((val.Z + 1024.0) * 16.0)
+	xShort := uint16((val.X + 1024.0) * 16.0)
+	yShort := uint16((val.Y + 1024.0) * 16.0)
+	zShort := uint16((val.Z + 1024.0) * 16.0)
 
-	err := b.writeUint16BE((x_short & 0x7F) << 7 | (x_short >> 8))
+	err := b.writeUint16BE((xShort&0x7F)<<7 | (xShort >> 8))
 	if err != nil {
 		return err
 	}
-	err = b.writeUint16BE((y_short & 0x7F) << 7 | (y_short >> 8))
+	err = b.writeUint16BE((yShort&0x7F)<<7 | (yShort >> 8))
 	if err != nil {
 		return err
 	}
-	err = b.writeUint16BE((z_short & 0x7F) << 7 | (z_short >> 8))
+	err = b.writeUint16BE((zShort&0x7F)<<7 | (zShort >> 8))
 	return err
 }
+
 func (b *extendedWriter) writePhysicsCoords(val rbxfile.ValueVector3) error {
-	mode := 0
-	if	val.X < 1024.0 &&
-		val.X > -1024.0 &&
-		val.Y < 512.0 &&
-		val.Y > -512.0 &&
-		val.X < 1024.0 &&
-		val.Z > -1024.0 &&
-		math.Mod(float64(val.X), 0.0625) == 0 &&
-		math.Mod(float64(val.Y), 0.0625) == 0 &&
-		math.Mod(float64(val.Z), 0.0625) == 0 {
-		mode = 2
-	} else if val.X < 256.0 && val.X > -256.0 &&
-			  val.Y < 256.0 && val.Y > -256.0 &&
-			  val.Z < 256.0 && val.Z > -256.0 {
-		mode = 1
+	var xModifier, yModifier, zModifier float32
+	var err error
+	xAbs := math.Abs(float64(val.X))
+	yAbs := math.Abs(float64(val.Y))
+	zAbs := math.Abs(float64(val.Z))
+	largest := xAbs
+	if yAbs > xAbs {
+		largest = yAbs
 	}
-	err := b.bits(2, uint64(mode))
-	if err != nil {
-		return err
+	if zAbs > largest {
+		largest = zAbs
 	}
-	switch mode {
-	case 0:
-		return b.writeCoordsMode0(val)
-	case 1:
-		return b.writeCoordsMode1(val)
-	case 2:
-		return b.writeCoordsMode2(val)
+
+	_, exp := math.Frexp(largest)
+	if exp < 0 {
+		exp = 0
+	} else if exp > 31 {
+		exp = 31
 	}
+
+	scale := float32(math.Exp2(float64(exp)))
+
+	xScale := float32(-1.0)
+	yScale := float32(-1.0)
+	zScale := float32(-1.0)
+
+	if val.X/scale > -1.0 {
+		xScale = val.X / scale
+	}
+	if val.Y/scale > -1.0 {
+		yScale = val.Y / scale
+	}
+	if val.Y/scale > -1.0 {
+		zScale = val.Z / scale
+	}
+
+	if xScale > 1.0 {
+		xScale = 1.0
+	}
+	if yScale > 1.0 {
+		yScale = 1.0
+	}
+	if zScale > 1.0 {
+		zScale = 1.0
+	}
+
+	xModifier = -0.5
+	yModifier = -0.5
+	zModifier = -0.5
+	if val.X > 0.0 {
+		xModifier = 0.5
+	}
+	if val.Y > 0.0 {
+		yModifier = 0.5
+	}
+	if val.Z > 0.0 {
+		zModifier = 0.5
+	}
+
+	if exp <= 4.0 {
+		xScale *= 1023.0
+		yScale *= 1023.0
+		zScale *= 1023.0
+
+		xScale += xModifier
+		yScale += yModifier
+		zScale += zModifier
+
+		xScaleInt := int32(xScale)
+		yScaleInt := int32(yScale)
+		zScaleInt := int32(zScale)
+
+		xSign := xScaleInt >> 10 & 1
+		ySign := yScaleInt >> 10 & 1
+		zSign := zScaleInt >> 10 & 1
+
+		var header = uint8(exp << 3)
+		header |= uint8(xSign << 2)
+		header |= uint8(ySign << 1)
+		header |= uint8(zSign << 0)
+		err = b.WriteByte(header)
+		if err != nil {
+			return err
+		}
+
+		var val1 uint32
+		val1 |= uint32(xScaleInt<<20) & 0x3FF00000
+		val1 |= uint32(yScaleInt&0x3FF) << 10
+		val1 |= uint32(zScaleInt) & 0x3FF
+
+		err = b.writeUint32BE(val1)
+		if err != nil {
+			return err
+		}
+	} else if exp > 10.0 {
+		xScale *= 2097200.0
+		yScale *= 2097200.0
+		zScale *= 2097200.0
+
+		xScale += xModifier
+		yScale += yModifier
+		zScale += zModifier
+
+		xScaleInt := int32(xScale)
+		yScaleInt := int32(yScale)
+		zScaleInt := int32(zScale)
+
+		xSign := xScaleInt >> 21 & 1
+		ySign := yScaleInt >> 21 & 1
+		zSign := zScaleInt >> 21 & 1
+
+		var header = uint8(exp << 3)
+		header |= uint8(xSign << 2)
+		header |= uint8(ySign << 1)
+		header |= uint8(zSign << 0)
+		err = b.WriteByte(header)
+		if err != nil {
+			return err
+		}
+
+		var val1, val2 uint32
+		val1 |= uint32(xScaleInt << 11)
+		val1 |= uint32((yScaleInt >> 10) & 0x7FF)
+
+		val2 |= uint32((yScaleInt << 21) & 0x7FE00000)
+		val2 |= uint32(zScaleInt & 0x1FFFFF)
+
+		err = b.writeUint32BE(val1)
+		if err != nil {
+			return err
+		}
+		err = b.writeUint32BE(val2)
+		if err != nil {
+			return err
+		}
+	} else {
+		xScale *= 65535.0
+		yScale *= 65535.0
+		zScale *= 65535.0
+
+		xScale += xModifier
+		yScale += yModifier
+		zScale += zModifier
+
+		xScaleInt := int32(xScale)
+		yScaleInt := int32(yScale)
+		zScaleInt := int32(zScale)
+
+		xSign := xScaleInt >> 16 & 1
+		ySign := yScaleInt >> 16 & 1
+		zSign := zScaleInt >> 16 & 1
+
+		var header = uint8(exp << 3)
+		header |= uint8(xSign << 2)
+		header |= uint8(ySign << 1)
+		header |= uint8(zSign << 0)
+		err = b.WriteByte(header)
+		if err != nil {
+			return err
+		}
+
+		err = b.writeUint16BE(uint16(xScaleInt))
+		if err != nil {
+			return err
+		}
+		err = b.writeUint16BE(uint16(yScaleInt))
+		if err != nil {
+			return err
+		}
+		err = b.writeUint16BE(uint16(zScaleInt))
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -692,12 +837,12 @@ func (b *extendedWriter) writeMatrixMode0(val [9]float32) error {
 }
 func (b *extendedWriter) writeMatrixMode1(val [9]float32) error {
 	q := rotMatrixToQuaternion(val)
-	err := b.writeBool(q[3] < 0) // sqrt doesn't return negative numbers
+	err := b.writeBoolByte(q[3] < 0) // sqrt doesn't return negative numbers
 	if err != nil {
 		return err
 	}
 	for i := 0; i < 3; i++ {
-		err = b.writeBool(q[i] < 0)
+		err = b.writeBoolByte(q[i] < 0)
 		if err != nil {
 			return err
 		}
@@ -714,21 +859,63 @@ func (b *extendedWriter) writeMatrixMode2(val [9]float32) error {
 	return b.writeMatrixMode1(val)
 }
 func (b *extendedWriter) writePhysicsMatrix(val [9]float32) error {
-	mode := 0
-	// Let's just never use modes 1/2. It will be okay.
-	err := b.bits(2, uint64(mode))
+	var err error
+	quat := rotMatrixToQuaternion(val)
+	largestIndex := 0
+	largest := math.Abs(float64(quat[0]))
+	for i := 1; i < 4; i++ {
+		if math.Abs(float64(quat[i])) > largest {
+			largest = math.Abs(float64(quat[i]))
+			largestIndex = i
+		}
+	}
+	indexSet := quaternionIndices[largestIndex]
+	norm := float32(math.Sqrt(float64(quat[0]*quat[0] + quat[1]*quat[1] + quat[2]*quat[2] + quat[3]*quat[3])))
+	for i := 0; i < 4; i++ {
+		quat[i] /= norm
+	}
+	if quat[largestIndex] < 0.0 {
+		for i := 0; i < 4; i++ {
+			quat[i] = -quat[i]
+		}
+	}
+
+	val1 := quat[indexSet[0]] * math.Sqrt2 * 16383.0
+	val2 := quat[indexSet[1]] * math.Sqrt2 * 16383.0
+	val3 := quat[indexSet[2]] * math.Sqrt2 * 16383.0
+
+	if quat[indexSet[0]] < 0.0 {
+		val1 -= 0.5
+	} else {
+		val1 += 0.5
+	}
+	if quat[indexSet[1]] < 0.0 {
+		val2 -= 0.5
+	} else {
+		val2 += 0.5
+	}
+	if quat[indexSet[2]] < 0.0 {
+		val3 -= 0.5
+	} else {
+		val3 += 0.5
+	}
+
+	val1Int := int32(val1) & 0x7FFF
+	val2Int := int32(val2) & 0x7FFF
+	val3Int := int32(val3) & 0x7FFF
+
+	err = b.writeUint16BE(uint16(val1Int))
 	if err != nil {
 		return err
 	}
-	switch mode {
-	case 0:
-		return b.writeMatrixMode0(val)
-	case 1:
-		return b.writeMatrixMode1(val)
-	case 2:
-		return b.writeMatrixMode2(val)
-	}
-	return nil
+
+	var val2Encoded uint32
+	val2Encoded |= uint32(largestIndex << 30)
+	val2Encoded |= uint32(val2Int << 15)
+	val2Encoded |= uint32(val3Int << 0)
+
+	err = b.writeUint32BE(uint32(val2Encoded))
+	return err
 }
 func (b *extendedWriter) writePhysicsCFrame(val rbxfile.ValueCFrame) error {
 	err := b.writePhysicsCoords(val.Position)
@@ -738,12 +925,211 @@ func (b *extendedWriter) writePhysicsCFrame(val rbxfile.ValueCFrame) error {
 	return b.writePhysicsMatrix(val.Rotation)
 }
 
+func (b *extendedWriter) writePhysicsVelocity(val rbxfile.ValueVector3) error {
+	var err error
+	var xModifier, yModifier, zModifier, xScale, yScale, zScale float32
+	xAbs := math.Abs(float64(val.X))
+	yAbs := math.Abs(float64(val.Y))
+	zAbs := math.Abs(float64(val.Z))
+	largest := xAbs
+	if yAbs > xAbs {
+		largest = yAbs
+	}
+	if zAbs > largest {
+		largest = zAbs
+	}
+
+	if largest < 0.001 {
+		return b.WriteByte(0) // no velocity!
+	}
+
+	_, exp := math.Frexp(largest)
+	if exp < 0 {
+		exp = 0
+	} else if exp > 14 {
+		exp = 14
+	}
+
+	scale := float32(math.Exp2(float64(exp)))
+
+	xScale = -1.0
+	yScale = -1.0
+	zScale = -1.0
+
+	if val.X/scale > -1.0 {
+		xScale = val.X / scale
+	}
+	if val.Y/scale > -1.0 {
+		yScale = val.Y / scale
+	}
+	if val.Z/scale > -1.0 {
+		zScale = val.Z / scale
+	}
+
+	if xScale > 1.0 {
+		xScale = 1.0
+	}
+	if yScale > 1.0 {
+		yScale = 1.0
+	}
+	if zScale > 1.0 {
+		zScale = 1.0
+	}
+
+	xModifier = -0.5
+	yModifier = -0.5
+	zModifier = -0.5
+	if val.X > 0.0 {
+		xModifier = 0.5
+	}
+	if val.Y > 0.0 {
+		yModifier = 0.5
+	}
+	if val.Z > 0.0 {
+		zModifier = 0.5
+	}
+
+	xScale *= 2047.0
+	yScale *= 2047.0
+	zScale *= 2047.0
+
+	xScale += xModifier
+	yScale += yModifier
+	zScale += zModifier
+
+	xScaleInt := int32(xScale)
+	yScaleInt := int32(yScale)
+	zScaleInt := int32(zScale)
+
+	var header uint8
+	header |= uint8((exp + 1) << 4)
+	header |= uint8(zScaleInt & 0xF)
+	err = b.WriteByte(header)
+	if err != nil {
+		return err
+	}
+
+	var val1 uint32
+	val1 |= uint32((zScaleInt >> 4) & 0xFF)
+	val1 |= uint32(yScaleInt << 8)
+	val1 |= uint32(xScaleInt << 20)
+
+	err = b.writeUint32BE(val1)
+	return err
+}
+
 func (b *extendedWriter) writeMotor(motor PhysicsMotor) error {
-	return errors.New("sorry, not implemented") // TODO
+	hasCoords := false
+	hasRotation := false
+	norm := motor.Position.X*motor.Position.X + motor.Position.Y*motor.Position.Y + motor.Position.Z*motor.Position.Z
+	// I don't understand the point of the following code, other than
+	// norm != 0.0. Why do we need to check if v4 is less than normAbs?
+	if norm != 0.0 {
+		normAbs := math.Abs(float64(norm))
+		normPlus1 := normAbs + 1.0
+		v4 := 1.0 / 100000.0
+		if !math.IsInf(normPlus1, 0) {
+			v4 = normPlus1 / 100000.0
+		}
+		if v4 < normAbs {
+			hasCoords = true
+		}
+	}
+
+	motorRot := motor.Rotation
+	trace := motorRot[0] + motorRot[4] + motorRot[8]
+	traceCos := 0.5 * (trace - 1.0)
+	angle := math.Acos(float64(traceCos))
+	if angle != 0.0 {
+		angleAbs := math.Abs(float64(angle))
+		anglePlus1 := angleAbs + 1.0
+		v7 := 1.0 / 100000.0
+		if !math.IsInf(anglePlus1, 0) {
+			v7 = anglePlus1 / 100000.0
+		}
+		if v7 < angleAbs {
+			hasRotation = true
+		}
+	}
+
+	var header uint8
+	if hasCoords {
+		header |= 1 << 0
+	}
+	if hasRotation {
+		header |= 1 << 1
+	}
+	err := b.WriteByte(header)
+	if err != nil {
+		return err
+	}
+
+	if hasCoords {
+		err = b.writePhysicsCoords(motor.Position)
+		if err != nil {
+			return err
+		}
+	}
+
+	if hasRotation {
+		quat := rotMatrixToQuaternion(motor.Rotation)
+		largestIndex := 0
+		largest := math.Abs(float64(quat[0]))
+		for i := 1; i < 4; i++ {
+			if math.Abs(float64(quat[i])) > largest {
+				largest = math.Abs(float64(quat[i]))
+				largestIndex = i
+			}
+		}
+		indexSet := quaternionIndices[largestIndex]
+		rotationNorm := float32(math.Sqrt(float64(quat[0]*quat[0] + quat[1]*quat[1] + quat[2]*quat[2] + quat[3]*quat[3])))
+		for i := 0; i < 4; i++ {
+			quat[i] /= rotationNorm
+		}
+		if quat[largestIndex] < 0.0 {
+			for i := 0; i < 4; i++ {
+				quat[i] = -quat[i]
+			}
+		}
+
+		val1 := quat[indexSet[0]] * math.Sqrt2 * 511.0
+		val2 := quat[indexSet[1]] * math.Sqrt2 * 511.0
+		val3 := quat[indexSet[2]] * math.Sqrt2 * 511.0
+
+		if quat[indexSet[0]] < 0.0 {
+			val1 -= 0.5
+		} else {
+			val1 += 0.5
+		}
+		if quat[indexSet[1]] < 0.0 {
+			val2 -= 0.5
+		} else {
+			val2 += 0.5
+		}
+		if quat[indexSet[2]] < 0.0 {
+			val3 -= 0.5
+		} else {
+			val3 += 0.5
+		}
+
+		val1Int := int32(val1) & 0x3FF
+		val2Int := int32(val2) & 0x3FF
+		val3Int := int32(val3) & 0x3FF
+
+		var val1Encoded uint32
+		val1Encoded |= uint32(largestIndex << 30)
+		val1Encoded |= uint32(val1Int << 20)
+		val1Encoded |= uint32(val2Int << 10)
+		val1Encoded |= uint32(val3Int << 0)
+
+		err = b.writeUint32BE(uint32(val1Encoded))
+		return err
+	}
+	return nil
 }
 
 func (b *extendedWriter) writeMotors(val []PhysicsMotor) error {
-	err := b.WriteByte(uint8(len(val))) // causes issues. Roblox plsfix
+	err := b.writeUintUTF8(uint32(len(val)))
 	if err != nil {
 		return err
 	}

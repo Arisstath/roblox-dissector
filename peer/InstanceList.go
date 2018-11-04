@@ -1,18 +1,36 @@
 package peer
 import "github.com/gskartwii/rbxfile"
+import "errors"
 
 type InstanceList struct {
     Instances map[string]*rbxfile.Instance
     AddCallbacks map[string][]func(*rbxfile.Instance)
 }
 
-func (l *InstanceList) TryGetInstance(ref Referent) *rbxfile.Instance {
+func (l *InstanceList) CreateInstance(ref Referent) (*rbxfile.Instance, error) {
+	if ref.IsNull() {
+		return nil, errors.New("Instance to create is nil!")
+	}
     instance := l.Instances[string(ref)]
     if instance == nil {
 		instance = &rbxfile.Instance{Reference: string(ref), Properties: make(map[string]rbxfile.Value)}
         l.AddInstance(ref, instance)
+		return instance, nil
     }
-    return instance
+	// Allow rebinds. I don't know if this is right, but it can't hurt, right?
+	return instance, nil
+}
+
+func (l *InstanceList) TryGetInstance(ref Referent) (*rbxfile.Instance, error) {
+	if ref.IsNull() {
+		return nil, nil
+	}
+
+    instance := l.Instances[string(ref)]
+    if instance == nil {
+		return nil, errors.New("Instance doesn't exist!")
+    }
+    return instance, nil
 }
 
 func (l *InstanceList) WaitForInstance(ref Referent) *rbxfile.Instance {
@@ -26,7 +44,11 @@ func (l *InstanceList) AddInstance(ref Referent, instance *rbxfile.Instance) {
     }
 }
 
-func (l *InstanceList) OnAddInstance(ref Referent, callback func(*rbxfile.Instance)) {
+func (l *InstanceList) OnAddInstance(ref Referent, callback func(*rbxfile.Instance)) error {
+	if ref == "NULL2" || ref == "null" {
+		return errors.New("Instance to wait on can't be nil!")
+	}
+
     instance := l.Instances[string(ref)]
     if instance == nil {
         thisPend := l.AddCallbacks[string(ref)]
@@ -34,4 +56,6 @@ func (l *InstanceList) OnAddInstance(ref Referent, callback func(*rbxfile.Instan
     } else {
         callback(instance)
     }
+
+	return nil
 }

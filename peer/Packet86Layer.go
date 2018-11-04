@@ -1,5 +1,10 @@
 package peer
-import "github.com/gskartwii/rbxfile"
+
+import (
+	"errors"
+
+	"github.com/gskartwii/rbxfile"
+)
 
 // Touch replication for a single touch
 type Packet86LayerSubpacket struct {
@@ -18,27 +23,38 @@ func NewPacket86Layer() *Packet86Layer {
 	return &Packet86Layer{}
 }
 
-func decodePacket86Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
+func DecodePacket86Layer(reader PacketReader, packet *UDPPacket) (RakNetPacket, error) {
 	thisBitstream := packet.stream
-	isClient := context.IsClient(packet.Source)
 
 	layer := NewPacket86Layer()
+	context := reader.Context()
 	for {
 		subpacket := &Packet86LayerSubpacket{}
-		referent, err := thisBitstream.readObject(isClient, false, context)
+		referent, err := thisBitstream.readObject(reader.Caches())
 		if err != nil {
 			return layer, err
 		}
-		if referent == "null" {
+		if referent.IsNull() {
 			break
 		}
-		subpacket.Instance1 = context.InstancesByReferent.TryGetInstance(referent)
-		referent, err = thisBitstream.readObject(isClient, false, context)
+		subpacket.Instance1, err = context.InstancesByReferent.TryGetInstance(referent)
 		if err != nil {
 			return layer, err
 		}
-		subpacket.Instance2 = context.InstancesByReferent.TryGetInstance(referent)
-		subpacket.IsTouch, err = thisBitstream.readBool()
+
+		referent, err = thisBitstream.readObject(reader.Caches())
+		if err != nil {
+			return layer, err
+		}
+		if referent.IsNull() {
+			return layer, errors.New("NULL second touch referent!")
+		}
+		subpacket.Instance2, err = context.InstancesByReferent.TryGetInstance(referent)
+		if err != nil {
+			return layer, err
+		}
+
+		subpacket.IsTouch, err = thisBitstream.readBoolByte()
 		if err != nil {
 			return layer, err
 		}
@@ -48,18 +64,22 @@ func decodePacket86Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	return layer, nil
 }
 
-func (layer *Packet86Layer) serialize(isClient bool, context *CommunicationContext, stream *extendedWriter) error {
+func (layer *Packet86Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
+	err := stream.WriteByte(0x86)
+	if err != nil {
+		return err
+	}
 	for i := 0; i < len(layer.SubPackets); i++ {
 		subpacket := layer.SubPackets[i]
-		err := stream.writeObject(isClient, subpacket.Instance1, false, context)
+		err = stream.writeObject(subpacket.Instance1, writer.Caches())
 		if err != nil {
 			return err
 		}
-		err = stream.writeObject(isClient, subpacket.Instance2, false, context)
+		err = stream.writeObject(subpacket.Instance2, writer.Caches())
 		if err != nil {
 			return err
 		}
-		err = stream.writeBool(subpacket.IsTouch)
+		err = stream.writeBoolByte(subpacket.IsTouch)
 		if err != nil {
 			return err
 		}

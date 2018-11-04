@@ -4,13 +4,13 @@ package peer
 type Packet83_06 struct {
 	// Always true
 	IsPingBack bool
-	Timestamp uint64
-	SendStats uint32
+	Timestamp  uint64
+	SendStats  uint32
 	// Hack flags
 	ExtraStats uint32
 }
 
-func decodePacket83_06(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
+func DecodePacket83_06(reader PacketReader, packet *UDPPacket) (Packet83Subpacket, error) {
 	var err error
 	inner := &Packet83_06{}
 	thisBitstream := packet.stream
@@ -31,31 +31,31 @@ func decodePacket83_06(packet *UDPPacket, context *CommunicationContext) (interf
 	if err != nil {
 		return inner, err
 	}
-	if inner.Timestamp & 0x20 != 0 {
-		inner.ExtraStats ^= 0xFF
+	if inner.Timestamp&0x20 != 0 {
+		inner.ExtraStats ^= 0xFFFFFFFF
 	}
 
 	return inner, err
 }
 
-func (layer *Packet83_06) serialize(isClient bool, context *CommunicationContext, stream *extendedWriter) error {
-    var err error
-    err = stream.writeBool(layer.IsPingBack)
-    if err != nil {
-        return err
-    }
-    err = stream.bits(64, layer.Timestamp)
-    if err != nil {
-        return err
-    }
-    err = stream.writeUint32BE(layer.SendStats)
-    if err != nil {
-        return err
-    }
-	if layer.Timestamp & 0x20 != 0 {
-		layer.ExtraStats ^= 0xFF
+func (layer *Packet83_06) Serialize(writer PacketWriter, stream *extendedWriter) error {
+	var err error
+	err = stream.writeBoolByte(layer.IsPingBack)
+	if err != nil {
+		return err
+	}
+	err = stream.bits(64, layer.Timestamp)
+	if err != nil {
+		return err
+	}
+	err = stream.writeUint32BE(layer.SendStats)
+	if err != nil {
+		return err
+	}
+	if layer.Timestamp&0x20 != 0 {
+		layer.ExtraStats ^= 0xFFFFFFFF
 	}
 
-    err = stream.writeUint32BE(layer.ExtraStats)
-    return err
+	err = stream.writeUint32BE(layer.ExtraStats)
+	return err
 }

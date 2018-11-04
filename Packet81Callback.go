@@ -1,13 +1,12 @@
 package main
 import "github.com/therecipe/qt/widgets"
 import "github.com/therecipe/qt/gui"
-import "github.com/gskartwii/roblox-dissector/peer"
+import "roblox-dissector/peer"
 
 func ShowPacket81(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
 	MainLayer := layers.Main.(*peer.Packet81Layer)
 
 	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
-	layerLayout.AddWidget(NewQLabelF("Distributed physics enabled: %v", MainLayer.DistributedPhysicsEnabled), 0, 0)
 	layerLayout.AddWidget(NewQLabelF("Stream job: %v", MainLayer.StreamJob), 0, 0)
 	layerLayout.AddWidget(NewQLabelF("Filtering enabled: %v", MainLayer.FilteringEnabled), 0, 0)
 	layerLayout.AddWidget(NewQLabelF("Allow third party sales: %v", MainLayer.AllowThirdPartySales), 0, 0)

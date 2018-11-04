@@ -40,7 +40,7 @@ func getRbxNonce(base uint32, query uint32) uint32 {
 	return (queryState - baseState) * 0xA89ED915
 }
 
-func decodePacket83_12(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
+func DecodePacket83_12(reader PacketReader, packet *UDPPacket) (Packet83Subpacket, error) {
 	var err error
 	inner := &Packet83_12{}
 	stream := packet.stream
@@ -51,10 +51,9 @@ func decodePacket83_12(packet *UDPPacket, context *CommunicationContext) (interf
 
 	hasExtra := false
 
-	if numItems == 0xFF {
+	if numItems != 0xFF {
 		println("noextranumitem")
 		hasExtra = true
-		numItems = 0
 	} else {
 		numItems, err = stream.readUint8()
 		if err != nil {
@@ -67,37 +66,35 @@ func decodePacket83_12(packet *UDPPacket, context *CommunicationContext) (interf
 		return inner, err
 	}
 	hashList := make([]uint32, numItems)
-	if numItems >= 3 {
-		for i := 0; i < int(numItems); i++ {
-			hashList[i], err = stream.readUint32BE()
+	for i := 0; i < int(numItems); i++ {
+		hashList[i], err = stream.readUint32BE()
+		if err != nil {
+			return inner, err
+		}
+	}
+
+	if hasExtra {
+		var tokens [3]uint64
+		for i := 0; i < 3; i++ {
+			tokens[i], err = stream.readUint64BE()
 			if err != nil {
 				return inner, err
 			}
 		}
-
-		if hasExtra {
-			var tokens [3]uint64
-			for i := 0; i < 3; i++ {
-				tokens[i], err = stream.readUint64BE()
-				if err != nil {
-					return inner, err
-				}
-			}
-		}
-
-		for i := numItems - 2; i > 0; i-- {
-			hashList[i] ^= hashList[i - 1]
-		}
-		hashList[0] ^= nonce
-		nonce ^= hashList[numItems - 1]
-		nonceDiff := nonce - getRbxNonce(hashList[1], hashList[2])
-
-		fmt.Println("hashlist", hashList, nonce, nonceDiff)
 	}
+
+	for i := numItems - 2; i > 0; i-- {
+		hashList[i] ^= hashList[i - 1]
+	}
+	hashList[0] ^= nonce
+	nonce ^= hashList[numItems - 1]
+	nonceDiff := nonce - getRbxNonce(hashList[1], hashList[2])
+
+	fmt.Println("hashlist", hashList, nonce, nonceDiff)
 
 	return inner, nil
 }
 
-func (layer *Packet83_12) serialize(isClient bool, context *CommunicationContext, stream *extendedWriter) error {
+func (layer *Packet83_12) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	return nil
 }

@@ -1,7 +1,7 @@
 package main
 import "github.com/therecipe/qt/widgets"
 import "github.com/therecipe/qt/gui"
-import "github.com/gskartwii/roblox-dissector/peer"
+import "roblox-dissector/peer"
 
 func ShowPacket85(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
 	MainLayer := layers.Main.(*peer.Packet85Layer)
@@ -17,16 +17,16 @@ func ShowPacket85(packetType byte, packet *peer.UDPPacket, context *peer.Communi
 
 	rootNode := standardModel.InvisibleRootItem()
 	for _, item := range MainLayer.SubPackets {
-		nameItem := NewQStandardItemF(item.Instance.GetFullName())
-		referenceItem := NewQStandardItemF(item.Instance.Reference)
+		nameItem := NewQStandardItemF(item.Data.Instance.GetFullName())
+		referenceItem := NewQStandardItemF(item.Data.Instance.Reference)
 		humanoidStateItem := NewQStandardItemF("%d", item.NetworkHumanoidState)
-		cframeItem := NewQStandardItemF(item.CFrame.String())
-		linVelItem := NewQStandardItemF(item.LinearVelocity.String())
-		rotVelItem := NewQStandardItemF(item.RotationalVelocity.String())
+		cframeItem := NewQStandardItemF(item.Data.CFrame.String())
+		linVelItem := NewQStandardItemF(item.Data.LinearVelocity.String())
+		rotVelItem := NewQStandardItemF(item.Data.RotationalVelocity.String())
 
-		if len(item.Motors) > 0 {
-			motorsItem := NewQStandardItemF("Motors (%d entries)", len(item.Motors))
-			for _, motor := range item.Motors {
+		if len(item.Data.Motors) > 0 {
+			motorsItem := NewQStandardItemF("Motors (%d entries)", len(item.Data.Motors))
+			for _, motor := range item.Data.Motors {
 				motorsItem.AppendRow([]*gui.QStandardItem{
 					nil,
 					nil,
@@ -41,22 +41,19 @@ func ShowPacket85(packetType byte, packet *peer.UDPPacket, context *peer.Communi
 			}
 			nameItem.AppendRow([]*gui.QStandardItem{motorsItem})
 		}
-		if len(item.HistoryWaypoints) > 0 {
-			waypointsItem := NewQStandardItemF("Waypoints (%d entries)", len(item.HistoryWaypoints))
-			for _, waypoint := range item.HistoryWaypoints {
-				waypointsItem.AppendRow([]*gui.QStandardItem{
+		if len(item.History) > 0 {
+			historyItem := NewQStandardItemF("History (%d entries)", len(item.History))
+			for _, history := range item.History {
+				historyItem.AppendRow([]*gui.QStandardItem{
 					nil,
 					nil,
 					nil,
-					nil,
-					nil,
-					nil,
-					NewQStandardItemF(waypoint.Position.String()),
-					NewQStandardItemF("%d", waypoint.PrecisionLevel),
-					NewQStandardItemF("%d", waypoint.Interval),
+					NewQStandardItemF(history.CFrame.String()),
+					NewQStandardItemF(history.LinearVelocity.String()),
+					NewQStandardItemF(history.RotationalVelocity.String()),
 				})
 			}
-			nameItem.AppendRow([]*gui.QStandardItem{waypointsItem})
+			nameItem.AppendRow([]*gui.QStandardItem{historyItem})
 		}
 		if len(item.Children) > 0 {
 			childrenItem := NewQStandardItemF("Children (%d entries)", len(item.Children))
@@ -64,13 +61,13 @@ func ShowPacket85(packetType byte, packet *peer.UDPPacket, context *peer.Communi
 				childrenItem.AppendRow([]*gui.QStandardItem{
 					NewQStandardItemF(child.Instance.Name()),
 					NewQStandardItemF(child.Instance.Reference),
-					NewQStandardItemF("%d", child.NetworkHumanoidState),
+					nil,
 					NewQStandardItemF(child.CFrame.String()),
 					NewQStandardItemF(child.LinearVelocity.String()),
 					NewQStandardItemF(child.RotationalVelocity.String()),
 				})
 				if len(child.Motors) > 0 {
-					motorsItem := NewQStandardItemF("Motors (%d entries)", len(item.Motors))
+					motorsItem := NewQStandardItemF("Motors (%d entries)", len(child.Motors))
 					for _, motor := range child.Motors {
 						motorsItem.AppendRow([]*gui.QStandardItem{
 							nil,

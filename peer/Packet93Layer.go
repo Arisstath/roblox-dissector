@@ -1,4 +1,5 @@
 package peer
+
 import "fmt"
 
 // ID_DICTIONARY_FORMAT - server -> client
@@ -15,7 +16,7 @@ func NewPacket93Layer() *Packet93Layer {
 	return &Packet93Layer{Params: make(map[string]bool)}
 }
 
-func decodePacket93Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
+func DecodePacket93Layer(reader PacketReader, packet *UDPPacket) (RakNetPacket, error) {
 	layer := NewPacket93Layer()
 	thisBitstream := packet.stream
 
@@ -57,13 +58,13 @@ func decodePacket93Layer(packet *UDPPacket, context *CommunicationContext) (inte
 		layer.Params[string(name)] = string(value) == "true"
 	}
 	if val, ok := layer.Params["UseNetworkSchema2"]; val && ok {
-		context.UseStaticSchema = true
+		reader.Context().UseStaticSchema = true
 	}
 
 	return layer, nil
 }
 
-func (layer *Packet93Layer) serialize(isClient bool,context *CommunicationContext, stream *extendedWriter) error {
+func (layer *Packet93Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
 	err = stream.WriteByte(0x93)
 	if err != nil {

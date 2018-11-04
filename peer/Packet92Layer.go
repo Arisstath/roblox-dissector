@@ -9,7 +9,7 @@ func NewPacket92Layer() *Packet92Layer {
 	return &Packet92Layer{}
 }
 
-func decodePacket92Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
+func DecodePacket92Layer(reader PacketReader, packet *UDPPacket) (RakNetPacket, error) {
 	layer := NewPacket92Layer()
 	thisBitstream := packet.stream
 
@@ -18,7 +18,7 @@ func decodePacket92Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	return layer, err
 }
 
-func (layer *Packet92Layer) serialize(isClient bool,context *CommunicationContext, stream *extendedWriter) error {
+func (layer *Packet92Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	err := stream.WriteByte(0x92)
 	if err != nil {
 		return err

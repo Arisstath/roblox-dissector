@@ -22,7 +22,7 @@ type Packet83_11 struct {
 	DataThroughputRatio float32
 }
 
-func decodePacket83_11(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
+func DecodePacket83_11(reader PacketReader, packet *UDPPacket) (Packet83Subpacket, error) {
 	var err error
 	inner := &Packet83_11{}
 	thisBitstream := packet.stream
@@ -112,6 +112,6 @@ func decodePacket83_11(packet *UDPPacket, context *CommunicationContext) (interf
 	return inner, nil
 }
 
-func (layer *Packet83_11) serialize(isClient bool, context *CommunicationContext, stream *extendedWriter) error {
+func (layer *Packet83_11) Serialize(writer PacketWriter, stream *extendedWriter) error {
     return errors.New("packet 83_11 not implemented!")
 }

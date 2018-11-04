@@ -2,7 +2,7 @@ package peer
 
 // ID_PROTOCOL_SYNC - client -> server
 type Packet90Layer struct {
-	SchemaVersion uint32
+	SchemaVersion  uint32
 	RequestedFlags []string
 }
 
@@ -10,7 +10,7 @@ func NewPacket90Layer() *Packet90Layer {
 	return &Packet90Layer{}
 }
 
-func decodePacket90Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
+func DecodePacket90Layer(reader PacketReader, packet *UDPPacket) (RakNetPacket, error) {
 	layer := NewPacket90Layer()
 	thisBitstream := packet.stream
 
@@ -36,7 +36,7 @@ func decodePacket90Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	return layer, nil
 }
 
-func (layer *Packet90Layer) serialize(isClient bool,context *CommunicationContext, stream *extendedWriter) error {
+func (layer *Packet90Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	err := stream.WriteByte(0x90)
 	if err != nil {
 		return err

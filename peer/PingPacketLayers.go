@@ -10,7 +10,7 @@ func NewPacket00Layer() *Packet00Layer {
 	return &Packet00Layer{}
 }
 
-func decodePacket00Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
+func DecodePacket00Layer(reader PacketReader, packet *UDPPacket) (RakNetPacket, error) {
 	layer := NewPacket00Layer()
 	thisBitstream := packet.stream
 
@@ -19,7 +19,7 @@ func decodePacket00Layer(packet *UDPPacket, context *CommunicationContext) (inte
 
 	return layer, err
 }
-func (layer *Packet00Layer) serialize(isClient bool, context *CommunicationContext, stream *extendedWriter) error {
+func (layer *Packet00Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
 	err = stream.WriteByte(0)
 	if err != nil {
@@ -41,7 +41,7 @@ func NewPacket03Layer() *Packet03Layer {
 	return &Packet03Layer{}
 }
 
-func decodePacket03Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
+func DecodePacket03Layer(reader PacketReader, packet *UDPPacket) (RakNetPacket, error) {
 	layer := NewPacket03Layer()
 	thisBitstream := packet.stream
 
@@ -55,7 +55,7 @@ func decodePacket03Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	return layer, err
 }
 
-func (layer *Packet03Layer) serialize(isClient bool,context *CommunicationContext, stream *extendedWriter) error {
+func (layer *Packet03Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
 	err = stream.WriteByte(3)
 	if err != nil {

@@ -9,7 +9,7 @@ func NewPacket8FLayer() *Packet8FLayer {
 	return &Packet8FLayer{}
 }
 
-func decodePacket8FLayer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
+func DecodePacket8FLayer(reader PacketReader, packet *UDPPacket) (RakNetPacket, error) {
 	layer := NewPacket8FLayer()
 	thisBitstream := packet.stream
 
@@ -19,7 +19,7 @@ func decodePacket8FLayer(packet *UDPPacket, context *CommunicationContext) (inte
 	return layer, err
 }
 
-func (layer *Packet8FLayer) serialize(isClient bool,context *CommunicationContext, stream *extendedWriter) error {
+func (layer *Packet8FLayer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	err := stream.WriteByte(0x8F)
 	if err != nil {
 		return err

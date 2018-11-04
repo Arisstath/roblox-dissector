@@ -1,10 +1,11 @@
 package main
-import "github.com/gskartwii/roblox-dissector/peer"
+
+import "roblox-dissector/peer"
 import "github.com/therecipe/qt/widgets"
 import "fmt"
 
 func ShowPacket8A(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
-	MainLayer := layers.Main.(peer.Packet8ALayer)
+	MainLayer := layers.Main.(*peer.Packet8ALayer)
 
 	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
 
@@ -27,4 +28,3 @@ func ShowPacket8A(packetType byte, packet *peer.UDPPacket, context *peer.Communi
 	layerLayout.AddWidget(string6Label, 0, 0)
 	layerLayout.AddWidget(int3Label, 0, 0)
 }
-

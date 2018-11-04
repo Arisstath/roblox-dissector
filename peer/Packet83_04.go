@@ -5,7 +5,7 @@ type Packet83_04 struct {
 	MarkerId uint32
 }
 
-func decodePacket83_04(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
+func DecodePacket83_04(reader PacketReader, packet *UDPPacket) (Packet83Subpacket, error) {
 	var err error
 	inner := &Packet83_04{}
 	thisBitstream := packet.stream
@@ -17,6 +17,6 @@ func decodePacket83_04(packet *UDPPacket, context *CommunicationContext) (interf
 	return inner, err
 }
 
-func (layer *Packet83_04) serialize(isClient bool, context *CommunicationContext, stream *extendedWriter) error {
-    return stream.writeUint32LE(layer.MarkerId)
+func (layer *Packet83_04) Serialize(writer PacketWriter, stream *extendedWriter) error {
+	return stream.writeUint32LE(layer.MarkerId)
 }
