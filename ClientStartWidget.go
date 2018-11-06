@@ -1,10 +1,11 @@
 package main
+
 import "github.com/therecipe/qt/widgets"
 import "github.com/therecipe/qt/core"
-import "roblox-dissector/peer"
+import "github.com/Gskartwii/roblox-dissector/peer"
 import "strconv"
 
-func NewClientStartWidget(parent widgets.QWidget_ITF, settings *peer.CustomClient, callback func(uint32, bool, string)()) {
+func NewClientStartWidget(parent widgets.QWidget_ITF, settings *peer.CustomClient, callback func(uint32, bool, string)) {
 	window := widgets.NewQWidget(parent, 1)
 	window.SetWindowTitle("Start self client...")
 	layout := widgets.NewQVBoxLayout()
@@ -23,7 +24,7 @@ func NewClientStartWidget(parent widgets.QWidget_ITF, settings *peer.CustomClien
 	layout.AddWidget(ticket, 0, 0)
 
 	startButton := widgets.NewQPushButton2("Start", window)
-	startButton.ConnectPressed(func() {
+	startButton.ConnectClicked(func(_ bool) {
 		window.Destroy(true, true)
 		placeIdVal, _ := strconv.Atoi(placeId.Text())
 		callback(uint32(placeIdVal), isGuest.CheckState() == core.Qt__Checked, ticket.Text())

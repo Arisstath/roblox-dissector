@@ -63,7 +63,8 @@ func DecodePacket85Layer(reader PacketReader, packet *UDPPacket) (RakNetPacket, 
 	layer := NewPacket85Layer()
 	for {
 		referent, err := thisBitstream.readObject(reader.Caches())
-		if err != nil {
+		// unordered packets may have problems with caches
+		if err != nil && err != CacheReadOOB {
 			return layer, err
 		}
 		if referent.IsNull() {
@@ -71,9 +72,11 @@ func DecodePacket85Layer(reader PacketReader, packet *UDPPacket) (RakNetPacket, 
 		}
 		packet.Logger.Println("reading physics for ref", referent.String())
 		subpacket := &Packet85LayerSubpacket{}
-		subpacket.Data.Instance, err = context.InstancesByReferent.TryGetInstance(referent)
-		if err != nil {
-			return layer, err
+		// TODO: generic function for this
+		if err != CacheReadOOB {
+			context.InstancesByReferent.OnAddInstance(referent, func(inst *rbxfile.Instance) {
+				subpacket.Data.Instance = inst
+			})
 		}
 
 		myFlags, err := thisBitstream.readUint8()
@@ -113,12 +116,13 @@ func DecodePacket85Layer(reader PacketReader, packet *UDPPacket) (RakNetPacket, 
 
 		if (myFlags>>5)&1 == 0 { // has children
 			var object Referent
-			for object, err = thisBitstream.readObject(reader.Caches()); err == nil && !object.IsNull(); object, err = thisBitstream.readObject(reader.Caches()) {
+			for object, err = thisBitstream.readObject(reader.Caches()); (err == nil || err == CacheReadOOB) && !object.IsNull(); object, err = thisBitstream.readObject(reader.Caches()) {
 				packet.Logger.Println("reading physics child for ref", object.String())
 				child := new(PhysicsData)
-				child.Instance, err = context.InstancesByReferent.TryGetInstance(referent)
-				if err != nil {
-					return layer, err
+				if err != CacheReadOOB { // TODO: hack! unordered packets may have problems with caches
+					context.InstancesByReferent.OnAddInstance(object, func(inst *rbxfile.Instance) {
+						child.Instance = inst
+					})
 				}
 
 				err = thisBitstream.readPhysicsData(child, true)
@@ -168,6 +172,10 @@ func (layer *Packet85Layer) Serialize(writer PacketWriter, stream *extendedWrite
 	}
 	for i := 0; i < len(layer.SubPackets); i++ {
 		subpacket := layer.SubPackets[i]
+		if subpacket.Data.Instance == nil {
+			println("WARNING: skipping 0x85 serialize because instance doesn't exist yet")
+			continue
+		}
 		err = stream.writeObject(subpacket.Data.Instance, writer.Caches())
 		if err != nil {
 			return err

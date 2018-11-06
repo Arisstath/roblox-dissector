@@ -4,7 +4,7 @@ package main
 /*
 import "github.com/therecipe/qt/gui"
 import "github.com/therecipe/qt/widgets"
-import "roblox-dissector/peer"
+import "github.com/Gskartwii/roblox-dissector/peer"
 import "os"
 import "encoding/gob"
 

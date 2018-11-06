@@ -3,7 +3,7 @@ package main
 import "github.com/therecipe/qt/widgets"
 import "github.com/therecipe/qt/gui"
 import "github.com/therecipe/qt/core"
-import "roblox-dissector/peer"
+import "github.com/Gskartwii/roblox-dissector/peer"
 import "github.com/gskartwii/rbxfile"
 import "github.com/gskartwii/rbxfile/bin"
 import "os"

@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
-	"roblox-dissector/peer"
+	"github.com/Gskartwii/roblox-dissector/peer"
 	"strconv"
 	"strings"
 )

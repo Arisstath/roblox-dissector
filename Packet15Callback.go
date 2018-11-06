@@ -1,5 +1,5 @@
 package main
-import "roblox-dissector/peer"
+import "github.com/Gskartwii/roblox-dissector/peer"
 
 var disconnectionReasons = [...]string{
 	"Disconnected due to a bad hash",

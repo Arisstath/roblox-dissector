@@ -296,10 +296,10 @@ func (b *extendedReader) readJoinObject(context *CommunicationContext) (Referent
 func (b *extendedReader) readObject(caches *Caches) (Referent, error) {
 	var referentInt uint32
 	referent, err := b.readCachedScope(caches)
-	if err != nil {
+	if err != nil && err != CacheReadOOB { // TODO: hack! physics packets may have problems with caches
 		return "", err
 	}
-	if referent != "" {
+	if referent != "NULL" {
 		referentInt, err = b.readUint32LE()
 	}
 

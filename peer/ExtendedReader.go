@@ -589,6 +589,8 @@ func (b *extendedReader) readFloat16BE(floatMin float32, floatMax float32) (floa
 
 type cacheReadCallback func(*extendedReader) (interface{}, error)
 
+var CacheReadOOB = errors.New("Cache read is out of bounds")
+
 func (b *extendedReader) readWithCache(cache Cache, readCallback cacheReadCallback) (interface{}, error) {
 	var result interface{}
 	var err error
@@ -597,7 +599,7 @@ func (b *extendedReader) readWithCache(cache Cache, readCallback cacheReadCallba
 		return "", err
 	}
 	if cacheIndex == 0x00 {
-		return "", err
+		return "NULL", nil
 	}
 
 	if cacheIndex < 0x80 {
@@ -612,7 +614,7 @@ func (b *extendedReader) readWithCache(cache Cache, readCallback cacheReadCallba
 
 	if result == nil {
 		println("cached read:", cacheIndex)
-		return "", errors.New("Cache read is out of bounds")
+		return "", CacheReadOOB
 	}
 
 	return result, err

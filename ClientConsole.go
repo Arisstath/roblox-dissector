@@ -1,7 +1,7 @@
 package main
 import "github.com/therecipe/qt/widgets"
 import "github.com/therecipe/qt/gui"
-import "roblox-dissector/peer"
+import "github.com/Gskartwii/roblox-dissector/peer"
 import "time"
 import "strings"
 import "log"

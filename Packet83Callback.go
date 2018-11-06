@@ -4,7 +4,7 @@ import "strconv"
 import "github.com/therecipe/qt/widgets"
 import "github.com/therecipe/qt/core"
 import "github.com/therecipe/qt/gui"
-import "roblox-dissector/peer"
+import "github.com/Gskartwii/roblox-dissector/peer"
 import "github.com/gskartwii/rbxfile"
 
 var SubpacketCallbacks = map[uint8](func(peer.Packet83Subpacket) widgets.QWidget_ITF){

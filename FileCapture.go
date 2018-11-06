@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"roblox-dissector/peer"
+	"github.com/Gskartwii/roblox-dissector/peer"
 	"time"
 
 	"github.com/fatih/color"

@@ -5,7 +5,7 @@ import "github.com/therecipe/qt/gui"
 import "github.com/therecipe/qt/core"
 import "github.com/gskartwii/rbxfile"
 import "github.com/gskartwii/rbxfile/bin"
-import "roblox-dissector/peer"
+import "github.com/Gskartwii/roblox-dissector/peer"
 import "os"
 import "fmt"
 

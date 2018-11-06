@@ -1,6 +1,6 @@
 package main
 
-import "roblox-dissector/peer"
+import "github.com/Gskartwii/roblox-dissector/peer"
 import "github.com/therecipe/qt/widgets"
 import "fmt"
 

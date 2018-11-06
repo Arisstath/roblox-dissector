@@ -2,7 +2,7 @@ package main
 import "github.com/therecipe/qt/widgets"
 import "github.com/therecipe/qt/core"
 import "github.com/therecipe/qt/gui"
-import "roblox-dissector/peer"
+import "github.com/Gskartwii/roblox-dissector/peer"
 import "fmt"
 
 func NewCacheList(cache *peer.StringCache) widgets.QWidget_ITF {
