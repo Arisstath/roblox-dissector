@@ -23,6 +23,7 @@ type PhysicsData struct {
 	RotationalVelocity rbxfile.ValueVector3
 	Motors             []PhysicsMotor
 	Interval           float32
+	PlatformChild      *rbxfile.Instance
 }
 
 // Packet85Layer ID_PHYSICS - client <-> server
@@ -35,7 +36,7 @@ func NewPacket85Layer() *Packet85Layer {
 	return &Packet85Layer{}
 }
 
-func (b *extendedReader) readPhysicsData(data *PhysicsData, motors bool) error {
+func (b *extendedReader) readPhysicsData(data *PhysicsData, motors bool, reader PacketReader) error {
 	var err error
 	if motors {
 		data.Motors, err = b.readMotors()
@@ -53,6 +54,20 @@ func (b *extendedReader) readPhysicsData(data *PhysicsData, motors bool) error {
 		return err
 	}
 	data.RotationalVelocity, err = b.readPhysicsVelocity()
+	if err != nil {
+		return err
+	}
+	hasPlatformChild, err := b.readBoolByte()
+	if err != nil || !hasPlatformChild {
+		return err
+	}
+	referent, err := b.readObject(reader.Caches())
+	if err != CacheReadOOB {
+		reader.Context().InstancesByReferent.OnAddInstance(referent, func(inst *rbxfile.Instance) {
+			data.PlatformChild = inst
+		})
+		return nil
+	}
 	return err
 }
 
@@ -86,7 +101,7 @@ func DecodePacket85Layer(reader PacketReader, packet *UDPPacket) (RakNetPacket, 
 		subpacket.NetworkHumanoidState = myFlags & 0x1F
 
 		if reader.IsClient() {
-			err = thisBitstream.readPhysicsData(&subpacket.Data, true)
+			err = thisBitstream.readPhysicsData(&subpacket.Data, true, reader)
 			if err != nil {
 				return layer, err
 			}
@@ -107,7 +122,7 @@ func DecodePacket85Layer(reader PacketReader, packet *UDPPacket) (RakNetPacket, 
 				if err != nil {
 					return layer, err
 				}
-				thisBitstream.readPhysicsData(subpacket.History[i], false)
+				thisBitstream.readPhysicsData(subpacket.History[i], false, reader)
 				if err != nil {
 					return layer, err
 				}
@@ -125,7 +140,7 @@ func DecodePacket85Layer(reader PacketReader, packet *UDPPacket) (RakNetPacket, 
 					})
 				}
 
-				err = thisBitstream.readPhysicsData(child, true)
+				err = thisBitstream.readPhysicsData(child, true, reader)
 				if err != nil {
 					return layer, err
 				}
@@ -142,7 +157,7 @@ func DecodePacket85Layer(reader PacketReader, packet *UDPPacket) (RakNetPacket, 
 	return layer, nil
 }
 
-func (b *extendedWriter) writePhysicsData(val *PhysicsData, motors bool) error {
+func (b *extendedWriter) writePhysicsData(val *PhysicsData, motors bool, writer PacketWriter) error {
 	var err error
 	if motors {
 		err = b.writeMotors(val.Motors)
@@ -162,6 +177,16 @@ func (b *extendedWriter) writePhysicsData(val *PhysicsData, motors bool) error {
 	}
 
 	err = b.writePhysicsVelocity(val.RotationalVelocity)
+	if err != nil {
+		return err
+	}
+
+	err = b.writeBoolByte(val.PlatformChild != nil)
+	if err != nil {
+		return err
+	}
+
+	err = b.writeObject(val.PlatformChild, writer.Caches())
 	return err
 }
 
@@ -191,7 +216,7 @@ func (layer *Packet85Layer) Serialize(writer PacketWriter, stream *extendedWrite
 		}
 
 		if writer.ToClient() {
-			err = stream.writePhysicsData(&subpacket.Data, true)
+			err = stream.writePhysicsData(&subpacket.Data, true, writer)
 			if err != nil {
 				return err
 			}
@@ -209,7 +234,7 @@ func (layer *Packet85Layer) Serialize(writer PacketWriter, stream *extendedWrite
 				if err != nil {
 					return err
 				}
-				err = stream.writePhysicsData(subpacket.History[i], false)
+				err = stream.writePhysicsData(subpacket.History[i], false, writer)
 				if err != nil {
 					return err
 				}
@@ -218,12 +243,16 @@ func (layer *Packet85Layer) Serialize(writer PacketWriter, stream *extendedWrite
 
 		for j := 0; j < len(subpacket.Children); j++ {
 			child := subpacket.Children[j]
+			if child.Instance == nil {
+				println("WARNING: 0x85 skipping serialize because child doesn't exist yet!")
+				continue
+			}
 			err = stream.writeObject(child.Instance, writer.Caches())
 			if err != nil {
 				return err
 			}
 
-			err = stream.writePhysicsData(child, true)
+			err = stream.writePhysicsData(child, true, writer)
 			if err != nil {
 				return err
 			}
