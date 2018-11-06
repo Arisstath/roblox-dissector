@@ -1,9 +1,14 @@
 package peer
+
 import "fmt"
 
+// ID_DICTIONARY_FORMAT - server -> client
+// Response to ID_PROTOCOL_SYNC (Packet90Layer)
 type Packet93Layer struct {
-	UnknownBool1 bool
-	UnknownBool2 bool
+	ProtocolSchemaSync bool
+	// Use dictionary compression?
+	ApiDictionaryCompression bool
+	// Flags set by the server
 	Params map[string]bool
 }
 
@@ -11,69 +16,66 @@ func NewPacket93Layer() *Packet93Layer {
 	return &Packet93Layer{Params: make(map[string]bool)}
 }
 
-func DecodePacket93Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
+func DecodePacket93Layer(reader PacketReader, packet *UDPPacket) (RakNetPacket, error) {
 	layer := NewPacket93Layer()
-	thisBitstream := packet.Stream
+	thisBitstream := packet.stream
 
 	var err error
-	layer.UnknownBool1, err = thisBitstream.ReadBool()
+	layer.ProtocolSchemaSync, err = thisBitstream.readBool()
 	if err != nil {
 		return layer, err
 	}
-	layer.UnknownBool2, err = thisBitstream.ReadBool()
+	layer.ApiDictionaryCompression, err = thisBitstream.readBool()
 	if err != nil {
 		return layer, err
 	}
 	thisBitstream.Align()
 
-	numParams, err := thisBitstream.ReadUint16BE()
+	numParams, err := thisBitstream.readUint16BE()
 	if err != nil {
 		return layer, err
 	}
 
 	var i uint16
 	for i = 0; i < numParams; i++ {
-		nameLen, err := thisBitstream.ReadUint16BE()
+		nameLen, err := thisBitstream.readUint16BE()
 		if err != nil {
 			return layer, err
 		}
-		name, err := thisBitstream.ReadString(int(nameLen))
+		name, err := thisBitstream.readString(int(nameLen))
 		if err != nil {
 			return layer, err
 		}
 
-		valueLen, err := thisBitstream.ReadUint16BE()
+		valueLen, err := thisBitstream.readUint16BE()
 		if err != nil {
 			return layer, err
 		}
-		value, err := thisBitstream.ReadString(int(valueLen))
+		value, err := thisBitstream.readString(int(valueLen))
 		if err != nil {
 			return layer, err
 		}
 		layer.Params[string(name)] = string(value) == "true"
 	}
 	if val, ok := layer.Params["UseNetworkSchema2"]; val && ok {
-		context.MSchema.Lock()
-		context.UseStaticSchema = true
-		context.ESchemaParsed.Broadcast()
-		context.MSchema.Unlock()
+		reader.Context().UseStaticSchema = true
 	}
 
 	return layer, nil
 }
 
-func (layer *Packet93Layer) Serialize(isClient bool,context *CommunicationContext, stream *ExtendedWriter) error {
+func (layer *Packet93Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
 	err = stream.WriteByte(0x93)
 	if err != nil {
 		return err
 	}
 
-	err = stream.WriteBool(layer.UnknownBool1)
+	err = stream.writeBool(layer.ProtocolSchemaSync)
 	if err != nil {
 		return err
 	}
-	err = stream.WriteBool(layer.UnknownBool2)
+	err = stream.writeBool(layer.ApiDictionaryCompression)
 	if err != nil {
 		return err
 	}
@@ -81,26 +83,26 @@ func (layer *Packet93Layer) Serialize(isClient bool,context *CommunicationContex
 	if err != nil {
 		return err
 	}
-	err = stream.WriteUint16BE(uint16(len(layer.Params)))
+	err = stream.writeUint16BE(uint16(len(layer.Params)))
 	if err != nil {
 		return err
 	}
 
 	for name, value := range layer.Params {
-		err = stream.WriteUint16BE(uint16(len(name)))
+		err = stream.writeUint16BE(uint16(len(name)))
 		if err != nil {
 			return err
 		}
-		err = stream.WriteASCII(name)
+		err = stream.writeASCII(name)
 		if err != nil {
 			return err
 		}
 		encodedValue := fmt.Sprintf("%v", value)
-		err = stream.WriteUint16BE(uint16(len(encodedValue)))
+		err = stream.writeUint16BE(uint16(len(encodedValue)))
 		if err != nil {
 			return err
 		}
-		err = stream.WriteASCII(encodedValue)
+		err = stream.writeASCII(encodedValue)
 		if err != nil {
 			return err
 		}

@@ -1,12 +1,20 @@
 package peer
-import "github.com/gskartwii/rbxfile"
 
+import (
+	"errors"
+
+	"github.com/gskartwii/rbxfile"
+)
+
+// Touch replication for a single touch
 type Packet86LayerSubpacket struct {
 	Instance1 *rbxfile.Instance
 	Instance2 *rbxfile.Instance
+	// Touch started? If false, ended.
 	IsTouch bool
 }
 
+// ID_TOUCHES - client <-> server
 type Packet86Layer struct {
 	SubPackets []*Packet86LayerSubpacket
 }
@@ -15,27 +23,37 @@ func NewPacket86Layer() *Packet86Layer {
 	return &Packet86Layer{}
 }
 
-func DecodePacket86Layer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
-	thisBitstream := packet.Stream
-	isClient := context.IsClient(packet.Source)
+func DecodePacket86Layer(reader PacketReader, packet *UDPPacket) (RakNetPacket, error) {
+	thisBitstream := packet.stream
 
 	layer := NewPacket86Layer()
+	context := reader.Context()
 	for {
 		subpacket := &Packet86LayerSubpacket{}
-		referent, err := thisBitstream.ReadObject(isClient, false, context)
+		referent, err := thisBitstream.readObject(reader.Caches())
+		// hopefully we don't need to check for CacheReadOOB here
 		if err != nil {
 			return layer, err
 		}
-		if referent == "null" {
+		if referent.IsNull() {
 			break
 		}
-		subpacket.Instance1 = context.InstancesByReferent.TryGetInstance(referent)
-		referent, err = thisBitstream.ReadObject(isClient, false, context)
+		context.InstancesByReferent.OnAddInstance(referent, func(inst *rbxfile.Instance) {
+			subpacket.Instance1 = inst
+		})
+
+		referent, err = thisBitstream.readObject(reader.Caches())
 		if err != nil {
 			return layer, err
 		}
-		subpacket.Instance2 = context.InstancesByReferent.TryGetInstance(referent)
-		subpacket.IsTouch, err = thisBitstream.ReadBool()
+		if referent.IsNull() {
+			return layer, errors.New("NULL second touch referent!")
+		}
+		context.InstancesByReferent.OnAddInstance(referent, func(inst *rbxfile.Instance) {
+			subpacket.Instance2 = inst
+		})
+
+		subpacket.IsTouch, err = thisBitstream.readBoolByte()
 		if err != nil {
 			return layer, err
 		}
@@ -45,18 +63,26 @@ func DecodePacket86Layer(packet *UDPPacket, context *CommunicationContext) (inte
 	return layer, nil
 }
 
-func (layer *Packet86Layer) Serialize(isClient bool, context *CommunicationContext, stream *ExtendedWriter) error {
+func (layer *Packet86Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
+	err := stream.WriteByte(0x86)
+	if err != nil {
+		return err
+	}
 	for i := 0; i < len(layer.SubPackets); i++ {
 		subpacket := layer.SubPackets[i]
-		err := stream.WriteObject(isClient, subpacket.Instance1, false, context)
+		if subpacket.Instance1 == nil || subpacket.Instance2 == nil {
+			println("WARNING: 0x86 skipping serialize because instances don't exist yet!")
+			continue
+		}
+		err = stream.writeObject(subpacket.Instance1, writer.Caches())
 		if err != nil {
 			return err
 		}
-		err = stream.WriteObject(isClient, subpacket.Instance2, false, context)
+		err = stream.writeObject(subpacket.Instance2, writer.Caches())
 		if err != nil {
 			return err
 		}
-		err = stream.WriteBool(subpacket.IsTouch)
+		err = stream.writeBoolByte(subpacket.IsTouch)
 		if err != nil {
 			return err
 		}

@@ -1,44 +1,45 @@
 package peer
-import "io/ioutil"
 
+// ID_TIMESTAMP - client <-> server
 type Packet1BLayer struct {
-	Timestamp uint64
-	Stream *ExtendedReader
+	// Timestamp of when this packet was sent
+	Timestamp  uint64
+	Timestamp2 uint64
+	stream     *extendedReader
 }
 
 func NewPacket1BLayer() *Packet1BLayer {
 	return &Packet1BLayer{}
 }
 
-func DecodePacket1BLayer(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
+func DecodePacket1BLayer(reader PacketReader, packet *UDPPacket) (RakNetPacket, error) {
 	layer := NewPacket1BLayer()
-	thisBitstream := packet.Stream
+	thisBitstream := packet.stream
 
 	var err error
-	layer.Timestamp, err = thisBitstream.Bits(64)
+	layer.Timestamp, err = thisBitstream.bits(64)
 	if err != nil {
 		return layer, err
 	}
-	layer.Stream = thisBitstream
+	layer.Timestamp2, err = thisBitstream.bits(64)
+	if err != nil {
+		return layer, err
+	}
+	layer.stream = thisBitstream
 
 	return layer, err
 }
 
-func (layer *Packet1BLayer) Serialize(isClient bool,context *CommunicationContext, stream *ExtendedWriter) error {
+func (layer *Packet1BLayer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
 	err = stream.WriteByte(0x1B)
 	if err != nil {
 		return err
 	}
-	err = stream.Bits(64, layer.Timestamp)
+	err = stream.bits(64, layer.Timestamp)
 	if err != nil {
 		return err
 	}
-
-	content, err := ioutil.ReadAll(layer.Stream.GetReader())
-	if err != nil {
-		return err
-	}
-	err = stream.AllBytes(content)
+	err = stream.bits(64, layer.Timestamp2)
 	return err
 }

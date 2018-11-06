@@ -1,14 +1,15 @@
 package peer
 
+// ID_MARKER
 type Packet83_04 struct {
 	MarkerId uint32
 }
 
-func DecodePacket83_04(packet *UDPPacket, context *CommunicationContext) (interface{}, error) {
+func DecodePacket83_04(reader PacketReader, packet *UDPPacket) (Packet83Subpacket, error) {
 	var err error
 	inner := &Packet83_04{}
-	thisBitstream := packet.Stream
-	inner.MarkerId, err = thisBitstream.ReadUint32LE()
+	thisBitstream := packet.stream
+	inner.MarkerId, err = thisBitstream.readUint32LE()
 	if err != nil {
 		return inner, err
 	}
@@ -16,6 +17,6 @@ func DecodePacket83_04(packet *UDPPacket, context *CommunicationContext) (interf
 	return inner, err
 }
 
-func (layer *Packet83_04) Serialize(isClient bool, context *CommunicationContext, stream *ExtendedWriter) error {
-    return stream.WriteUint32LE(layer.MarkerId)
+func (layer *Packet83_04) Serialize(writer PacketWriter, stream *extendedWriter) error {
+	return stream.writeUint32LE(layer.MarkerId)
 }

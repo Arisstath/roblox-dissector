@@ -1,7 +1,10 @@
 package main
+
+// Outdated!!
+/*
 import "github.com/therecipe/qt/gui"
 import "github.com/therecipe/qt/widgets"
-import "github.com/gskartwii/roblox-dissector/peer"
+import "github.com/Gskartwii/roblox-dissector/peer"
 import "os"
 import "encoding/gob"
 
@@ -80,3 +83,5 @@ func ShowPacket82(packetType byte, packet *peer.UDPPacket, context *peer.Communi
 	layerLayout.AddWidget(descriptorView, 0, 0)
 	layerLayout.AddWidget(dumpButton, 0, 0)
 }
+
+*/

@@ -1,108 +1,133 @@
 package peer
+
 import "bytes"
 import "github.com/gskartwii/go-bitstream"
+import "log"
+import "strings"
 
+// SplitPacketBuffer represents a structure that accumulates every
+// layer that is used to transmit the split packet.
 type SplitPacketBuffer struct {
+	// All ReliabilityLayer packets for this packet received so far
 	ReliablePackets []*ReliablePacket
+	// All RakNet layers for this packet received so far
+	// IN RECEIVE ORDER, NOT SPLIT ORDER!!
+	// Use ReliablePackets[i].RakNetLayer to access them in that order.
 	RakNetPackets []*RakNetLayer
+	// Next expected index
 	NextExpectedPacket uint32
-	WrittenPackets uint32
+	// Number of _ordered_ splits we have received so far
+	NumReceivedSplits uint32
+	// Has a decoder routine started decoding this packet yet?
+	HasBeenDecoded bool
+	// Has received packet type yet? Set to true when the first split of this packet
+	// is received
+	HasPacketType bool
+	PacketType    byte
 
-	DataReader *ExtendedReader
-	DataWriter *bytes.Buffer
+	dataReader *extendedReader
+	data       []byte
+
+	// Have all splits been received?
+	IsFinal bool
+	// Unique ID given to each packet. Splits of the same packet have the same ID.
+	UniqueID uint32
+	// Total length received so far, in bytes
+	RealLength uint32
+
+	logBuffer *strings.Builder // must be a pointer because it may be copied!
+	Logger    *log.Logger
 }
-type SplitPacketList map[string](map[uint16](*ReliablePacket))
+type splitPacketList map[string](map[uint16](*SplitPacketBuffer))
 
-func NewSplitPacketBuffer(packet *ReliablePacket) *SplitPacketBuffer {
+func newSplitPacketBuffer(packet *ReliablePacket, context *CommunicationContext) *SplitPacketBuffer {
 	reliables := make([]*ReliablePacket, int(packet.SplitPacketCount))
-	raknets := make([]*RakNetLayer, int(packet.SplitPacketCount))
+	raknets := make([]*RakNetLayer, 0, int(packet.SplitPacketCount))
 
-	list := &SplitPacketBuffer{reliables, raknets, 0, 0, nil, nil}
-	buffer := &bytes.Buffer{}
-	list.DataReader = &ExtendedReader{bitstream.NewReader(buffer)}
-	list.DataWriter = buffer
+	list := &SplitPacketBuffer{
+		ReliablePackets: reliables,
+		RakNetPackets:   raknets,
+	}
+	list.data = make([]byte, 0, uint32(packet.LengthInBits)*packet.SplitPacketCount*8)
+	list.PacketType = 0xFF
+	list.UniqueID = context.UniqueID
+	context.UniqueID++
+	list.logBuffer = new(strings.Builder)
+	list.Logger = log.New(list.logBuffer, "", log.Lmicroseconds|log.Ltime)
 
 	return list
 }
 
-func (list *SplitPacketBuffer) AddPacket(packet *ReliablePacket, rakNetPacket *RakNetLayer, index uint32)  {
+func (list *SplitPacketBuffer) addPacket(packet *ReliablePacket, rakNetPacket *RakNetLayer, index uint32) {
 	// Packets may be duplicated. At least I think so. Thanks UDP
 	list.ReliablePackets[index] = packet
-	list.RakNetPackets[index] = rakNetPacket
+	list.RakNetPackets = append(list.RakNetPackets, rakNetPacket)
 }
 
-func (context *CommunicationContext) AddSplitPacket(source string, packet *ReliablePacket, rakNetPacket *RakNetLayer) *ReliablePacket {
+func (context *CommunicationContext) addSplitPacket(source string, packet *ReliablePacket, rakNetPacket *RakNetLayer) *SplitPacketBuffer {
 	splitPacketId := packet.SplitPacketID
 	splitPacketIndex := packet.SplitPacketIndex
 
-	if context.SplitPackets == nil {
-		packet.Buffer = NewSplitPacketBuffer(packet)
-		packet.IsFirst = true
-		packet.FullDataReader = packet.Buffer.DataReader
-		packet.Buffer.AddPacket(packet, rakNetPacket, splitPacketIndex)
+	if !packet.HasSplitPacket {
+		buffer := newSplitPacketBuffer(packet, context)
+		buffer.addPacket(packet, rakNetPacket, 0)
 
-		context.SplitPackets = SplitPacketList{source: map[uint16]*ReliablePacket{splitPacketId: packet}}
-	} else if context.SplitPackets[source] == nil {
-		packet.Buffer = NewSplitPacketBuffer(packet)
-		packet.IsFirst = true
-		packet.FullDataReader = packet.Buffer.DataReader
-		packet.Buffer.AddPacket(packet, rakNetPacket, splitPacketIndex)
-
-		context.SplitPackets[source] = map[uint16]*ReliablePacket{splitPacketId: packet}
-	} else if context.SplitPackets[source][splitPacketId] == nil {
-		packet.Buffer = NewSplitPacketBuffer(packet)
-		packet.IsFirst = true
-		packet.FullDataReader = packet.Buffer.DataReader
-		packet.Buffer.AddPacket(packet, rakNetPacket, splitPacketIndex)
-
-		context.SplitPackets[source][splitPacketId] = packet
-	} else {
-		context.SplitPackets[source][splitPacketId].IsFirst = false
-		context.SplitPackets[source][splitPacketId].Buffer.AddPacket(packet, rakNetPacket, splitPacketIndex)
+		return buffer
 	}
 
-	return context.SplitPackets[source][splitPacketId]
+	var buffer *SplitPacketBuffer
+	if context.splitPackets == nil {
+		buffer = newSplitPacketBuffer(packet, context)
+		context.splitPackets = splitPacketList{source: map[uint16]*SplitPacketBuffer{splitPacketId: buffer}}
+	} else if context.splitPackets[source] == nil {
+		buffer = newSplitPacketBuffer(packet, context)
+
+		context.splitPackets[source] = map[uint16]*SplitPacketBuffer{splitPacketId: buffer}
+	} else if context.splitPackets[source][splitPacketId] == nil {
+		buffer = newSplitPacketBuffer(packet, context)
+
+		context.splitPackets[source][splitPacketId] = buffer
+	} else {
+		buffer = context.splitPackets[source][splitPacketId]
+	}
+	buffer.addPacket(packet, rakNetPacket, splitPacketIndex)
+	packet.SplitBuffer = buffer
+
+	return buffer
 }
 
-func (context *CommunicationContext) HandleSplitPacket(reliablePacket *ReliablePacket, rakNetPacket *RakNetLayer, packet *UDPPacket) (*ReliablePacket, error) {
+func (context *CommunicationContext) handleSplitPacket(reliablePacket *ReliablePacket, rakNetPacket *RakNetLayer, packet *UDPPacket) (*SplitPacketBuffer, error) {
 	source := packet.Source.String()
 
-	fullPacket := context.AddSplitPacket(source, reliablePacket, rakNetPacket)
-	packetBuffer := fullPacket.Buffer
+	packetBuffer := context.addSplitPacket(source, reliablePacket, rakNetPacket)
 	expectedPacket := packetBuffer.NextExpectedPacket
 
-	fullPacket.AllReliablePackets = append(fullPacket.AllReliablePackets, reliablePacket)
-	fullPacket.AllRakNetLayers = append(fullPacket.AllRakNetLayers, rakNetPacket)
-	reliablePacket.AllReliablePackets = fullPacket.AllReliablePackets
-	reliablePacket.AllRakNetLayers = fullPacket.AllRakNetLayers
-
-	fullPacket.RealLength += uint32(len(reliablePacket.SelfData))
+	packetBuffer.RealLength += uint32(len(reliablePacket.SelfData))
 
 	var shouldClose bool
 	for len(packetBuffer.ReliablePackets) > int(expectedPacket) && packetBuffer.ReliablePackets[expectedPacket] != nil {
-		shouldClose = len(packetBuffer.ReliablePackets) == int(expectedPacket + 1)
-		packetBuffer.DataWriter.Write(packetBuffer.ReliablePackets[expectedPacket].SelfData)
-		packetBuffer.WrittenPackets++
+		packetBuffer.data = append(packetBuffer.data, packetBuffer.ReliablePackets[expectedPacket].SelfData...)
 
 		expectedPacket++
+		shouldClose = len(packetBuffer.ReliablePackets) == int(expectedPacket)
 		packetBuffer.NextExpectedPacket = expectedPacket
 	}
 	if shouldClose {
-		fullPacket.IsFinal = true
-		reliablePacket.IsFinal = true
+		packetBuffer.IsFinal = true
+		packetBuffer.dataReader = &extendedReader{bitstream.NewReader(bytes.NewReader(packetBuffer.data))}
+		if reliablePacket.HasSplitPacket {
+			// TODO: Use a linked list
+			delete(context.splitPackets[source], reliablePacket.SplitPacketID)
+		}
 	}
-	fullPacket.NumReceivedSplits = expectedPacket
-	reliablePacket.NumReceivedSplits = fullPacket.NumReceivedSplits
-	fullPacket.ReliableMessageNumber = reliablePacket.ReliableMessageNumber
-	reliablePacket.FullDataReader = packetBuffer.DataReader
+	packetBuffer.NumReceivedSplits = expectedPacket
 
-	if reliablePacket.HasPacketType {
-		fullPacket.HasPacketType = true
-		fullPacket.PacketType = reliablePacket.PacketType
-	} else {
-		reliablePacket.HasPacketType = fullPacket.HasPacketType
-		reliablePacket.PacketType = fullPacket.PacketType
+	if reliablePacket.SplitPacketIndex == 0 {
+		packetBuffer.PacketType = reliablePacket.SelfData[0]
+		packetBuffer.HasPacketType = true
 	}
 
-	return reliablePacket, nil
+	packet.Logger = packetBuffer.Logger
+
+	return packetBuffer, nil
 }

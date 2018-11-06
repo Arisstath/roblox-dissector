@@ -1,4 +1,8 @@
-Packet8ALayer.go
-Packet8ACallback.go
 deploy
 dissector.vim
+dumps
+.vscode
+*.sys
+*.idb
+*.exe
+*.dll

@@ -1,9 +1,11 @@
 package main
+
 import "github.com/therecipe/qt/widgets"
 import "github.com/therecipe/qt/gui"
 import "github.com/therecipe/qt/core"
-import "github.com/gskartwii/roblox-dissector/peer"
+import "github.com/Gskartwii/roblox-dissector/peer"
 import "github.com/gskartwii/rbxfile"
+import "github.com/gskartwii/rbxfile/bin"
 import "os"
 import "os/exec"
 import "fmt"
@@ -14,15 +16,17 @@ import "net/http"
 import "io/ioutil"
 import "strings"
 import "errors"
-import "encoding/gob"
+
+import "context"
 
 var window *widgets.QMainWindow
+
 type DefaultValues map[string](map[string]rbxfile.Value)
 
 type PacketList map[uint32]([]*gui.QStandardItem)
 type TwoWayPacketList struct {
-	Server PacketList
-	Client PacketList
+	Server  PacketList
+	Client  PacketList
 	MServer *sync.Mutex
 	MClient *sync.Mutex
 	EServer *sync.Cond
@@ -31,26 +35,26 @@ type TwoWayPacketList struct {
 
 type StudioSettings struct {
 	Location string
-	
-	Flags string
+
+	Flags   string
 	Address string
-	Port string
-	RBXL string
+	Port    string
+	RBXL    string
 }
 
 type PlayerSettings struct {
-	Location string
-	Flags string
-	GameID string
-	TrackerID string
+	Location   string
+	Flags      string
+	GameID     string
+	TrackerID  string
 	AuthTicket string
 }
 
 type ServerSettings struct {
-    Port string
-    EnumSchemaLocation string
-    InstanceSchemaLocation string
-    DictionaryLocation string
+	Port                   string
+	EnumSchemaLocation     string
+	InstanceSchemaLocation string
+	DictionaryLocation     string
 }
 
 type DefaultsSettings struct {
@@ -59,38 +63,41 @@ type DefaultsSettings struct {
 
 type PlayerProxySettings struct {
 	Certfile string
-	Keyfile string
+	Keyfile  string
 }
 
-type SelectionHandlerList map[uint64](func ())
+type SelectionHandlerList map[uint64](func())
 type MyPacketListView struct {
 	*widgets.QTreeView
-	packetRowsByUniqueID *TwoWayPacketList
+	packetRowsByUniqueID    *TwoWayPacketList
 	packetRowsBySplitPacket *TwoWayPacketList
 
 	CurrentACKSelection []*gui.QStandardItem
-	SelectionHandlers SelectionHandlerList
-	RootNode *gui.QStandardItem
-	PacketIndex uint64
-	StandardModel *gui.QStandardItemModel
+	SelectionHandlers   SelectionHandlerList
+	RootNode            *gui.QStandardItem
+	PacketIndex         uint64
+	StandardModel       *gui.QStandardItemModel
 
 	MSelectionHandlers *sync.Mutex
-	MGUI *sync.Mutex
+	MGUI               *sync.Mutex
 
-	IsCapturing bool
-	StopCaptureJob chan struct{}
-	InjectPacket chan peer.RakNetPacket
+	IsCapturing       bool
+	CaptureJobContext context.Context
+	StopCaptureJob    context.CancelFunc
+	InjectPacket      chan peer.RakNetPacket
 
 	StudioVersion string
 	PlayerVersion string
 	DefaultValues DefaultValues
 
-	StudioSettings *StudioSettings
-	PlayerSettings *PlayerSettings
-    ServerSettings *ServerSettings
-	DefaultsSettings *DefaultsSettings
+	StudioSettings      *StudioSettings
+	PlayerSettings      *PlayerSettings
+	ServerSettings      *ServerSettings
+	DefaultsSettings    *DefaultsSettings
 	PlayerProxySettings *PlayerProxySettings
-	Context *peer.CommunicationContext
+	Context             *peer.CommunicationContext
+
+	//FilterSettings FilterSettings
 }
 
 func NewTwoWayPacketList() *TwoWayPacketList {
@@ -108,33 +115,25 @@ func NewTwoWayPacketList() *TwoWayPacketList {
 }
 
 func NewMyPacketListView(parent widgets.QWidget_ITF) *MyPacketListView {
+	captureContext, captureCancel := context.WithCancel(context.Background())
 	new := &MyPacketListView{
-		widgets.NewQTreeView(parent),
-		NewTwoWayPacketList(),
-		NewTwoWayPacketList(),
-		nil,
-		make(SelectionHandlerList),
-		nil,
-		0,
-		nil,
+		QTreeView:               widgets.NewQTreeView(parent),
+		packetRowsByUniqueID:    NewTwoWayPacketList(),
+		packetRowsBySplitPacket: NewTwoWayPacketList(),
 
-		&sync.Mutex{},
-		&sync.Mutex{},
-		
-		false,
-		make(chan struct{}),
-		make(chan peer.RakNetPacket),
+		SelectionHandlers: make(SelectionHandlerList),
 
-		"",
-		"",
-		nil,
+		MSelectionHandlers: &sync.Mutex{},
+		MGUI:               &sync.Mutex{},
 
-		&StudioSettings{},
-		&PlayerSettings{},
-        &ServerSettings{},
-		&DefaultsSettings{},
-		&PlayerProxySettings{},
-		nil,
+		CaptureJobContext: captureContext,
+		StopCaptureJob:    captureCancel,
+
+		StudioSettings:      &StudioSettings{},
+		PlayerSettings:      &PlayerSettings{},
+		ServerSettings:      &ServerSettings{},
+		DefaultsSettings:    &DefaultsSettings{},
+		PlayerProxySettings: &PlayerProxySettings{},
 	}
 	return new
 }
@@ -149,6 +148,7 @@ func (m *MyPacketListView) Reset() {
 	m.SelectionHandlers = make(SelectionHandlerList)
 	m.RootNode = m.StandardModel.InvisibleRootItem()
 	m.PacketIndex = 0
+	m.CaptureJobContext, m.StopCaptureJob = context.WithCancel(context.Background())
 }
 
 func NewQLabelF(format string, args ...interface{}) *widgets.QLabel {
@@ -169,44 +169,12 @@ func NewQStandardItemF(format string, args ...interface{}) *gui.QStandardItem {
 }
 
 func NewBasicPacketViewer(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) *widgets.QVBoxLayout {
-	subWindow := widgets.NewQWidget(window, core.Qt__Window)
-	subWindowLayout := widgets.NewQVBoxLayout2(subWindow)
+	tabWidget := NewDefaultPacketViewer(packetType, packet, context, layers)
 
-	isClient := context.IsClient(packet.Source)
-	isServer := context.IsServer(packet.Source)
-
-	var direction string
-	if isClient {
-		direction = "Direction: Client -> Server"
-	} else if isServer {
-		direction = "Direction: Server -> Client"
-	} else {
-		direction = "Direction: Unknown"
-	}
-	directionLabel := widgets.NewQLabel2(direction, nil, 0)
-	subWindowLayout.AddWidget(directionLabel, 0, 0)
-
-	var datagramNumberLabel *widgets.QLabel
-	if layers.Reliability != nil && layers.Reliability.HasSplitPacket {
-		allRakNetLayers := layers.Reliability.AllRakNetLayers
-		datagramNumberLabel = NewQLabelF("Datagrams: %d - %d", allRakNetLayers[0].DatagramNumber, allRakNetLayers[len(allRakNetLayers) - 1].DatagramNumber)
-	} else {
-		datagramNumberLabel = NewQLabelF("Datagram: %d", layers.RakNet.DatagramNumber)
-	}
-
-	subWindowLayout.AddWidget(datagramNumberLabel, 0, 0)
-
-	tabWidget := widgets.NewQTabWidget(nil)
-	subWindowLayout.AddWidget(tabWidget, 0, 0)
-
-	subWindow.SetWindowTitle("Packet Window: " + PacketNames[packetType])
-	subWindow.Show()
-
-	layerWidget := widgets.NewQWidget(nil, 0)
+	layerWidget := widgets.NewQWidget(tabWidget, 0)
 	layerLayout := widgets.NewQVBoxLayout()
 	layerWidget.SetLayout(layerLayout)
-
-	tabWidget.AddTab(layerWidget, PacketNames[packetType])
+	tabWidget.InsertTab(0, layerWidget, PacketNames[packetType])
 
 	return layerLayout
 }
@@ -236,6 +204,23 @@ func (m *TwoWayPacketList) Add(index uint32, row []*gui.QStandardItem, packet *p
 	cond.Broadcast()
 
 	mutex.Unlock()
+}
+
+func (m *TwoWayPacketList) Has(index uint32, isClient bool, isServer bool) bool {
+	if isClient {
+		m.MClient.Lock()
+		defer m.MClient.Unlock()
+		_, ok := m.Client[index]
+		return ok
+	} else if isServer {
+		m.MServer.Lock()
+		defer m.MServer.Unlock()
+		_, ok := m.Server[index]
+		return ok
+	} else {
+		panic(errors.New("get not on server or client"))
+	}
+	return false
 }
 
 func (m *TwoWayPacketList) Get(index uint32, isClient bool, isServer bool) []*gui.QStandardItem {
@@ -310,12 +295,16 @@ func (m *MyPacketListView) registerSplitPacketRow(row []*gui.QStandardItem, pack
 		m.packetRowsBySplitPacket.Add(uint32(layers.Reliability.SplitPacketID), row, packet, context, layers)
 	}
 
-	m.packetRowsByUniqueID.Add(layers.Reliability.UniqueID, row, packet, context, layers)
+	m.packetRowsByUniqueID.Add(layers.Reliability.SplitBuffer.UniqueID, row, packet, context, layers)
 }
 
 func (m *MyPacketListView) AddSplitPacket(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
-	if layers.Reliability.IsFirst {
+	isClient := context.IsClient(packet.Source)
+	isServer := context.IsServer(packet.Source)
+
+	if !m.packetRowsByUniqueID.Has(layers.Reliability.SplitBuffer.UniqueID, isClient, isServer) {
 		m.AddFullPacket(packetType, packet, context, layers, nil)
+		m.BindDefaultCallback(packetType, packet, context, layers)
 	} else {
 		m.handleSplitPacket(packetType, packet, context, layers)
 	}
@@ -325,14 +314,16 @@ func (m *MyPacketListView) BindCallback(packetType byte, packet *peer.UDPPacket,
 	isClient := context.IsClient(packet.Source)
 	isServer := context.IsServer(packet.Source)
 
-	row := m.packetRowsByUniqueID.Get(layers.Reliability.UniqueID, isClient, isServer)
+	row := m.packetRowsByUniqueID.Get(layers.Reliability.SplitBuffer.UniqueID, isClient, isServer)
 	index, _ := strconv.Atoi(row[0].Data(0).ToString())
 
 	m.MSelectionHandlers.Lock()
-	m.SelectionHandlers[uint64(index)] = func () {
+	m.SelectionHandlers[uint64(index)] = func() {
 		m.clearACKSelection()
-		if activationCallback != nil {
+		if activationCallback != nil && layers.Main != nil {
 			activationCallback(packetType, packet, context, layers)
+		} else {
+			NewDefaultPacketViewer(packetType, packet, context, layers)
 		}
 	}
 	m.MSelectionHandlers.Unlock()
@@ -343,8 +334,144 @@ func (m *MyPacketListView) BindCallback(packetType byte, packet *peer.UDPPacket,
 	row[1].SetData(core.NewQVariant14(packetName), 0)
 
 	for _, item := range row {
-		item.SetBackground(gui.NewQBrush2(core.Qt__NoBrush))
+		if layers.Main != nil {
+			item.SetBackground(gui.NewQBrush2(core.Qt__NoBrush))
+		} else {
+			paintItems(row, gui.NewQColor3(255, 0, 0, 127))
+		}
 	}
+
+	if packetType == 0x83 && layers.Main != nil && layers.Reliability != nil && layers.Reliability.SplitBuffer.IsFinal {
+		mainLayer := layers.Main.(*peer.Packet83Layer)
+		for _, subpacket := range mainLayer.SubPackets {
+			if peer.Packet83ToType(subpacket) == 0x7 && strings.Contains(subpacket.(*peer.Packet83_07).EventName, "Remote") { // highlight events
+				paintItems(row, gui.NewQColor3(0, 0, 255, 127))
+				break
+			}
+		}
+	}
+}
+
+func NewDefaultPacketViewer(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) *widgets.QTabWidget {
+	subWindow := widgets.NewQWidget(window, core.Qt__Window)
+	subWindowLayout := widgets.NewQVBoxLayout2(subWindow)
+
+	isClient := context.IsClient(packet.Source)
+	isServer := context.IsServer(packet.Source)
+
+	var direction string
+	if isClient {
+		direction = "Direction: Client -> Server"
+	} else if isServer {
+		direction = "Direction: Server -> Client"
+	} else {
+		direction = "Direction: Unknown"
+	}
+	directionLabel := widgets.NewQLabel2(direction, nil, 0)
+	subWindowLayout.AddWidget(directionLabel, 0, 0)
+
+	var datagramNumberLabel *widgets.QLabel
+	if layers.Reliability != nil && layers.Reliability.HasSplitPacket {
+		allRakNetLayers := layers.Reliability.SplitBuffer.RakNetPackets
+		datagramNumberLabel = NewQLabelF("Datagrams: %d - %d", allRakNetLayers[0].DatagramNumber, allRakNetLayers[len(allRakNetLayers)-1].DatagramNumber)
+	} else {
+		datagramNumberLabel = NewQLabelF("Datagram: %d", layers.RakNet.DatagramNumber)
+	}
+
+	subWindowLayout.AddWidget(datagramNumberLabel, 0, 0)
+
+	tabWidget := widgets.NewQTabWidget(subWindow)
+	subWindowLayout.AddWidget(tabWidget, 0, 0)
+
+	logWidget := widgets.NewQWidget(tabWidget, 0)
+	logLayout := widgets.NewQVBoxLayout()
+
+	logBox := widgets.NewQTextEdit(logWidget)
+	logBox.SetReadOnly(true)
+	if layers.Reliability == nil {
+		logBox.SetPlainText(packet.GetLog())
+	} else {
+		logBox.SetPlainText(layers.Reliability.GetLog())
+	}
+	logLayout.AddWidget(logBox, 0, 0)
+
+	logWidget.SetLayout(logLayout)
+	tabWidget.AddTab(logWidget, "Parser log")
+
+	subWindow.SetWindowTitle("Packet Window: " + PacketNames[packetType])
+	subWindow.Show()
+
+	if layers.Reliability != nil {
+		splitBuffer := layers.Reliability.SplitBuffer
+		rakNets := splitBuffer.RakNetPackets
+		reliables := splitBuffer.ReliablePackets
+
+		relWidget := widgets.NewQWidget(tabWidget, 0)
+		relLayout := widgets.NewQVBoxLayout()
+
+		datagramInfo := new(strings.Builder)
+		for _, rakNetLayer := range rakNets {
+			fmt.Fprintf(datagramInfo, "%d,", rakNetLayer.DatagramNumber)
+		}
+		relLayout.AddWidget(NewQLabelF("Datagrams: %s", datagramInfo.String()), 0, 0)
+
+		relLayout.AddWidget(NewQLabelF("Reliability: %d", layers.Reliability.Reliability), 0, 0)
+		if layers.Reliability.IsReliable() {
+			rmnInfo := new(strings.Builder)
+			for _, reliable := range reliables {
+				if reliable != nil {
+					fmt.Fprintf(rmnInfo, "%d,", reliable.ReliableMessageNumber)
+				} else {
+					rmnInfo.WriteString("nil,")
+				}
+			}
+			relLayout.AddWidget(NewQLabelF("Reliable MNs: %s", rmnInfo.String()), 0, 0)
+		}
+
+		if layers.Reliability.IsOrdered() {
+			ordInfo := new(strings.Builder)
+			for _, reliable := range reliables {
+				if reliable != nil {
+					fmt.Fprintf(ordInfo, "%d,", reliable.OrderingIndex)
+				} else {
+					ordInfo.WriteString("nil,")
+				}
+			}
+			relLayout.AddWidget(NewQLabelF("Ordering channel: %d, indices: %s", layers.Reliability.OrderingChannel, ordInfo.String()), 0, 0)
+		}
+
+		if layers.Reliability.IsSequenced() {
+			seqInfo := new(strings.Builder)
+			for _, reliable := range reliables {
+				if reliable != nil {
+					fmt.Fprintf(seqInfo, "%d,", reliable.SequencingIndex)
+				} else {
+					seqInfo.WriteString("nil,")
+				}
+			}
+			relLayout.AddWidget(NewQLabelF("Sequencing indices: %s", layers.Reliability.OrderingChannel, seqInfo.String()), 0, 0)
+		}
+
+		relWidget.SetLayout(relLayout)
+		tabWidget.AddTab(relWidget, "Reliability Layer Debug")
+	}
+
+	return tabWidget
+}
+
+func (m *MyPacketListView) BindDefaultCallback(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
+	isClient := context.IsClient(packet.Source)
+	isServer := context.IsServer(packet.Source)
+
+	row := m.packetRowsByUniqueID.Get(layers.Reliability.SplitBuffer.UniqueID, isClient, isServer)
+	index, _ := strconv.Atoi(row[0].Data(0).ToString())
+
+	m.MSelectionHandlers.Lock()
+	m.SelectionHandlers[uint64(index)] = func() {
+		m.clearACKSelection()
+		NewDefaultPacketViewer(packetType, packet, context, layers)
+	}
+	m.MSelectionHandlers.Unlock()
 }
 
 func (m *MyPacketListView) handleSplitPacket(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
@@ -355,8 +482,8 @@ func (m *MyPacketListView) handleSplitPacket(packetType byte, packet *peer.UDPPa
 	m.registerSplitPacketRow(row, packet, context, layers)
 
 	reliablePacket := layers.Reliability
-	if reliablePacket.HasPacketType {
-		packetType := reliablePacket.PacketType
+	if reliablePacket.SplitBuffer.HasPacketType {
+		packetType := reliablePacket.SplitBuffer.PacketType
 		packetName := PacketNames[packetType]
 		if packetName == "" {
 			packetName = fmt.Sprintf("0x%02X", packetType)
@@ -364,10 +491,13 @@ func (m *MyPacketListView) handleSplitPacket(packetType byte, packet *peer.UDPPa
 		row[1].SetData(core.NewQVariant14(packetName), 0)
 	}
 
-	row[3].SetData(core.NewQVariant7(int(layers.Reliability.RealLength)), 0)
-	row[4].SetData(core.NewQVariant14(fmt.Sprintf("%d - %d", layers.Reliability.AllRakNetLayers[0].DatagramNumber, layers.RakNet.DatagramNumber)), 0)
-	row[5].SetData(core.NewQVariant14(fmt.Sprintf("%d/%d", layers.Reliability.NumReceivedSplits, layers.Reliability.SplitPacketCount)), 0)
-	row[6].SetData(core.NewQVariant7(len(layers.Reliability.AllRakNetLayers)), 0)
+	row[3].SetData(core.NewQVariant7(int(layers.Reliability.SplitBuffer.RealLength)), 0)
+	if layers.Reliability.SplitBuffer.RakNetPackets[0] == nil {
+		panic(errors.New("encountered nil first raknet!!"))
+	}
+	row[4].SetData(core.NewQVariant14(fmt.Sprintf("%d - %d", layers.Reliability.SplitBuffer.RakNetPackets[0].DatagramNumber, layers.RakNet.DatagramNumber)), 0)
+	row[5].SetData(core.NewQVariant14(fmt.Sprintf("%d/%d", layers.Reliability.SplitBuffer.NumReceivedSplits, layers.Reliability.SplitPacketCount)), 0)
+	row[6].SetData(core.NewQVariant7(len(layers.Reliability.SplitBuffer.RakNetPackets)), 0)
 }
 
 func (m *MyPacketListView) AddFullPacket(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers, activationCallback ActivationCallback) []*gui.QStandardItem {
@@ -397,17 +527,17 @@ func (m *MyPacketListView) AddFullPacket(packetType byte, packet *peer.UDPPacket
 
 	var length *gui.QStandardItem
 	if layers.Reliability != nil {
-		length = NewQStandardItemF("%d", layers.Reliability.LengthInBits / 8)
+		length = NewQStandardItemF("%d", layers.Reliability.LengthInBits/8)
 	} else {
 		length = NewQStandardItemF("???")
 	}
 	rootRow = append(rootRow, length)
 	var datagramNumber *gui.QStandardItem
 	if layers.Reliability != nil && layers.Reliability.HasSplitPacket {
-		allRakNetLayers := layers.Reliability.AllRakNetLayers
+		allRakNetLayers := layers.Reliability.SplitBuffer.RakNetPackets
 
 		firstLayer := allRakNetLayers[0]
-		lastLayer := allRakNetLayers[len(allRakNetLayers) - 1]
+		lastLayer := allRakNetLayers[len(allRakNetLayers)-1]
 		var firstLayerNumber, lastLayerNumber int32
 		if firstLayer == nil {
 			fmt.Printf("Encountered nil first raknet with %02X\n", packetType)
@@ -429,7 +559,7 @@ func (m *MyPacketListView) AddFullPacket(packetType byte, packet *peer.UDPPacket
 	rootRow = append(rootRow, datagramNumber)
 
 	if layers.Reliability != nil {
-		receivedSplits := NewQStandardItemF("%d/%d", layers.Reliability.NumReceivedSplits, layers.Reliability.SplitPacketCount)
+		receivedSplits := NewQStandardItemF("%d/%d", layers.Reliability.SplitBuffer.NumReceivedSplits, layers.Reliability.SplitPacketCount)
 		rootRow = append(rootRow, receivedSplits)
 	} else {
 		rootRow = append(rootRow, nil)
@@ -442,15 +572,17 @@ func (m *MyPacketListView) AddFullPacket(packetType byte, packet *peer.UDPPacket
 
 	if layers.Reliability == nil { // Only bind if we're done parsing the packet
 		m.MSelectionHandlers.Lock()
-		m.SelectionHandlers[index] = func () {
+		m.SelectionHandlers[index] = func() {
 			m.clearACKSelection()
-			if activationCallback != nil {
+			if activationCallback != nil && layers.Main != nil {
 				activationCallback(packetType, packet, context, layers)
+			} else {
+				NewDefaultPacketViewer(packetType, packet, context, layers)
 			}
 		}
 		m.MSelectionHandlers.Unlock()
 	} else {
-		paintItems(rootRow, gui.NewQColor3(255, 0, 0, 127))
+		paintItems(rootRow, gui.NewQColor3(255, 255, 0, 127))
 	}
 
 	m.MGUI.Lock()
@@ -492,7 +624,7 @@ func (m *MyPacketListView) AddACK(ack peer.ACKRange, packet *peer.UDPPacket, con
 	m.MGUI.Unlock()
 
 	m.MSelectionHandlers.Lock()
-	m.SelectionHandlers[index] = func () {
+	m.SelectionHandlers[index] = func() {
 		m.clearACKSelection()
 		m.highlightByACK(ack, isServer, isClient) // intentionally the other way around
 	}
@@ -512,14 +644,18 @@ func GUIMain() {
 	layout.AddWidget(packetViewer, 0, 0)
 	window.SetCentralWidget(widget)
 
-	standardModel := NewProperSortModel(packetViewer)
+	standardModel, proxy := NewFilteringModel(packetViewer)
+	proxy.ConnectFilterAcceptsRow(func(sourceRow int, sourceParent *core.QModelIndex) bool {
+		return true
+	})
+
 	packetViewer.StandardModel = standardModel
 	standardModel.SetHorizontalHeaderLabels([]string{"Index", "Type", "Direction", "Length in Bytes", "Datagram Numbers", "Ordered Splits", "Total Splits"})
 	packetViewer.RootNode = standardModel.InvisibleRootItem()
-	packetViewer.SetModel(standardModel)
+	packetViewer.SetModel(proxy)
 	packetViewer.SetSelectionMode(1)
 	packetViewer.SetSortingEnabled(true)
-	packetViewer.ConnectClicked(func (index *core.QModelIndex) {
+	packetViewer.ConnectClicked(func(index *core.QModelIndex) {
 		realSelectedValue, _ := strconv.Atoi(standardModel.Item(index.Row(), 0).Data(0).ToString())
 		if packetViewer.SelectionHandlers[uint64(realSelectedValue)] == nil {
 			packetViewer.handleNoneSelected()
@@ -532,19 +668,34 @@ func GUIMain() {
 	captureFileAction := captureBar.AddAction("From &file...")
 	capture4FileAction := captureBar.AddAction("From &RawCap file...")
 	captureLiveAction := captureBar.AddAction("From &live interface...")
-	captureProxyAction := captureBar.AddAction("From &proxy...")
 	captureInjectAction := captureBar.AddAction("From &injection proxy...")
+	captureDivertAction := captureBar.AddAction("From &WinDivert proxy...")
 	captureStopAction := captureBar.AddAction("&Stop capture")
-
-	captureStopAction.ConnectTriggered(func(checked bool)() {
+	captureFromPlayerProxyAction := captureBar.AddAction("From pl&ayer proxy")
+	captureFromPlayerProxyAction.ConnectTriggered(func(checked bool) {
 		if packetViewer.IsCapturing {
-			packetViewer.StopCaptureJob <- struct{}{}
+			packetViewer.StopCaptureJob()
+		}
+		NewPlayerProxyWidget(packetViewer, packetViewer.PlayerProxySettings, func(settings *PlayerProxySettings) {
+			packetViewer.Reset()
+
+			packetViewer.IsCapturing = true
+			context := peer.NewCommunicationContext()
+			packetViewer.Context = context
+
+			captureFromPlayerProxy(settings, packetViewer.CaptureJobContext, packetViewer.InjectPacket, packetViewer, packetViewer.Context)
+		})
+	})
+
+	captureStopAction.ConnectTriggered(func(checked bool) {
+		if packetViewer.IsCapturing {
+			packetViewer.StopCaptureJob()
 		}
 	})
 
-	captureFileAction.ConnectTriggered(func(checked bool)() {
+	captureFileAction.ConnectTriggered(func(checked bool) {
 		if packetViewer.IsCapturing {
-			packetViewer.StopCaptureJob <- struct{}{}
+			packetViewer.StopCaptureJob()
 		}
 		file := widgets.QFileDialog_GetOpenFileName(window, "Capture from file", "", "PCAP files (*.pcap)", "", 0)
 		packetViewer.IsCapturing = true
@@ -555,13 +706,13 @@ func GUIMain() {
 		packetViewer.Reset()
 
 		go func() {
-			captureFromFile(file, false, packetViewer.StopCaptureJob, packetViewer, context)
+			captureFromFile(file, false, packetViewer.CaptureJobContext, packetViewer, context)
 			packetViewer.IsCapturing = false
 		}()
 	})
-	capture4FileAction.ConnectTriggered(func(checked bool)() {
+	capture4FileAction.ConnectTriggered(func(checked bool) {
 		if packetViewer.IsCapturing {
-			packetViewer.StopCaptureJob <- struct{}{}
+			packetViewer.StopCaptureJob()
 		}
 		file := widgets.QFileDialog_GetOpenFileName(window, "Capture from RawCap file", "", "PCAP files (*.pcap)", "", 0)
 		packetViewer.IsCapturing = true
@@ -572,13 +723,13 @@ func GUIMain() {
 		packetViewer.Reset()
 
 		go func() {
-			captureFromFile(file, true, packetViewer.StopCaptureJob, packetViewer, context)
+			captureFromFile(file, true, packetViewer.CaptureJobContext, packetViewer, context)
 			packetViewer.IsCapturing = false
 		}()
 	})
-	captureLiveAction.ConnectTriggered(func(checked bool)() {
+	captureLiveAction.ConnectTriggered(func(checked bool) {
 		if packetViewer.IsCapturing {
-			packetViewer.StopCaptureJob <- struct{}{}
+			packetViewer.StopCaptureJob()
 		}
 
 		NewSelectInterfaceWidget(packetViewer, func(thisItf string, usePromisc bool) {
@@ -590,14 +741,14 @@ func GUIMain() {
 			packetViewer.Reset()
 
 			go func() {
-				captureFromLive(thisItf, false, usePromisc, packetViewer.StopCaptureJob, packetViewer, context)
+				captureFromLive(thisItf, false, usePromisc, packetViewer.CaptureJobContext, packetViewer, context)
 				packetViewer.IsCapturing = false
 			}()
 		})
 	})
-	captureProxyAction.ConnectTriggered(func(checked bool)() {
+	captureInjectAction.ConnectTriggered(func(checked bool) {
 		if packetViewer.IsCapturing {
-			packetViewer.StopCaptureJob <- struct{}{}
+			packetViewer.StopCaptureJob()
 		}
 
 		NewProxyCaptureWidget(packetViewer, func(src string, dst string) {
@@ -609,28 +760,24 @@ func GUIMain() {
 			packetViewer.Reset()
 
 			go func() {
-				captureFromProxy(src, dst, packetViewer.StopCaptureJob, packetViewer, context)
+				captureFromInjectionProxy(src, dst, packetViewer.CaptureJobContext, packetViewer.InjectPacket, packetViewer, context)
 				packetViewer.IsCapturing = false
 			}()
 		})
 	})
-	captureInjectAction.ConnectTriggered(func(checked bool)() {
+	captureDivertAction.ConnectTriggered(func(checked bool) {
 		if packetViewer.IsCapturing {
-			packetViewer.StopCaptureJob <- struct{}{}
+			packetViewer.StopCaptureJob()
 		}
 
-		NewProxyCaptureWidget(packetViewer, func(src string, dst string) {
-			packetViewer.IsCapturing = true
+		NewPlayerProxyWidget(packetViewer, packetViewer.PlayerProxySettings, func(settings *PlayerProxySettings) {
+			packetViewer.Reset()
 
+			packetViewer.IsCapturing = true
 			context := peer.NewCommunicationContext()
 			packetViewer.Context = context
 
-			packetViewer.Reset()
-
-			go func() {
-				captureFromInjectionProxy(src, dst, packetViewer.StopCaptureJob, packetViewer.InjectPacket, packetViewer, context)
-				packetViewer.IsCapturing = false
-			}()
+			autoDetectWinDivertProxy(settings, packetViewer.CaptureJobContext, packetViewer.InjectPacket, packetViewer, packetViewer.Context)
 		})
 	})
 
@@ -680,7 +827,7 @@ func GUIMain() {
 	startServerAction := manageRobloxBar.AddAction("Start &local server...")
 	startClientAction := manageRobloxBar.AddAction("Start local &client...")
 	startPlayerAction := manageRobloxBar.AddAction("Start Roblox &Player...")
-	startServerAction.ConnectTriggered(func(checked bool)() {
+	startServerAction.ConnectTriggered(func(checked bool) {
 		NewStudioChooser(packetViewer, packetViewer.StudioSettings, func(settings *StudioSettings) {
 			packetViewer.StudioSettings = settings
 
@@ -693,7 +840,7 @@ func GUIMain() {
 			}
 		})
 	})
-	startClientAction.ConnectTriggered(func(checked bool)() {
+	startClientAction.ConnectTriggered(func(checked bool) {
 		NewStudioChooser(packetViewer, packetViewer.StudioSettings, func(settings *StudioSettings) {
 			packetViewer.StudioSettings = settings
 
@@ -706,7 +853,7 @@ func GUIMain() {
 			}
 		})
 	})
-	startPlayerAction.ConnectTriggered(func(checked bool)() {
+	startPlayerAction.ConnectTriggered(func(checked bool) {
 		NewPlayerChooser(packetViewer, packetViewer.PlayerSettings, func(settings *PlayerSettings) {
 			packetViewer.PlayerSettings = settings
 			placeID, err := strconv.Atoi(settings.GameID)
@@ -730,27 +877,60 @@ func GUIMain() {
 
 	toolsBar := window.MenuBar().AddMenu2("&Tools")
 
+	scriptDumperAction := toolsBar.AddAction("Dump &scripts")
+	scriptDumperAction.ConnectTriggered(func(checked bool) {
+		dumpScripts(packetViewer.Context.DataModel.Instances, 0)
+		scriptData, err := os.OpenFile("dumps/scriptKeys", os.O_RDWR|os.O_CREATE, 0666)
+		defer scriptData.Close()
+		if err != nil {
+			println("while dumping script keys:", err.Error())
+			return
+		}
+
+		_, err = fmt.Fprintf(scriptData, "Int 1: %d\nInt 2: %d", packetViewer.Context.Int1, packetViewer.Context.Int2)
+		if err != nil {
+			println("while dumping script keys:", err.Error())
+			return
+		}
+	})
+	dumperAction := toolsBar.AddAction("&DataModel dumper lite...")
+	dumperAction.ConnectTriggered(func(checked bool) {
+		location := widgets.QFileDialog_GetSaveFileName(packetViewer, "Save as RBXL...", "", "Roblox place files (*.rbxl)", "", 0)
+		writer, err := os.OpenFile(location, os.O_RDWR|os.O_CREATE, 0666)
+		if err != nil {
+			println("while opening file:", err.Error())
+			return
+		}
+
+		stripInvalidTypes(packetViewer.Context.DataModel.Instances, packetViewer.DefaultValues, 0)
+
+		err = bin.SerializePlace(writer, nil, packetViewer.Context.DataModel)
+		if err != nil {
+			println("while serializing place:", err.Error())
+			return
+		}
+	})
 	browseAction := toolsBar.AddAction("&Browse DataModel...")
-	browseAction.ConnectTriggered(func(checked bool)() {
+	browseAction.ConnectTriggered(func(checked bool) {
 		if packetViewer.Context != nil {
 			NewDataModelBrowser(packetViewer.Context, packetViewer.Context.DataModel, packetViewer.DefaultValues)
 		}
 	})
 
 	readDefaults := toolsBar.AddAction("Parse &default values...")
-	readDefaults.ConnectTriggered(func(checked bool)() {
-		NewFindDefaultsWidget(window, packetViewer.DefaultsSettings, func(settings *DefaultsSettings)() {
+	readDefaults.ConnectTriggered(func(checked bool) {
+		NewFindDefaultsWidget(window, packetViewer.DefaultsSettings, func(settings *DefaultsSettings) {
 			packetViewer.DefaultValues = ParseDefaultValues(settings.Files)
 		})
 	})
 
 	viewCache := toolsBar.AddAction("&View string cache...")
-	viewCache.ConnectTriggered(func(checked bool)() {
+	viewCache.ConnectTriggered(func(checked bool) {
 		NewViewCacheWidget(packetViewer, packetViewer.Context)
 	})
 
 	injectChat := toolsBar.AddAction("Inject &chat message...")
-	injectChat.ConnectTriggered(func(checked bool)() {
+	injectChat.ConnectTriggered(func(checked bool) {
 		if packetViewer.Context == nil {
 			println("context is nil!")
 			return
@@ -772,7 +952,7 @@ func GUIMain() {
 		println("chose player", player.Name())
 		chatEvent := replicatedStorage.FindFirstChild("DefaultChatSystemChatEvents", false).FindFirstChild("SayMessageRequest", false)
 		subpacket := &peer.Packet83_07{
-			Instance: chatEvent,
+			Instance:  chatEvent,
 			EventName: "OnServerEvent",
 			Event: &peer.ReplicationEvent{
 				Arguments: []rbxfile.Value{
@@ -791,39 +971,52 @@ func GUIMain() {
 	})
 
 	peersBar := window.MenuBar().AddMenu2("&Peers...")
-	startSelfServer := peersBar.AddAction("Start self &server")
-	startSelfServer.ConnectTriggered(func(checked bool)() {
-        NewServerStartWidget(window, packetViewer.ServerSettings, func(settings *ServerSettings) {
-            port, _ := strconv.Atoi(settings.Port)
-            enums, err := os.Open(settings.EnumSchemaLocation)
-            if err != nil {
-                println("while parsing schema:", err.Error())
-                return
-            }
-            instances, err := os.Open(settings.InstanceSchemaLocation)
-            if err != nil {
-                println("while parsing schema:", err.Error())
-                return
-            }
-            schema, err := peer.ParseSchema(instances, enums)
-            if err != nil {
-                println("while parsing schema:", err.Error())
-                return
-            }
-            dictfile, err := os.Open(settings.DictionaryLocation)
-            if err != nil {
-                println("while parsing dict:", err.Error())
-                return
-            }
-            var dictionaries peer.Packet82Layer
-            err = gob.NewDecoder(dictfile).Decode(&dictionaries)
-            if err != nil {
-                println("while parsing dict:", err.Error())
-                return
-            }
+	//startSelfServer := peersBar.AddAction("Start self &server...")
+	startSelfClient := peersBar.AddAction("Start self &client...")
+	/*startSelfServer.ConnectTriggered(func(checked bool)() {
+	        NewServerStartWidget(window, packetViewer.ServerSettings, func(settings *ServerSettings) {
+	            port, _ := strconv.Atoi(settings.Port)
+	            enums, err := os.Open(settings.EnumSchemaLocation)
+	            if err != nil {
+	                println("while parsing schema:", err.Error())
+	                return
+	            }
+	            instances, err := os.Open(settings.InstanceSchemaLocation)
+	            if err != nil {
+	                println("while parsing schema:", err.Error())
+	                return
+	            }
+	            schema, err := peer.ParseSchema(instances, enums)
+	            if err != nil {
+	                println("while parsing schema:", err.Error())
+	                return
+	            }
+	            dictfile, err := os.Open(settings.DictionaryLocation)
+	            if err != nil {
+	                println("while parsing dict:", err.Error())
+	                return
+	            }
+	            var dictionaries peer.Packet82Layer
+	            err = gob.NewDecoder(dictfile).Decode(&dictionaries)
+	            if err != nil {
+	                println("while parsing dict:", err.Error())
+	                return
+	            }
 
-            go peer.StartServer(uint16(port), &dictionaries, &schema)
-        })
+	            go peer.StartServer(uint16(port), &dictionaries, &schema)
+	        })
+		})*/
+	startSelfClient.ConnectTriggered(func(checked bool) {
+		customClient := peer.NewCustomClient()
+		NewClientStartWidget(window, customClient, func(placeId uint32, isGuest bool, ticket string) {
+			NewClientConsole(window, customClient)
+			customClient.SecuritySettings.InitWin10()
+			if isGuest {
+				go customClient.ConnectGuest(placeId, 2)
+			} else {
+				go customClient.ConnectWithAuthTicket(placeId, ticket)
+			}
+		})
 	})
 
 	window.Show()

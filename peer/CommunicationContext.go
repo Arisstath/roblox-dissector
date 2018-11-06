@@ -1,30 +1,45 @@
 package peer
-import "sync"
+
 import "github.com/gskartwii/rbxfile"
 import "net"
 import "bytes"
 
+// Descriptor maps strings to their internal network IDs.
 type Descriptor map[string]uint32
-type Cache interface{
-	Get(uint8)(interface{}, bool)
+
+// Cache represents a network cache that stores repeatable objects such as strings.
+type Cache interface {
+	// Get fetches the object matching a cache index.
+	Get(uint8) (interface{}, bool)
+	// Put creates a new object in the caches at the specific index.
 	Put(interface{}, uint8)
-	Equal(uint8, interface{})(bool, bool)
+	// Equal compares a cached object and another object and returns if
+	// they are equal, and if the indexed object exists.
+	Equal(uint8, interface{}) (bool, bool)
+	// LastWrite returns the cache index that was last written to.
 	LastWrite() uint8
 }
 
+// StringCache represents a cache that stores strings.
 type StringCache struct {
-	Values [0x80]interface{}
+	// Values contains the stored strings.
+	Values    [0x80]interface{}
 	lastWrite uint8
 }
 
+// Get implements Cache.Get()
 func (c *StringCache) Get(index uint8) (interface{}, bool) {
 	a := c.Values[index]
 	return a, a != nil
 }
+
+// Put implements Cache.Put()
 func (c *StringCache) Put(val interface{}, index uint8) {
 	c.Values[index] = val.(string)
 	c.lastWrite = index
 }
+
+// Equal implements Cache.Equal()
 func (c *StringCache) Equal(index uint8, val interface{}) (bool, bool) {
 	val1 := c.Values[index]
 	if val1 == nil || val == nil {
@@ -32,22 +47,32 @@ func (c *StringCache) Equal(index uint8, val interface{}) (bool, bool) {
 	}
 	return val1.(string) == val.(string), val1 != nil
 }
+
+// LastWrite implements Cache.LastWrite()
 func (c *StringCache) LastWrite() uint8 {
 	return c.lastWrite
 }
 
+// SysAddrCache is a Cache that stores SystemAddress values.
 type SysAddrCache struct {
-	Values [0x80]interface{}
+	// Values contains the stores SystemAddresses.
+	Values    [0x80]interface{}
 	lastWrite uint8
 }
+
+// Get implements Cache.Get().
 func (c *SysAddrCache) Get(index uint8) (interface{}, bool) {
 	a := c.Values[index]
 	return a, a != nil
 }
+
+// Put implements Cache.Put().
 func (c *SysAddrCache) Put(val interface{}, index uint8) {
 	c.Values[index] = val.(rbxfile.ValueSystemAddress)
 	c.lastWrite = index
 }
+
+// Equal implements Cache.Equal().
 func (c *SysAddrCache) Equal(index uint8, val interface{}) (bool, bool) {
 	val1 := c.Values[index]
 	if val1 == nil || val == nil {
@@ -55,22 +80,32 @@ func (c *SysAddrCache) Equal(index uint8, val interface{}) (bool, bool) {
 	}
 	return val1.(rbxfile.ValueSystemAddress).String() == val.(rbxfile.ValueSystemAddress).String(), val1 != nil
 }
+
+// LastWrite implements Cache.LastWrite().
 func (c *SysAddrCache) LastWrite() uint8 {
 	return c.lastWrite
 }
 
+// ByteSliceCache is a Cache that stores []byte objects.
 type ByteSliceCache struct {
-	Values [0x80]interface{}
+	// Values contains the []byte objects.
+	Values    [0x80]interface{}
 	lastWrite uint8
 }
+
+// Get implements Cache.Get().
 func (c *ByteSliceCache) Get(index uint8) (interface{}, bool) {
 	a := c.Values[index]
 	return a, a != nil
 }
+
+// Put implements Cache.Put().
 func (c *ByteSliceCache) Put(val interface{}, index uint8) {
 	c.Values[index] = val.([]byte)
 	c.lastWrite = index
 }
+
+// Equal implements Cache.Equal().
 func (c *ByteSliceCache) Equal(index uint8, val interface{}) (bool, bool) {
 	val1 := c.Values[index]
 	if val1 == nil || val == nil {
@@ -78,78 +113,56 @@ func (c *ByteSliceCache) Equal(index uint8, val interface{}) (bool, bool) {
 	}
 	return bytes.Compare(val1.([]byte), val.([]byte)) == 0, val1 != nil
 }
+
+// LastWrite implements Cache.LastWrite().
 func (c *ByteSliceCache) LastWrite() uint8 {
 	return c.lastWrite
 }
 
 type Caches struct {
-	String StringCache
-	Object StringCache
-	Content StringCache
-	SystemAddress SysAddrCache
+	String          StringCache
+	Object          StringCache
+	Content         StringCache
+	SystemAddress   SysAddrCache
 	ProtectedString ByteSliceCache
 }
 
 type CommunicationContext struct {
 	Server string
 	Client string
-	ClassDescriptor Descriptor
-	PropertyDescriptor Descriptor
-	EventDescriptor Descriptor
-	TypeDescriptor Descriptor
+	// TODO: Move caches to PacketReader and PacketWriter!
+	NamedCaches map[string]*Caches
 
-	ClientCaches Caches
-	ServerCaches Caches
-	
 	InstanceTopScope string
 
-	DataModel *rbxfile.Root
-    InstancesByReferent InstanceList
-
-	MDescriptor *sync.Mutex
-	MSchema *sync.Mutex
+	DataModel           *rbxfile.Root
+	InstancesByReferent InstanceList
 
 	UniqueID uint32
 
-	EDescriptorsParsed *sync.Cond
-	ESchemaParsed *sync.Cond
-
 	UseStaticSchema bool
-	StaticSchema *StaticSchema
+	StaticSchema    *StaticSchema
 
 	IsStudio bool
-	IsValid bool
+	IsValid  bool
 
-	SplitPackets SplitPacketList
-	MUniques *sync.Mutex
+	splitPackets          splitPacketList
 	UniqueDatagramsClient map[uint32]struct{}
 	UniqueDatagramsServer map[uint32]struct{}
+
+	Int1 uint32
+	Int2 uint32
 }
 
 func NewCommunicationContext() *CommunicationContext {
-	MDescriptor := &sync.Mutex{}
-	MSchema := &sync.Mutex{}
 	return &CommunicationContext{
-		ClassDescriptor: make(Descriptor),
-		PropertyDescriptor: make(Descriptor),
-		EventDescriptor: make(Descriptor),
-		TypeDescriptor: make(Descriptor),
-
-		MDescriptor: MDescriptor,
-		MSchema: MSchema,
-
-		EDescriptorsParsed: sync.NewCond(MDescriptor),
-		ESchemaParsed: sync.NewCond(MSchema),
 		IsValid: true,
 
-		MUniques: &sync.Mutex{},
 		UniqueDatagramsClient: make(map[uint32]struct{}),
 		UniqueDatagramsServer: make(map[uint32]struct{}),
-        InstancesByReferent: InstanceList{
-            CommonMutex: MSchema,
-            EAddReferent: sync.NewCond(MSchema),
-            Instances: make(map[string]*rbxfile.Instance),
-        },
+		InstancesByReferent: InstanceList{
+			Instances: make(map[string]*rbxfile.Instance),
+		},
 		InstanceTopScope: "WARNING_UNASSIGNED_TOP_SCOPE",
 	}
 }
@@ -173,24 +186,3 @@ func (c *CommunicationContext) IsClient(peer net.UDPAddr) bool {
 func (c *CommunicationContext) IsServer(peer net.UDPAddr) bool {
 	return peer.String() == c.Server
 }
-
-func (c *CommunicationContext) WaitForDescriptors() {
-	c.MDescriptor.Lock()
-	for len(c.ClassDescriptor) == 0 {
-		c.EDescriptorsParsed.Wait()
-	}
-}
-func (c *CommunicationContext) WaitForSchema() {
-	c.MSchema.Lock()
-	for c.StaticSchema == nil {
-		c.ESchemaParsed.Wait()
-	}
-}
-
-func (c *CommunicationContext) FinishDescriptors() {
-	c.MDescriptor.Unlock()
-}
-func (c *CommunicationContext) FinishSchema() {
-	c.MSchema.Unlock()
-}
-

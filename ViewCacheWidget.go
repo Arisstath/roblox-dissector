@@ -2,7 +2,8 @@ package main
 import "github.com/therecipe/qt/widgets"
 import "github.com/therecipe/qt/core"
 import "github.com/therecipe/qt/gui"
-import "github.com/gskartwii/roblox-dissector/peer"
+import "github.com/Gskartwii/roblox-dissector/peer"
+import "fmt"
 
 func NewCacheList(cache *peer.StringCache) widgets.QWidget_ITF {
 	cacheWidget := widgets.NewQWidget(nil, 0)
@@ -40,10 +41,10 @@ func NewViewCacheWidget(parent widgets.QWidget_ITF, context *peer.CommunicationC
 	subWindowLayout := widgets.NewQVBoxLayout2(subWindow)
 	tabWidget := widgets.NewQTabWidget(nil)
 
-	tabWidget.AddTab(NewCacheList(&context.ClientCaches.String), "Client string cache")
-	tabWidget.AddTab(NewCacheList(&context.ServerCaches.String), "Server string cache")
-	tabWidget.AddTab(NewCacheList(&context.ClientCaches.Object), "Client object cache")
-	tabWidget.AddTab(NewCacheList(&context.ServerCaches.Object), "Server object cache")
+	for name, caches := range context.NamedCaches {
+		tabWidget.AddTab(NewCacheList(&caches.String), fmt.Sprintf("%s string cache", name))
+		tabWidget.AddTab(NewCacheList(&caches.Object), fmt.Sprintf("%s object cache", name))
+	}
 
 	subWindowLayout.AddWidget(tabWidget, 0, 0)
 	subWindow.Show()

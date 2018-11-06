@@ -1,19 +1,20 @@
 package peer
+
 import "github.com/gskartwii/rbxfile"
 
+// ReplicationEvent describes an event invocation replication packet.
 type ReplicationEvent struct {
 	Arguments []rbxfile.Value
 }
 
-func (schema *StaticEventSchema) Decode(packet *UDPPacket, context *CommunicationContext) (*ReplicationEvent, error) {
+func (schema *StaticEventSchema) Decode(reader PacketReader, packet *UDPPacket, thisBitstream SerializeReader) (*ReplicationEvent, error) {
 	var err error
-    var thisVal rbxfile.Value
-	thisBitstream := packet.Stream
+	var thisVal rbxfile.Value
 
 	event := &ReplicationEvent{}
 	event.Arguments = make([]rbxfile.Value, len(schema.Arguments))
 	for i, argSchema := range schema.Arguments {
-		thisVal, err = readSerializedValue(context.IsClient(packet.Source), false, argSchema.EnumID, argSchema.Type, thisBitstream, context)
+		thisVal, err = thisBitstream.ReadSerializedValue(reader, argSchema.Type, argSchema.EnumID)
 		event.Arguments[i] = thisVal
 		if err != nil {
 			return event, err
@@ -23,10 +24,10 @@ func (schema *StaticEventSchema) Decode(packet *UDPPacket, context *Communicatio
 	return event, nil
 }
 
-func (schema *StaticEventSchema) Serialize(isClient bool, event *ReplicationEvent, context *CommunicationContext, stream *ExtendedWriter) error {
+func (schema *StaticEventSchema) Serialize(event *ReplicationEvent, writer PacketWriter, stream SerializeWriter) error {
 	for i, argSchema := range schema.Arguments {
-		println("Writing argument", argSchema.Type)
-		err := stream.writeSerializedValue(isClient, event.Arguments[i], false, argSchema.Type, context)
+		//println("Writing argument", argSchema.Type)
+		err := stream.WriteSerializedValue(event.Arguments[i], writer, argSchema.Type)
 		if err != nil {
 			return err
 		}
