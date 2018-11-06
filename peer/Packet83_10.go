@@ -21,3 +21,10 @@ func DecodePacket83_10(reader PacketReader, packet *UDPPacket) (Packet83Subpacke
 func (layer *Packet83_10) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	return stream.writeUint32BE(layer.TagId)
 }
+
+func (Packet83_10) Type() uint8 {
+	return 0x10
+}
+func (Packet83_10) TypeString() string {
+	return "ID_REPLIC_TAG"
+}

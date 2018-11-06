@@ -104,3 +104,10 @@ func (layer *Packet83_0B) Serialize(writer PacketWriter, stream *extendedWriter)
 	err = stream.allBytes(zstdBuf.Bytes())
 	return err
 }
+
+func (Packet83_0B) Type() uint8 {
+	return 0xB
+}
+func (Packet83_0B) TypeString() string {
+	return "ID_REPLIC_JOI_NDATA"
+}

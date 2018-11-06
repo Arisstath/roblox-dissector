@@ -20,3 +20,10 @@ func DecodePacket83_04(reader PacketReader, packet *UDPPacket) (Packet83Subpacke
 func (layer *Packet83_04) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	return stream.writeUint32LE(layer.MarkerId)
 }
+
+func (Packet83_04) Type() uint8 {
+	return 4
+}
+func (Packet83_04) TypeString() string {
+	return "ID_REPLIC_MARKER"
+}

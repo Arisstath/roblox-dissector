@@ -3,7 +3,6 @@ package peer
 import (
 	"errors"
 	"io"
-	"reflect"
 	"strconv"
 )
 
@@ -34,49 +33,8 @@ var Packet83Subpackets map[uint8]string = map[uint8]string{
 // A subpacket contained within a 0x83 (ID_DATA) packet
 type Packet83Subpacket interface {
 	Serialize(writer PacketWriter, stream *extendedWriter) error
-}
-
-// Extracts a type identifier from a packet
-func Packet83ToType(this Packet83Subpacket) uint8 {
-	switch this.(type) {
-	case *Packet83_01:
-		return 1
-	case *Packet83_02:
-		return 2
-	case *Packet83_03:
-		return 3
-	case *Packet83_04:
-		return 4
-	case *Packet83_05:
-		return 5
-	case *Packet83_06:
-		return 6
-	case *Packet83_07:
-		return 7
-	case *Packet83_09:
-		return 9
-	case *Packet83_0A:
-		return 0xA
-	case *Packet83_0B:
-		return 0xB
-	case *Packet83_10:
-		return 0x10
-	case *Packet83_11:
-		return 0x11
-	case *Packet83_12:
-		return 0x12
-	default:
-		return 0xFF
-	}
-}
-
-// Looks up a string name for a packet
-func Packet83ToTypeString(this Packet83Subpacket) string {
-	ttype := Packet83ToType(this)
-	if ttype == 0xFF {
-		return reflect.TypeOf(this).String()
-	}
-	return Packet83Subpackets[Packet83ToType(this)]
+	Type() uint8
+	TypeString() string
 }
 
 // ID_DATA - client <-> server
@@ -168,7 +126,7 @@ func (layer *Packet83Layer) Serialize(writer PacketWriter, stream *extendedWrite
 		return err
 	}
 	for _, subpacket := range layer.SubPackets {
-		thisType := Packet83ToType(subpacket)
+		thisType := subpacket.Type()
 		stream.WriteByte(uint8(thisType))
 		if err != nil {
 			return err

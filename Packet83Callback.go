@@ -353,7 +353,7 @@ func show83_12(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 }
 
 func showPacket83Subpacket(this Packet83Subpacket) widgets.QWidget_ITF {
-	return SubpacketCallbacks[peer.Packet83ToType(this)](this)
+	return SubpacketCallbacks[this.Type()](this)
 }
 
 func ShowPacket83(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
@@ -371,7 +371,7 @@ func ShowPacket83(packetType byte, packet *peer.UDPPacket, context *peer.Communi
 	for index, subpacket := range MainLayer.SubPackets {
 		rootItem.AppendRow([]*gui.QStandardItem{
 			NewQStandardItemF("%d", index),
-			NewQStandardItemF(peer.Packet83ToTypeString(subpacket)),
+			NewQStandardItemF(subpacket.TypeString()),
 		})
 	}
 	packetList.SetSelectionMode(1)
@@ -398,14 +398,14 @@ func ShowPacket83(packetType byte, packet *peer.UDPPacket, context *peer.Communi
 		directionLabel := widgets.NewQLabel2(direction, nil, 0)
 		subWindowLayout.AddWidget(directionLabel, 0, 0)
 
-		showCallback, ok := SubpacketCallbacks[peer.Packet83ToType(subpacket)]
+		showCallback, ok := SubpacketCallbacks[subpacket.Type()]
 		if !ok {
-			println("unsupported type:", peer.Packet83ToType(subpacket))
+			println("unsupported type:", subpacket.Type())
 		} else {
 			subWindowLayout.AddWidget(showCallback(subpacket), 0, 0)
 		}
 
-		subWindow.SetWindowTitle("Replication Packet Window: " + peer.Packet83ToTypeString(subpacket))
+		subWindow.SetWindowTitle("Replication Packet Window: " + subpacket.TypeString())
 		subWindow.Show()
 	})
 	layerLayout.AddWidget(packetList, 0, 0)

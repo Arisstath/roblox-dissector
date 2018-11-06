@@ -79,3 +79,10 @@ func (layer *Packet83_07) Serialize(writer PacketWriter, stream *extendedWriter)
 
 	return schema.Serialize(layer.Event, writer, stream)
 }
+
+func (Packet83_07) Type() uint8 {
+	return 7
+}
+func (Packet83_07) TypeString() string {
+	return "ID_REPLIC_EVENT"
+}

@@ -146,3 +146,10 @@ func (layer *Packet83_03) Serialize(writer PacketWriter, stream *extendedWriter)
 	err = context.StaticSchema.Properties[propertyID].Serialize(layer.Value, writer, stream)
 	return err
 }
+
+func (Packet83_03) Type() uint8 {
+	return 3
+}
+func (Packet83_03) TypeString() string {
+	return "ID_REPLIC_PROP"
+}

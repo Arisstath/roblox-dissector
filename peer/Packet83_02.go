@@ -16,3 +16,10 @@ func DecodePacket83_02(reader PacketReader, packet *UDPPacket) (Packet83Subpacke
 func (layer *Packet83_02) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	return serializeReplicationInstance(layer.Child, writer, stream)
 }
+
+func (Packet83_02) Type() uint8 {
+	return 2
+}
+func (Packet83_02) TypeString() string {
+	return "ID_REPLIC_NEW_INSTANCE"
+}

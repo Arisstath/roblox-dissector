@@ -84,3 +84,10 @@ func (layer *Packet83_0A) Serialize(writer PacketWriter, stream *extendedWriter)
 	}
 	return nil
 }
+
+func (Packet83_0A) Type() uint8 {
+	return 0xA
+}
+func (Packet83_06) TypeString() string {
+	return "ID_REPLIC_CFRAME_ACK"
+}

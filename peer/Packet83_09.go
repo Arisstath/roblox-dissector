@@ -1,11 +1,12 @@
 package peer
+
 import "errors"
 
 type Packet83_09Subpacket interface{}
 
 type Packet83_09 struct {
 	Subpacket Packet83_09Subpacket
-	Type uint8
+	Type      uint8
 }
 
 type Packet83_09_00 struct {
@@ -74,7 +75,7 @@ func DecodePacket83_09(reader PacketReader, packet *UDPPacket) (Packet83Subpacke
 		}
 		subpacket = thisSubpacket
 	case 2: // net pmc response
-		
+
 	case 5:
 		thisSubpacket := &Packet83_09_05{}
 		thisSubpacket.Int, err = thisBitstream.readUint32BE()
@@ -126,4 +127,11 @@ func (layer *Packet83_09) Serialize(writer PacketWriter, stream *extendedWriter)
 	}
 
 	return err
+}
+
+func (Packet83_09) Type() uint8 {
+	return 9
+}
+func (Packet83_09) TypeString() string {
+	return "ID_REPLIC_ROCKY"
 }

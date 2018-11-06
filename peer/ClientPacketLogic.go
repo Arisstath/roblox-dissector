@@ -203,7 +203,7 @@ func (myClient *CustomClient) topReplicationHandler(packetType uint8, packet *UD
 func (myClient *CustomClient) dataHandler(packetType uint8, packet *UDPPacket, layers *PacketLayers) {
 	mainLayer := layers.Main.(*Packet83Layer)
 	for _, item := range mainLayer.SubPackets {
-		myClient.dataHandlers.Fire(Packet83ToType(item), packet, layers, item)
+		myClient.dataHandlers.Fire(item.Type(), packet, layers, item)
 	}
 }
 

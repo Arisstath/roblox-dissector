@@ -34,3 +34,10 @@ func (layer *Packet83_01) Serialize(writer PacketWriter, stream *extendedWriter)
 	}
 	return stream.writeObject(layer.Instance, writer.Caches())
 }
+
+func (Packet83_01) Type() uint8 {
+	return 1
+}
+func (Packet83_01) TypeString() string {
+	return "ID_REPLIC_DELETE_INSTANCE"
+}

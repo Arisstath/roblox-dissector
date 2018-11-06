@@ -59,3 +59,10 @@ func (layer *Packet83_06) Serialize(writer PacketWriter, stream *extendedWriter)
 	err = stream.writeUint32BE(layer.ExtraStats)
 	return err
 }
+
+func (Packet83_06) Type() uint8 {
+	return 6
+}
+func (Packet83_06) TypeString() string {
+	return "ID_REPLIC_PING_BACK"
+}

@@ -1,25 +1,26 @@
 package peer
+
 import "errors"
 
 type Packet83_11 struct {
 	SkipStats1 bool
-	Stats_1_1 []byte
-	Stats_1_2 float32
-	Stats_1_3 float32
-	Stats_1_4 float32
-	Stats_1_5 bool
+	Stats_1_1  []byte
+	Stats_1_2  float32
+	Stats_1_3  float32
+	Stats_1_4  float32
+	Stats_1_5  bool
 
 	SkipStats2 bool
-	Stats_2_1 []byte
-	Stats_2_2 float32
-	Stats_2_3 uint32
-	Stats_2_4 bool
-	
-	AvgPingMs float32
+	Stats_2_1  []byte
+	Stats_2_2  float32
+	Stats_2_3  uint32
+	Stats_2_4  bool
+
+	AvgPingMs             float32
 	AvgPhysicsSenderPktPS float32
-	TotalDataKBPS float32
-	TotalPhysicsKBPS float32
-	DataThroughputRatio float32
+	TotalDataKBPS         float32
+	TotalPhysicsKBPS      float32
+	DataThroughputRatio   float32
 }
 
 func DecodePacket83_11(reader PacketReader, packet *UDPPacket) (Packet83Subpacket, error) {
@@ -113,5 +114,12 @@ func DecodePacket83_11(reader PacketReader, packet *UDPPacket) (Packet83Subpacke
 }
 
 func (layer *Packet83_11) Serialize(writer PacketWriter, stream *extendedWriter) error {
-    return errors.New("packet 83_11 not implemented!")
+	return errors.New("packet 83_11 not implemented!")
+}
+
+func (Packet83_11) Type() uint8 {
+	return 0x11
+}
+func (Packet83_11) TypeString() string {
+	return "ID_REPLIC_STATS"
 }

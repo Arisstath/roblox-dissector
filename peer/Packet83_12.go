@@ -1,9 +1,10 @@
 package peer
+
 import "fmt"
 
 // ID_HASH
 type Packet83_12 struct {
-	HashList []uint32
+	HashList       []uint32
 	SecurityTokens [3]uint32
 }
 
@@ -31,11 +32,11 @@ func getRbxNonce(base uint32, query uint32) uint32 {
 	queryState ^= (queryState ^ first15Bits) >> 15
 	baseState ^= (baseState ^ second15Bits) >> 15
 	queryState ^= (queryState ^ second15Bits) >> 15
-	
+
 	baseState += 4
 
 	queryState *= 0xA0FE3BCF // modinv 4
-	queryState = queryState << (32 - 17) | queryState >> 17
+	queryState = queryState<<(32-17) | queryState>>17
 
 	return (queryState - baseState) * 0xA89ED915
 }
@@ -84,10 +85,10 @@ func DecodePacket83_12(reader PacketReader, packet *UDPPacket) (Packet83Subpacke
 	}
 
 	for i := numItems - 2; i > 0; i-- {
-		hashList[i] ^= hashList[i - 1]
+		hashList[i] ^= hashList[i-1]
 	}
 	hashList[0] ^= nonce
-	nonce ^= hashList[numItems - 1]
+	nonce ^= hashList[numItems-1]
 	nonceDiff := nonce - getRbxNonce(hashList[1], hashList[2])
 
 	fmt.Println("hashlist", hashList, nonce, nonceDiff)
@@ -97,4 +98,11 @@ func DecodePacket83_12(reader PacketReader, packet *UDPPacket) (Packet83Subpacke
 
 func (layer *Packet83_12) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	return nil
+}
+
+func (Packet83_12) Type() uint8 {
+	return 0x12
+}
+func (Packet83_12) TypeString() string {
+	return "ID_REPLIC_HASH"
 }
