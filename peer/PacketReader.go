@@ -240,9 +240,6 @@ func (reader *DefaultPacketReader) ReadPacket(payload []byte, packet *UDPPacket)
 		reader.ErrorHandler(err, packet)
 		return
 	}
-	if rakNetLayer.IsDuplicate {
-		return
-	}
 
 	layers := &PacketLayers{RakNet: rakNetLayer}
 	if rakNetLayer.IsSimple {

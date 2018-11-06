@@ -57,9 +57,6 @@ func DecodePacket93Layer(reader PacketReader, packet *UDPPacket) (RakNetPacket, 
 		}
 		layer.Params[string(name)] = string(value) == "true"
 	}
-	if val, ok := layer.Params["UseNetworkSchema2"]; val && ok {
-		reader.Context().UseStaticSchema = true
-	}
 
 	return layer, nil
 }

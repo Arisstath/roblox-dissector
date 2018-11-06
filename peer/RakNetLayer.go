@@ -41,9 +41,6 @@ type RakNetLayer struct {
 	payload *extendedReader
 	// Is the packet a simple pre-connection packet?
 	IsSimple bool
-	// Is the packet a duplicate of a previous packet (do their DatagramNumbers
-	// match?)
-	IsDuplicate bool
 	// If IsSimple is true, this is the packet type.
 	SimpleLayerID uint8
 	// Drop any non-simple packets which don't have IsValid set.
@@ -173,13 +170,6 @@ func DecodeRakNetLayer(packetType byte, packet *UDPPacket, context *Communicatio
 		layer.DatagramNumber, err = bitstream.readUint24LE()
 		if err != nil {
 			return layer, err
-		}
-		if context.IsClient(packet.Source) {
-			_, layer.IsDuplicate = context.UniqueDatagramsClient[layer.DatagramNumber]
-			context.UniqueDatagramsClient[layer.DatagramNumber] = struct{}{}
-		} else if context.IsServer(packet.Source) {
-			_, layer.IsDuplicate = context.UniqueDatagramsServer[layer.DatagramNumber]
-			context.UniqueDatagramsServer[layer.DatagramNumber] = struct{}{}
 		}
 
 		layer.payload = bitstream

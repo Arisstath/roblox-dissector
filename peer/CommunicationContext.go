@@ -130,8 +130,6 @@ type Caches struct {
 type CommunicationContext struct {
 	Server string
 	Client string
-	// TODO: Move caches to PacketReader and PacketWriter!
-	NamedCaches map[string]*Caches
 
 	InstanceTopScope string
 
@@ -140,15 +138,11 @@ type CommunicationContext struct {
 
 	UniqueID uint32
 
-	UseStaticSchema bool
-	StaticSchema    *StaticSchema
+	StaticSchema *StaticSchema
 
 	IsStudio bool
-	IsValid  bool
 
-	splitPackets          splitPacketList
-	UniqueDatagramsClient map[uint32]struct{}
-	UniqueDatagramsServer map[uint32]struct{}
+	splitPackets splitPacketList
 
 	Int1 uint32
 	Int2 uint32
@@ -156,10 +150,6 @@ type CommunicationContext struct {
 
 func NewCommunicationContext() *CommunicationContext {
 	return &CommunicationContext{
-		IsValid: true,
-
-		UniqueDatagramsClient: make(map[uint32]struct{}),
-		UniqueDatagramsServer: make(map[uint32]struct{}),
 		InstancesByReferent: InstanceList{
 			Instances: make(map[string]*rbxfile.Instance),
 		},

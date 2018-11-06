@@ -1,10 +1,6 @@
 package main
-import "github.com/therecipe/qt/widgets"
-import "github.com/therecipe/qt/core"
-import "github.com/therecipe/qt/gui"
-import "github.com/Gskartwii/roblox-dissector/peer"
-import "fmt"
 
+/*
 func NewCacheList(cache *peer.StringCache) widgets.QWidget_ITF {
 	cacheWidget := widgets.NewQWidget(nil, 0)
 	cacheLayout := widgets.NewQVBoxLayout()
@@ -49,3 +45,4 @@ func NewViewCacheWidget(parent widgets.QWidget_ITF, context *peer.CommunicationC
 	subWindowLayout.AddWidget(tabWidget, 0, 0)
 	subWindow.Show()
 }
+*/

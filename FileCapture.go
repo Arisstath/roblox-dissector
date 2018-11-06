@@ -3,8 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/Gskartwii/roblox-dissector/peer"
 	"time"
+
+	"github.com/Gskartwii/roblox-dissector/peer"
 
 	"github.com/fatih/color"
 	"github.com/google/gopacket"
@@ -30,19 +31,13 @@ func captureJob(handle *pcap.Handle, useIPv4 bool, captureJobContext context.Con
 
 	clientPacketReader := peer.NewPacketReader()
 	clientPacketReader.SimpleHandler = func(packetType byte, packet *peer.UDPPacket, layers *peer.PacketLayers) {
-		if context.IsValid {
-			packetViewer.AddFullPacket(packetType, packet, context, layers, ActivationCallbacks[packetType])
-		}
+		packetViewer.AddFullPacket(packetType, packet, context, layers, ActivationCallbacks[packetType])
 	}
 	clientPacketReader.ReliableHandler = func(packetType byte, packet *peer.UDPPacket, layers *peer.PacketLayers) {
-		if context.IsValid {
-			packetViewer.AddSplitPacket(packetType, packet, context, layers)
-		}
+		packetViewer.AddSplitPacket(packetType, packet, context, layers)
 	}
 	clientPacketReader.FullReliableHandler = func(packetType byte, packet *peer.UDPPacket, layers *peer.PacketLayers) {
-		if context.IsValid {
-			packetViewer.BindCallback(packetType, packet, context, layers, ActivationCallbacks[packetType])
-		}
+		packetViewer.BindCallback(packetType, packet, context, layers, ActivationCallbacks[packetType])
 	}
 	clientPacketReader.ReliabilityLayerHandler = func(p *peer.UDPPacket, re *peer.ReliabilityLayer, ra *peer.RakNetLayer) {
 		// nop
@@ -70,7 +65,6 @@ func captureJob(handle *pcap.Handle, useIPv4 bool, captureJobContext context.Con
 	for true {
 		select {
 		case <-captureJobContext.Done():
-			context.IsValid = false
 			return
 		case packet := <-packetChannel:
 			if packet.ApplicationLayer() == nil {
