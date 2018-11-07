@@ -337,6 +337,7 @@ func (m *MyPacketListView) BindCallback(packetType byte, context *peer.Communica
 		if layers.Main != nil {
 			item.SetBackground(gui.NewQBrush2(core.Qt__NoBrush))
 		} else {
+			println("mainlayer just is nil", packetType)
 			paintItems(row, gui.NewQColor3(255, 0, 0, 127))
 		}
 	}
@@ -390,6 +391,9 @@ func NewDefaultPacketViewer(packetType byte, context *peer.CommunicationContext,
 	logBox.SetReadOnly(true)
 	if layers.Reliability != nil {
 		logBox.SetPlainText(layers.Reliability.GetLog())
+	}
+	if layers.Error != nil {
+		logBox.SetPlainText(logBox.ToPlainText() + "\nError: " + layers.Error.Error())
 	}
 	logLayout.AddWidget(logBox, 0, 0)
 
