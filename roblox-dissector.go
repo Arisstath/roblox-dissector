@@ -2,8 +2,6 @@ package main
 
 import "github.com/Gskartwii/roblox-dissector/peer"
 
-import "github.com/pkg/profile"
-
 const DEBUG bool = false
 
 var PacketNames map[byte]string = map[byte]string{
@@ -76,6 +74,5 @@ var ActivationCallbacks map[byte]ActivationCallback = map[byte]ActivationCallbac
 }
 
 func main() {
-	defer profile.Start(profile.MemProfile).Stop()
 	GUIMain()
 }

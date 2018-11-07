@@ -18,8 +18,6 @@ type SplitPacketBuffer struct {
 	NextExpectedPacket uint32
 	// Number of _ordered_ splits we have received so far
 	NumReceivedSplits uint32
-	// Has a decoder routine started decoding this packet yet?
-	HasBeenDecoded bool
 	// Has received packet type yet? Set to true when the first split of this packet
 	// is received
 	HasPacketType bool
@@ -38,7 +36,7 @@ type SplitPacketBuffer struct {
 	logBuffer *strings.Builder // must be a pointer because it may be copied!
 	Logger    *log.Logger
 }
-type splitPacketList map[string](map[uint16](*SplitPacketBuffer))
+type splitPacketList map[uint16](*SplitPacketBuffer)
 
 func newSplitPacketBuffer(packet *ReliablePacket, context *CommunicationContext) *SplitPacketBuffer {
 	reliables := make([]*ReliablePacket, int(packet.SplitPacketCount))
@@ -64,31 +62,33 @@ func (list *SplitPacketBuffer) addPacket(packet *ReliablePacket, rakNetPacket *R
 	list.RakNetPackets = append(list.RakNetPackets, rakNetPacket)
 }
 
-func (context *CommunicationContext) addSplitPacket(source string, packet *ReliablePacket, rakNetPacket *RakNetLayer) *SplitPacketBuffer {
+func (list splitPacketList) delete(layers *PacketLayers) {
+	delete(list, layers.Reliability.SplitPacketID)
+}
+
+func (reader *DefaultPacketReader) addSplitPacket(layers *PacketLayers) *SplitPacketBuffer {
+	packet := layers.Reliability
 	splitPacketId := packet.SplitPacketID
 	splitPacketIndex := packet.SplitPacketIndex
 
 	if !packet.HasSplitPacket {
-		buffer := newSplitPacketBuffer(packet, context)
+		buffer := newSplitPacketBuffer(packet, reader.ValContext)
 		buffer.addPacket(packet, rakNetPacket, 0)
 
 		return buffer
 	}
 
 	var buffer *SplitPacketBuffer
-	if context.splitPackets == nil {
-		buffer = newSplitPacketBuffer(packet, context)
-		context.splitPackets = splitPacketList{source: map[uint16]*SplitPacketBuffer{splitPacketId: buffer}}
-	} else if context.splitPackets[source] == nil {
-		buffer = newSplitPacketBuffer(packet, context)
+	if reader.splitPackets == nil {
+		buffer = newSplitPacketBuffer(packet, reader.ValContext)
 
-		context.splitPackets[source] = map[uint16]*SplitPacketBuffer{splitPacketId: buffer}
-	} else if context.splitPackets[source][splitPacketId] == nil {
-		buffer = newSplitPacketBuffer(packet, context)
+		reader.splitPackets = map[uint16]*SplitPacketBuffer{splitPacketId: buffer}
+	} else if reader.splitPackets[splitPacketId] == nil {
+		buffer = newSplitPacketBuffer(packet, reader.ValContext)
 
-		context.splitPackets[source][splitPacketId] = buffer
+		context.splitPackets[splitPacketId] = buffer
 	} else {
-		buffer = context.splitPackets[source][splitPacketId]
+		buffer = context.splitPackets[splitPacketId]
 	}
 	buffer.addPacket(packet, rakNetPacket, splitPacketIndex)
 	packet.SplitBuffer = buffer
@@ -96,10 +96,11 @@ func (context *CommunicationContext) addSplitPacket(source string, packet *Relia
 	return buffer
 }
 
-func (context *CommunicationContext) handleSplitPacket(reliablePacket *ReliablePacket, rakNetPacket *RakNetLayer, packet *UDPPacket) (*SplitPacketBuffer, error) {
-	source := packet.Source.String()
+func (reader *DefaultPacketReader) handleSplitPacket(layers *PacketLayers) (*SplitPacketBuffer, error) {
+	reliablePacket := layers.Reliability
+	rakNetPacket := layers.RakNet
 
-	packetBuffer := context.addSplitPacket(source, reliablePacket, rakNetPacket)
+	packetBuffer := reader.splitPackets.addSplitPacket(reader, layers)
 	expectedPacket := packetBuffer.NextExpectedPacket
 
 	packetBuffer.RealLength += uint32(len(reliablePacket.SelfData))
@@ -117,7 +118,7 @@ func (context *CommunicationContext) handleSplitPacket(reliablePacket *ReliableP
 		packetBuffer.dataReader = &extendedReader{bitstream.NewReader(bytes.NewReader(packetBuffer.data))}
 		if reliablePacket.HasSplitPacket {
 			// TODO: Use a linked list
-			delete(context.splitPackets[source], reliablePacket.SplitPacketID)
+			reader.splitPackets.delete(layers)
 		}
 	}
 	packetBuffer.NumReceivedSplits = expectedPacket

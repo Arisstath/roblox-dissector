@@ -8,14 +8,14 @@ import "math"
 import "strings"
 
 // Referent is a type that is used to refer to rbxfile.Instances.
-// A Referent to a NULL instance is "NULL2"
+// A Referent to a NULL instance is "null"
 // Other Referents are of the the form "RBX123456789ABCDEF_1234", consisting of
 // a scope and an index number
 type Referent string
 
 // IsNull checks if a a Referent refers to a NULL/nil instance.
 func (ref Referent) IsNull() bool {
-	return ref == "null" || ref == "NULL2"
+	return ref == "null"
 }
 func (ref Referent) String() string {
 	return string(ref)
@@ -281,7 +281,7 @@ func objectToRef(referent string, referentInt uint32) Referent {
 }
 func refToObject(refString Referent) (string, uint32) {
 	if refString.IsNull() {
-		return "NULL2", 0
+		return "null", 0
 	}
 	components := strings.Split(string(refString), "_")
 	return components[0], uint32(mustAtoi(components[1]))

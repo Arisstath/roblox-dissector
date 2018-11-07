@@ -4,9 +4,6 @@ import "github.com/gskartwii/rbxfile"
 import "net"
 import "bytes"
 
-// Descriptor maps strings to their internal network IDs.
-type Descriptor map[string]uint32
-
 // Cache represents a network cache that stores repeatable objects such as strings.
 type Cache interface {
 	// Get fetches the object matching a cache index.
@@ -136,13 +133,12 @@ type CommunicationContext struct {
 	DataModel           *rbxfile.Root
 	InstancesByReferent InstanceList
 
+	// TODO: Can we do better?
 	UniqueID uint32
 
 	StaticSchema *StaticSchema
 
 	IsStudio bool
-
-	splitPackets splitPacketList
 
 	Int1 uint32
 	Int2 uint32

@@ -2,9 +2,13 @@
 // parsing packets captured from Roblox network traffic.
 package peer
 
-import "bytes"
-import "io/ioutil"
-import "errors"
+import (
+	"bytes"
+	"errors"
+	"io/ioutil"
+	"log"
+	"net"
+)
 
 // DEBUG decides whether debug mode should be on or not.
 const DEBUG bool = true
@@ -14,8 +18,23 @@ type RakNetPacket interface {
 	Serialize(writer PacketWriter, stream *extendedWriter) error
 }
 
+type RootLayer struct {
+	logBuffer   bytes.Buffer
+	Logger      *log.Logger
+	Source      net.UDPAddr
+	Destination net.UDPAddr
+	FromClient  bool
+	FromServer  bool
+}
+
+func (layer *RootLayer) GetLog() string {
+	return layer.logBuffer.String()
+}
+
 // PacketLayers contains the different layers a packet can have.
 type PacketLayers struct {
+	// Root is the a basic layer containg information about a packet's source and destination
+	Root RootLayer
 	// RakNetLayer is the outermost layer. All packets have a RakNetLayer.
 	RakNet *RakNetLayer
 	// Most packets have a ReliabilityLayer. The exceptions to this are ACKs, NAKs and
@@ -27,6 +46,8 @@ type PacketLayers struct {
 	Timestamp *Packet1BLayer
 	// Almost all packets have a Main layer. The exceptions to this are ACKs and NAKs.
 	Main interface{}
+	// Possible parsing error?
+	Error error
 }
 
 // ACKRange describes the range of an ACK or an NAK.
@@ -63,9 +84,8 @@ func NewRakNetLayer() *RakNetLayer {
 // The offline message contained in pre-connection packets.
 var OfflineMessageID = []byte{0x00, 0xFF, 0xFF, 0x00, 0xFE, 0xFE, 0xFE, 0xFE, 0xFD, 0xFD, 0xFD, 0xFD, 0x12, 0x34, 0x56, 0x78}
 
-func DecodeRakNetLayer(packetType byte, packet *UDPPacket, context *CommunicationContext) (*RakNetLayer, error) {
+func (bitstream *extendedReader) DecodeRakNetLayer(reader PacketReader, packetType byte, layers *PacketLayers) (*RakNetLayer, error) {
 	layer := NewRakNetLayer()
-	bitstream := packet.stream
 
 	var err error
 	if packetType == 0x5 {
@@ -80,7 +100,7 @@ func DecodeRakNetLayer(packetType byte, packet *UDPPacket, context *Communicatio
 		}
 
 		if bytes.Compare(thisOfflineMessage, OfflineMessageID) != 0 {
-			return layer, errors.New("offline message didn't match in packet 5!")
+			return layer, errors.New("offline message didn't match in packet 5")
 		}
 
 		client := packet.Source

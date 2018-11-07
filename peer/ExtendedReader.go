@@ -549,7 +549,7 @@ func (b *extendedReader) readJoinReferent(context *CommunicationContext) (string
 		return "", 0, err
 	}
 	if stringLen == 0x00 {
-		return "NULL2", 0, err
+		return "null", 0, err
 	}
 	var ref string
 	if stringLen != 0xFF {
