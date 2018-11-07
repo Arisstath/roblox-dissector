@@ -6,7 +6,7 @@ type Packet83_10 struct {
 	TagId uint32
 }
 
-func (thisBitstream *extendedReader) DecodePacket83_10(reader PacketReader) (Packet83Subpacket, error) {
+func (thisBitstream *extendedReader) DecodePacket83_10(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
 	var err error
 	inner := &Packet83_10{}
 

@@ -13,7 +13,7 @@ func NewPacket87Layer() *Packet87Layer {
 	return &Packet87Layer{}
 }
 
-func (thisBitstream *extendedReader) DecodePacket87Layer(reader PacketReader) (RakNetPacket, error) {
+func (thisBitstream *extendedReader) DecodePacket87Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	
 	context := reader.Context()
 	layer := NewPacket87Layer()

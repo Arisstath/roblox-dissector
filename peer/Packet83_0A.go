@@ -15,7 +15,7 @@ type Packet83_0A struct {
 	Versions     []uint32
 }
 
-func (thisBitstream *extendedReader) DecodePacket83_0A(reader PacketReader) (Packet83Subpacket, error) {
+func (thisBitstream *extendedReader) DecodePacket83_0A(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
 	var err error
 	layer := &Packet83_0A{}
 	

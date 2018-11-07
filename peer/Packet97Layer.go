@@ -173,7 +173,7 @@ func NewPacket97Layer() *Packet97Layer {
 	return &Packet97Layer{}
 }
 
-func (thisBitstream *extendedReader) DecodePacket97Layer(reader PacketReader) (RakNetPacket, error) {
+func (thisBitstream *extendedReader) DecodePacket97Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket97Layer()
 	
 

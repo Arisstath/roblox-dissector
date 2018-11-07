@@ -5,7 +5,7 @@ type Packet83_04 struct {
 	MarkerId uint32
 }
 
-func (thisBitstream *extendedReader) DecodePacket83_04(reader PacketReader) (Packet83Subpacket, error) {
+func (thisBitstream *extendedReader) DecodePacket83_04(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
 	var err error
 	inner := &Packet83_04{}
 

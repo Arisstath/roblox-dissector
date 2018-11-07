@@ -16,9 +16,9 @@ func NewPacket83_0BLayer() *Packet83_0B {
 	return &Packet83_0B{}
 }
 
-func (thisBitstream *extendedReader) DecodePacket83_0B(reader PacketReader) (Packet83Subpacket, error) {
+func (thisBitstream *extendedReader) DecodePacket83_0B(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
 	layer := NewPacket83_0BLayer()
-	
+
 	thisBitstream.Align()
 	arrayLen, err := thisBitstream.readUint32BE()
 	if err != nil {
@@ -41,7 +41,7 @@ func (thisBitstream *extendedReader) DecodePacket83_0B(reader PacketReader) (Pac
 
 	var i uint32
 	for i = 0; i < arrayLen; i++ {
-		layer.Instances[i], err = decodeReplicationInstance(reader, packet, &JoinSerializeReader{zstdStream})
+		layer.Instances[i], err = decodeReplicationInstance(reader, &JoinSerializeReader{zstdStream})
 		if err != nil {
 			return layer, err
 		}

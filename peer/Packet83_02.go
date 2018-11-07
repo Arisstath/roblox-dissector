@@ -8,8 +8,8 @@ type Packet83_02 struct {
 	Child *rbxfile.Instance
 }
 
-func (thisBitstream *extendedReader) DecodePacket83_02(reader PacketReader) (Packet83Subpacket, error) {
-	result, err := decodeReplicationInstance(reader, packet, packet.stream)
+func (thisBitstream *extendedReader) DecodePacket83_02(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
+	result, err := decodeReplicationInstance(reader, thisBitstream)
 	return &Packet83_02{result}, err
 }
 

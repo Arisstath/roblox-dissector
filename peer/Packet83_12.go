@@ -41,7 +41,7 @@ func getRbxNonce(base uint32, query uint32) uint32 {
 	return (queryState - baseState) * 0xA89ED915
 }
 
-func (thisBitstream *extendedReader) DecodePacket83_12(reader PacketReader) (Packet83Subpacket, error) {
+func (thisBitstream *extendedReader) DecodePacket83_12(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
 	var err error
 	inner := &Packet83_12{}
 	stream := packet.stream

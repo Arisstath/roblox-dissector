@@ -103,7 +103,7 @@ func NewPacket13Layer() *Packet13Layer {
 
 var voidOfflineMessage []byte = make([]byte, 0x10)
 
-func (thisBitstream *extendedReader) DecodePacket05Layer(reader PacketReader) (RakNetPacket, error) {
+func (thisBitstream *extendedReader) DecodePacket05Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	var err error
 	layer := NewPacket05Layer()
 	layer.ProtocolVersion, err = thisBitstream.readUint8() // !! RakNetLayer will have read the offline message !!
@@ -128,7 +128,7 @@ func (layer *Packet05Layer) Serialize(writer PacketWriter, stream *extendedWrite
 	return err
 }
 
-func (thisBitstream *extendedReader) DecodePacket06Layer(reader PacketReader) (RakNetPacket, error) {
+func (thisBitstream *extendedReader) DecodePacket06Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket06Layer()
 
 	var err error
@@ -170,7 +170,7 @@ func (layer *Packet06Layer) Serialize(writer PacketWriter, stream *extendedWrite
 	return err
 }
 
-func (thisBitstream *extendedReader) DecodePacket07Layer(reader PacketReader) (RakNetPacket, error) {
+func (thisBitstream *extendedReader) DecodePacket07Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket07Layer()
 
 	var err error
@@ -212,7 +212,7 @@ func (layer *Packet07Layer) Serialize(writer PacketWriter, stream *extendedWrite
 	return err
 }
 
-func (thisBitstream *extendedReader) DecodePacket08Layer(reader PacketReader) (RakNetPacket, error) {
+func (thisBitstream *extendedReader) DecodePacket08Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket08Layer()
 	
 
@@ -263,7 +263,7 @@ func (layer *Packet08Layer) Serialize(writer PacketWriter, stream *extendedWrite
 	return err
 }
 
-func (thisBitstream *extendedReader) DecodePacket09Layer(reader PacketReader) (RakNetPacket, error) {
+func (thisBitstream *extendedReader) DecodePacket09Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket09Layer()
 	
 
@@ -307,7 +307,7 @@ func (layer *Packet09Layer) Serialize(writer PacketWriter, stream *extendedWrite
 	return stream.allBytes(layer.Password)
 }
 
-func (thisBitstream *extendedReader) DecodePacket10Layer(reader PacketReader) (RakNetPacket, error) {
+func (thisBitstream *extendedReader) DecodePacket10Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket10Layer()
 	
 
@@ -365,7 +365,7 @@ func (layer *Packet10Layer) Serialize(writer PacketWriter, stream *extendedWrite
 	return err
 }
 
-func (thisBitstream *extendedReader) DecodePacket13Layer(reader PacketReader) (RakNetPacket, error) {
+func (thisBitstream *extendedReader) DecodePacket13Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket13Layer()
 	
 

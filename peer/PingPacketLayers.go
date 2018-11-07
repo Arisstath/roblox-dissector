@@ -10,7 +10,7 @@ func NewPacket00Layer() *Packet00Layer {
 	return &Packet00Layer{}
 }
 
-func (thisBitstream *extendedReader) DecodePacket00Layer(reader PacketReader) (RakNetPacket, error) {
+func (thisBitstream *extendedReader) DecodePacket00Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket00Layer()
 
 	var err error
@@ -40,7 +40,7 @@ func NewPacket03Layer() *Packet03Layer {
 	return &Packet03Layer{}
 }
 
-func (thisBitstream *extendedReader) DecodePacket03Layer(reader PacketReader) (RakNetPacket, error) {
+func (thisBitstream *extendedReader) DecodePacket03Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket03Layer()
 
 	var err error

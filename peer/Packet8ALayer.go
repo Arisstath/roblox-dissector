@@ -73,7 +73,7 @@ func NewPacket8ALayer() *Packet8ALayer {
 	return &Packet8ALayer{}
 }
 
-func (stream *extendedReader) DecodePacket8ALayer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (stream *extendedReader) DecodePacket8ALayer(reader PacketReader, layers *PacketLayers, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket8ALayer()
 
 	lenBytes := BitsToBytes(layers.Reliability.LengthInBits) - 1 // -1 for packet id

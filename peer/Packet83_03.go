@@ -20,7 +20,7 @@ type Packet83_03 struct {
 	Value rbxfile.Value
 }
 
-func (thisBitstream *extendedReader) DecodePacket83_03(reader PacketReader) (Packet83Subpacket, error) {
+func (thisBitstream *extendedReader) DecodePacket83_03(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
 	var err error
 	layer := &Packet83_03{}
 
@@ -79,7 +79,7 @@ func (thisBitstream *extendedReader) DecodePacket83_03(reader PacketReader) (Pac
 	schema := context.StaticSchema.Properties[propertyIDx]
 	layer.PropertyName = schema.Name
 
-	layer.Value, err = schema.Decode(reader, packet, thisBitstream)
+	layer.Value, err = schema.Decode(reader, thisBitstream)
 
 	return layer, err
 }

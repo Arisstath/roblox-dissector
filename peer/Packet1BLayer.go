@@ -12,7 +12,7 @@ func NewPacket1BLayer() *Packet1BLayer {
 	return &Packet1BLayer{}
 }
 
-func (thisBitstream *extendedReader) DecodePacket1BLayer(reader PacketReader) (RakNetPacket, error) {
+func (thisBitstream *extendedReader) DecodePacket1BLayer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket1BLayer()
 
 	var err error

@@ -12,7 +12,7 @@ type Packet83_01 struct {
 	Instance *rbxfile.Instance
 }
 
-func (thisBitstream *extendedReader) DecodePacket83_01(reader PacketReader) (Packet83Subpacket, error) {
+func (thisBitstream *extendedReader) DecodePacket83_01(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
 	var err error
 	inner := &Packet83_01{}
 

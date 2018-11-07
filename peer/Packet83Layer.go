@@ -30,7 +30,7 @@ var Packet83Subpackets map[uint8]string = map[uint8]string{
 	0x12: "ID_REPLIC_HASH",
 }
 
-var Packet83Decoders = map[uint8]func(*extendedReader, PacketReader){
+var Packet83Decoders = map[uint8]func(*extendedReader, PacketReader, *PacketLayers){
 	0x01: (*extendedReader).DecodePacket01Layer,
 	0x02: (*extendedReader).DecodePacket02Layer,
 	0x03: (*extendedReader).DecodePacket03Layer,
@@ -62,7 +62,7 @@ func NewPacket83Layer() *Packet83Layer {
 	return &Packet83Layer{}
 }
 
-func (thisBitstream *extendedReader) DecodePacket83Layer(reader PacketReader) (RakNetPacket, error) {
+func (thisBitstream *extendedReader) DecodePacket83Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket83Layer()
 
 	packetType, err := thisBitstream.readUint8()
@@ -77,7 +77,7 @@ func (thisBitstream *extendedReader) DecodePacket83Layer(reader PacketReader) (R
 		if !ok {
 			return layer, errors.New("don't know how to parse replication subpacket: " + strconv.Itoa(int(packetType)))
 		}
-		inner, err = decoder(thisBitstream, reader)
+		inner, err = decoder(thisBitstream, reader, layers)
 		if err != nil {
 			return layer, errors.New("parsing subpacket " + Packet83Subpackets[packetType] + ": " + err.Error())
 		}

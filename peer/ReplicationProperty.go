@@ -6,7 +6,7 @@ import (
 	"github.com/gskartwii/rbxfile"
 )
 
-func (schema StaticPropertySchema) Decode(reader PacketReader, packet *UDPPacket, stream SerializeReader) (rbxfile.Value, error) {
+func (schema StaticPropertySchema) Decode(reader PacketReader, stream SerializeReader) (rbxfile.Value, error) {
 	val, err := stream.ReadSerializedValue(reader, schema.Type, schema.EnumID)
 	if err != nil {
 		return val, errors.New("while parsing " + schema.Name + ": " + err.Error())

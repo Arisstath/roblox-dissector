@@ -12,7 +12,7 @@ func is2ndRoundType(typeId uint8) bool {
 	return ((id-3) > 0x1F || ((1<<(id-3))&uint32(0xC200000F)) == 0) && (id != 1) // thank you ARM compiler for optimizing this <3
 }
 
-func decodeReplicationInstance(reader PacketReader, packet *UDPPacket, thisBitstream InstanceReader) (*rbxfile.Instance, error) {
+func decodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader) (*rbxfile.Instance, error) {
 	var err error
 	var referent Referent
 	context := reader.Context()

@@ -6,7 +6,7 @@ import "fmt"
 import "strings"
 import "log"
 
-type decoderFunc func(PacketReader, *UDPPacket) (RakNetPacket, error)
+type decoderFunc func(*extendedReader, PacketReader, *PacketLayers) (RakNetPacket, error)
 
 var packetDecoders = map[byte]decoderFunc{
 	0x05: (*extendedReader).DecodePacket05Layer,
@@ -111,7 +111,7 @@ func (reader *DefaultPacketReader) readSimple(stream *extendedReader, packetType
 func (reader *DefaultPacketReader) readGeneric(stream *extendedReader, packetType uint8, layers *PacketLayers) {
 	var err error
 	if packetType == 0x1B { // ID_TIMESTAMP
-		tsLayer, err := packetDecoders[0x1B](stream, reader)
+		tsLayer, err := packetDecoders[0x1B](stream, reader, layers)
 		if err != nil {
 			layers.Reliability.SplitBuffer.Logger.Println("error:", err.Error())
 			layers.Error = fmt.Errorf("Failed to decode timestamped packet: %s", err.Error())
@@ -131,7 +131,7 @@ func (reader *DefaultPacketReader) readGeneric(stream *extendedReader, packetTyp
 	_, skip := reader.SkipParsing[layers.Reliability.SplitBuffer.PacketType]
 	// TOD: Should we really void partial deserializations?
 	if decoder != nil && !skip {
-		layers.Main, err = decoder(stream, reader)
+		layers.Main, err = decoder(stream, reader, layers)
 
 		if err != nil {
 			layers.Main = nil

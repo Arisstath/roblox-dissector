@@ -23,7 +23,7 @@ type Packet83_11 struct {
 	DataThroughputRatio   float32
 }
 
-func (thisBitstream *extendedReader) DecodePacket83_11(reader PacketReader) (Packet83Subpacket, error) {
+func (thisBitstream *extendedReader) DecodePacket83_11(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
 	var err error
 	inner := &Packet83_11{}
 	

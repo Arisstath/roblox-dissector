@@ -97,7 +97,7 @@ func learnDictionaryHuffman(decompressedStream *extendedReader, ContextDescripto
 	return dictionary, nil
 }
 
-func (thisBitstream *extendedReader) DecodePacket82Layer(reader PacketReader) (RakNetPacket, error) {
+func (thisBitstream *extendedReader) DecodePacket82Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket82Layer()
 
 

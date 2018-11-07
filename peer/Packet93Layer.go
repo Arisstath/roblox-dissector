@@ -16,7 +16,7 @@ func NewPacket93Layer() *Packet93Layer {
 	return &Packet93Layer{Params: make(map[string]bool)}
 }
 
-func (thisBitstream *extendedReader) DecodePacket93Layer(reader PacketReader) (RakNetPacket, error) {
+func (thisBitstream *extendedReader) DecodePacket93Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket93Layer()
 	
 

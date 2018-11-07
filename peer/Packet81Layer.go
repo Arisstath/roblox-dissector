@@ -36,7 +36,7 @@ func NewPacket81Layer() *Packet81Layer {
 	return &Packet81Layer{}
 }
 
-func (thisBitstream *extendedReader) DecodePacket81Layer(reader PacketReader) (RakNetPacket, error) {
+func (thisBitstream *extendedReader) DecodePacket81Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket81Layer()
 	
 	var err error

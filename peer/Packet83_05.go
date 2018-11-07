@@ -10,7 +10,7 @@ type Packet83_05 struct {
 	ExtraStats uint32
 }
 
-func (thisBitstream *extendedReader) DecodePacket83_05(reader PacketReader) (Packet83Subpacket, error) {
+func (thisBitstream *extendedReader) DecodePacket83_05(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
 	var err error
 	inner := &Packet83_05{}
 

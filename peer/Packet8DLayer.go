@@ -28,7 +28,7 @@ func NewPacket8DLayer() *Packet8DLayer {
 	return &Packet8DLayer{}
 }
 
-func (thisBitstream *extendedReader) DecodePacket8DLayer(reader PacketReader) (RakNetPacket, error) {
+func (thisBitstream *extendedReader) DecodePacket8DLayer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket8DLayer()
 	
 	context := reader.Context()
