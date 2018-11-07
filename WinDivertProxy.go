@@ -86,6 +86,7 @@ func captureFromWinDivertProxy(realServerAddr string, captureJobContext context.
 				return
 			}
 			// Is this packet for the server?
+			// TODO: Better address comparison?
 			if proxyWriter.ClientAddr == nil && pktDstAddr.String() == dstAddr.String() {
 				// If so, assign the client to the src address
 				proxyWriter.ClientAddr = pktSrcAddr

@@ -23,6 +23,7 @@ type PacketWriter interface {
 // and bind to the given callbacks
 type DefaultPacketWriter struct {
 	// Any errors that are encountered are passed to ErrorHandler.
+	// TODO: Get rid of ErrorHandler, just _return_ errors when packets are written?
 	ErrorHandler func(error)
 	// OutputHandler sends the data for all packets to be written.
 	OutputHandler   func([]byte)

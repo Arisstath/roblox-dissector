@@ -87,41 +87,51 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 	clientHalf := &ProxyHalf{NewConnectedPeer(context), nil}
 	serverHalf := &ProxyHalf{NewConnectedPeer(context), nil}
 
-	clientHalf.SimpleHandler = func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
+	clientHalf.SimpleHandler = func(packetType byte, layers *PacketLayers) {
+		if layers.Error != nil {
+			println("client error: ", layers.Error.Error())
+			return
+		}
 		println("client simple", packetType)
 		if packetType == 5 {
 			println("recv 5, protocol type", layers.Main.(*Packet05Layer).ProtocolVersion)
 		}
 		serverHalf.WriteSimple(layers.Main.(RakNetPacket))
 	}
-	serverHalf.SimpleHandler = func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
+	serverHalf.SimpleHandler = func(packetType byte, layers *PacketLayers) {
+		if layers.Error != nil {
+			println("server error: ", layers.Error.Error())
+			return
+		}
 		println("server simple", packetType)
 		clientHalf.WriteSimple(layers.Main.(RakNetPacket))
 	}
 
-	clientHalf.ReliabilityLayerHandler = func(packet *UDPPacket, reliabilityLayer *ReliabilityLayer, rakNetLayer *RakNetLayer) {
-		clientHalf.mustACK = append(clientHalf.mustACK, int(rakNetLayer.DatagramNumber))
-		/*serverHalf.Writer.writeReliableWithDN(
-			reliabilityLayer,
-			writer.ServerAddr,
-			serverHalf.rotateDN(rakNetLayer.DatagramNumber),
-		)*/
+	clientHalf.ReliabilityLayerHandler = func(layers *PacketLayers) {
+		if layers.Error != nil {
+			println("client error: ", layers.Error.Error())
+			return
+		}
+		clientHalf.mustACK = append(clientHalf.mustACK, int(layers.RakNet.DatagramNumber))
 	}
-	serverHalf.ReliabilityLayerHandler = func(packet *UDPPacket, reliabilityLayer *ReliabilityLayer, rakNetLayer *RakNetLayer) {
-		serverHalf.mustACK = append(serverHalf.mustACK, int(rakNetLayer.DatagramNumber))
-		/*clientHalf.Writer.writeReliableWithDN(
-			reliabilityLayer,
-			writer.ClientAddr,
-			clientHalf.rotateDN(rakNetLayer.DatagramNumber),
-		)*/
+	serverHalf.ReliabilityLayerHandler = func(layers *PacketLayers) {
+		if layers.Error != nil {
+			println("server error: ", layers.Error.Error())
+			return
+		}
+		serverHalf.mustACK = append(serverHalf.mustACK, int(layers.RakNet.DatagramNumber))
 	}
 
-	clientHalf.FullReliableHandler = func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
+	clientHalf.FullReliableHandler = func(packetType byte, layers *PacketLayers) {
 		// FIXME: No streaming support
 		//println("client fullreliable", packetType)
 		if packetType == 0x15 {
 			println("Disconnected by client!!")
 			writer.CancelFunc()
+			return
+		}
+		if layers.Error != nil {
+			println("client error: ", layers.Error.Error())
 			return
 		}
 		var overrideResult []byte
@@ -202,7 +212,11 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 		}
 		_ = overrideResult
 	}
-	serverHalf.FullReliableHandler = func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
+	serverHalf.FullReliableHandler = func(packetType byte, layers *PacketLayers) {
+		if layers.Error != nil {
+			println("server error: ", layers.Error.Error())
+			return
+		}
 		relPacket := layers.Reliability
 		//println("server sent reliable, clientHalf writing", packetType, packet.Source.String(), packet.Destination.String())
 		clientHalf.Writer.WriteReliablePacket(
@@ -215,9 +229,17 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 			writer.CancelFunc()
 		}
 	}
-	clientHalf.ReliableHandler = func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
+	clientHalf.ReliableHandler = func(packetType byte, layers *PacketLayers) {
+		if layers.Error != nil {
+			println("client error: ", layers.Error.Error())
+			return
+		}
 	}
-	serverHalf.ReliableHandler = func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
+	serverHalf.ReliableHandler = func(packetType byte, layers *PacketLayers) {
+		if layers.Error != nil {
+			println("server error: ", layers.Error.Error())
+			return
+		}
 	}
 
 	clientHalf.ErrorHandler = func(err error, packet *UDPPacket) {

@@ -13,6 +13,7 @@ import (
 	"github.com/google/gopacket/pcap"
 )
 
+// TODO: Can this use ConnectedPeer?
 func captureJob(handle *pcap.Handle, useIPv4 bool, captureJobContext context.Context, packetViewer *MyPacketListView, context *peer.CommunicationContext) {
 	handle.SetBPFFilter("udp")
 	var packetSource *gopacket.PacketSource

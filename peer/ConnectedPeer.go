@@ -26,10 +26,10 @@ type ConnectedPeer struct {
 	FullReliableHandler ReceiveHandler
 	// Callback for ACKs and NAKs. Not very useful if you're just parsing packets.
 	// However, you want to bind to this if you are writing a peer.
-	ACKHandler func(*UDPPacket, *RakNetLayer)
+	ACKHandler func(layers *PacketLayers)
 	// Callback for ReliabilityLayer full packets. This callback is invoked for every
 	// real ReliabilityLayer.
-	ReliabilityLayerHandler func(*UDPPacket, *ReliabilityLayer, *RakNetLayer)
+	ReliabilityLayerHandler func(layers *PacketLayers)
 	DestinationAddress      *net.UDPAddr
 
 	mustACK []int
@@ -90,23 +90,20 @@ func NewConnectedPeer(context *CommunicationContext) *ConnectedPeer {
 
 	reader := NewPacketReader()
 
-	reader.ErrorHandler = func(err error, packet *UDPPacket) {
-		proxy.ErrorHandler(err, packet)
+	reader.SimpleHandler = func(packetType byte, layers *PacketLayers) {
+		proxy.SimpleHandler(packetType, layers)
 	}
-	reader.SimpleHandler = func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
-		proxy.SimpleHandler(packetType, packet, layers)
+	reader.ReliableHandler = func(packetType byte, layers *PacketLayers) {
+		proxy.ReliableHandler(packetType, layers)
 	}
-	reader.ReliableHandler = func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
-		proxy.ReliableHandler(packetType, packet, layers)
+	reader.FullReliableHandler = func(packetType byte, layers *PacketLayers) {
+		proxy.FullReliableHandler(packetType, layers)
 	}
-	reader.FullReliableHandler = func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
-		proxy.FullReliableHandler(packetType, packet, layers)
+	reader.ACKHandler = func(layers *PacketLayers) {
+		proxy.ACKHandler(layers)
 	}
-	reader.ACKHandler = func(p *UDPPacket, r *RakNetLayer) {
-		proxy.ACKHandler(p, r)
-	}
-	reader.ReliabilityLayerHandler = func(p *UDPPacket, re *ReliabilityLayer, ra *RakNetLayer) {
-		proxy.ReliabilityLayerHandler(p, re, ra)
+	reader.ReliabilityLayerHandler = func(layers *PacketLayers) {
+		proxy.ReliabilityLayerHandler(layers)
 	}
 	reader.ValContext = context
 	writer.ValContext = context
@@ -119,8 +116,8 @@ func NewConnectedPeer(context *CommunicationContext) *ConnectedPeer {
 }
 
 // Receive sends packets to Reader.ReadPacket()
-func (peer *ConnectedPeer) ReadPacket(payload []byte, packet *UDPPacket) {
-	peer.Reader.ReadPacket(payload, packet)
+func (peer *ConnectedPeer) ReadPacket(payload []byte, layers *PacketLayers) {
+	peer.Reader.ReadPacket(payload, layers)
 }
 
 // TODO: Perhaps different error handling for writing?
