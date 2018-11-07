@@ -5,8 +5,8 @@ import "errors"
 type Packet83_09Subpacket interface{}
 
 type Packet83_09 struct {
-	Subpacket Packet83_09Subpacket
-	Type      uint8
+	Subpacket     Packet83_09Subpacket
+	SubpacketType uint8
 }
 
 type Packet83_09_00 struct {
@@ -35,13 +35,13 @@ type Packet83_09_07 struct{}
 func (thisBitstream *extendedReader) DecodePacket83_09(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
 	var err error
 	inner := &Packet83_09{}
-	
-	inner.Type, err = thisBitstream.readUint8()
+
+	inner.SubpacketType, err = thisBitstream.readUint8()
 	if err != nil {
 		return inner, err
 	}
 	var subpacket interface{}
-	switch inner.Type {
+	switch inner.SubpacketType {
 	case 0: // Rocky
 		thisSubpacket := &Packet83_09_00{}
 		for i := 0; i < 5; i++ {
@@ -98,7 +98,7 @@ func (thisBitstream *extendedReader) DecodePacket83_09(reader PacketReader, laye
 		thisSubpacket := &Packet83_09_07{}
 		subpacket = thisSubpacket
 	default:
-		packet.Logger.Println("don't know rocky subpacket", inner.Type)
+		layers.Root.Logger.Println("don't know rocky subpacket", inner.Type)
 		return inner, errors.New("unimplemented subpacket type")
 	}
 	inner.Subpacket = subpacket
@@ -107,12 +107,12 @@ func (thisBitstream *extendedReader) DecodePacket83_09(reader PacketReader, laye
 }
 
 func (layer *Packet83_09) Serialize(writer PacketWriter, stream *extendedWriter) error {
-	err := stream.WriteByte(layer.Type)
+	err := stream.WriteByte(layer.SubpacketType)
 	if err != nil {
 		return err
 	}
 
-	switch layer.Type {
+	switch layer.SubpacketType {
 	case 6:
 		subpacket := layer.Subpacket.(*Packet83_09_06)
 		err = stream.writeUint32BE(subpacket.Int1)

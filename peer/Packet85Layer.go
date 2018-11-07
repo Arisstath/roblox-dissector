@@ -72,7 +72,6 @@ func (b *extendedReader) readPhysicsData(data *PhysicsData, motors bool, reader 
 }
 
 func (thisBitstream *extendedReader) DecodePacket85Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-	
 
 	context := reader.Context()
 	layer := NewPacket85Layer()
@@ -85,7 +84,7 @@ func (thisBitstream *extendedReader) DecodePacket85Layer(reader PacketReader, la
 		if referent.IsNull() {
 			break
 		}
-		packet.Logger.Println("reading physics for ref", referent.String())
+		layers.Root.Logger.Println("reading physics for ref", referent.String())
 		subpacket := &Packet85LayerSubpacket{}
 		// TODO: generic function for this
 		if err != CacheReadOOB {
@@ -114,7 +113,7 @@ func (thisBitstream *extendedReader) DecodePacket85Layer(reader PacketReader, la
 			if err != nil {
 				return layer, err
 			}
-			packet.Logger.Println("reading movement history,", numEntries, "entries")
+			layers.Root.Logger.Println("reading movement history,", numEntries, "entries")
 			subpacket.History = make([]*PhysicsData, numEntries)
 			for i := 0; i < int(numEntries); i++ {
 				subpacket.History[i] = new(PhysicsData)
@@ -132,7 +131,7 @@ func (thisBitstream *extendedReader) DecodePacket85Layer(reader PacketReader, la
 		if (myFlags>>5)&1 == 0 { // has children
 			var object Referent
 			for object, err = thisBitstream.readObject(reader.Caches()); (err == nil || err == CacheReadOOB) && !object.IsNull(); object, err = thisBitstream.readObject(reader.Caches()) {
-				packet.Logger.Println("reading physics child for ref", object.String())
+				layers.Root.Logger.Println("reading physics child for ref", object.String())
 				child := new(PhysicsData)
 				if err != CacheReadOOB { // TODO: hack! unordered packets may have problems with caches
 					context.InstancesByReferent.OnAddInstance(object, func(inst *rbxfile.Instance) {

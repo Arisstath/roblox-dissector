@@ -12,7 +12,7 @@ func is2ndRoundType(typeId uint8) bool {
 	return ((id-3) > 0x1F || ((1<<(id-3))&uint32(0xC200000F)) == 0) && (id != 1) // thank you ARM compiler for optimizing this <3
 }
 
-func decodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader) (*rbxfile.Instance, error) {
+func decodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader, layers *PacketLayers) (*rbxfile.Instance, error) {
 	var err error
 	var referent Referent
 	context := reader.Context()
@@ -35,13 +35,13 @@ func decodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader
 	}
 	schema := context.StaticSchema.Instances[schemaIDx]
 	thisInstance.ClassName = schema.Name
-	packet.Logger.Println("will parse", referent, schema.Name, len(schema.Properties))
+	layers.Root.Logger.Println("will parse", referent, schema.Name, len(schema.Properties))
 
 	unkBool, err := thisBitstream.readBoolByte()
 	if err != nil {
 		return thisInstance, err
 	}
-	packet.Logger.Println("unkbool:", unkBool)
+	layers.Root.Logger.Println("unkbool:", unkBool)
 	thisInstance.Properties = make(map[string]rbxfile.Value, len(schema.Properties))
 
 	err = thisBitstream.ReadProperties(schema.Properties, thisInstance.Properties, reader)
@@ -57,9 +57,9 @@ func decodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader
 		return thisInstance, errors.New("parent is null")
 	}
 	if len(referent) > 0x50 {
-		packet.Logger.Println("Parent: (invalid), ", len(referent))
+		layers.Root.Logger.Println("Parent: (invalid), ", len(referent))
 	} else {
-		packet.Logger.Println("Parent: ", referent)
+		layers.Root.Logger.Println("Parent: ", referent)
 	}
 
 	context.InstancesByReferent.AddInstance(Referent(thisInstance.Reference), thisInstance)

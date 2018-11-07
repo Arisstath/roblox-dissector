@@ -114,10 +114,14 @@ func (myClient *CustomClient) RegisterInstanceHandler(path *InstancePath, handle
 }
 
 func (myClient *CustomClient) ReadPacket(buf []byte) {
-	packet := UDPPacketFromBytes(buf)
-	packet.Source = myClient.ServerAddress
-	packet.Destination = myClient.Address
-	myClient.ConnectedPeer.ReadPacket(buf, packet)
+	layers := &PacketLayers{
+		Root: RootLayer{
+			Source:      &myClient.ServerAddress,
+			Destination: &myClient.Address,
+			FromServer:  true,
+		},
+	}
+	myClient.ConnectedPeer.ReadPacket(buf, layers)
 }
 
 func NewCustomClient() *CustomClient {
@@ -160,7 +164,7 @@ func (myClient *CustomClient) setupChat() {
 
 	_, err := myClient.InvokeRemote(getInitDataRequest, []rbxfile.Value{})
 	if err != "" {
-		myClient.ErrorHandler(errors.New(err), nil)
+		myClient.ErrorHandler(errors.New(err))
 		return
 	}
 	// unimportant
@@ -375,34 +379,49 @@ func (myClient *CustomClient) ConnectGuest(placeId uint32, genderId uint8) error
 	return myClient.joinWithPlaceLauncher(fmt.Sprintf("https://assetgame.roblox.com/game/PlaceLauncher.ashx?request=RequestGame&browserTrackerId=%d&placeId=%d&isPartyLeader=false&genderId=%d", myClient.BrowserTrackerId, myClient.PlaceId, myClient.GenderId), []*http.Cookie{})
 }
 
-func (myClient *CustomClient) defaultAckHandler(packet *UDPPacket, layer *RakNetLayer) {
+func (myClient *CustomClient) defaultAckHandler(layers *PacketLayers) {
+	if layers.Error != nil {
+		myClient.ErrorHandler(layers.Error)
+	}
 	if myClient.ACKHandler != nil {
-		myClient.ACKHandler(packet, layer)
+		myClient.ACKHandler(layers)
 	}
 }
-func (myClient *CustomClient) defaultReliabilityLayerHandler(p *UDPPacket, re *ReliabilityLayer, ra *RakNetLayer) {
-	myClient.mustACK = append(myClient.mustACK, int(ra.DatagramNumber))
+func (myClient *CustomClient) defaultReliabilityLayerHandler(layers *PacketLayers) {
+	if layers.Error != nil {
+		myClient.ErrorHandler(layers.Error)
+	}
+	myClient.mustACK = append(myClient.mustACK, int(layers.RakNet.DatagramNumber))
 	if myClient.ReliabilityLayerHandler != nil {
-		myClient.ReliabilityLayerHandler(p, re, ra)
+		myClient.ReliabilityLayerHandler(layers)
 	}
 }
-func (myClient *CustomClient) defaultSimpleHandler(packetType byte, packet *UDPPacket, layers *PacketLayers) {
+func (myClient *CustomClient) defaultSimpleHandler(packetType byte, layers *PacketLayers) {
+	if layers.Error != nil {
+		myClient.ErrorHandler(layers.Error)
+	}
 	if myClient.SimpleHandler != nil {
-		myClient.SimpleHandler(packetType, packet, layers)
+		myClient.SimpleHandler(packetType, layers)
 	}
-	myClient.handlers.Fire(packetType, packet, layers)
+	myClient.handlers.Fire(packetType, layers)
 }
-func (myClient *CustomClient) defaultReliableHandler(packetType byte, packet *UDPPacket, layers *PacketLayers) {
+func (myClient *CustomClient) defaultReliableHandler(packetType byte, layers *PacketLayers) {
+	if layers.Error != nil {
+		myClient.ErrorHandler(layers.Error)
+	}
 	if myClient.ReliableHandler != nil {
-		myClient.ReliableHandler(packetType, packet, layers)
+		myClient.ReliableHandler(packetType, layers)
 	}
 }
-func (myClient *CustomClient) defaultFullReliableHandler(packetType byte, packet *UDPPacket, layers *PacketLayers) {
+func (myClient *CustomClient) defaultFullReliableHandler(packetType byte, layers *PacketLayers) {
+	if layers.Error != nil {
+		myClient.ErrorHandler(layers.Error)
+	}
 	if myClient.FullReliableHandler != nil {
-		myClient.FullReliableHandler(packetType, packet, layers)
+		myClient.FullReliableHandler(packetType, layers)
 	}
 	if layers.Main != nil {
-		myClient.handlers.Fire(packetType, packet, layers)
+		myClient.handlers.Fire(packetType, layers)
 	}
 }
 
@@ -414,13 +433,6 @@ func (myClient *CustomClient) createReader() {
 	packetReader.ReliableHandler = myClient.defaultReliableHandler
 	packetReader.FullReliableHandler = myClient.defaultFullReliableHandler
 
-	packetReader.ErrorHandler = func(err error, packet *UDPPacket) {
-		myClient.Logger.Println(err.Error())
-		if myClient.ErrorHandler != nil {
-			myClient.ErrorHandler(err, packet)
-		}
-	}
-
 	packetReader.ValContext = myClient.Context
 }
 
@@ -429,7 +441,7 @@ func (myClient *CustomClient) createWriter() {
 	packetWriter.ErrorHandler = func(err error) {
 		myClient.Logger.Println(err.Error())
 		if myClient.ErrorHandler != nil {
-			myClient.ErrorHandler(err, nil)
+			myClient.ErrorHandler(err)
 		}
 	}
 	packetWriter.OutputHandler = func(payload []byte) {
@@ -508,7 +520,7 @@ func (myClient *CustomClient) disconnectInternal() {
 	myClient.dataPingTicker.Stop()
 	err := myClient.Connection.Close()
 	if err != nil {
-		myClient.ErrorHandler(err, nil)
+		myClient.ErrorHandler(err)
 	}
 }
 

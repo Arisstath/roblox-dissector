@@ -26,10 +26,10 @@ var NetworkHumanoidStates = [...]string{
 	"None",
 }
 
-func ShowPacket85(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
+func ShowPacket85(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) {
 	MainLayer := layers.Main.(*peer.Packet85Layer)
 
-	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
+	layerLayout := NewBasicPacketViewer(packetType, context, layers)
 
 	labelForSubpackets := NewQLabelF("Physics replication (%d entries):", len(MainLayer.SubPackets))
 	layerLayout.AddWidget(labelForSubpackets, 0, 0)

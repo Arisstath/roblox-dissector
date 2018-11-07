@@ -8,10 +8,10 @@ import "github.com/Gskartwii/roblox-dissector/peer"
 import "os"
 import "encoding/gob"
 
-func ShowPacket82(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
+func ShowPacket82(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) {
 	MainLayer := layers.Main.(*peer.Packet82Layer)
 
-	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
+	layerLayout := NewBasicPacketViewer(packetType, context, layers)
 
 	labelForDescriptorView := NewQLabelF("Dictionaries:")
 	layerLayout.AddWidget(labelForDescriptorView, 0, 0)

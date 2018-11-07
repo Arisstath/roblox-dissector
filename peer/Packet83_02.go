@@ -9,7 +9,7 @@ type Packet83_02 struct {
 }
 
 func (thisBitstream *extendedReader) DecodePacket83_02(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
-	result, err := decodeReplicationInstance(reader, thisBitstream)
+	result, err := decodeReplicationInstance(reader, thisBitstream, layers)
 	return &Packet83_02{result}, err
 }
 

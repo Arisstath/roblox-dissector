@@ -276,9 +276,9 @@ func show83_09(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_09)
 	widget := widgets.NewQWidget(nil, 0)
 	layout := widgets.NewQVBoxLayout()
-	layout.AddWidget(NewQLabelF("Type: %d", this.Type), 0, 0)
+	layout.AddWidget(NewQLabelF("Type: %d", this.SubpacketType), 0, 0)
 
-	callback := Callbacks83_09[this.Type]
+	callback := Callbacks83_09[this.SubpacketType]
 	if callback == nil {
 		println("unsupported callback")
 		widget.SetLayout(layout)
@@ -356,10 +356,10 @@ func showPacket83Subpacket(this Packet83Subpacket) widgets.QWidget_ITF {
 	return SubpacketCallbacks[this.Type()](this)
 }
 
-func ShowPacket83(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
+func ShowPacket83(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) {
 	MainLayer := layers.Main.(*peer.Packet83Layer)
 
-	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
+	layerLayout := NewBasicPacketViewer(packetType, context, layers)
 
 	packetListLabel := NewQLabelF("Replication subpackets:")
 	layerLayout.AddWidget(packetListLabel, 0, 0)
@@ -384,8 +384,8 @@ func ShowPacket83(packetType byte, packet *peer.UDPPacket, context *peer.Communi
 		subWindow := widgets.NewQWidget(packetList, core.Qt__Window)
 		subWindowLayout := widgets.NewQVBoxLayout2(subWindow)
 
-		isClient := context.IsClient(packet.Source)
-		isServer := context.IsServer(packet.Source)
+		isClient := layers.Root.FromClient
+		isServer := layers.Root.FromServer
 
 		var direction string
 		if isClient {

@@ -31,23 +31,20 @@ func captureJob(handle *pcap.Handle, useIPv4 bool, captureJobContext context.Con
 	}()
 
 	clientPacketReader := peer.NewPacketReader()
-	clientPacketReader.SimpleHandler = func(packetType byte, packet *peer.UDPPacket, layers *peer.PacketLayers) {
-		packetViewer.AddFullPacket(packetType, packet, context, layers, ActivationCallbacks[packetType])
+	clientPacketReader.SimpleHandler = func(packetType byte, layers *peer.PacketLayers) {
+		packetViewer.AddFullPacket(packetType, context, layers, ActivationCallbacks[packetType])
 	}
-	clientPacketReader.ReliableHandler = func(packetType byte, packet *peer.UDPPacket, layers *peer.PacketLayers) {
-		packetViewer.AddSplitPacket(packetType, packet, context, layers)
+	clientPacketReader.ReliableHandler = func(packetType byte, layers *peer.PacketLayers) {
+		packetViewer.AddSplitPacket(packetType, context, layers)
 	}
-	clientPacketReader.FullReliableHandler = func(packetType byte, packet *peer.UDPPacket, layers *peer.PacketLayers) {
-		packetViewer.BindCallback(packetType, packet, context, layers, ActivationCallbacks[packetType])
+	clientPacketReader.FullReliableHandler = func(packetType byte, layers *peer.PacketLayers) {
+		packetViewer.BindCallback(packetType, context, layers, ActivationCallbacks[packetType])
 	}
-	clientPacketReader.ReliabilityLayerHandler = func(p *peer.UDPPacket, re *peer.ReliabilityLayer, ra *peer.RakNetLayer) {
+	clientPacketReader.ReliabilityLayerHandler = func(layers *peer.PacketLayers) {
 		// nop
 	}
-	clientPacketReader.ACKHandler = func(p *peer.UDPPacket, ra *peer.RakNetLayer) {
+	clientPacketReader.ACKHandler = func(layers *peer.PacketLayers) {
 		// nop
-	}
-	clientPacketReader.ErrorHandler = func(err error, packet *peer.UDPPacket) {
-		println(err.Error())
 	}
 	clientPacketReader.ValContext = context
 	clientPacketReader.ValCaches = new(peer.Caches)
@@ -59,7 +56,6 @@ func captureJob(handle *pcap.Handle, useIPv4 bool, captureJobContext context.Con
 	serverPacketReader.FullReliableHandler = clientPacketReader.FullReliableHandler
 	serverPacketReader.ReliabilityLayerHandler = clientPacketReader.ReliabilityLayerHandler
 	serverPacketReader.ACKHandler = clientPacketReader.ACKHandler
-	serverPacketReader.ErrorHandler = clientPacketReader.ErrorHandler
 	serverPacketReader.ValContext = clientPacketReader.ValContext
 	serverPacketReader.ValCaches = new(peer.Caches)
 
@@ -79,7 +75,7 @@ func captureJob(handle *pcap.Handle, useIPv4 bool, captureJobContext context.Con
 			}
 			src, dst := SrcAndDestFromGoPacket(packet)
 			layers := &peer.PacketLayers{
-				Root: RootLayer{
+				Root: peer.RootLayer{
 					Source:      src,
 					Destination: dst,
 				},
@@ -93,7 +89,7 @@ func captureJob(handle *pcap.Handle, useIPv4 bool, captureJobContext context.Con
 				} else {
 					context.Client, context.Server = dst, src
 				}
-			} else if context.Client != "" && !context.IsClient(src) && !context.IsServer(src) {
+			} else if context.Client != nil && !context.IsClient(src) && !context.IsServer(src) {
 				continue
 			}
 			layers.Root.FromClient = context.IsClient(src)

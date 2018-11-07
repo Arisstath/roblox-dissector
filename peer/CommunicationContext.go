@@ -153,9 +153,9 @@ func NewCommunicationContext() *CommunicationContext {
 	}
 }
 
-func (c *CommunicationContext) IsClient(peer net.UDPAddr) bool {
-	return c.Client.Port == peer.Port && bytes.Compare(c.Client.IP, peer.IP)
+func (c *CommunicationContext) IsClient(peer *net.UDPAddr) bool {
+	return c.Client.Port == peer.Port && bytes.Compare(c.Client.IP, peer.IP) == 0
 }
-func (c *CommunicationContext) IsServer(peer net.UDPAddr) bool {
-	return c.Server.Port == peer.Port && bytes.Compare(c.Server.IP, peer.IP)
+func (c *CommunicationContext) IsServer(peer *net.UDPAddr) bool {
+	return c.Server.Port == peer.Port && bytes.Compare(c.Server.IP, peer.IP) == 0
 }

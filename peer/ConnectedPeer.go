@@ -82,7 +82,7 @@ func NewConnectedPeer(context *CommunicationContext) *ConnectedPeer {
 
 	writer := NewPacketWriter()
 	writer.ErrorHandler = func(err error) {
-		proxy.ErrorHandler(err, nil)
+		proxy.ErrorHandler(err)
 	}
 	writer.OutputHandler = func(payload []byte) {
 		proxy.OutputHandler(payload)

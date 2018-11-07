@@ -168,8 +168,8 @@ func NewQStandardItemF(format string, args ...interface{}) *gui.QStandardItem {
 	return ret
 }
 
-func NewBasicPacketViewer(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) *widgets.QVBoxLayout {
-	tabWidget := NewDefaultPacketViewer(packetType, packet, context, layers)
+func NewBasicPacketViewer(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) *widgets.QVBoxLayout {
+	tabWidget := NewDefaultPacketViewer(packetType, context, layers)
 
 	layerWidget := widgets.NewQWidget(tabWidget, 0)
 	layerLayout := widgets.NewQVBoxLayout()
@@ -179,9 +179,9 @@ func NewBasicPacketViewer(packetType byte, packet *peer.UDPPacket, context *peer
 	return layerLayout
 }
 
-func (m *TwoWayPacketList) Add(index uint32, row []*gui.QStandardItem, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
-	isClient := context.IsClient(packet.Source)
-	isServer := context.IsServer(packet.Source)
+func (m *TwoWayPacketList) Add(index uint32, row []*gui.QStandardItem, context *peer.CommunicationContext, layers *peer.PacketLayers) {
+	isClient := layers.Root.FromClient
+	isServer := layers.Root.FromServer
 
 	var mutex *sync.Mutex
 	var list PacketList
@@ -196,7 +196,7 @@ func (m *TwoWayPacketList) Add(index uint32, row []*gui.QStandardItem, packet *p
 		list = m.Server
 		cond = m.EServer
 	} else {
-		panic(errors.New("add not on server or client: " + packet.Source.String() + " - " + context.Client + " - " + context.Server))
+		panic(errors.New("add not on server or client: " + layers.Root.Source.String() + " - " + context.Client.String() + " - " + context.Server.String()))
 	}
 	mutex.Lock()
 
@@ -290,29 +290,29 @@ func (m *MyPacketListView) handleNoneSelected() {
 	m.clearACKSelection()
 }
 
-func (m *MyPacketListView) registerSplitPacketRow(row []*gui.QStandardItem, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
+func (m *MyPacketListView) registerSplitPacketRow(row []*gui.QStandardItem, context *peer.CommunicationContext, layers *peer.PacketLayers) {
 	if layers.Reliability.HasSplitPacket {
-		m.packetRowsBySplitPacket.Add(uint32(layers.Reliability.SplitPacketID), row, packet, context, layers)
+		m.packetRowsBySplitPacket.Add(uint32(layers.Reliability.SplitPacketID), row, context, layers)
 	}
 
-	m.packetRowsByUniqueID.Add(layers.Reliability.SplitBuffer.UniqueID, row, packet, context, layers)
+	m.packetRowsByUniqueID.Add(layers.Reliability.SplitBuffer.UniqueID, row, context, layers)
 }
 
-func (m *MyPacketListView) AddSplitPacket(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
-	isClient := context.IsClient(packet.Source)
-	isServer := context.IsServer(packet.Source)
+func (m *MyPacketListView) AddSplitPacket(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) {
+	isClient := layers.Root.FromClient
+	isServer := layers.Root.FromServer
 
 	if !m.packetRowsByUniqueID.Has(layers.Reliability.SplitBuffer.UniqueID, isClient, isServer) {
-		m.AddFullPacket(packetType, packet, context, layers, nil)
-		m.BindDefaultCallback(packetType, packet, context, layers)
+		m.AddFullPacket(packetType, context, layers, nil)
+		m.BindDefaultCallback(packetType, context, layers)
 	} else {
-		m.handleSplitPacket(packetType, packet, context, layers)
+		m.handleSplitPacket(packetType, context, layers)
 	}
 }
 
-func (m *MyPacketListView) BindCallback(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers, activationCallback ActivationCallback) {
-	isClient := context.IsClient(packet.Source)
-	isServer := context.IsServer(packet.Source)
+func (m *MyPacketListView) BindCallback(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers, activationCallback ActivationCallback) {
+	isClient := layers.Root.FromClient
+	isServer := layers.Root.FromServer
 
 	row := m.packetRowsByUniqueID.Get(layers.Reliability.SplitBuffer.UniqueID, isClient, isServer)
 	index, _ := strconv.Atoi(row[0].Data(0).ToString())
@@ -321,9 +321,9 @@ func (m *MyPacketListView) BindCallback(packetType byte, packet *peer.UDPPacket,
 	m.SelectionHandlers[uint64(index)] = func() {
 		m.clearACKSelection()
 		if activationCallback != nil && layers.Main != nil {
-			activationCallback(packetType, packet, context, layers)
+			activationCallback(packetType, context, layers)
 		} else {
-			NewDefaultPacketViewer(packetType, packet, context, layers)
+			NewDefaultPacketViewer(packetType, context, layers)
 		}
 	}
 	m.MSelectionHandlers.Unlock()
@@ -352,12 +352,12 @@ func (m *MyPacketListView) BindCallback(packetType byte, packet *peer.UDPPacket,
 	}
 }
 
-func NewDefaultPacketViewer(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) *widgets.QTabWidget {
+func NewDefaultPacketViewer(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) *widgets.QTabWidget {
 	subWindow := widgets.NewQWidget(window, core.Qt__Window)
 	subWindowLayout := widgets.NewQVBoxLayout2(subWindow)
 
-	isClient := context.IsClient(packet.Source)
-	isServer := context.IsServer(packet.Source)
+	isClient := layers.Root.FromClient
+	isServer := layers.Root.FromServer
 
 	var direction string
 	if isClient {
@@ -388,9 +388,7 @@ func NewDefaultPacketViewer(packetType byte, packet *peer.UDPPacket, context *pe
 
 	logBox := widgets.NewQTextEdit(logWidget)
 	logBox.SetReadOnly(true)
-	if layers.Reliability == nil {
-		logBox.SetPlainText(packet.GetLog())
-	} else {
+	if layers.Reliability != nil {
 		logBox.SetPlainText(layers.Reliability.GetLog())
 	}
 	logLayout.AddWidget(logBox, 0, 0)
@@ -459,9 +457,9 @@ func NewDefaultPacketViewer(packetType byte, packet *peer.UDPPacket, context *pe
 	return tabWidget
 }
 
-func (m *MyPacketListView) BindDefaultCallback(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
-	isClient := context.IsClient(packet.Source)
-	isServer := context.IsServer(packet.Source)
+func (m *MyPacketListView) BindDefaultCallback(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) {
+	isClient := layers.Root.FromClient
+	isServer := layers.Root.FromServer
 
 	row := m.packetRowsByUniqueID.Get(layers.Reliability.SplitBuffer.UniqueID, isClient, isServer)
 	index, _ := strconv.Atoi(row[0].Data(0).ToString())
@@ -469,17 +467,17 @@ func (m *MyPacketListView) BindDefaultCallback(packetType byte, packet *peer.UDP
 	m.MSelectionHandlers.Lock()
 	m.SelectionHandlers[uint64(index)] = func() {
 		m.clearACKSelection()
-		NewDefaultPacketViewer(packetType, packet, context, layers)
+		NewDefaultPacketViewer(packetType, context, layers)
 	}
 	m.MSelectionHandlers.Unlock()
 }
 
-func (m *MyPacketListView) handleSplitPacket(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
-	isClient := context.IsClient(packet.Source)
-	isServer := context.IsServer(packet.Source)
+func (m *MyPacketListView) handleSplitPacket(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) {
+	isClient := layers.Root.FromClient
+	isServer := layers.Root.FromServer
 
 	row := m.packetRowsBySplitPacket.Get(uint32(layers.Reliability.SplitPacketID), isClient, isServer)
-	m.registerSplitPacketRow(row, packet, context, layers)
+	m.registerSplitPacketRow(row, context, layers)
 
 	reliablePacket := layers.Reliability
 	if reliablePacket.SplitBuffer.HasPacketType {
@@ -500,10 +498,10 @@ func (m *MyPacketListView) handleSplitPacket(packetType byte, packet *peer.UDPPa
 	row[6].SetData(core.NewQVariant7(len(layers.Reliability.SplitBuffer.RakNetPackets)), 0)
 }
 
-func (m *MyPacketListView) AddFullPacket(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers, activationCallback ActivationCallback) []*gui.QStandardItem {
+func (m *MyPacketListView) AddFullPacket(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers, activationCallback ActivationCallback) []*gui.QStandardItem {
 	index := atomic.AddUint64(&m.PacketIndex, 1)
-	isClient := context.IsClient(packet.Source)
-	isServer := context.IsServer(packet.Source)
+	isClient := layers.Root.FromClient
+	isServer := layers.Root.FromServer
 
 	packetName := PacketNames[packetType]
 	if packetName == "" {
@@ -567,7 +565,7 @@ func (m *MyPacketListView) AddFullPacket(packetType byte, packet *peer.UDPPacket
 	rootRow = append(rootRow, NewQStandardItemF("???"))
 
 	if layers.Reliability != nil {
-		m.registerSplitPacketRow(rootRow, packet, context, layers)
+		m.registerSplitPacketRow(rootRow, context, layers)
 	}
 
 	if layers.Reliability == nil { // Only bind if we're done parsing the packet
@@ -575,9 +573,9 @@ func (m *MyPacketListView) AddFullPacket(packetType byte, packet *peer.UDPPacket
 		m.SelectionHandlers[index] = func() {
 			m.clearACKSelection()
 			if activationCallback != nil && layers.Main != nil {
-				activationCallback(packetType, packet, context, layers)
+				activationCallback(packetType, context, layers)
 			} else {
-				NewDefaultPacketViewer(packetType, packet, context, layers)
+				NewDefaultPacketViewer(packetType, context, layers)
 			}
 		}
 		m.MSelectionHandlers.Unlock()
@@ -592,10 +590,10 @@ func (m *MyPacketListView) AddFullPacket(packetType byte, packet *peer.UDPPacket
 	return rootRow
 }
 
-func (m *MyPacketListView) AddACK(ack peer.ACKRange, packet *peer.UDPPacket, context *peer.CommunicationContext, layer *peer.RakNetLayer, activationCallback func()) {
+func (m *MyPacketListView) AddACK(ack peer.ACKRange, context *peer.CommunicationContext, layers *peer.PacketLayers, activationCallback func()) {
 	index := atomic.AddUint64(&m.PacketIndex, 1)
-	isClient := context.IsClient(packet.Source)
-	isServer := context.IsServer(packet.Source)
+	isClient := layers.Root.FromClient
+	isServer := layers.Root.FromServer
 
 	var packetName *gui.QStandardItem
 	if ack.Min == ack.Max {
@@ -924,10 +922,10 @@ func GUIMain() {
 		})
 	})
 
-	viewCache := toolsBar.AddAction("&View string cache...")
+	/*viewCache := toolsBar.AddAction("&View string cache...")
 	viewCache.ConnectTriggered(func(checked bool) {
 		NewViewCacheWidget(packetViewer, packetViewer.Context)
-	})
+	})*/
 
 	injectChat := toolsBar.AddAction("Inject &chat message...")
 	injectChat.ConnectTriggered(func(checked bool) {

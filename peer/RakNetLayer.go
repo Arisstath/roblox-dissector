@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net"
+	"strings"
 )
 
 // DEBUG decides whether debug mode should be on or not.
@@ -19,7 +20,7 @@ type RakNetPacket interface {
 }
 
 type RootLayer struct {
-	logBuffer   bytes.Buffer
+	logBuffer   *strings.Builder
 	Logger      *log.Logger
 	Source      *net.UDPAddr
 	Destination *net.UDPAddr

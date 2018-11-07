@@ -71,10 +71,10 @@ func captureFromInjectionProxy(src string, dst string, captureJobContext context
 			}
 			layers := &peer.PacketLayers{
 				Root: peer.RootLayer{
-					Source: srcAddr,
+					Source:      srcAddr,
 					Destination: dstAddr,
-					FromClient: true,
-				}
+					FromClient:  true,
+				},
 			}
 			if payload[0] > 0x8 {
 				packetChan <- ProxiedPacket{Layers: layers, Payload: payload[:n]}
@@ -93,15 +93,15 @@ func captureFromInjectionProxy(src string, dst string, captureJobContext context
 			}
 			layers := &peer.PacketLayers{
 				Root: peer.RootLayer{
-					Source: dstAddr,
+					Source:      dstAddr,
 					Destination: srcAddr,
-					FromServer: true,
-				}
+					FromServer:  true,
+				},
 			}
 			if payload[0] > 0x8 {
 				packetChan <- ProxiedPacket{Layers: layers, Payload: payload[:n]}
 			} else { // Need priority for join packets
-				proxyWriter.ProxyServer(payload[:n], layersk)
+				proxyWriter.ProxyServer(payload[:n], layers)
 			}
 		}
 	}()

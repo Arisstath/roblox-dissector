@@ -70,15 +70,14 @@ func (packet *ReliablePacket) IsOrdered() bool {
 	return packet.Reliability == UNRELIABLE_SEQ || packet.Reliability == RELIABLE_SEQ || packet.Reliability == RELIABLE_ORD || packet.Reliability == RELIABLE_ORD_ACK_RECP
 }
 
-func DecodeReliabilityLayer(packet *UDPPacket, context *CommunicationContext, rakNetPacket *RakNetLayer) (*ReliabilityLayer, error) {
+func (thisBitstream *extendedReader) DecodeReliabilityLayer(reader PacketReader, layers *PacketLayers) (*ReliabilityLayer, error) {
 	layer := NewReliabilityLayer()
-	
 
 	var reliability uint64
 	var err error
 	for reliability, err = thisBitstream.bits(3); err == nil; reliability, err = thisBitstream.bits(3) {
 		reliablePacket := NewReliablePacket()
-		reliablePacket.RakNetLayer = rakNetPacket
+		reliablePacket.RakNetLayer = layers.RakNet
 
 		reliablePacket.Reliability = uint32(reliability)
 		reliablePacket.HasSplitPacket, err = thisBitstream.readBool()

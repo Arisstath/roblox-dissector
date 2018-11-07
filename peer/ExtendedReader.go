@@ -273,6 +273,7 @@ func init() {
 		0})
 }
 
+// TODO: Move extendedReader to its own package (roblox-dissector/bitstreams)?
 type extendedReader struct {
 	*bitstream.BitReader
 }

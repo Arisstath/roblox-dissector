@@ -42,7 +42,7 @@ func captureFromWinDivertProxy(realServerAddr string, captureJobContext context.
 	}
 	var ifIdx, subIfIdx uint32
 
-	commContext.Server = dstAddr.String()
+	commContext.Server = dstAddr
 	proxyWriter := peer.NewProxyWriter(commContext)
 	proxyWriter.ServerAddr = dstAddr
 	proxyWriter.SecuritySettings.InitWin10()
@@ -98,10 +98,10 @@ func captureFromWinDivertProxy(realServerAddr string, captureJobContext context.
 
 			layers := &peer.PacketLayers{
 				Root: peer.RootLayer{
-					Source: pktSrcAddr,
-					Destination, pktDstAddr,
-					FromClient: commContext.IsClient(pktSrcAddr),
-					FromServer: commContext.IsServer(pktSrcAddr),
+					Source:      pktSrcAddr,
+					Destination: pktDstAddr,
+					FromClient:  commContext.IsClient(pktSrcAddr),
+					FromServer:  commContext.IsServer(pktSrcAddr),
 				},
 			}
 			if payload[0] > 0x8 {
@@ -115,9 +115,9 @@ func captureFromWinDivertProxy(realServerAddr string, captureJobContext context.
 		select {
 		case newPacket := <-packetChan:
 			if newPacket.Layers.Root.FromClient { // from client? handled by client side
-				proxyWriter.ProxyClient(newPacket.Payload, newPacket.Packet)
+				proxyWriter.ProxyClient(newPacket.Payload, newPacket.Layers)
 			} else {
-				proxyWriter.ProxyServer(newPacket.Payload, newPacket.Packet)
+				proxyWriter.ProxyServer(newPacket.Payload, newPacket.Layers)
 			}
 		case _ = <-injectPacket:
 			//proxyWriter.InjectServer(injectedPacket)

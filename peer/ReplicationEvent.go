@@ -7,7 +7,7 @@ type ReplicationEvent struct {
 	Arguments []rbxfile.Value
 }
 
-func (schema *StaticEventSchema) Decode(reader PacketReader, thisBitstream SerializeReader) (*ReplicationEvent, error) {
+func (schema *StaticEventSchema) Decode(reader PacketReader, thisBitstream SerializeReader, layers *PacketLayers) (*ReplicationEvent, error) {
 	var err error
 	var thisVal rbxfile.Value
 

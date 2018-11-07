@@ -73,11 +73,11 @@ func NewPacket8ALayer() *Packet8ALayer {
 	return &Packet8ALayer{}
 }
 
-func (stream *extendedReader) DecodePacket8ALayer(reader PacketReader, layers *PacketLayers, layers *PacketLayers) (RakNetPacket, error) {
+func (stream *extendedReader) DecodePacket8ALayer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket8ALayer()
 
-	lenBytes := BitsToBytes(layers.Reliability.LengthInBits) - 1 // -1 for packet id
-	data, err := stream.readString(lenBytes)
+	lenBytes := bitsToBytes(uint(layers.Reliability.LengthInBits)) - 1 // -1 for packet id
+	data, err := stream.readString(int(lenBytes))
 	if err != nil {
 		return layer, err
 	}
@@ -100,7 +100,7 @@ func (stream *extendedReader) DecodePacket8ALayer(reader PacketReader, layers *P
 
 	checkSum := calculateChecksum(dest[4:])
 	thisBitstream := extendedReader{bitstream.NewReader(bytes.NewReader(dest))}
-	storedChecksum, err = thisBitstream.readUint32LE()
+	storedChecksum, err := thisBitstream.readUint32LE()
 	if err != nil {
 		return layer, err
 	}
@@ -162,9 +162,9 @@ func (stream *extendedReader) DecodePacket8ALayer(reader PacketReader, layers *P
 	}
 	clientTicketHash := hashClientTicket(layer.ClientTicket)
 	if hash != clientTicketHash {
-		packet.Logger.Printf("hash mismatch: read %8X != generated %8X\n", hash, clientTicketHash)
+		layers.Root.Logger.Printf("hash mismatch: read %8X != generated %8X\n", hash, clientTicketHash)
 	} else {
-		packet.Logger.Printf("hash ok: %8X\n", hash)
+		layers.Root.Logger.Printf("hash ok: %8X\n", hash)
 	}
 
 	layer.SessionId, err = thisBitstream.readVarLengthString()

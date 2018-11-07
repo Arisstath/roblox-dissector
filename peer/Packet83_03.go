@@ -79,7 +79,7 @@ func (thisBitstream *extendedReader) DecodePacket83_03(reader PacketReader, laye
 	schema := context.StaticSchema.Properties[propertyIDx]
 	layer.PropertyName = schema.Name
 
-	layer.Value, err = schema.Decode(reader, thisBitstream)
+	layer.Value, err = schema.Decode(reader, thisBitstream, layers)
 
 	return layer, err
 }

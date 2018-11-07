@@ -1,4 +1,5 @@
 package peer
+
 import "github.com/gskartwii/rbxfile"
 import "strings"
 
@@ -13,12 +14,12 @@ func (m *RawPacketHandlerMap) Bind(packetType uint8, handler ReceiveHandler) int
 func (m *RawPacketHandlerMap) Unbind(packetType uint8, index int) {
 	m.m[packetType] = append(m.m[packetType][:index], m.m[packetType][index+1:]...)
 }
-func (m *RawPacketHandlerMap) Fire(packetType uint8, packet *UDPPacket, layers *PacketLayers) {
+func (m *RawPacketHandlerMap) Fire(packetType uint8, layers *PacketLayers) {
 	for _, handler := range m.m[packetType] {
-		handler(packetType, packet, layers)
+		handler(packetType, layers)
 	}
 }
-func NewRawPacketHandlerMap() (*RawPacketHandlerMap) {
+func NewRawPacketHandlerMap() *RawPacketHandlerMap {
 	return &RawPacketHandlerMap{map[uint8][]ReceiveHandler{}}
 }
 
@@ -39,7 +40,7 @@ func (m *DeleteInstanceHandlerMap) Fire(packetType *rbxfile.Instance) {
 		handler(packetType)
 	}
 }
-func NewDeleteInstanceHandlerMap() (*DeleteInstanceHandlerMap) {
+func NewDeleteInstanceHandlerMap() *DeleteInstanceHandlerMap {
 	return &DeleteInstanceHandlerMap{map[Referent][]DeleteInstanceHandler{}}
 }
 
@@ -47,7 +48,8 @@ type DataPacketHandlerMap struct {
 	m map[uint8][]DataReceiveHandler
 }
 
-type DataReceiveHandler func(uint8, *UDPPacket, *PacketLayers, Packet83Subpacket)
+type DataReceiveHandler func(uint8, *PacketLayers, Packet83Subpacket)
+
 func (m *DataPacketHandlerMap) Bind(packetType uint8, handler DataReceiveHandler) int {
 	m.m[packetType] = append(m.m[packetType], handler)
 	return len(m.m[packetType]) - 1
@@ -55,18 +57,18 @@ func (m *DataPacketHandlerMap) Bind(packetType uint8, handler DataReceiveHandler
 func (m *DataPacketHandlerMap) Unbind(packetType uint8, index int) {
 	m.m[packetType] = append(m.m[packetType][:index], m.m[packetType][index+1:]...)
 }
-func (m *DataPacketHandlerMap) Fire(packetType uint8, packet *UDPPacket, layers *PacketLayers, subpacket Packet83Subpacket) {
+func (m *DataPacketHandlerMap) Fire(packetType uint8, layers *PacketLayers, subpacket Packet83Subpacket) {
 	for _, handler := range m.m[packetType] {
-		handler(packetType, packet, layers, subpacket)
+		handler(packetType, layers, subpacket)
 	}
 }
-func NewDataHandlerMap() (*DataPacketHandlerMap) {
+func NewDataHandlerMap() *DataPacketHandlerMap {
 	return &DataPacketHandlerMap{map[uint8][]DataReceiveHandler{}}
 }
 
 type NewInstanceHandler func(*rbxfile.Instance)
 type newInstanceHandlerMapKey struct {
-	key *InstancePath
+	key     *InstancePath
 	handler NewInstanceHandler
 }
 
@@ -76,7 +78,7 @@ type NewInstanceHandlerMap struct {
 
 func (m *NewInstanceHandlerMap) Bind(packetType *InstancePath, handler NewInstanceHandler) int {
 	m.handlers = append(m.handlers, newInstanceHandlerMapKey{
-		key: packetType,
+		key:     packetType,
 		handler: handler,
 	})
 
@@ -95,7 +97,7 @@ func (m *NewInstanceHandlerMap) Fire(instance *rbxfile.Instance) {
 		}
 	}
 }
-func NewNewInstanceHandlerMap() (*NewInstanceHandlerMap) {
+func NewNewInstanceHandlerMap() *NewInstanceHandlerMap {
 	return &NewInstanceHandlerMap{}
 }
 
@@ -103,6 +105,7 @@ func NewNewInstanceHandlerMap() (*NewInstanceHandlerMap) {
 type InstancePath struct {
 	p []string
 }
+
 // Creates an instance path from an instance
 func NewInstancePath(instance *rbxfile.Instance) *InstancePath {
 	path := []string{instance.Name()}
@@ -117,10 +120,12 @@ func NewInstancePath(instance *rbxfile.Instance) *InstancePath {
 
 	return &InstancePath{path}
 }
+
 // Returns a string representation where the names are joined with dots
 func (path *InstancePath) String() string {
 	return strings.Join(path.p, ".")
 }
+
 // Checks if the path is the same as an Instance's
 func (path *InstancePath) Matches(instance *rbxfile.Instance) bool {
 	index := len(path.p) - 1
@@ -158,9 +163,9 @@ func (path *InstancePath) Matches(instance *rbxfile.Instance) bool {
 // Handler that receives events
 type EventHandler func(event *ReplicationEvent)
 type eventHandlerMapKey struct {
-	instKey *rbxfile.Instance
+	instKey  *rbxfile.Instance
 	eventKey string
-	handler EventHandler
+	handler  EventHandler
 }
 
 type EventHandlerMap struct {
@@ -169,9 +174,9 @@ type EventHandlerMap struct {
 
 func (m *EventHandlerMap) Bind(packetType *rbxfile.Instance, event string, handler EventHandler) int {
 	m.handlers = append(m.handlers, eventHandlerMapKey{
-		instKey: packetType,
+		instKey:  packetType,
 		eventKey: event,
-		handler: handler,
+		handler:  handler,
 	})
 
 	addedIndex := len(m.handlers) - 1

@@ -4,10 +4,10 @@ import "github.com/therecipe/qt/widgets"
 import "github.com/therecipe/qt/gui"
 import "github.com/Gskartwii/roblox-dissector/peer"
 
-func ShowPacket86(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
+func ShowPacket86(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) {
 	MainLayer := layers.Main.(*peer.Packet86Layer)
 
-	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
+	layerLayout := NewBasicPacketViewer(packetType, context, layers)
 
 	labelForSubpackets := NewQLabelF("Touch replication (%d entries):", len(MainLayer.SubPackets))
 	layerLayout.AddWidget(labelForSubpackets, 0, 0)

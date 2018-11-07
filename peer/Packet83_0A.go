@@ -18,7 +18,7 @@ type Packet83_0A struct {
 func (thisBitstream *extendedReader) DecodePacket83_0A(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
 	var err error
 	layer := &Packet83_0A{}
-	
+
 	referent, err := thisBitstream.readObject(reader.Caches())
 	if err != nil {
 		return layer, err
@@ -88,6 +88,6 @@ func (layer *Packet83_0A) Serialize(writer PacketWriter, stream *extendedWriter)
 func (Packet83_0A) Type() uint8 {
 	return 0xA
 }
-func (Packet83_06) TypeString() string {
+func (Packet83_0A) TypeString() string {
 	return "ID_REPLIC_CFRAME_ACK"
 }

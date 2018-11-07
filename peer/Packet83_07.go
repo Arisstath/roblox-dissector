@@ -46,8 +46,8 @@ func (thisBitstream *extendedReader) DecodePacket83_07(reader PacketReader, laye
 
 	schema := context.StaticSchema.Events[eventIDx]
 	layer.EventName = schema.Name
-	packet.Logger.Println("Decoding event", layer.EventName)
-	layer.Event, err = schema.Decode(reader, thisBitstream)
+	layers.Root.Logger.Println("Decoding event", layer.EventName)
+	layer.Event, err = schema.Decode(reader, thisBitstream, layers)
 	if err != nil {
 		return layer, err
 	}

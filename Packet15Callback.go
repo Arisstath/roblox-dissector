@@ -21,7 +21,7 @@ var disconnectionReasons = [...]string{
 	"Disconnected from game, possibly due to game joined from another device",
 }
 
-func ShowPacket15(packetType byte, packet *peer.UDPPacket, context *peer.CommunicationContext, layers *peer.PacketLayers) {
+func ShowPacket15(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) {
 	MainLayer := layers.Main.(*peer.Packet15Layer)
 
 	var reason string
@@ -31,6 +31,6 @@ func ShowPacket15(packetType byte, packet *peer.UDPPacket, context *peer.Communi
 		reason = disconnectionReasons[MainLayer.Reason]
 	}
 
-	layerLayout := NewBasicPacketViewer(packetType, packet, context, layers)
+	layerLayout := NewBasicPacketViewer(packetType, context, layers)
 	layerLayout.AddWidget(NewQLabelF("Disconnection reason: %s", reason), 0, 0)
 }

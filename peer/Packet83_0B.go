@@ -41,7 +41,7 @@ func (thisBitstream *extendedReader) DecodePacket83_0B(reader PacketReader, laye
 
 	var i uint32
 	for i = 0; i < arrayLen; i++ {
-		layer.Instances[i], err = decodeReplicationInstance(reader, &JoinSerializeReader{zstdStream})
+		layer.Instances[i], err = decodeReplicationInstance(reader, &JoinSerializeReader{zstdStream}, layers)
 		if err != nil {
 			return layer, err
 		}

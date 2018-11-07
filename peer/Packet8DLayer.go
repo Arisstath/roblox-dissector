@@ -30,7 +30,7 @@ func NewPacket8DLayer() *Packet8DLayer {
 
 func (thisBitstream *extendedReader) DecodePacket8DLayer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket8DLayer()
-	
+
 	context := reader.Context()
 
 	referent, err := thisBitstream.readObject(reader.Caches())
@@ -45,13 +45,11 @@ func (thisBitstream *extendedReader) DecodePacket8DLayer(reader PacketReader, la
 		return layer, err
 	}
 
-	packet.Logger.Printf("Reading cluster for terrain: %s\n", layer.Instance.Name())
+	layers.Root.Logger.Printf("Reading cluster for terrain: %s\n", layer.Instance.Name())
 	zstdStream, err := thisBitstream.RegionToZStdStream()
 	if err != nil {
 		return layer, err
 	}
-
-	newPacket := &UDPPacket{Logger: packet.Logger, stream: zstdStream, Source: packet.Source, Destination: packet.Destination, logBuffer: packet.logBuffer}
 
 	header, err := zstdStream.readUint8()
 	for err == nil {
@@ -124,7 +122,7 @@ func (thisBitstream *extendedReader) DecodePacket8DLayer(reader PacketReader, la
 			return layer, err
 		}
 		if validCheck != 0 {
-			packet.Logger.Println("valid check failed! trying to continue")
+			layers.Root.Logger.Println("valid check failed! trying to continue")
 			continue
 		}
 
@@ -170,13 +168,13 @@ func (thisBitstream *extendedReader) DecodePacket8DLayer(reader PacketReader, la
 				Occupancy: occupancy,
 				Material:  thisMaterial,
 			})
-			newPacket.Logger.Printf("Read cell with head:%d, material:%d, occ:%d, count:%d\n", cellHeader, thisMaterial, occupancy, count)
+			layers.Root.Logger.Printf("Read cell with head:%d, material:%d, occ:%d, count:%d\n", cellHeader, thisMaterial, occupancy, count)
 		}
 		header, err = zstdStream.readUint8()
 		layer.Chunks = append(layer.Chunks, subpacket)
 	}
 	if err == io.EOF { // eof is normal, marks end of packet here
-		newPacket.Logger.Println("Normal EOF when parsing")
+		layers.Root.Logger.Println("Normal EOF when parsing")
 		return layer, nil
 	}
 

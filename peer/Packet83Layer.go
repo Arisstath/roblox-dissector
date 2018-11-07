@@ -30,20 +30,20 @@ var Packet83Subpackets map[uint8]string = map[uint8]string{
 	0x12: "ID_REPLIC_HASH",
 }
 
-var Packet83Decoders = map[uint8]func(*extendedReader, PacketReader, *PacketLayers){
-	0x01: (*extendedReader).DecodePacket01Layer,
-	0x02: (*extendedReader).DecodePacket02Layer,
-	0x03: (*extendedReader).DecodePacket03Layer,
-	0x04: (*extendedReader).DecodePacket04Layer,
-	0x05: (*extendedReader).DecodePacket05Layer,
-	0x06: (*extendedReader).DecodePacket06Layer,
-	0x07: (*extendedReader).DecodePacket07Layer,
-	0x09: (*extendedReader).DecodePacket09Layer,
-	0x0A: (*extendedReader).DecodePacket0ALayer,
-	0x0B: (*extendedReader).DecodePacket0BLayer,
-	0x10: (*extendedReader).DecodePacket10Layer,
-	0x11: (*extendedReader).DecodePacket11Layer,
-	0x12: (*extendedReader).DecodePacket12Layer,
+var Packet83Decoders = map[uint8](func(*extendedReader, PacketReader, *PacketLayers) (Packet83Subpacket, error)){
+	0x01: (*extendedReader).DecodePacket83_01,
+	0x02: (*extendedReader).DecodePacket83_02,
+	0x03: (*extendedReader).DecodePacket83_03,
+	0x04: (*extendedReader).DecodePacket83_04,
+	0x05: (*extendedReader).DecodePacket83_05,
+	0x06: (*extendedReader).DecodePacket83_06,
+	0x07: (*extendedReader).DecodePacket83_07,
+	0x09: (*extendedReader).DecodePacket83_09,
+	0x0A: (*extendedReader).DecodePacket83_0A,
+	0x0B: (*extendedReader).DecodePacket83_0B,
+	0x10: (*extendedReader).DecodePacket83_10,
+	0x11: (*extendedReader).DecodePacket83_11,
+	0x12: (*extendedReader).DecodePacket83_12,
 }
 
 // A subpacket contained within a 0x83 (ID_DATA) packet

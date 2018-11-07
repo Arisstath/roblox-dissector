@@ -5,6 +5,7 @@ import (
 
 	"github.com/Gskartwii/roblox-dissector/peer"
 	"github.com/google/gopacket"
+	"github.com/google/gopacket/layers"
 )
 
 const DEBUG bool = false
@@ -51,7 +52,7 @@ var PacketNames map[byte]string = map[byte]string{
 	0x97: "ID_ROBLOX_NEW_SCHEMA",
 }
 
-type ActivationCallback func(byte, *peer.UDPPacket, *peer.CommunicationContext, *peer.PacketLayers)
+type ActivationCallback func(byte, *peer.CommunicationContext, *peer.PacketLayers)
 
 var ActivationCallbacks map[byte]ActivationCallback = map[byte]ActivationCallback{
 	0x05: ShowPacket05,
@@ -80,14 +81,14 @@ var ActivationCallbacks map[byte]ActivationCallback = map[byte]ActivationCallbac
 
 func SrcAndDestFromGoPacket(packet gopacket.Packet) (*net.UDPAddr, *net.UDPAddr) {
 	return &net.UDPAddr{
-		packet.Layer(layers.LayerTypeIPv4).(*layers.IPv4).SrcIP,
-		int(packet.Layer(layers.LayerTypeUDP).(*layers.UDP).SrcPort),
-		"udp"
-	}, &net.UDPAddr{
-		packet.Layer(layers.LayerTypeIPv4).(*layers.IPv4).DstIP,
-		int(packet.Layer(layers.LayerTypeUDP).(*layers.UDP).DstPort),
-		"udp"
-	}
+			IP:   packet.Layer(layers.LayerTypeIPv4).(*layers.IPv4).SrcIP,
+			Port: int(packet.Layer(layers.LayerTypeUDP).(*layers.UDP).SrcPort),
+			Zone: "udp",
+		}, &net.UDPAddr{
+			IP:   packet.Layer(layers.LayerTypeIPv4).(*layers.IPv4).DstIP,
+			Port: int(packet.Layer(layers.LayerTypeUDP).(*layers.UDP).DstPort),
+			Zone: "udp",
+		}
 }
 
 func main() {

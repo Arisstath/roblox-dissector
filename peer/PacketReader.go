@@ -94,8 +94,8 @@ func NewPacketReader() *DefaultPacketReader {
 
 func (reader *DefaultPacketReader) readSimple(stream *extendedReader, packetType uint8, layers *PacketLayers) {
 	var err error
-	packet.RootLayer.logBuffer = new(strings.Builder)
-	packet.RootLayer.Logger = log.New(packet.logBuffer, "", log.Lmicroseconds|log.Ltime)
+	layers.Root.logBuffer = new(strings.Builder)
+	layers.Root.Logger = log.New(layers.Root.logBuffer, "", log.Lmicroseconds|log.Ltime)
 	decoder := packetDecoders[packetType]
 	_, skip := reader.SkipParsing[packetType]
 	if decoder != nil && !skip {
@@ -157,21 +157,22 @@ func (reader *DefaultPacketReader) readOrdered(layers *PacketLayers) {
 
 		// fullreliablehandler, regardless of whether the parsing succeeded or not!
 		// this is because readGeneric will have set the Error and Main layers accordingly
-		reader.FullReliableHandler(layers.Reliability.SplitBuffer.PacketType, newPacket, layers)
+		reader.FullReliableHandler(layers.Reliability.SplitBuffer.PacketType, layers)
 	}
 }
 
-func (reader *DefaultPacketReader) readReliable(stream *extendedReader, layers *PacketLayers) {
-	packet.stream = layers.RakNet.payload
+func (reader *DefaultPacketReader) readReliable(layers *PacketLayers) {
+	stream := layers.RakNet.payload
 	reliabilityLayer, err := stream.DecodeReliabilityLayer(reader, layers)
 	if err != nil {
-		reader.ErrorHandler(errors.New("Failed to decode reliable packet: "+err.Error()), packet)
+		layers.Error = errors.New("Failed to decode reliable packet: " + err.Error())
+		reader.ReliabilityLayerHandler(layers)
 		return
 	}
 
 	queues := reader.queues
 
-	reader.ReliabilityLayerHandler(packet, reliabilityLayer, layers.RakNet)
+	reader.ReliabilityLayerHandler(layers)
 	for _, subPacket := range reliabilityLayer.Packets {
 		reliablePacketLayers := &PacketLayers{RakNet: layers.RakNet, Reliability: subPacket}
 
@@ -180,21 +181,21 @@ func (reader *DefaultPacketReader) readReliable(stream *extendedReader, layers *
 		if err != nil {
 			subPacket.SplitBuffer.Logger.Println("error while handling split:", err.Error())
 			layers.Error = fmt.Errorf("Error while handling split packet: %s", err.Error())
-			reader.ReliableHandler(buffer.PacketType, packet, reliablePacketLayers)
+			reader.ReliableHandler(buffer.PacketType, layers)
 			return
 		}
 
-		reader.ReliableHandler(buffer.PacketType, packet, reliablePacketLayers)
+		reader.ReliableHandler(buffer.PacketType, layers)
 		queues.add(reliablePacketLayers)
 		if reliablePacketLayers.Reliability.Reliability == 0 {
-			reader.readOrdered(reliablePacketLayers, packet)
+			reader.readOrdered(layers)
 			queues.remove(reliablePacketLayers)
 			continue
 		}
 
 		reliablePacketLayers = queues.next(subPacket.OrderingChannel)
 		for reliablePacketLayers != nil {
-			reader.readOrdered(reliablePacketLayers, packet)
+			reader.readOrdered(layers)
 			queues.remove(reliablePacketLayers)
 			reliablePacketLayers = queues.next(subPacket.OrderingChannel)
 		}
@@ -203,8 +204,6 @@ func (reader *DefaultPacketReader) readReliable(stream *extendedReader, layers *
 
 // ReadPacket reads a single packet and invokes all according handler functions
 func (reader *DefaultPacketReader) ReadPacket(payload []byte, layers *PacketLayers) {
-	context := reader.ValContext
-
 	stream := bufferToStream(payload)
 	rakNetLayer, err := stream.DecodeRakNetLayer(reader, payload[0], layers)
 	if err != nil {
@@ -216,13 +215,13 @@ func (reader *DefaultPacketReader) ReadPacket(payload []byte, layers *PacketLaye
 	layers.RakNet = rakNetLayer
 	if rakNetLayer.IsSimple {
 		packetType := rakNetLayer.SimpleLayerID
-		reader.readSimple(packetType, layers, packet)
+		reader.readSimple(stream, packetType, layers)
 	} else if !rakNetLayer.IsValid {
 		layers.Error = fmt.Errorf("Sent invalid packet (packet header %x)", payload[0])
 		reader.SimpleHandler(payload[0], layers)
 	} else if rakNetLayer.IsACK || rakNetLayer.IsNAK {
 		reader.ACKHandler(layers)
 	} else {
-		reader.readReliable(stream, layers)
+		reader.readReliable(layers)
 	}
 }

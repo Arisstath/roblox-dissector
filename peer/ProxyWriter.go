@@ -164,7 +164,7 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 					// patch id response
 					println("patching id resp")
 					pmcPacket := subpacket.(*Packet83_09)
-					if pmcPacket.Type == 6 {
+					if pmcPacket.SubpacketType == 6 {
 						pmcSubpacket := pmcPacket.Subpacket.(*Packet83_09_06)
 						pmcSubpacket.Int2 = writer.SecuritySettings.IdChallengeResponse - pmcSubpacket.Int1
 						modifiedSubpackets = append(modifiedSubpackets, subpacket)
@@ -242,27 +242,21 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 		}
 	}
 
-	clientHalf.ErrorHandler = func(err error, packet *UDPPacket) {
+	clientHalf.ErrorHandler = func(err error) {
 		println("clienthalf err:", err.Error())
-		if packet != nil && packet.Logger != nil {
-			println("log for this client error:", packet.GetLog())
-		}
 	}
-	serverHalf.ErrorHandler = func(err error, packet *UDPPacket) {
+	serverHalf.ErrorHandler = func(err error) {
 		println("serverhalf err:", err.Error())
-		if packet != nil && packet.Logger != nil {
-			println("log for this server error:", packet.GetLog())
-		}
 	}
 
-	clientHalf.ACKHandler = func(packet *UDPPacket, layer *RakNetLayer) {
+	clientHalf.ACKHandler = func(layers *PacketLayers) {
 		/*drop, newacks := serverHalf.rotateACKs(layer.ACKs)
 		if !drop {
 			layer.ACKs = newacks
 			serverHalf.Writer.WriteRakNet(layer, writer.ServerAddr)
 		}*/
 	}
-	serverHalf.ACKHandler = func(packet *UDPPacket, layer *RakNetLayer) {
+	serverHalf.ACKHandler = func(layers *PacketLayers) {
 		/*drop, newacks := clientHalf.rotateACKs(layer.ACKs)
 		if !drop {
 			layer.ACKs = newacks

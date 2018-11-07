@@ -73,7 +73,7 @@ func (reader *DefaultPacketReader) addSplitPacket(layers *PacketLayers) *SplitPa
 
 	if !packet.HasSplitPacket {
 		buffer := newSplitPacketBuffer(packet, reader.ValContext)
-		buffer.addPacket(packet, rakNetPacket, 0)
+		buffer.addPacket(packet, layers.RakNet, 0)
 
 		return buffer
 	}
@@ -86,11 +86,11 @@ func (reader *DefaultPacketReader) addSplitPacket(layers *PacketLayers) *SplitPa
 	} else if reader.splitPackets[splitPacketId] == nil {
 		buffer = newSplitPacketBuffer(packet, reader.ValContext)
 
-		context.splitPackets[splitPacketId] = buffer
+		reader.splitPackets[splitPacketId] = buffer
 	} else {
-		buffer = context.splitPackets[splitPacketId]
+		buffer = reader.splitPackets[splitPacketId]
 	}
-	buffer.addPacket(packet, rakNetPacket, splitPacketIndex)
+	buffer.addPacket(packet, layers.RakNet, splitPacketIndex)
 	packet.SplitBuffer = buffer
 
 	return buffer
@@ -98,9 +98,7 @@ func (reader *DefaultPacketReader) addSplitPacket(layers *PacketLayers) *SplitPa
 
 func (reader *DefaultPacketReader) handleSplitPacket(layers *PacketLayers) (*SplitPacketBuffer, error) {
 	reliablePacket := layers.Reliability
-	rakNetPacket := layers.RakNet
-
-	packetBuffer := reader.splitPackets.addSplitPacket(reader, layers)
+	packetBuffer := reader.addSplitPacket(layers)
 	expectedPacket := packetBuffer.NextExpectedPacket
 
 	packetBuffer.RealLength += uint32(len(reliablePacket.SelfData))
@@ -128,7 +126,8 @@ func (reader *DefaultPacketReader) handleSplitPacket(layers *PacketLayers) (*Spl
 		packetBuffer.HasPacketType = true
 	}
 
-	packet.Logger = packetBuffer.Logger
+	layers.Root.Logger = packetBuffer.Logger
+	layers.Root.logBuffer = packetBuffer.logBuffer
 
 	return packetBuffer, nil
 }
