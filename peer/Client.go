@@ -158,14 +158,13 @@ func (myClient *CustomClient) GetLocalPlayer() *rbxfile.Instance { // may yield!
 }
 
 // call this asynchronously! it will wait a lot
-func (myClient *CustomClient) setupChat() {
+func (myClient *CustomClient) setupChat() error {
 	getInitDataRequest := <-myClient.WaitForInstance("ReplicatedStorage", "DefaultChatSystemChatEvents", "GetInitDataRequest")
 	println("got req")
 
 	_, err := myClient.InvokeRemote(getInitDataRequest, []rbxfile.Value{})
 	if err != "" {
-		myClient.ErrorHandler(errors.New(err))
-		return
+		return errors.New(err)
 	}
 	// unimportant
 	//myClient.Logger.Printf("chat init data 0: %s\n", initData.String())
@@ -195,6 +194,7 @@ func (myClient *CustomClient) setupChat() {
 			myClient.Logger.Printf("SYSTEM: %s has left the game.\n", player.Name())
 		}
 	}
+	return nil
 }
 
 func (myClient *CustomClient) SendChat(message string, toPlayer string, channel string) {
@@ -380,43 +380,28 @@ func (myClient *CustomClient) ConnectGuest(placeId uint32, genderId uint8) error
 }
 
 func (myClient *CustomClient) defaultAckHandler(layers *PacketLayers) {
-	if layers.Error != nil {
-		myClient.ErrorHandler(layers.Error)
-	}
 	if myClient.ACKHandler != nil {
 		myClient.ACKHandler(layers)
 	}
 }
 func (myClient *CustomClient) defaultReliabilityLayerHandler(layers *PacketLayers) {
-	if layers.Error != nil {
-		myClient.ErrorHandler(layers.Error)
-	}
 	myClient.mustACK = append(myClient.mustACK, int(layers.RakNet.DatagramNumber))
 	if myClient.ReliabilityLayerHandler != nil {
 		myClient.ReliabilityLayerHandler(layers)
 	}
 }
 func (myClient *CustomClient) defaultSimpleHandler(packetType byte, layers *PacketLayers) {
-	if layers.Error != nil {
-		myClient.ErrorHandler(layers.Error)
-	}
 	if myClient.SimpleHandler != nil {
 		myClient.SimpleHandler(packetType, layers)
 	}
 	myClient.handlers.Fire(packetType, layers)
 }
 func (myClient *CustomClient) defaultReliableHandler(packetType byte, layers *PacketLayers) {
-	if layers.Error != nil {
-		myClient.ErrorHandler(layers.Error)
-	}
 	if myClient.ReliableHandler != nil {
 		myClient.ReliableHandler(packetType, layers)
 	}
 }
 func (myClient *CustomClient) defaultFullReliableHandler(packetType byte, layers *PacketLayers) {
-	if layers.Error != nil {
-		myClient.ErrorHandler(layers.Error)
-	}
 	if myClient.FullReliableHandler != nil {
 		myClient.FullReliableHandler(packetType, layers)
 	}
@@ -438,12 +423,6 @@ func (myClient *CustomClient) createReader() {
 
 func (myClient *CustomClient) createWriter() {
 	packetWriter := myClient.Writer
-	packetWriter.ErrorHandler = func(err error) {
-		myClient.Logger.Println(err.Error())
-		if myClient.ErrorHandler != nil {
-			myClient.ErrorHandler(err)
-		}
-	}
 	packetWriter.OutputHandler = func(payload []byte) {
 		num, err := myClient.Connection.Write(payload)
 		if err != nil {
@@ -515,13 +494,10 @@ func (myClient *CustomClient) mainReadLoop() error {
 	}
 }
 
-func (myClient *CustomClient) disconnectInternal() {
+func (myClient *CustomClient) disconnectInternal() error {
 	myClient.ackTicker.Stop()
 	myClient.dataPingTicker.Stop()
-	err := myClient.Connection.Close()
-	if err != nil {
-		myClient.ErrorHandler(err)
-	}
+	return myClient.Connection.Close()
 }
 
 func (myClient *CustomClient) Disconnect() {

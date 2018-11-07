@@ -26,6 +26,7 @@ var packetDecoders = map[byte]decoderFunc{
 	0x83: (*extendedReader).DecodePacket83Layer,
 	0x85: (*extendedReader).DecodePacket85Layer,
 	0x86: (*extendedReader).DecodePacket86Layer,
+	0x8A: (*extendedReader).DecodePacket8ALayer,
 	0x8D: (*extendedReader).DecodePacket8DLayer,
 	0x8F: (*extendedReader).DecodePacket8FLayer,
 	0x90: (*extendedReader).DecodePacket90Layer,
@@ -113,6 +114,7 @@ func (reader *DefaultPacketReader) readGeneric(stream *extendedReader, packetTyp
 	if packetType == 0x1B { // ID_TIMESTAMP
 		tsLayer, err := packetDecoders[0x1B](stream, reader, layers)
 		if err != nil {
+			println("timestamp fail")
 			layers.Reliability.SplitBuffer.Logger.Println("error:", err.Error())
 			layers.Error = fmt.Errorf("Failed to decode timestamped packet: %s", err.Error())
 			return
@@ -120,6 +122,7 @@ func (reader *DefaultPacketReader) readGeneric(stream *extendedReader, packetTyp
 		layers.Timestamp = tsLayer.(*Packet1BLayer)
 		packetType, err = stream.ReadByte()
 		if err != nil {
+			println("timestamp type fail")
 			layers.Reliability.SplitBuffer.Logger.Println("error:", err.Error())
 			layers.Error = fmt.Errorf("Failed to decode timestamped packet: %s", err.Error())
 			return
@@ -129,11 +132,12 @@ func (reader *DefaultPacketReader) readGeneric(stream *extendedReader, packetTyp
 	}
 	decoder := packetDecoders[layers.Reliability.SplitBuffer.PacketType]
 	_, skip := reader.SkipParsing[layers.Reliability.SplitBuffer.PacketType]
-	// TOD: Should we really void partial deserializations?
+	// TODO: Should we really void partial deserializations?
 	if decoder != nil && !skip {
 		layers.Main, err = decoder(stream, reader, layers)
 
 		if err != nil {
+			println("parser error, setting main to nil", err.Error())
 			layers.Main = nil
 			layers.Reliability.SplitBuffer.Logger.Println("error:", err.Error())
 			layers.Error = fmt.Errorf("Failed to decode reliable packet %02X: %s", layers.Reliability.SplitBuffer.PacketType, err.Error())
@@ -149,6 +153,7 @@ func (reader *DefaultPacketReader) readOrdered(layers *PacketLayers) {
 		var packetType uint8
 		packetType, err = buffer.dataReader.ReadByte()
 		if err != nil {
+			println("ouch, my packetType", err.Error())
 			subPacket.SplitBuffer.Logger.Println("error:", err.Error())
 			layers.Error = fmt.Errorf("Failed to decode reliablePacket type: %s", packetType, err.Error())
 		} else {
@@ -174,28 +179,31 @@ func (reader *DefaultPacketReader) readReliable(layers *PacketLayers) {
 
 	reader.ReliabilityLayerHandler(layers)
 	for _, subPacket := range reliabilityLayer.Packets {
-		reliablePacketLayers := &PacketLayers{RakNet: layers.RakNet, Reliability: subPacket}
+		reliablePacketLayers := &PacketLayers{Root: layers.Root, RakNet: layers.RakNet, Reliability: subPacket}
 
-		buffer, err := reader.handleSplitPacket(layers)
+		buffer, err := reader.handleSplitPacket(reliablePacketLayers)
 		subPacket.SplitBuffer = buffer
 		if err != nil {
+			println("error while handling split")
 			subPacket.SplitBuffer.Logger.Println("error while handling split:", err.Error())
-			layers.Error = fmt.Errorf("Error while handling split packet: %s", err.Error())
-			reader.ReliableHandler(buffer.PacketType, layers)
+			reliablePacketLayers.Error = fmt.Errorf("Error while handling split packet: %s", err.Error())
+			reader.ReliableHandler(buffer.PacketType, reliablePacketLayers)
 			return
 		}
 
-		reader.ReliableHandler(buffer.PacketType, layers)
+		reader.ReliableHandler(buffer.PacketType, reliablePacketLayers)
 		queues.add(reliablePacketLayers)
 		if reliablePacketLayers.Reliability.Reliability == 0 {
-			reader.readOrdered(layers)
+			reader.readOrdered(reliablePacketLayers)
 			queues.remove(reliablePacketLayers)
+			// We can skip the code below: unreliable packets can't have released
+			// any pending packets that are on the queue
 			continue
 		}
 
 		reliablePacketLayers = queues.next(subPacket.OrderingChannel)
 		for reliablePacketLayers != nil {
-			reader.readOrdered(layers)
+			reader.readOrdered(reliablePacketLayers)
 			queues.remove(reliablePacketLayers)
 			reliablePacketLayers = queues.next(subPacket.OrderingChannel)
 		}

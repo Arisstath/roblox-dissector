@@ -11,8 +11,6 @@ type ConnectedPeer struct {
 	Reader *DefaultPacketReader
 	// Writer is a PacketWriter writing packets to the peer.
 	Writer *DefaultPacketWriter
-	// All errors are dumped to ErrorHandler.
-	ErrorHandler ErrorHandler
 	// OutputHandler sends the data for packets to be written to the peer.
 	// TODO: include all layer data in this packet as well?
 	OutputHandler func([]byte)
@@ -81,9 +79,6 @@ func NewConnectedPeer(context *CommunicationContext) *ConnectedPeer {
 	proxy := &ConnectedPeer{}
 
 	writer := NewPacketWriter()
-	writer.ErrorHandler = func(err error) {
-		proxy.ErrorHandler(err)
-	}
 	writer.OutputHandler = func(payload []byte) {
 		proxy.OutputHandler(payload)
 	}
@@ -121,12 +116,12 @@ func (peer *ConnectedPeer) ReadPacket(payload []byte, layers *PacketLayers) {
 }
 
 // TODO: Perhaps different error handling for writing?
-func (peer *ConnectedPeer) WriteSimple(packet RakNetPacket) {
-	peer.Writer.WriteSimple(packet)
+func (peer *ConnectedPeer) WriteSimple(packet RakNetPacket) error {
+	return peer.Writer.WriteSimple(packet)
 }
-func (peer *ConnectedPeer) WritePacket(packet RakNetPacket) []byte {
+func (peer *ConnectedPeer) WritePacket(packet RakNetPacket) ([]byte, error) {
 	return peer.Writer.WriteGeneric(packet, RELIABLE_ORD)
 }
-func (peer *ConnectedPeer) WriteTimestamped(timestamp *Packet1BLayer, packet RakNetPacket) {
-	peer.Writer.WriteTimestamped(timestamp, packet, UNRELIABLE)
+func (peer *ConnectedPeer) WriteTimestamped(timestamp *Packet1BLayer, packet RakNetPacket) ([]byte, error) {
+	return peer.Writer.WriteTimestamped(timestamp, packet, UNRELIABLE)
 }

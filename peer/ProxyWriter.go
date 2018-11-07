@@ -125,6 +125,7 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 	clientHalf.FullReliableHandler = func(packetType byte, layers *PacketLayers) {
 		// FIXME: No streaming support
 		//println("client fullreliable", packetType)
+		var err error
 		if packetType == 0x15 {
 			println("Disconnected by client!!")
 			writer.CancelFunc()
@@ -134,16 +135,18 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 			println("client error: ", layers.Error.Error())
 			return
 		}
-		var overrideResult []byte
 		if layers.Main == nil || (packetType != 0x83 && packetType != 0x8A && packetType != 0x85 && packetType != 0x86) {
 			relPacket := layers.Reliability
 			// packets that fail to parse: pass through untouched
 			// FIXME: this may prove problematic
 			//println("client sent reliable, serverHalf writing", packetType, packet.Source.String(), packet.Destination.String())
-			serverHalf.Writer.WriteReliablePacket(
+			err = serverHalf.Writer.WriteReliablePacket(
 				relPacket.SplitBuffer.data,
 				relPacket,
 			)
+			if err != nil {
+				println(err.Error())
+			}
 			return
 		}
 		switch packetType {
@@ -191,7 +194,7 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 			}
 			mainLayer.SubPackets = modifiedSubpackets
 
-			overrideResult = serverHalf.WritePacket(mainLayer)
+			_, err = serverHalf.WritePacket(mainLayer)
 		case 0x8A:
 			mainLayer := layers.Main.(*Packet8ALayer)
 			mainLayer.DataModelHash = writer.SecuritySettings.DataModelHash
@@ -199,18 +202,20 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 			mainLayer.Platform = writer.SecuritySettings.OsPlatform
 			mainLayer.GoldenHash = writer.SecuritySettings.GoldenHash
 
-			overrideResult = serverHalf.WritePacket(mainLayer)
+			_, err = serverHalf.WritePacket(mainLayer)
 		case 0x85:
 			mainLayer := layers.Main.(*Packet85Layer)
-			serverHalf.WriteTimestamped(layers.Timestamp, mainLayer)
+			_, err = serverHalf.WriteTimestamped(layers.Timestamp, mainLayer)
 		case 0x86:
 			mainLayer := layers.Main.(*Packet86Layer)
-			overrideResult = serverHalf.WritePacket(mainLayer)
+			_, err = serverHalf.WritePacket(mainLayer)
 		case 0x87:
 			mainLayer := layers.Main.(*Packet87Layer)
-			overrideResult = serverHalf.WritePacket(mainLayer)
+			_, err = serverHalf.WritePacket(mainLayer)
 		}
-		_ = overrideResult
+		if err != nil {
+			println("client error:", err.Error())
+		}
 	}
 	serverHalf.FullReliableHandler = func(packetType byte, layers *PacketLayers) {
 		if layers.Error != nil {
@@ -240,13 +245,6 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 			println("server error: ", layers.Error.Error())
 			return
 		}
-	}
-
-	clientHalf.ErrorHandler = func(err error) {
-		println("clienthalf err:", err.Error())
-	}
-	serverHalf.ErrorHandler = func(err error) {
-		println("serverhalf err:", err.Error())
 	}
 
 	clientHalf.ACKHandler = func(layers *PacketLayers) {

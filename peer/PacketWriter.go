@@ -22,9 +22,6 @@ type PacketWriter interface {
 // Pass packets in using WriteSimple/WriteGeneric/etc.
 // and bind to the given callbacks
 type DefaultPacketWriter struct {
-	// Any errors that are encountered are passed to ErrorHandler.
-	// TODO: Get rid of ErrorHandler, just _return_ errors when packets are written?
-	ErrorHandler func(error)
 	// OutputHandler sends the data for all packets to be written.
 	OutputHandler   func([]byte)
 	orderingIndex   uint32
@@ -53,43 +50,42 @@ func (writer *DefaultPacketWriter) Context() *CommunicationContext {
 
 // WriteSimple is used to write pre-connection packets (IDs 5-8). It doesn't use a
 // ReliabilityLayer.
-func (writer *DefaultPacketWriter) WriteSimple(packet RakNetPacket) {
+func (writer *DefaultPacketWriter) WriteSimple(packet RakNetPacket) error {
 	output := make([]byte, 0, 1492)
 	buffer := bytes.NewBuffer(output)
 	stream := &extendedWriter{bitstream.NewWriter(buffer)}
 	err := packet.Serialize(writer, stream)
 	if err != nil {
-		writer.ErrorHandler(err)
-		return
+		return err
 	}
 
 	stream.Flush(bitstream.Bit(false))
 	writer.OutputHandler(buffer.Bytes())
+	return nil
 }
 
 // WriteRakNet is used to write raw RakNet packets to the client. You aren't probably
 // going to need it.
-func (writer *DefaultPacketWriter) WriteRakNet(packet *RakNetLayer) {
+func (writer *DefaultPacketWriter) WriteRakNet(packet *RakNetLayer) error {
 	output := make([]byte, 0, 1492)
 	buffer := bytes.NewBuffer(output)
 	stream := &extendedWriter{bitstream.NewWriter(buffer)}
 	err := packet.Serialize(writer, stream)
 	if err != nil {
-		writer.ErrorHandler(err)
-		return
+		return err
 	}
 
 	stream.Flush(bitstream.Bit(false))
 	writer.OutputHandler(buffer.Bytes())
+	return nil
 }
-func (writer *DefaultPacketWriter) writeReliable(packet *ReliabilityLayer) {
+func (writer *DefaultPacketWriter) writeReliable(packet *ReliabilityLayer) error {
 	output := make([]byte, 0, 1492)
 	buffer := bytes.NewBuffer(output)
 	stream := &extendedWriter{bitstream.NewWriter(buffer)}
 	err := packet.Serialize(writer, stream)
 	if err != nil {
-		writer.ErrorHandler(err)
-		return
+		return err
 	}
 
 	stream.Flush(bitstream.Bit(false))
@@ -103,15 +99,15 @@ func (writer *DefaultPacketWriter) writeReliable(packet *ReliabilityLayer) {
 	writer.datagramNumber++
 
 	writer.WriteRakNet(raknet)
+	return nil
 }
-func (writer *DefaultPacketWriter) writeReliableWithDN(packet *ReliabilityLayer, dn uint32) {
+func (writer *DefaultPacketWriter) writeReliableWithDN(packet *ReliabilityLayer, dn uint32) error {
 	output := make([]byte, 0, 1492)
 	buffer := bytes.NewBuffer(output)
 	stream := &extendedWriter{bitstream.NewWriter(buffer)}
 	err := packet.Serialize(writer, stream)
 	if err != nil {
-		writer.ErrorHandler(err)
-		return
+		return err
 	}
 
 	stream.Flush(bitstream.Bit(false))
@@ -127,9 +123,10 @@ func (writer *DefaultPacketWriter) writeReliableWithDN(packet *ReliabilityLayer,
 	}
 
 	writer.WriteRakNet(raknet)
+	return nil
 }
 
-func (writer *DefaultPacketWriter) WriteReliablePacket(data []byte, packet *ReliablePacket) {
+func (writer *DefaultPacketWriter) WriteReliablePacket(data []byte, packet *ReliablePacket) error {
 	reliability := packet.Reliability
 	realLen := len(data)
 	estHeaderLength := 0x1C // UDP
@@ -158,7 +155,7 @@ func (writer *DefaultPacketWriter) WriteReliablePacket(data []byte, packet *Reli
 		packet.SelfData = data
 		packet.LengthInBits = uint16(realLen * 8)
 
-		writer.writeReliable(&ReliabilityLayer{[]*ReliablePacket{packet}})
+		return writer.writeReliable(&ReliabilityLayer{[]*ReliablePacket{packet}})
 	} else {
 		packet.HasSplitPacket = true
 		packet.SplitPacketID = writer.splitPacketID
@@ -170,7 +167,10 @@ func (writer *DefaultPacketWriter) WriteReliablePacket(data []byte, packet *Reli
 		requiredSplits := (realLen + splitBandwidth - 1) / splitBandwidth
 		packet.SplitPacketCount = uint32(requiredSplits)
 		packet.SelfData = data[:splitBandwidth]
-		writer.writeReliable(&ReliabilityLayer{[]*ReliablePacket{packet}})
+		err := writer.writeReliable(&ReliabilityLayer{[]*ReliablePacket{packet}})
+		if err != nil {
+			return err
+		}
 
 		for i := 1; i < requiredSplits; i++ {
 			packet.SplitPacketIndex = uint32(i)
@@ -180,24 +180,26 @@ func (writer *DefaultPacketWriter) WriteReliablePacket(data []byte, packet *Reli
 			}
 
 			packet.SelfData = data[splitBandwidth*i : min(uint(realLen), uint(splitBandwidth*(i+1)))]
-			writer.writeReliable(&ReliabilityLayer{[]*ReliablePacket{packet}})
+			err = writer.writeReliable(&ReliabilityLayer{[]*ReliablePacket{packet}})
+			if err != nil {
+				return err
+			}
 		}
 	}
+	return nil
 }
 
-func (writer *DefaultPacketWriter) WriteTimestamped(timestamp *Packet1BLayer, generic RakNetPacket, reliability uint32) []byte {
+func (writer *DefaultPacketWriter) WriteTimestamped(timestamp *Packet1BLayer, generic RakNetPacket, reliability uint32) ([]byte, error) {
 	output := make([]byte, 0, 1492)
 	buffer := bytes.NewBuffer(output) // Will allocate more if needed
 	stream := &extendedWriter{bitstream.NewWriter(buffer)}
 	err := timestamp.Serialize(writer, stream)
 	if err != nil {
-		writer.ErrorHandler(err)
-		return nil
+		return nil, err
 	}
 	err = generic.Serialize(writer, stream)
 	if err != nil {
-		writer.ErrorHandler(err)
-		return nil
+		return nil, err
 	}
 
 	stream.Flush(bitstream.Bit(false))
@@ -207,21 +209,20 @@ func (writer *DefaultPacketWriter) WriteTimestamped(timestamp *Packet1BLayer, ge
 		Reliability: reliability,
 	}
 
-	writer.WriteReliablePacket(result, packet)
+	err = writer.WriteReliablePacket(result, packet)
 
-	return result
+	return result, err
 }
 
 // WriteGeneric is used to write packets after the pre-connection. You want to use it
 // for most of your packets.
-func (writer *DefaultPacketWriter) WriteGeneric(generic RakNetPacket, reliability uint32) []byte {
+func (writer *DefaultPacketWriter) WriteGeneric(generic RakNetPacket, reliability uint32) ([]byte, error) {
 	output := make([]byte, 0, 1492)
 	buffer := bytes.NewBuffer(output) // Will allocate more if needed
 	stream := &extendedWriter{bitstream.NewWriter(buffer)}
 	err := generic.Serialize(writer, stream)
 	if err != nil {
-		writer.ErrorHandler(err)
-		return nil
+		return nil, err
 	}
 
 	stream.Flush(bitstream.Bit(false))
@@ -231,7 +232,7 @@ func (writer *DefaultPacketWriter) WriteGeneric(generic RakNetPacket, reliabilit
 		Reliability: reliability,
 	}
 
-	writer.WriteReliablePacket(result, packet)
+	err = writer.WriteReliablePacket(result, packet)
 
-	return result
+	return result, err
 }

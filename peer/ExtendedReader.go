@@ -614,7 +614,6 @@ func (b *extendedReader) readWithCache(cache Cache, readCallback cacheReadCallba
 	}
 
 	if result == nil {
-		println("cached read:", cacheIndex)
 		return "", CacheReadOOB
 	}
 
