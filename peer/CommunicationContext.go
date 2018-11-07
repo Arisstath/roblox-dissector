@@ -125,8 +125,8 @@ type Caches struct {
 }
 
 type CommunicationContext struct {
-	Server string
-	Client string
+	Server *net.UDPAddr
+	Client *net.UDPAddr
 
 	InstanceTopScope string
 
@@ -153,22 +153,9 @@ func NewCommunicationContext() *CommunicationContext {
 	}
 }
 
-func (c *CommunicationContext) SetServer(server string) {
-	c.Server = server
-}
-func (c *CommunicationContext) SetClient(client string) {
-	c.Client = client
-}
-func (c *CommunicationContext) GetClient() string {
-	return c.Client
-}
-func (c *CommunicationContext) GetServer() string {
-	return c.Server
-}
-
 func (c *CommunicationContext) IsClient(peer net.UDPAddr) bool {
-	return peer.String() == c.Client
+	return c.Client.Port == peer.Port && bytes.Compare(c.Client.IP, peer.IP)
 }
 func (c *CommunicationContext) IsServer(peer net.UDPAddr) bool {
-	return peer.String() == c.Server
+	return c.Server.Port == peer.Port && bytes.Compare(c.Server.IP, peer.IP)
 }

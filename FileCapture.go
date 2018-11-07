@@ -76,24 +76,30 @@ func captureJob(handle *pcap.Handle, useIPv4 bool, captureJobContext context.Con
 				//println("Ignoring 0 payload")
 				continue
 			}
-			if context.Client == "" && payload[0] != 5 {
+			src, dst := SrcAndDestFromGoPacket(packet)
+			layers := &peer.PacketLayers{
+				Root: RootLayer{
+					Source:      src,
+					Destination: dst,
+				},
+			}
+			if context.Client == nil && !peer.IsOfflineMessage(payload) {
 				//println("Ignoring non5")
 				continue
-			}
-			newPacket := peer.UDPPacketFromGoPacket(packet)
-			if newPacket == nil {
-				continue
-			}
-			if context.Client != "" && !context.IsClient(newPacket.Source) && !context.IsServer(newPacket.Source) {
+			} else if context.Client == nil {
+				if payload[0]%2 == 1 { // hack: detect packets 5 and 7
+					context.Client, context.Server = src, dst
+				} else {
+					context.Client, context.Server = dst, src
+				}
+			} else if context.Client != "" && !context.IsClient(src) && !context.IsServer(src) {
 				continue
 			}
 
-			if newPacket != nil {
-				if context.IsClient(newPacket.Source) {
-					clientPacketReader.ReadPacket(payload, newPacket)
-				} else {
-					serverPacketReader.ReadPacket(payload, newPacket)
-				}
+			if layers.Root.FromClient {
+				clientPacketReader.ReadPacket(payload, layers)
+			} else {
+				serverPacketReader.ReadPacket(payload, layers)
 			}
 		}
 	}

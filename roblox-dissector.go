@@ -1,6 +1,11 @@
 package main
 
-import "github.com/Gskartwii/roblox-dissector/peer"
+import (
+	"net"
+
+	"github.com/Gskartwii/roblox-dissector/peer"
+	"github.com/google/gopacket"
+)
 
 const DEBUG bool = false
 
@@ -71,6 +76,18 @@ var ActivationCallbacks map[byte]ActivationCallback = map[byte]ActivationCallbac
 	0x85: ShowPacket85,
 	0x86: ShowPacket86,
 	0x8A: ShowPacket8A,
+}
+
+func SrcAndDestFromGoPacket(packet gopacket.Packet) (*net.UDPAddr, *net.UDPAddr) {
+	return &net.UDPAddr{
+		packet.Layer(layers.LayerTypeIPv4).(*layers.IPv4).SrcIP,
+		int(packet.Layer(layers.LayerTypeUDP).(*layers.UDP).SrcPort),
+		"udp"
+	}, &net.UDPAddr{
+		packet.Layer(layers.LayerTypeIPv4).(*layers.IPv4).DstIP,
+		int(packet.Layer(layers.LayerTypeUDP).(*layers.UDP).DstPort),
+		"udp"
+	}
 }
 
 func main() {

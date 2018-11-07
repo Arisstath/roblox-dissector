@@ -21,8 +21,8 @@ type RakNetPacket interface {
 type RootLayer struct {
 	logBuffer   bytes.Buffer
 	Logger      *log.Logger
-	Source      net.UDPAddr
-	Destination net.UDPAddr
+	Source      *net.UDPAddr
+	Destination *net.UDPAddr
 	FromClient  bool
 	FromServer  bool
 }
@@ -84,6 +84,13 @@ func NewRakNetLayer() *RakNetLayer {
 // The offline message contained in pre-connection packets.
 var OfflineMessageID = []byte{0x00, 0xFF, 0xFF, 0x00, 0xFE, 0xFE, 0xFE, 0xFE, 0xFD, 0xFD, 0xFD, 0xFD, 0x12, 0x34, 0x56, 0x78}
 
+func IsOfflineMessage(data []byte) bool {
+	if len(data) < 1+len(OfflineMessageID) {
+		return false
+	}
+	return bytes.Compare(data[1:1+len(OfflineMessageID)], OfflineMessageID) == 0
+}
+
 func (bitstream *extendedReader) DecodeRakNetLayer(reader PacketReader, packetType byte, layers *PacketLayers) (*RakNetLayer, error) {
 	layer := NewRakNetLayer()
 
@@ -103,13 +110,6 @@ func (bitstream *extendedReader) DecodeRakNetLayer(reader PacketReader, packetTy
 			return layer, errors.New("offline message didn't match in packet 5")
 		}
 
-		client := packet.Source
-		server := packet.Destination
-		println("Automatically detected Roblox peers using 0x5 packet:")
-		println("Client:", client.String())
-		println("Server:", server.String())
-		context.SetClient(client.String())
-		context.SetServer(server.String())
 		layer.SimpleLayerID = packetType
 		layer.payload = bitstream
 		layer.IsSimple = true
