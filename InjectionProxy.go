@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+
 	"github.com/Gskartwii/roblox-dissector/peer"
 )
 
@@ -36,8 +37,8 @@ func captureFromInjectionProxy(src string, dst string, captureJobContext context
 	// srcAddr = client listen address
 	// dstAddr = server connection address
 
-	commContext.Client = srcAddr.String()
-	commContext.Server = dstAddr.String()
+	commContext.Client = srcAddr
+	commContext.Server = dstAddr
 	proxyWriter := peer.NewProxyWriter(commContext)
 	proxyWriter.ServerAddr = dstAddr
 	proxyWriter.SecuritySettings.InitWin10()
@@ -60,7 +61,6 @@ func captureFromInjectionProxy(src string, dst string, captureJobContext context
 
 	var n int
 	packetChan := make(chan ProxiedPacket, 100)
-
 	go func() {
 		for {
 			payload := make([]byte, 1500)
@@ -69,14 +69,17 @@ func captureFromInjectionProxy(src string, dst string, captureJobContext context
 				fmt.Println("readfromudp fail: %s", err.Error())
 				return
 			}
-			//println("set new client addr to", proxyWriter.ClientAddr.String())
-			newPacket := peer.UDPPacketFromBytes(payload[:n])
-			newPacket.Source = *srcAddr
-			newPacket.Destination = *dstAddr
+			layers := &peer.PacketLayers{
+				Root: peer.RootLayer{
+					Source: srcAddr,
+					Destination: dstAddr,
+					FromClient: true,
+				}
+			}
 			if payload[0] > 0x8 {
-				packetChan <- ProxiedPacket{Packet: newPacket, Payload: payload[:n]}
+				packetChan <- ProxiedPacket{Layers: layers, Payload: payload[:n]}
 			} else { // Need priority for join packets
-				proxyWriter.ProxyClient(payload[:n], newPacket)
+				proxyWriter.ProxyClient(payload[:n], layers)
 			}
 		}
 	}()
@@ -88,23 +91,27 @@ func captureFromInjectionProxy(src string, dst string, captureJobContext context
 				fmt.Println("readfromudp fail %s: %s", addr.String(), err.Error())
 				return
 			}
-			newPacket := peer.UDPPacketFromBytes(payload[:n])
-			newPacket.Source = *dstAddr
-			newPacket.Destination = *srcAddr
+			layers := &peer.PacketLayers{
+				Root: peer.RootLayer{
+					Source: dstAddr,
+					Destination: srcAddr,
+					FromServer: true,
+				}
+			}
 			if payload[0] > 0x8 {
-				packetChan <- ProxiedPacket{Packet: newPacket, Payload: payload[:n]}
+				packetChan <- ProxiedPacket{Layers: layers, Payload: payload[:n]}
 			} else { // Need priority for join packets
-				proxyWriter.ProxyServer(payload[:n], newPacket)
+				proxyWriter.ProxyServer(payload[:n], layersk)
 			}
 		}
 	}()
 	for {
 		select {
 		case newPacket := <-packetChan:
-			if newPacket.Packet.Source.String() == srcAddr.String() {
-				proxyWriter.ProxyClient(newPacket.Payload, newPacket.Packet)
+			if newPacket.FromClient {
+				proxyWriter.ProxyClient(newPacket.Payload, newPacket.Layers)
 			} else {
-				proxyWriter.ProxyServer(newPacket.Payload, newPacket.Packet)
+				proxyWriter.ProxyServer(newPacket.Payload, newPacket.Layers)
 			}
 		case _ = <-injectPacket:
 			//proxyWriter.InjectServer(injectedPacket)

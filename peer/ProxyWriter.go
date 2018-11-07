@@ -269,13 +269,13 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 }
 
 // ProxyClient should be called when the client sends a packet.
-func (writer *ProxyWriter) ProxyClient(payload []byte, packet *UDPPacket) {
-	writer.ClientHalf.ReadPacket(payload, packet)
+func (writer *ProxyWriter) ProxyClient(payload []byte, layers *PacketLayers) {
+	writer.ClientHalf.ReadPacket(payload, layers)
 }
 
 // ProxyServer should be called when the server sends a packet.
-func (writer *ProxyWriter) ProxyServer(payload []byte, packet *UDPPacket) {
-	writer.ServerHalf.ReadPacket(payload, packet)
+func (writer *ProxyWriter) ProxyServer(payload []byte, layers *PacketLayers) {
+	writer.ServerHalf.ReadPacket(payload, layers)
 }
 
 // InjectServer should be called when an injected packet should be sent to

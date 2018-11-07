@@ -10,15 +10,16 @@ import (
 	"net/http"
 	"os"
 	"regexp"
-	"github.com/Gskartwii/roblox-dissector/peer"
 	"strings"
+
+	"github.com/Gskartwii/roblox-dissector/peer"
 
 	windivert "github.com/gskartwii/windivert-go"
 )
 
 type ProxiedPacket struct {
 	Payload []byte
-	Packet  *peer.UDPPacket
+	Layers  *peer.PacketLayers
 }
 
 func captureFromWinDivertProxy(realServerAddr string, captureJobContext context.Context, injectPacket chan peer.RakNetPacket, packetViewer *MyPacketListView, commContext *peer.CommunicationContext) {

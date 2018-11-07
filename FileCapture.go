@@ -95,6 +95,8 @@ func captureJob(handle *pcap.Handle, useIPv4 bool, captureJobContext context.Con
 			} else if context.Client != "" && !context.IsClient(src) && !context.IsServer(src) {
 				continue
 			}
+			layers.Root.FromClient = context.IsClient(src)
+			layers.Root.FromServer = context.IsServer(src)
 
 			if layers.Root.FromClient {
 				clientPacketReader.ReadPacket(payload, layers)
