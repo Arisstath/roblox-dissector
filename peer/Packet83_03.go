@@ -20,10 +20,10 @@ type Packet83_03 struct {
 	Value rbxfile.Value
 }
 
-func DecodePacket83_03(reader PacketReader, packet *UDPPacket) (Packet83Subpacket, error) {
+func (thisBitstream *extendedReader) DecodePacket83_03(reader PacketReader) (Packet83Subpacket, error) {
 	var err error
 	layer := &Packet83_03{}
-	thisBitstream := packet.stream
+
 	referent, err := thisBitstream.readObject(reader.Caches())
 	if err != nil {
 		return layer, err

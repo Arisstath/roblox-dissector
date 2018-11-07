@@ -16,9 +16,9 @@ func NewPacket83_0BLayer() *Packet83_0B {
 	return &Packet83_0B{}
 }
 
-func DecodePacket83_0B(reader PacketReader, packet *UDPPacket) (Packet83Subpacket, error) {
+func (thisBitstream *extendedReader) DecodePacket83_0B(reader PacketReader) (Packet83Subpacket, error) {
 	layer := NewPacket83_0BLayer()
-	thisBitstream := packet.stream
+	
 	thisBitstream.Align()
 	arrayLen, err := thisBitstream.readUint32BE()
 	if err != nil {

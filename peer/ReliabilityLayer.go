@@ -72,7 +72,7 @@ func (packet *ReliablePacket) IsOrdered() bool {
 
 func DecodeReliabilityLayer(packet *UDPPacket, context *CommunicationContext, rakNetPacket *RakNetLayer) (*ReliabilityLayer, error) {
 	layer := NewReliabilityLayer()
-	thisBitstream := packet.stream
+	
 
 	var reliability uint64
 	var err error

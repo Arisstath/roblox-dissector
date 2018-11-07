@@ -10,9 +10,8 @@ func NewPacket00Layer() *Packet00Layer {
 	return &Packet00Layer{}
 }
 
-func DecodePacket00Layer(reader PacketReader, packet *UDPPacket) (RakNetPacket, error) {
+func (thisBitstream *extendedReader) DecodePacket00Layer(reader PacketReader) (RakNetPacket, error) {
 	layer := NewPacket00Layer()
-	thisBitstream := packet.stream
 
 	var err error
 	layer.SendPingTime, err = thisBitstream.readUint64BE()
@@ -41,9 +40,8 @@ func NewPacket03Layer() *Packet03Layer {
 	return &Packet03Layer{}
 }
 
-func DecodePacket03Layer(reader PacketReader, packet *UDPPacket) (RakNetPacket, error) {
+func (thisBitstream *extendedReader) DecodePacket03Layer(reader PacketReader) (RakNetPacket, error) {
 	layer := NewPacket03Layer()
-	thisBitstream := packet.stream
 
 	var err error
 	layer.SendPingTime, err = thisBitstream.readUint64BE()

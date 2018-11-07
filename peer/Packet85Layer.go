@@ -71,8 +71,8 @@ func (b *extendedReader) readPhysicsData(data *PhysicsData, motors bool, reader 
 	return err
 }
 
-func DecodePacket85Layer(reader PacketReader, packet *UDPPacket) (RakNetPacket, error) {
-	thisBitstream := packet.stream
+func (thisBitstream *extendedReader) DecodePacket85Layer(reader PacketReader) (RakNetPacket, error) {
+	
 
 	context := reader.Context()
 	layer := NewPacket85Layer()

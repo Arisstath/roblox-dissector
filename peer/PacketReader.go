@@ -9,33 +9,32 @@ import "log"
 type decoderFunc func(PacketReader, *UDPPacket) (RakNetPacket, error)
 
 var packetDecoders = map[byte]decoderFunc{
-	0x05: DecodePacket05Layer,
-	0x06: DecodePacket06Layer,
-	0x07: DecodePacket07Layer,
-	0x08: DecodePacket08Layer,
-	0x00: DecodePacket00Layer,
-	0x03: DecodePacket03Layer,
-	0x09: DecodePacket09Layer,
-	0x10: DecodePacket10Layer,
-	0x13: DecodePacket13Layer,
-	0x15: DecodePacket15Layer,
-	0x1B: DecodePacket1BLayer,
+	0x05: (*extendedReader).DecodePacket05Layer,
+	0x06: (*extendedReader).DecodePacket06Layer,
+	0x07: (*extendedReader).DecodePacket07Layer,
+	0x08: (*extendedReader).DecodePacket08Layer,
+	0x00: (*extendedReader).DecodePacket00Layer,
+	0x03: (*extendedReader).DecodePacket03Layer,
+	0x09: (*extendedReader).DecodePacket09Layer,
+	0x10: (*extendedReader).DecodePacket10Layer,
+	0x13: (*extendedReader).DecodePacket13Layer,
+	0x15: (*extendedReader).DecodePacket15Layer,
+	0x1B: (*extendedReader).DecodePacket1BLayer,
 
-	0x81: DecodePacket81Layer,
+	0x81: (*extendedReader).DecodePacket81Layer,
 	//0x82: DecodePacket82Layer,
-	0x83: DecodePacket83Layer,
-	0x85: DecodePacket85Layer,
-	0x86: DecodePacket86Layer,
-	0x8D: DecodePacket8DLayer,
-	0x8F: DecodePacket8FLayer,
-	0x90: DecodePacket90Layer,
-	0x92: DecodePacket92Layer,
-	0x93: DecodePacket93Layer,
-	0x97: DecodePacket97Layer,
+	0x83: (*extendedReader).DecodePacket83Layer,
+	0x85: (*extendedReader).DecodePacket85Layer,
+	0x86: (*extendedReader).DecodePacket86Layer,
+	0x8D: (*extendedReader).DecodePacket8DLayer,
+	0x8F: (*extendedReader).DecodePacket8FLayer,
+	0x90: (*extendedReader).DecodePacket90Layer,
+	0x92: (*extendedReader).DecodePacket92Layer,
+	0x93: (*extendedReader).DecodePacket93Layer,
+	0x97: (*extendedReader).DecodePacket97Layer,
 }
 
-type ReceiveHandler func(byte, *UDPPacket, *PacketLayers)
-type ErrorHandler func(error, *UDPPacket)
+type ReceiveHandler func(byte, *PacketLayers)
 
 // PacketReader is an interface that can be passed to packet decoders
 type PacketReader interface {
@@ -58,12 +57,10 @@ type DefaultPacketReader struct {
 	FullReliableHandler ReceiveHandler
 	// Callback for ACKs and NAKs. Not very useful if you're just parsing packets.
 	// However, you want to bind to this if you are writing a peer.
-	ACKHandler func(*UDPPacket, *RakNetLayer)
+	ACKHandler func(layers *PacketLayers)
 	// Callback for ReliabilityLayer full packets. This callback is invoked for every
 	// real ReliabilityLayer.
-	ReliabilityLayerHandler func(*UDPPacket, *ReliabilityLayer, *RakNetLayer)
-	// Simply enough, any errors encountered are reported to ErrorHandler.
-	ErrorHandler ErrorHandler
+	ReliabilityLayerHandler func(layers *PacketLayers)
 	// Context is a struct representing the state of the connection. It contains
 	// information such as the addresses of the peers and the state of the DataModel.
 	ValContext  *CommunicationContext
@@ -114,7 +111,7 @@ func (reader *DefaultPacketReader) readSimple(stream *extendedReader, packetType
 func (reader *DefaultPacketReader) readGeneric(stream *extendedReader, packetType uint8, layers *PacketLayers) {
 	var err error
 	if packetType == 0x1B { // ID_TIMESTAMP
-		tsLayer, err := packetDecoders[0x1B](stream, reader, packet)
+		tsLayer, err := packetDecoders[0x1B](stream, reader)
 		if err != nil {
 			layers.Reliability.SplitBuffer.Logger.Println("error:", err.Error())
 			layers.Error = fmt.Errorf("Failed to decode timestamped packet: %s", err.Error())
@@ -134,7 +131,7 @@ func (reader *DefaultPacketReader) readGeneric(stream *extendedReader, packetTyp
 	_, skip := reader.SkipParsing[layers.Reliability.SplitBuffer.PacketType]
 	// TOD: Should we really void partial deserializations?
 	if decoder != nil && !skip {
-		layers.Main, err = decoder(reader, packet)
+		layers.Main, err = decoder(stream, reader)
 
 		if err != nil {
 			layers.Main = nil

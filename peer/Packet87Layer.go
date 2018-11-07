@@ -13,8 +13,8 @@ func NewPacket87Layer() *Packet87Layer {
 	return &Packet87Layer{}
 }
 
-func DecodePacket87Layer(reader PacketReader, packet *UDPPacket) (RakNetPacket, error) {
-	thisBitstream := packet.stream
+func (thisBitstream *extendedReader) DecodePacket87Layer(reader PacketReader) (RakNetPacket, error) {
+	
 	context := reader.Context()
 	layer := NewPacket87Layer()
 	var ref Referent

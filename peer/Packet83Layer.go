@@ -30,6 +30,22 @@ var Packet83Subpackets map[uint8]string = map[uint8]string{
 	0x12: "ID_REPLIC_HASH",
 }
 
+var Packet83Decoders = map[uint8]func(*extendedReader, PacketReader){
+	0x01: (*extendedReader).DecodePacket01Layer,
+	0x02: (*extendedReader).DecodePacket02Layer,
+	0x03: (*extendedReader).DecodePacket03Layer,
+	0x04: (*extendedReader).DecodePacket04Layer,
+	0x05: (*extendedReader).DecodePacket05Layer,
+	0x06: (*extendedReader).DecodePacket06Layer,
+	0x07: (*extendedReader).DecodePacket07Layer,
+	0x09: (*extendedReader).DecodePacket09Layer,
+	0x0A: (*extendedReader).DecodePacket0ALayer,
+	0x0B: (*extendedReader).DecodePacket0BLayer,
+	0x10: (*extendedReader).DecodePacket10Layer,
+	0x11: (*extendedReader).DecodePacket11Layer,
+	0x12: (*extendedReader).DecodePacket12Layer,
+}
+
 // A subpacket contained within a 0x83 (ID_DATA) packet
 type Packet83Subpacket interface {
 	Serialize(writer PacketWriter, stream *extendedWriter) error
@@ -46,70 +62,31 @@ func NewPacket83Layer() *Packet83Layer {
 	return &Packet83Layer{}
 }
 
-func extractPacketType(stream *extendedReader) (uint8, error) {
-	return stream.readUint8()
-}
-
-func DecodePacket83Layer(reader PacketReader, packet *UDPPacket) (RakNetPacket, error) {
+func (thisBitstream *extendedReader) DecodePacket83Layer(reader PacketReader) (RakNetPacket, error) {
 	layer := NewPacket83Layer()
-	thisBitstream := packet.stream
 
-	packetType, err := extractPacketType(thisBitstream)
+	packetType, err := thisBitstream.readUint8()
 	if err != nil {
 		return layer, err
 	}
 
-	var inner interface{}
-
+	var inner Packet83Subpacket
 	for packetType != 0 {
 		//println("parsing subpacket", packetType)
-		switch packetType {
-		case 0x04:
-			inner, err = DecodePacket83_04(reader, packet)
-			break
-		case 0x10:
-			inner, err = DecodePacket83_10(reader, packet)
-			break
-		case 0x05:
-			inner, err = DecodePacket83_05(reader, packet)
-			break
-		case 0x06:
-			inner, err = DecodePacket83_06(reader, packet)
-			break
-		case 0x0B:
-			inner, err = DecodePacket83_0B(reader, packet)
-			break
-		case 0x02:
-			inner, err = DecodePacket83_02(reader, packet)
-			break
-		case 0x01:
-			inner, err = DecodePacket83_01(reader, packet)
-			break
-		case 0x03:
-			inner, err = DecodePacket83_03(reader, packet)
-			break
-		case 0x07:
-			inner, err = DecodePacket83_07(reader, packet)
-			break
-		case 0x12:
-			inner, err = DecodePacket83_12(reader, packet)
-			break
-		case 0x09:
-			inner, err = DecodePacket83_09(reader, packet)
-			break
-		case 0x0A:
-			inner, err = DecodePacket83_0A(reader, packet)
-		default:
+		decoder, ok := Packet83Decoders[packetType]
+		if !ok {
 			return layer, errors.New("don't know how to parse replication subpacket: " + strconv.Itoa(int(packetType)))
 		}
+		inner, err = decoder(thisBitstream, reader)
 		if err != nil {
 			return layer, errors.New("parsing subpacket " + Packet83Subpackets[packetType] + ": " + err.Error())
 		}
 
-		layer.SubPackets = append(layer.SubPackets, inner.(Packet83Subpacket))
+		layer.SubPackets = append(layer.SubPackets, inner)
 
-		packetType, err = extractPacketType(thisBitstream)
+		packetType, err = thisBitstream.readUint8()
 		if err == io.EOF {
+			println("DEPRECATED_WARNING: ignoring packettype read past end")
 			return layer, nil
 		}
 		if err != nil {

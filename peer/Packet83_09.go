@@ -32,10 +32,10 @@ type Packet83_09_06 struct {
 
 type Packet83_09_07 struct{}
 
-func DecodePacket83_09(reader PacketReader, packet *UDPPacket) (Packet83Subpacket, error) {
+func (thisBitstream *extendedReader) DecodePacket83_09(reader PacketReader) (Packet83Subpacket, error) {
 	var err error
 	inner := &Packet83_09{}
-	thisBitstream := packet.stream
+	
 	inner.Type, err = thisBitstream.readUint8()
 	if err != nil {
 		return inner, err

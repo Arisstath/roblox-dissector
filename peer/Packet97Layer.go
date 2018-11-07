@@ -173,9 +173,9 @@ func NewPacket97Layer() *Packet97Layer {
 	return &Packet97Layer{}
 }
 
-func DecodePacket97Layer(reader PacketReader, packet *UDPPacket) (RakNetPacket, error) {
+func (thisBitstream *extendedReader) DecodePacket97Layer(reader PacketReader) (RakNetPacket, error) {
 	layer := NewPacket97Layer()
-	thisBitstream := packet.stream
+	
 
 	var err error
 	stream, err := thisBitstream.RegionToZStdStream()

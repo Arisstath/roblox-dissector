@@ -9,9 +9,8 @@ func NewPacket92Layer() *Packet92Layer {
 	return &Packet92Layer{}
 }
 
-func DecodePacket92Layer(reader PacketReader, packet *UDPPacket) (RakNetPacket, error) {
+func (thisBitstream *extendedReader) DecodePacket92Layer(reader PacketReader) (RakNetPacket, error) {
 	layer := NewPacket92Layer()
-	thisBitstream := packet.stream
 
 	var err error
 	layer.PlaceId, err = thisBitstream.readVarsint64()

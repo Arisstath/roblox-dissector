@@ -17,10 +17,10 @@ type Packet83_07 struct {
 	Event *ReplicationEvent
 }
 
-func DecodePacket83_07(reader PacketReader, packet *UDPPacket) (Packet83Subpacket, error) {
+func (thisBitstream *extendedReader) DecodePacket83_07(reader PacketReader) (Packet83Subpacket, error) {
 	var err error
 	layer := &Packet83_07{}
-	thisBitstream := packet.stream
+	
 	referent, err := thisBitstream.readObject(reader.Caches())
 	if err != nil {
 		return layer, err

@@ -36,9 +36,9 @@ func NewPacket81Layer() *Packet81Layer {
 	return &Packet81Layer{}
 }
 
-func DecodePacket81Layer(reader PacketReader, packet *UDPPacket) (RakNetPacket, error) {
+func (thisBitstream *extendedReader) DecodePacket81Layer(reader PacketReader) (RakNetPacket, error) {
 	layer := NewPacket81Layer()
-	thisBitstream := packet.stream
+	
 	var err error
 
 	layer.StreamJob, err = thisBitstream.readBoolByte()

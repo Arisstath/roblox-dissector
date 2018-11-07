@@ -10,9 +10,8 @@ func NewPacket90Layer() *Packet90Layer {
 	return &Packet90Layer{}
 }
 
-func DecodePacket90Layer(reader PacketReader, packet *UDPPacket) (RakNetPacket, error) {
+func (thisBitstream *extendedReader) DecodePacket90Layer(reader PacketReader) (RakNetPacket, error) {
 	layer := NewPacket90Layer()
-	thisBitstream := packet.stream
 
 	var err error
 	layer.SchemaVersion, err = thisBitstream.readUint32BE()

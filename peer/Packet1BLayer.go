@@ -12,9 +12,8 @@ func NewPacket1BLayer() *Packet1BLayer {
 	return &Packet1BLayer{}
 }
 
-func DecodePacket1BLayer(reader PacketReader, packet *UDPPacket) (RakNetPacket, error) {
+func (thisBitstream *extendedReader) DecodePacket1BLayer(reader PacketReader) (RakNetPacket, error) {
 	layer := NewPacket1BLayer()
-	thisBitstream := packet.stream
 
 	var err error
 	layer.Timestamp, err = thisBitstream.bits(64)

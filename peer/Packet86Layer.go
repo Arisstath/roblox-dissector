@@ -23,8 +23,8 @@ func NewPacket86Layer() *Packet86Layer {
 	return &Packet86Layer{}
 }
 
-func DecodePacket86Layer(reader PacketReader, packet *UDPPacket) (RakNetPacket, error) {
-	thisBitstream := packet.stream
+func (thisBitstream *extendedReader) DecodePacket86Layer(reader PacketReader) (RakNetPacket, error) {
+	
 
 	layer := NewPacket86Layer()
 	context := reader.Context()

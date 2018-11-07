@@ -12,10 +12,10 @@ type Packet83_01 struct {
 	Instance *rbxfile.Instance
 }
 
-func DecodePacket83_01(reader PacketReader, packet *UDPPacket) (Packet83Subpacket, error) {
+func (thisBitstream *extendedReader) DecodePacket83_01(reader PacketReader) (Packet83Subpacket, error) {
 	var err error
 	inner := &Packet83_01{}
-	thisBitstream := packet.stream
+
 	// NULL deletion is actually legal. Who would have known?
 	referent, err := thisBitstream.readObject(reader.Caches())
 	inner.Instance, err = reader.Context().InstancesByReferent.TryGetInstance(referent)

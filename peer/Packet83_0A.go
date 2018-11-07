@@ -15,10 +15,10 @@ type Packet83_0A struct {
 	Versions     []uint32
 }
 
-func DecodePacket83_0A(reader PacketReader, packet *UDPPacket) (Packet83Subpacket, error) {
+func (thisBitstream *extendedReader) DecodePacket83_0A(reader PacketReader) (Packet83Subpacket, error) {
 	var err error
 	layer := &Packet83_0A{}
-	thisBitstream := packet.stream
+	
 	referent, err := thisBitstream.readObject(reader.Caches())
 	if err != nil {
 		return layer, err

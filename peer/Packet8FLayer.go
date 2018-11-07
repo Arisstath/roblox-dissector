@@ -9,9 +9,8 @@ func NewPacket8FLayer() *Packet8FLayer {
 	return &Packet8FLayer{}
 }
 
-func DecodePacket8FLayer(reader PacketReader, packet *UDPPacket) (RakNetPacket, error) {
+func (thisBitstream *extendedReader) DecodePacket8FLayer(reader PacketReader) (RakNetPacket, error) {
 	layer := NewPacket8FLayer()
-	thisBitstream := packet.stream
 
 	var err error
 	spawnName, err := thisBitstream.readVarLengthString()

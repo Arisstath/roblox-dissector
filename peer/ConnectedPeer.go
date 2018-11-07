@@ -3,6 +3,8 @@ package peer
 import "sort"
 import "net"
 
+type ErrorHandler func(error)
+
 // ConnectedPeer describes a connection to a peer
 type ConnectedPeer struct {
 	// Reader is a PacketReader reading packets sent by the peer.

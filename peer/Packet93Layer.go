@@ -16,9 +16,9 @@ func NewPacket93Layer() *Packet93Layer {
 	return &Packet93Layer{Params: make(map[string]bool)}
 }
 
-func DecodePacket93Layer(reader PacketReader, packet *UDPPacket) (RakNetPacket, error) {
+func (thisBitstream *extendedReader) DecodePacket93Layer(reader PacketReader) (RakNetPacket, error) {
 	layer := NewPacket93Layer()
-	thisBitstream := packet.stream
+	
 
 	var err error
 	layer.ProtocolSchemaSync, err = thisBitstream.readBool()

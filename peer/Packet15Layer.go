@@ -51,9 +51,8 @@ func NewPacket15Layer() *Packet15Layer {
 	return &Packet15Layer{}
 }
 
-func DecodePacket15Layer(reader PacketReader, packet *UDPPacket) (RakNetPacket, error) {
+func (thisBitstream *extendedReader) DecodePacket15Layer(reader PacketReader) (RakNetPacket, error) {
 	layer := NewPacket15Layer()
-	thisBitstream := packet.stream
 
 	var err error
 	layer.Reason, err = thisBitstream.readUint32BE()
