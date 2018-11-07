@@ -14,6 +14,7 @@ type ConnectedPeer struct {
 	// All errors are dumped to ErrorHandler.
 	ErrorHandler ErrorHandler
 	// OutputHandler sends the data for packets to be written to the peer.
+	// TODO: include all layer data in this packet as well?
 	OutputHandler func([]byte)
 	// Callback for simple pre-connection packets.
 	SimpleHandler ReceiveHandler

@@ -108,7 +108,7 @@ func captureFromInjectionProxy(src string, dst string, captureJobContext context
 	for {
 		select {
 		case newPacket := <-packetChan:
-			if newPacket.FromClient {
+			if newPacket.Layers.Root.FromClient {
 				proxyWriter.ProxyClient(newPacket.Payload, newPacket.Layers)
 			} else {
 				proxyWriter.ProxyServer(newPacket.Payload, newPacket.Layers)

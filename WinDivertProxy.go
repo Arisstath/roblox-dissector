@@ -89,27 +89,31 @@ func captureFromWinDivertProxy(realServerAddr string, captureJobContext context.
 			if proxyWriter.ClientAddr == nil && pktDstAddr.String() == dstAddr.String() {
 				// If so, assign the client to the src address
 				proxyWriter.ClientAddr = pktSrcAddr
-				commContext.Client = pktSrcAddr.String()
+				commContext.Client = pktSrcAddr
 			} else if proxyWriter.ClientAddr == nil {
 				proxyWriter.ClientAddr = pktDstAddr
-				commContext.Client = pktDstAddr.String()
+				commContext.Client = pktDstAddr
 			}
 
-			// TODO: can this system make a little more sense?
-			newPacket := peer.UDPPacketFromBytes(udpPayload)
-			newPacket.Source = *pktSrcAddr
-			newPacket.Destination = *pktDstAddr
+			layers := &peer.PacketLayers{
+				Root: peer.RootLayer{
+					Source: pktSrcAddr,
+					Destination, pktDstAddr,
+					FromClient: commContext.IsClient(pktSrcAddr),
+					FromServer: commContext.IsServer(pktSrcAddr),
+				},
+			}
 			if payload[0] > 0x8 {
-				packetChan <- ProxiedPacket{Packet: newPacket, Payload: udpPayload}
+				packetChan <- ProxiedPacket{Layers: layers, Payload: udpPayload}
 			} else { // Need priority for join packets
-				proxyWriter.ProxyClient(udpPayload, newPacket)
+				proxyWriter.ProxyClient(udpPayload, layers)
 			}
 		}
 	}()
 	for {
 		select {
 		case newPacket := <-packetChan:
-			if commContext.IsClient(newPacket.Packet.Source) { // from client? handled by client side
+			if newPacket.Layers.Root.FromClient { // from client? handled by client side
 				proxyWriter.ProxyClient(newPacket.Payload, newPacket.Packet)
 			} else {
 				proxyWriter.ProxyServer(newPacket.Payload, newPacket.Packet)

@@ -57,8 +57,6 @@ type ProxyWriter struct {
 	ServerHalf *ProxyHalf
 	ClientAddr *net.UDPAddr
 	ServerAddr *net.UDPAddr
-	// When data should be sent to a peer, OutputHandler is called.
-	OutputHandler func([]byte, *net.UDPAddr)
 
 	SecuritySettings SecuritySettings
 	RuntimeContext   context.Context
