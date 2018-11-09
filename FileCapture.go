@@ -46,9 +46,9 @@ func captureJob(handle *pcap.Handle, useIPv4 bool, captureJobContext context.Con
 	clientPacketReader.ACKHandler = func(layers *peer.PacketLayers) {
 		// nop
 	}
-	clientPacketReader.ValContext = context
-	clientPacketReader.ValCaches = new(peer.Caches)
-	clientPacketReader.ValIsClient = true
+	clientPacketReader.SetContext(context)
+	clientPacketReader.SetCaches(new(peer.Caches))
+	clientPacketReader.SetIsClient(true)
 
 	serverPacketReader := peer.NewPacketReader()
 	serverPacketReader.SimpleHandler = clientPacketReader.SimpleHandler
@@ -56,8 +56,8 @@ func captureJob(handle *pcap.Handle, useIPv4 bool, captureJobContext context.Con
 	serverPacketReader.FullReliableHandler = clientPacketReader.FullReliableHandler
 	serverPacketReader.ReliabilityLayerHandler = clientPacketReader.ReliabilityLayerHandler
 	serverPacketReader.ACKHandler = clientPacketReader.ACKHandler
-	serverPacketReader.ValContext = clientPacketReader.ValContext
-	serverPacketReader.ValCaches = new(peer.Caches)
+	serverPacketReader.SetContext(context)
+	serverPacketReader.SetCaches(new(peer.Caches))
 
 	for true {
 		select {

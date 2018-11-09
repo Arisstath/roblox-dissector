@@ -14,6 +14,13 @@ type ProxyHalf struct {
 	fakePackets []uint32
 }
 
+func NewProxyHalf(context *CommunicationContext) {
+    return &ProxyHalf{
+        ConnectedPeer: NewConnectedPeer(context),
+        fakePackets: nil,
+    }
+}
+
 func (w *ProxyHalf) rotateDN(old uint32) uint32 {
 	for i := len(w.fakePackets) - 1; i >= 0; i-- {
 		fakepacket := w.fakePackets[i]
@@ -84,8 +91,8 @@ func (writer *ProxyWriter) startAcker() {
 // NewProxyWriter creates and initializes a new ProxyWriter
 func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 	writer := &ProxyWriter{}
-	clientHalf := &ProxyHalf{NewConnectedPeer(context), nil}
-	serverHalf := &ProxyHalf{NewConnectedPeer(context), nil}
+	clientHalf := NewProxyHalf(context)
+	serverHalf := NewProxyHalf(context)
 
 	clientHalf.SimpleHandler = func(packetType byte, layers *PacketLayers) {
 		if layers.Error != nil {
@@ -205,7 +212,7 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 			_, err = serverHalf.WritePacket(mainLayer)
 		case 0x85:
 			mainLayer := layers.Main.(*Packet85Layer)
-			_, err = serverHalf.WriteTimestamped(layers.Timestamp, mainLayer)
+			_, err = serverHalf.WritePhysics(layers.Timestamp, mainLayer)
 		case 0x86:
 			mainLayer := layers.Main.(*Packet86Layer)
 			_, err = serverHalf.WritePacket(mainLayer)
@@ -262,15 +269,9 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 		}*/
 	}
 
-	clientHalf.Writer.ValToClient = true  // writes TO client!
-	serverHalf.Writer.ValToClient = false // doesn't write TO client!
-	clientHalf.Reader.ValIsClient = true  // reads FROM client!
-	serverHalf.Reader.ValIsClient = false // doesn't read FROM client!
-
-	clientHalf.Reader.ValCaches = new(Caches)
-	clientHalf.Writer.ValCaches = new(Caches)
-	serverHalf.Reader.ValCaches = new(Caches)
-	serverHalf.Writer.ValCaches = new(Caches)
+	clientHalf.DefaultPacketWriter.SetToClient(true) // writes TO client!
+	clientHalf.DefaultPacketReader.SetIsClient(true) // reads FROM client!
+    // Caches will have been assigned by NewConnectedPeer()
 
 	writer.ClientHalf = clientHalf
 	writer.ServerHalf = serverHalf

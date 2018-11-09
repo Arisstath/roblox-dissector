@@ -37,17 +37,42 @@ var packetDecoders = map[byte]decoderFunc{
 
 type ReceiveHandler func(byte, *PacketLayers)
 
+type ContextualHandler interface {
+    SetContext(*CommunicationContext)
+	Context() *CommunicationContext
+    SetCaches(*Caches)
+	Caches() *Caches
+}
+
 // PacketReader is an interface that can be passed to packet decoders
 type PacketReader interface {
-	Context() *CommunicationContext
-	Caches() *Caches
+    ContextualHandler
+    SetIsClient(bool)
 	IsClient() bool
+}
+
+type contextualHandler struct {
+	context  *CommunicationContext
+	caches   *Caches
+}
+func (handler *contextualHandler) Context() *CommunicationContext {
+	return handler.ValContext
+}
+func (handler *contextualHandler) Caches() *Caches {
+	return handler.ValCaches
+}
+func (handler *contextualHandler) SetCaches(val *Caches) {
+	handler.caches = val
+}
+func (handler *contextualHandler) SetContext(val *CommunicationContext) {
+	handler.context = val
 }
 
 // PacketReader is a struct that can be used to read packets from a source
 // Pass packets in using ReadPacket() and bind to the given callbacks
 // to receive the results
 type DefaultPacketReader struct {
+    contextualHandler
 	// Callback for "simple" packets (pre-connection offline packets).
 	SimpleHandler ReceiveHandler
 	// Callback for ReliabilityLayer subpackets. This callback is invoked for every
@@ -64,9 +89,7 @@ type DefaultPacketReader struct {
 	ReliabilityLayerHandler func(layers *PacketLayers)
 	// Context is a struct representing the state of the connection. It contains
 	// information such as the addresses of the peers and the state of the DataModel.
-	ValContext  *CommunicationContext
-	ValCaches   *Caches
-	ValIsClient bool
+	isClient bool
 
 	SkipParsing map[byte]struct{}
 
@@ -74,14 +97,11 @@ type DefaultPacketReader struct {
 	splitPackets splitPacketList
 }
 
-func (reader *DefaultPacketReader) Context() *CommunicationContext {
-	return reader.ValContext
-}
-func (reader *DefaultPacketReader) Caches() *Caches {
-	return reader.ValCaches
-}
 func (reader *DefaultPacketReader) IsClient() bool {
-	return reader.ValIsClient
+	return reader.isClient
+}
+func (reader *DefaultPacketReader) SetIsClient(val bool) {
+	reader.isClient = val
 }
 
 func NewPacketReader() *DefaultPacketReader {

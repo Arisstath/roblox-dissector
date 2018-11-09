@@ -11,8 +11,11 @@ func min(x, y uint) uint {
 }
 
 type PacketWriter interface {
+    SetContext(*CommunicationContext)
 	Context() *CommunicationContext
+    SetToClient(bool)
 	ToClient() bool
+    SetCaches(*Caches)
 	Caches() *Caches
 }
 
@@ -22,6 +25,7 @@ type PacketWriter interface {
 // Pass packets in using WriteSimple/WriteGeneric/etc.
 // and bind to the given callbacks
 type DefaultPacketWriter struct {
+    contextualHandler
 	// OutputHandler sends the data for all packets to be written.
 	OutputHandler   func([]byte)
 	orderingIndex   uint32
@@ -30,22 +34,19 @@ type DefaultPacketWriter struct {
 	reliableNumber  uint32
 	datagramNumber  uint32
 	// Set this to true if the packets produced by this writer are sent to a client.
-	ValToClient bool
-	ValCaches   *Caches
-	ValContext  *CommunicationContext
+    toClient bool
+    caches   *Caches
+	context  *CommunicationContext
 }
 
 func NewPacketWriter() *DefaultPacketWriter {
 	return &DefaultPacketWriter{}
 }
 func (writer *DefaultPacketWriter) ToClient() bool {
-	return writer.ValToClient
+	return writer.toClient
 }
-func (writer *DefaultPacketWriter) Caches() *Caches {
-	return writer.ValCaches
-}
-func (writer *DefaultPacketWriter) Context() *CommunicationContext {
-	return writer.ValContext
+func (writer *DefaultPacketWriter) SetToClient(val bool) {
+	writer.toClient = val
 }
 
 // WriteSimple is used to write pre-connection packets (IDs 5-8). It doesn't use a
@@ -235,4 +236,11 @@ func (writer *DefaultPacketWriter) WriteGeneric(generic RakNetPacket, reliabilit
 	err = writer.WriteReliablePacket(result, packet)
 
 	return result, err
+}
+
+func (writer *DefaultPacketWriter) WritePacket(generic RakNetPacket) ([]byte, error) {
+    return writer.WriteGeneric(generic, RELIABLE_ORD)
+}
+func (writer *DefaultPacketWriter) WritePhysics(timestamp *Packet1BLayer, generic RakNetPacket) ([]byte, error) {
+    return writer.WriteTimestamped(timestamp, packet, UNRELIABLE)
 }

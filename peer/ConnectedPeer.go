@@ -8,9 +8,9 @@ type ErrorHandler func(error)
 // ConnectedPeer describes a connection to a peer
 type ConnectedPeer struct {
 	// Reader is a PacketReader reading packets sent by the peer.
-	Reader *DefaultPacketReader
+	*DefaultPacketReader
 	// Writer is a PacketWriter writing packets to the peer.
-	Writer *DefaultPacketWriter
+	*DefaultPacketWriter
 	// OutputHandler sends the data for packets to be written to the peer.
 	// TODO: include all layer data in this packet as well?
 	OutputHandler func([]byte)
@@ -76,52 +76,18 @@ func (peer *ConnectedPeer) sendACKs() {
 }
 
 func NewConnectedPeer(context *CommunicationContext) *ConnectedPeer {
-	proxy := &ConnectedPeer{}
+	myPeer := &ConnectedPeer{}
 
+    reader := NewPacketReader()
 	writer := NewPacketWriter()
-	writer.OutputHandler = func(payload []byte) {
-		proxy.OutputHandler(payload)
-	}
 
 	reader := NewPacketReader()
+    reader.SetContext(context)
+    writer.SetContext(context)
+    reader.SetCaches(new(Caches))
+    writer.SetCaches(new(Caches))
 
-	reader.SimpleHandler = func(packetType byte, layers *PacketLayers) {
-		proxy.SimpleHandler(packetType, layers)
-	}
-	reader.ReliableHandler = func(packetType byte, layers *PacketLayers) {
-		proxy.ReliableHandler(packetType, layers)
-	}
-	reader.FullReliableHandler = func(packetType byte, layers *PacketLayers) {
-		proxy.FullReliableHandler(packetType, layers)
-	}
-	reader.ACKHandler = func(layers *PacketLayers) {
-		proxy.ACKHandler(layers)
-	}
-	reader.ReliabilityLayerHandler = func(layers *PacketLayers) {
-		proxy.ReliabilityLayerHandler(layers)
-	}
-	reader.ValContext = context
-	writer.ValContext = context
-	reader.ValCaches = new(Caches)
-	writer.ValCaches = new(Caches)
-
-	proxy.Reader = reader
-	proxy.Writer = writer
-	return proxy
-}
-
-// Receive sends packets to Reader.ReadPacket()
-func (peer *ConnectedPeer) ReadPacket(payload []byte, layers *PacketLayers) {
-	peer.Reader.ReadPacket(payload, layers)
-}
-
-// TODO: Perhaps different error handling for writing?
-func (peer *ConnectedPeer) WriteSimple(packet RakNetPacket) error {
-	return peer.Writer.WriteSimple(packet)
-}
-func (peer *ConnectedPeer) WritePacket(packet RakNetPacket) ([]byte, error) {
-	return peer.Writer.WriteGeneric(packet, RELIABLE_ORD)
-}
-func (peer *ConnectedPeer) WriteTimestamped(timestamp *Packet1BLayer, packet RakNetPacket) ([]byte, error) {
-	return peer.Writer.WriteTimestamped(timestamp, packet, UNRELIABLE)
+	myPeer.DefaultPacketReader = reader
+	myPeer.DefualtPacketWriter = writer
+	return myPeer
 }
