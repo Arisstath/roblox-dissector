@@ -72,7 +72,7 @@ func (reader *DefaultPacketReader) addSplitPacket(layers *PacketLayers) *SplitPa
 	splitPacketIndex := packet.SplitPacketIndex
 
 	if !packet.HasSplitPacket {
-		buffer := newSplitPacketBuffer(packet, reader.ValContext)
+		buffer := newSplitPacketBuffer(packet, reader.context)
 		buffer.addPacket(packet, layers.RakNet, 0)
 
 		return buffer
@@ -80,11 +80,11 @@ func (reader *DefaultPacketReader) addSplitPacket(layers *PacketLayers) *SplitPa
 
 	var buffer *SplitPacketBuffer
 	if reader.splitPackets == nil {
-		buffer = newSplitPacketBuffer(packet, reader.ValContext)
+		buffer = newSplitPacketBuffer(packet, reader.context)
 
 		reader.splitPackets = map[uint16]*SplitPacketBuffer{splitPacketId: buffer}
 	} else if reader.splitPackets[splitPacketId] == nil {
-		buffer = newSplitPacketBuffer(packet, reader.ValContext)
+		buffer = newSplitPacketBuffer(packet, reader.context)
 
 		reader.splitPackets[splitPacketId] = buffer
 	} else {

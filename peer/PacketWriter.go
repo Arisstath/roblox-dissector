@@ -242,5 +242,5 @@ func (writer *DefaultPacketWriter) WritePacket(generic RakNetPacket) ([]byte, er
     return writer.WriteGeneric(generic, RELIABLE_ORD)
 }
 func (writer *DefaultPacketWriter) WritePhysics(timestamp *Packet1BLayer, generic RakNetPacket) ([]byte, error) {
-    return writer.WriteTimestamped(timestamp, packet, UNRELIABLE)
+    return writer.WriteTimestamped(timestamp, generic, UNRELIABLE)
 }

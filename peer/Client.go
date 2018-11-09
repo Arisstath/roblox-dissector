@@ -411,25 +411,20 @@ func (myClient *CustomClient) defaultFullReliableHandler(packetType byte, layers
 }
 
 func (myClient *CustomClient) createReader() {
-	packetReader := myClient.Reader
-	packetReader.ACKHandler = myClient.defaultAckHandler
-	packetReader.ReliabilityLayerHandler = myClient.defaultReliabilityLayerHandler
-	packetReader.SimpleHandler = myClient.defaultSimpleHandler
-	packetReader.ReliableHandler = myClient.defaultReliableHandler
-	packetReader.FullReliableHandler = myClient.defaultFullReliableHandler
+	myClient.ACKHandler = myClient.defaultAckHandler
+	myClient.ReliabilityLayerHandler = myClient.defaultReliabilityLayerHandler
+	myClient.SimpleHandler = myClient.defaultSimpleHandler
+	myClient.ReliableHandler = myClient.defaultReliableHandler
+	myClient.FullReliableHandler = myClient.defaultFullReliableHandler
 
-	packetReader.ValContext = myClient.Context
+	myClient.DefaultPacketReader.SetContext(myClient.Context)
 }
 
 func (myClient *CustomClient) createWriter() {
-	packetWriter := myClient.Writer
-	packetWriter.OutputHandler = func(payload []byte) {
+	myClient.OutputHandler = func(payload []byte) {
 		num, err := myClient.Connection.Write(payload)
 		if err != nil {
 			fmt.Printf("Wrote %d bytes, err: %s\n", num, err.Error())
-		}
-		if myClient.OutputHandler != nil {
-			myClient.OutputHandler(payload)
 		}
 	}
 }

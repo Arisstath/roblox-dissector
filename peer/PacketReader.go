@@ -56,10 +56,10 @@ type contextualHandler struct {
 	caches   *Caches
 }
 func (handler *contextualHandler) Context() *CommunicationContext {
-	return handler.ValContext
+	return handler.context
 }
 func (handler *contextualHandler) Caches() *Caches {
-	return handler.ValCaches
+	return handler.caches
 }
 func (handler *contextualHandler) SetCaches(val *Caches) {
 	handler.caches = val

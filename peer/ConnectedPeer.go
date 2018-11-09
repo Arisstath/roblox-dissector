@@ -72,7 +72,7 @@ func (peer *ConnectedPeer) sendACKs() {
 		ACKs:  ackStructure,
 	}
 
-	peer.Writer.WriteRakNet(result)
+	peer.WriteRakNet(result)
 }
 
 func NewConnectedPeer(context *CommunicationContext) *ConnectedPeer {
@@ -81,13 +81,12 @@ func NewConnectedPeer(context *CommunicationContext) *ConnectedPeer {
     reader := NewPacketReader()
 	writer := NewPacketWriter()
 
-	reader := NewPacketReader()
     reader.SetContext(context)
     writer.SetContext(context)
     reader.SetCaches(new(Caches))
     writer.SetCaches(new(Caches))
 
 	myPeer.DefaultPacketReader = reader
-	myPeer.DefualtPacketWriter = writer
+	myPeer.DefaultPacketWriter = writer
 	return myPeer
 }

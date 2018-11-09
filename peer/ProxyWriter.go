@@ -14,7 +14,7 @@ type ProxyHalf struct {
 	fakePackets []uint32
 }
 
-func NewProxyHalf(context *CommunicationContext) {
+func NewProxyHalf(context *CommunicationContext) *ProxyHalf {
     return &ProxyHalf{
         ConnectedPeer: NewConnectedPeer(context),
         fakePackets: nil,
@@ -147,7 +147,7 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 			// packets that fail to parse: pass through untouched
 			// FIXME: this may prove problematic
 			//println("client sent reliable, serverHalf writing", packetType, packet.Source.String(), packet.Destination.String())
-			err = serverHalf.Writer.WriteReliablePacket(
+			err = serverHalf.WriteReliablePacket(
 				relPacket.SplitBuffer.data,
 				relPacket,
 			)
@@ -231,7 +231,7 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 		}
 		relPacket := layers.Reliability
 		//println("server sent reliable, clientHalf writing", packetType, packet.Source.String(), packet.Destination.String())
-		clientHalf.Writer.WriteReliablePacket(
+		clientHalf.WriteReliablePacket(
 			relPacket.SplitBuffer.data,
 			relPacket,
 		)
