@@ -73,6 +73,9 @@ func captureJob(handle *pcap.Handle, useIPv4 bool, captureJobContext context.Con
 				//println("Ignoring 0 payload")
 				continue
 			}
+            if packet.Layer(layers.LayerTypeIPv4) == nil {
+                continue
+            }
 			src, dst := SrcAndDestFromGoPacket(packet)
 			layers := &peer.PacketLayers{
 				Root: peer.RootLayer{

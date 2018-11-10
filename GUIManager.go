@@ -24,14 +24,6 @@ var window *widgets.QMainWindow
 type DefaultValues map[string](map[string]rbxfile.Value)
 
 type PacketList map[uint32]([]*gui.QStandardItem)
-type TwoWayPacketList struct {
-	Server  PacketList
-	Client  PacketList
-	MServer *sync.Mutex
-	MClient *sync.Mutex
-	EServer *sync.Cond
-	EClient *sync.Cond
-}
 
 type StudioSettings struct {
 	Location string
@@ -69,10 +61,8 @@ type PlayerProxySettings struct {
 type SelectionHandlerList map[uint64](func())
 type MyPacketListView struct {
 	*widgets.QTreeView
-	packetRowsByUniqueID    *TwoWayPacketList
-	packetRowsBySplitPacket *TwoWayPacketList
+	packetRowsByUniqueID    PacketList
 
-	CurrentACKSelection []*gui.QStandardItem
 	SelectionHandlers   SelectionHandlerList
 	RootNode            *gui.QStandardItem
 	PacketIndex         uint64
@@ -100,26 +90,11 @@ type MyPacketListView struct {
 	//FilterSettings FilterSettings
 }
 
-func NewTwoWayPacketList() *TwoWayPacketList {
-	server := &sync.Mutex{}
-	client := &sync.Mutex{}
-	return &TwoWayPacketList{
-		make(PacketList),
-		make(PacketList),
-
-		server,
-		client,
-		sync.NewCond(server),
-		sync.NewCond(client),
-	}
-}
-
 func NewMyPacketListView(parent widgets.QWidget_ITF) *MyPacketListView {
 	captureContext, captureCancel := context.WithCancel(context.Background())
 	new := &MyPacketListView{
 		QTreeView:               widgets.NewQTreeView(parent),
-		packetRowsByUniqueID:    NewTwoWayPacketList(),
-		packetRowsBySplitPacket: NewTwoWayPacketList(),
+		packetRowsByUniqueID:    make(PacketList),
 
 		SelectionHandlers: make(SelectionHandlerList),
 
@@ -142,9 +117,7 @@ func (m *MyPacketListView) Reset() {
 	m.StandardModel.Clear()
 	m.StandardModel.SetHorizontalHeaderLabels([]string{"Index", "Type", "Direction", "Length in Bytes", "Datagram Numbers", "Ordered Splits", "Total Splits"})
 
-	m.CurrentACKSelection = []*gui.QStandardItem{}
-	m.packetRowsByUniqueID = NewTwoWayPacketList()
-	m.packetRowsBySplitPacket = NewTwoWayPacketList()
+	m.packetRowsByUniqueID = make(PacketList)
 	m.SelectionHandlers = make(SelectionHandlerList)
 	m.RootNode = m.StandardModel.InvisibleRootItem()
 	m.PacketIndex = 0
@@ -179,77 +152,6 @@ func NewBasicPacketViewer(packetType byte, context *peer.CommunicationContext, l
 	return layerLayout
 }
 
-func (m *TwoWayPacketList) Add(index uint32, row []*gui.QStandardItem, context *peer.CommunicationContext, layers *peer.PacketLayers) {
-	isClient := layers.Root.FromClient
-	isServer := layers.Root.FromServer
-
-	var mutex *sync.Mutex
-	var list PacketList
-	var cond *sync.Cond
-
-	if isClient {
-		mutex = m.MClient
-		list = m.Client
-		cond = m.EClient
-	} else if isServer {
-		mutex = m.MServer
-		list = m.Server
-		cond = m.EServer
-	} else {
-		panic(errors.New("add not on server or client: " + layers.Root.Source.String() + " - " + context.Client.String() + " - " + context.Server.String()))
-	}
-	mutex.Lock()
-
-	list[index] = row
-	cond.Broadcast()
-
-	mutex.Unlock()
-}
-
-func (m *TwoWayPacketList) Has(index uint32, isClient bool, isServer bool) bool {
-	if isClient {
-		m.MClient.Lock()
-		defer m.MClient.Unlock()
-		_, ok := m.Client[index]
-		return ok
-	} else if isServer {
-		m.MServer.Lock()
-		defer m.MServer.Unlock()
-		_, ok := m.Server[index]
-		return ok
-	} else {
-		panic(errors.New("get not on server or client"))
-	}
-	return false
-}
-
-func (m *TwoWayPacketList) Get(index uint32, isClient bool, isServer bool) []*gui.QStandardItem {
-	var rows []*gui.QStandardItem
-	var ok bool
-	if isClient {
-		m.MClient.Lock()
-		rows, ok = m.Client[index]
-		for !ok {
-			m.EClient.Wait()
-			rows, ok = m.Client[index]
-		}
-
-		m.MClient.Unlock()
-	} else if isServer {
-		m.MServer.Lock()
-		rows, ok = m.Server[index]
-		for !ok {
-			m.EServer.Wait()
-			rows, ok = m.Server[index]
-		}
-
-		m.MServer.Unlock()
-	} else {
-		panic(errors.New("get not on server or client"))
-	}
-
-	return rows
-}
 
 func paintItems(row []*gui.QStandardItem, color *gui.QColor) {
 	for i := 0; i < len(row); i++ {
@@ -257,52 +159,12 @@ func paintItems(row []*gui.QStandardItem, color *gui.QColor) {
 	}
 }
 
-func (m *MyPacketListView) highlightByACK(ack peer.ACKRange, isClient bool, isServer bool) {
-	var i uint32
-
-	var mutex *sync.Mutex
-	var packetList PacketList
-	if isClient {
-		mutex = m.packetRowsByUniqueID.MClient
-		packetList = m.packetRowsByUniqueID.Client
-	} else if isServer {
-		mutex = m.packetRowsByUniqueID.MServer
-		packetList = m.packetRowsByUniqueID.Server
-	} else {
-		return
-	}
-	mutex.Lock()
-
-	for i = ack.Min; i <= ack.Max; i++ {
-		m.CurrentACKSelection = append(m.CurrentACKSelection, packetList[i]...)
-	}
-	paintItems(m.CurrentACKSelection, gui.NewQColor3(0, 0, 255, 127))
-	mutex.Unlock()
-}
-
-func (m *MyPacketListView) clearACKSelection() {
-	for _, item := range m.CurrentACKSelection {
-		item.SetBackground(gui.NewQBrush2(core.Qt__NoBrush))
-	}
-}
-
-func (m *MyPacketListView) handleNoneSelected() {
-	m.clearACKSelection()
-}
-
 func (m *MyPacketListView) registerSplitPacketRow(row []*gui.QStandardItem, context *peer.CommunicationContext, layers *peer.PacketLayers) {
-	if layers.Reliability.HasSplitPacket {
-		m.packetRowsBySplitPacket.Add(uint32(layers.Reliability.SplitPacketID), row, context, layers)
-	}
-
-	m.packetRowsByUniqueID.Add(layers.Reliability.SplitBuffer.UniqueID, row, context, layers)
+    m.packetRowsByUniqueID[layers.Reliability.SplitBuffer.UniqueID] = row
 }
 
 func (m *MyPacketListView) AddSplitPacket(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) {
-	isClient := layers.Root.FromClient
-	isServer := layers.Root.FromServer
-
-	if !m.packetRowsByUniqueID.Has(layers.Reliability.SplitBuffer.UniqueID, isClient, isServer) {
+    if _, ok := m.packetRowsByUniqueID[layers.Reliability.SplitBuffer.UniqueID]; !ok {
 		m.AddFullPacket(packetType, context, layers, nil)
 		m.BindDefaultCallback(packetType, context, layers)
 	} else {
@@ -311,15 +173,11 @@ func (m *MyPacketListView) AddSplitPacket(packetType byte, context *peer.Communi
 }
 
 func (m *MyPacketListView) BindCallback(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers, activationCallback ActivationCallback) {
-	isClient := layers.Root.FromClient
-	isServer := layers.Root.FromServer
-
-	row := m.packetRowsByUniqueID.Get(layers.Reliability.SplitBuffer.UniqueID, isClient, isServer)
+    row := m.packetRowsByUniqueID[layers.Reliability.SplitBuffer.UniqueID]
 	index, _ := strconv.Atoi(row[0].Data(0).ToString())
 
 	m.MSelectionHandlers.Lock()
 	m.SelectionHandlers[uint64(index)] = func() {
-		m.clearACKSelection()
 		if activationCallback != nil && layers.Main != nil {
 			activationCallback(packetType, context, layers)
 		} else {
@@ -462,25 +320,18 @@ func NewDefaultPacketViewer(packetType byte, context *peer.CommunicationContext,
 }
 
 func (m *MyPacketListView) BindDefaultCallback(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) {
-	isClient := layers.Root.FromClient
-	isServer := layers.Root.FromServer
-
-	row := m.packetRowsByUniqueID.Get(layers.Reliability.SplitBuffer.UniqueID, isClient, isServer)
+    row := m.packetRowsByUniqueID[layers.Reliability.SplitBuffer.UniqueID]
 	index, _ := strconv.Atoi(row[0].Data(0).ToString())
 
 	m.MSelectionHandlers.Lock()
 	m.SelectionHandlers[uint64(index)] = func() {
-		m.clearACKSelection()
 		NewDefaultPacketViewer(packetType, context, layers)
 	}
 	m.MSelectionHandlers.Unlock()
 }
 
 func (m *MyPacketListView) handleSplitPacket(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) {
-	isClient := layers.Root.FromClient
-	isServer := layers.Root.FromServer
-
-	row := m.packetRowsBySplitPacket.Get(uint32(layers.Reliability.SplitPacketID), isClient, isServer)
+    row := m.packetRowsByUniqueID[layers.Reliability.SplitBuffer.UniqueID]
 	m.registerSplitPacketRow(row, context, layers)
 
 	reliablePacket := layers.Reliability
@@ -575,7 +426,6 @@ func (m *MyPacketListView) AddFullPacket(packetType byte, context *peer.Communic
 	if layers.Reliability == nil { // Only bind if we're done parsing the packet
 		m.MSelectionHandlers.Lock()
 		m.SelectionHandlers[index] = func() {
-			m.clearACKSelection()
 			if activationCallback != nil && layers.Main != nil {
 				activationCallback(packetType, context, layers)
 			} else {
@@ -594,7 +444,7 @@ func (m *MyPacketListView) AddFullPacket(packetType byte, context *peer.Communic
 	return rootRow
 }
 
-func (m *MyPacketListView) AddACK(ack peer.ACKRange, context *peer.CommunicationContext, layers *peer.PacketLayers, activationCallback func()) {
+/*func (m *MyPacketListView) AddACK(ack peer.ACKRange, context *peer.CommunicationContext, layers *peer.PacketLayers, activationCallback func()) {
 	index := atomic.AddUint64(&m.PacketIndex, 1)
 	isClient := layers.Root.FromClient
 	isServer := layers.Root.FromServer
@@ -627,11 +477,10 @@ func (m *MyPacketListView) AddACK(ack peer.ACKRange, context *peer.Communication
 
 	m.MSelectionHandlers.Lock()
 	m.SelectionHandlers[index] = func() {
-		m.clearACKSelection()
 		m.highlightByACK(ack, isServer, isClient) // intentionally the other way around
 	}
 	m.MSelectionHandlers.Unlock()
-}
+}*/
 
 func GUIMain() {
 	widgets.NewQApplication(len(os.Args), os.Args)
@@ -659,9 +508,7 @@ func GUIMain() {
 	packetViewer.SetSortingEnabled(true)
 	packetViewer.ConnectClicked(func(index *core.QModelIndex) {
 		realSelectedValue, _ := strconv.Atoi(standardModel.Item(index.Row(), 0).Data(0).ToString())
-		if packetViewer.SelectionHandlers[uint64(realSelectedValue)] == nil {
-			packetViewer.handleNoneSelected()
-		} else {
+		if packetViewer.SelectionHandlers[uint64(realSelectedValue)] != nil {
 			packetViewer.SelectionHandlers[uint64(realSelectedValue)]()
 		}
 	})
