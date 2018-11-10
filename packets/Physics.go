@@ -88,6 +88,7 @@ func (thisBitstream *extendedReader) DecodePacket85Layer(reader PacketReader, la
 		subpacket := &Packet85LayerSubpacket{}
 		// TODO: generic function for this
 		if err != CacheReadOOB {
+            // Do not try to add callbacks on instances that don't have scopes
 			context.InstancesByReferent.OnAddInstance(referent, func(inst *rbxfile.Instance) {
 				subpacket.Data.Instance = inst
 			})
