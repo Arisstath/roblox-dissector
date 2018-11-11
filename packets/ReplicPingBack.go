@@ -10,7 +10,7 @@ type DataPingBack struct {
 	ExtraStats uint32
 }
 
-func (thisBitstream *extendedReader) DecodeDataPingBack(reader PacketReader, layers *PacketLayers) (ReplicationSubpacket, error) {
+func (thisBitstream *PacketReaderBitstream) DecodeDataPingBack(reader PacketReader, layers *PacketLayers) (ReplicationSubpacket, error) {
 	var err error
 	inner := &DataPingBack{}
 
@@ -38,7 +38,7 @@ func (thisBitstream *extendedReader) DecodeDataPingBack(reader PacketReader, lay
 	return inner, err
 }
 
-func (layer *DataPingBack) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *DataPingBack) Serialize(writer PacketWriter, stream *PacketWriterBitstream) error {
 	var err error
 	err = stream.writeBoolByte(layer.IsPingBack)
 	if err != nil {

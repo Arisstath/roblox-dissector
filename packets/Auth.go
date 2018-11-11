@@ -73,7 +73,7 @@ func NewAuthPacket() *AuthPacket {
 	return &AuthPacket{}
 }
 
-func (stream *extendedReader) DecodeAuthPacket(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (stream *PacketReaderBitstream) DecodeAuthPacket(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewAuthPacket()
 
 	lenBytes := bitsToBytes(uint(layers.Reliability.LengthInBits)) - 1 // -1 for packet id
@@ -99,7 +99,7 @@ func (stream *extendedReader) DecodeAuthPacket(reader PacketReader, layers *Pack
 	dest = shuffleSlice(dest)
 
 	checkSum := calculateChecksum(dest[4:])
-	thisBitstream := extendedReader{bitstream.NewReader(bytes.NewReader(dest))}
+	thisBitstream := PacketReaderBitstream{bitstream.NewReader(bytes.NewReader(dest))}
 	storedChecksum, err := thisBitstream.readUint32LE()
 	if err != nil {
 		return layer, err
@@ -179,9 +179,9 @@ func (stream *extendedReader) DecodeAuthPacket(reader PacketReader, layers *Pack
 	return layer, nil
 }
 
-func (layer *AuthPacket) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *AuthPacket) Serialize(writer PacketWriter, stream *PacketWriterBitstream) error {
 	rawBuffer := new(bytes.Buffer)
-	rawStream := &extendedWriter{bitstream.NewWriter(rawBuffer)}
+	rawStream := &PacketWriterBitstream{bitstream.NewWriter(rawBuffer)}
 	var err error
 
 	err = stream.WriteByte(0x8A)

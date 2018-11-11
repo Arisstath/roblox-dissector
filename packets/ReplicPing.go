@@ -10,7 +10,7 @@ type DataPing struct {
 	ExtraStats uint32
 }
 
-func (thisBitstream *extendedReader) DecodeDataPing(reader PacketReader, layers *PacketLayers) (ReplicationSubpacket, error) {
+func (thisBitstream *PacketReaderBitstream) DecodeDataPing(reader PacketReader, layers *PacketLayers) (ReplicationSubpacket, error) {
 	var err error
 	inner := &DataPing{}
 
@@ -38,7 +38,7 @@ func (thisBitstream *extendedReader) DecodeDataPing(reader PacketReader, layers 
 	return inner, err
 }
 
-func (layer *DataPing) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *DataPing) Serialize(writer PacketWriter, stream *PacketWriterBitstream) error {
 	var err error
 	err = stream.writeBoolByte(layer.IsPingBack)
 	if err != nil {

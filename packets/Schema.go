@@ -173,7 +173,7 @@ func NewSchemaPacket() *SchemaPacket {
 	return &SchemaPacket{}
 }
 
-func (thisBitstream *extendedReader) DecodeSchemaPacket(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisBitstream *PacketReaderBitstream) DecodeSchemaPacket(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewSchemaPacket()
 	
 
@@ -366,7 +366,7 @@ func (thisBitstream *extendedReader) DecodeSchemaPacket(reader PacketReader, lay
 	return layer, err
 }
 
-func (layer *SchemaPacket) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *SchemaPacket) Serialize(writer PacketWriter, stream *PacketWriterBitstream) error {
 	var err error
 
 	err = stream.WriteByte(0x97)
@@ -376,7 +376,7 @@ func (layer *SchemaPacket) Serialize(writer PacketWriter, stream *extendedWriter
 	gzipBuf := bytes.NewBuffer([]byte{})
 	middleStream := gzip.NewWriter(gzipBuf)
 	defer middleStream.Close()
-	gzipStream := &extendedWriter{bitstream.NewWriter(middleStream)}
+	gzipStream := &PacketWriterBitstream{bitstream.NewWriter(middleStream)}
 
 	schema := layer.Schema
 	err = gzipStream.writeUintUTF8(uint32(len(schema.Enums)))

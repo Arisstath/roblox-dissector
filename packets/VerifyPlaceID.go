@@ -9,7 +9,7 @@ func NewVerifyPlaceId() *VerifyPlaceId {
 	return &VerifyPlaceId{}
 }
 
-func (thisBitstream *extendedReader) DecodeVerifyPlaceId(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisBitstream *PacketReaderBitstream) DecodeVerifyPlaceId(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewVerifyPlaceId()
 
 	var err error
@@ -17,7 +17,7 @@ func (thisBitstream *extendedReader) DecodeVerifyPlaceId(reader PacketReader, la
 	return layer, err
 }
 
-func (layer *VerifyPlaceId) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *VerifyPlaceId) Serialize(writer PacketWriter, stream *PacketWriterBitstream) error {
 	err := stream.WriteByte(0x92)
 	if err != nil {
 		return err

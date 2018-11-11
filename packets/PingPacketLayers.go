@@ -10,7 +10,7 @@ func NewRakPing() *RakPing {
 	return &RakPing{}
 }
 
-func (thisBitstream *extendedReader) DecodeRakPing(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisBitstream *PacketReaderBitstream) DecodeRakPing(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewRakPing()
 
 	var err error
@@ -18,7 +18,7 @@ func (thisBitstream *extendedReader) DecodeRakPing(reader PacketReader, layers *
 
 	return layer, err
 }
-func (layer *RakPing) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *RakPing) Serialize(writer PacketWriter, stream *PacketWriterBitstream) error {
 	var err error
 	err = stream.WriteByte(0)
 	if err != nil {
@@ -40,7 +40,7 @@ func NewRakPong() *RakPong {
 	return &RakPong{}
 }
 
-func (thisBitstream *extendedReader) DecodeRakPong(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisBitstream *PacketReaderBitstream) DecodeRakPong(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewRakPong()
 
 	var err error
@@ -53,7 +53,7 @@ func (thisBitstream *extendedReader) DecodeRakPong(reader PacketReader, layers *
 	return layer, err
 }
 
-func (layer *RakPong) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *RakPong) Serialize(writer PacketWriter, stream *PacketWriterBitstream) error {
 	var err error
 	err = stream.WriteByte(3)
 	if err != nil {

@@ -16,7 +16,7 @@ func NewReplicateJoinDataLayer() *ReplicateJoinData {
 	return &ReplicateJoinData{}
 }
 
-func (thisBitstream *extendedReader) DecodeReplicateJoinData(reader PacketReader, layers *PacketLayers) (ReplicationSubpacket, error) {
+func (thisBitstream *PacketReaderBitstream) DecodeReplicateJoinData(reader PacketReader, layers *PacketLayers) (ReplicationSubpacket, error) {
 	layer := NewReplicateJoinDataLayer()
 
 	thisBitstream.Align()
@@ -51,7 +51,7 @@ func (thisBitstream *extendedReader) DecodeReplicateJoinData(reader PacketReader
 	return layer, nil
 }
 
-func (layer *ReplicateJoinData) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *ReplicateJoinData) Serialize(writer PacketWriter, stream *PacketWriterBitstream) error {
 	var err error
 	err = stream.Align()
 	if err != nil {
@@ -67,7 +67,7 @@ func (layer *ReplicateJoinData) Serialize(writer PacketWriter, stream *extendedW
 	zstdBuf := bytes.NewBuffer([]byte{})
 	middleStream := zstd.NewWriter(zstdBuf)
 	defer middleStream.Close()
-	zstdStream := &extendedWriter{bitstream.NewWriter(uncompressedBuf)}
+	zstdStream := &PacketWriterBitstream{bitstream.NewWriter(uncompressedBuf)}
 
 	for i := 0; i < len(layer.Instances); i++ {
 		err = serializeReplicationInstance(layer.Instances[i], writer, &JoinSerializeWriter{zstdStream})

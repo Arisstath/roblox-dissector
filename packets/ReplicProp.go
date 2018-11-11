@@ -20,7 +20,7 @@ type ChangeProperty struct {
 	Value rbxfile.Value
 }
 
-func (thisBitstream *extendedReader) DecodeChangeProperty(reader PacketReader, layers *PacketLayers) (ReplicationSubpacket, error) {
+func (thisBitstream *PacketReaderBitstream) DecodeChangeProperty(reader PacketReader, layers *PacketLayers) (ReplicationSubpacket, error) {
 	var err error
 	layer := &ChangeProperty{}
 
@@ -84,7 +84,7 @@ func (thisBitstream *extendedReader) DecodeChangeProperty(reader PacketReader, l
 	return layer, err
 }
 
-func (layer *ChangeProperty) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *ChangeProperty) Serialize(writer PacketWriter, stream *PacketWriterBitstream) error {
 	if layer.Instance == nil {
 		return errors.New("self is nil in serialize repl prop")
 	}

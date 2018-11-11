@@ -10,7 +10,7 @@ func NewFlagRequest() *FlagRequest {
 	return &FlagRequest{}
 }
 
-func (thisBitstream *extendedReader) DecodeFlagRequest(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisBitstream *PacketReaderBitstream) DecodeFlagRequest(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewFlagRequest()
 
 	var err error
@@ -35,7 +35,7 @@ func (thisBitstream *extendedReader) DecodeFlagRequest(reader PacketReader, laye
 	return layer, nil
 }
 
-func (layer *FlagRequest) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *FlagRequest) Serialize(writer PacketWriter, stream *PacketWriterBitstream) error {
 	err := stream.WriteByte(0x90)
 	if err != nil {
 		return err

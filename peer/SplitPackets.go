@@ -2,6 +2,8 @@ package peer
 
 import "bytes"
 import "github.com/gskartwii/go-bitstream"
+import "github.com/gskartwii/roblox-dissector/packets"
+import "github.com/gskartwii/roblox-dissector/bitstreams"
 import "log"
 import "strings"
 
@@ -23,7 +25,7 @@ type SplitPacketBuffer struct {
 	HasPacketType bool
 	PacketType    byte
 
-	dataReader *extendedReader
+	dataReader *packets.PacketReaderBitstream
 	data       []byte
 
 	// Have all splits been received?
@@ -113,7 +115,7 @@ func (reader *DefaultPacketReader) handleSplitPacket(layers *PacketLayers) (*Spl
 	}
 	if shouldClose {
 		packetBuffer.IsFinal = true
-		packetBuffer.dataReader = &extendedReader{bitstream.NewReader(bytes.NewReader(packetBuffer.data))}
+		packetBuffer.dataReader = &packets.PacketReaderBitstream{&packets.BitstreamReader{bitstream.NewReader(bytes.NewReader(packetBuffer.data))}}
 		if reliablePacket.HasSplitPacket {
 			// TODO: Use a linked list
 			reader.splitPackets.delete(layers)

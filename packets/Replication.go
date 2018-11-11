@@ -30,25 +30,25 @@ var ReplicationSubpackets map[uint8]string = map[uint8]string{
 	0x12: "ID_REPLIC_HASH",
 }
 
-var ReplicationDecoders = map[uint8](func(*extendedReader, PacketReader, *PacketLayers) (ReplicationSubpacket, error)){
-	0x01: (*extendedReader).DecodeDeleteInstance,
-	0x02: (*extendedReader).DecodeNewInstance,
-	0x03: (*extendedReader).DecodeChangeProperty,
-	0x04: (*extendedReader).DecodeReplicationMarker,
-	0x05: (*extendedReader).DecodeDataPing,
-	0x06: (*extendedReader).DecodeDataPingBack,
-	0x07: (*extendedReader).DecodeReplicateEvent,
-	0x09: (*extendedReader).DecodeReplicRocky,
-	0x0A: (*extendedReader).DecodeAckProperty,
-	0x0B: (*extendedReader).DecodeReplicateJoinData,
-	0x10: (*extendedReader).DecodeReplicationTag,
-	0x11: (*extendedReader).DecodeStats,
-	0x12: (*extendedReader).DecodeReplicateHash,
+var ReplicationDecoders = map[uint8](func(*PacketReaderBitstream, PacketReader, *PacketLayers) (ReplicationSubpacket, error)){
+	0x01: (*PacketReaderBitstream).DecodeDeleteInstance,
+	0x02: (*PacketReaderBitstream).DecodeNewInstance,
+	0x03: (*PacketReaderBitstream).DecodeChangeProperty,
+	0x04: (*PacketReaderBitstream).DecodeReplicationMarker,
+	0x05: (*PacketReaderBitstream).DecodeDataPing,
+	0x06: (*PacketReaderBitstream).DecodeDataPingBack,
+	0x07: (*PacketReaderBitstream).DecodeReplicateEvent,
+	0x09: (*PacketReaderBitstream).DecodeReplicRocky,
+	0x0A: (*PacketReaderBitstream).DecodeAckProperty,
+	0x0B: (*PacketReaderBitstream).DecodeReplicateJoinData,
+	0x10: (*PacketReaderBitstream).DecodeReplicationTag,
+	0x11: (*PacketReaderBitstream).DecodeStats,
+	0x12: (*PacketReaderBitstream).DecodeReplicateHash,
 }
 
 // A subpacket contained within a 0x83 (ID_DATA) packet
 type ReplicationSubpacket interface {
-	Serialize(writer PacketWriter, stream *extendedWriter) error
+	Serialize(writer PacketWriter, stream *PacketWriterBitstream) error
 	Type() uint8
 	TypeString() string
 }
@@ -62,7 +62,7 @@ func NewReplicatorPacket() *ReplicatorPacket {
 	return &ReplicatorPacket{}
 }
 
-func (thisBitstream *extendedReader) DecodeReplicatorPacket(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisBitstream *PacketReaderBitstream) DecodeReplicatorPacket(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewReplicatorPacket()
 
 	packetType, err := thisBitstream.readUint8()
@@ -96,7 +96,7 @@ func (thisBitstream *extendedReader) DecodeReplicatorPacket(reader PacketReader,
 	return layer, nil
 }
 
-func (layer *ReplicatorPacket) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *ReplicatorPacket) Serialize(writer PacketWriter, stream *PacketWriterBitstream) error {
 	var err error
 	err = stream.WriteByte(0x83)
 	if err != nil {

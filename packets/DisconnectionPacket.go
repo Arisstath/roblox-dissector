@@ -51,7 +51,7 @@ func NewDisconnectionPacket() *DisconnectionPacket {
 	return &DisconnectionPacket{}
 }
 
-func (thisBitstream *extendedReader) DecodeDisconnectionPacket(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisBitstream *PacketReaderBitstream) DecodeDisconnectionPacket(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewDisconnectionPacket()
 
 	var err error
@@ -59,7 +59,7 @@ func (thisBitstream *extendedReader) DecodeDisconnectionPacket(reader PacketRead
 	return layer, err
 }
 
-func (layer *DisconnectionPacket) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *DisconnectionPacket) Serialize(writer PacketWriter, stream *PacketWriterBitstream) error {
 	err := stream.WriteByte(0x15)
 	if err != nil {
 		return err

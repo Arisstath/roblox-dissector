@@ -32,7 +32,7 @@ type ReplicRocky_06 struct {
 
 type ReplicRocky_07 struct{}
 
-func (thisBitstream *extendedReader) DecodeReplicRocky(reader PacketReader, layers *PacketLayers) (ReplicationSubpacket, error) {
+func (thisBitstream *PacketReaderBitstream) DecodeReplicRocky(reader PacketReader, layers *PacketLayers) (ReplicationSubpacket, error) {
 	var err error
 	inner := &ReplicRocky{}
 
@@ -106,7 +106,7 @@ func (thisBitstream *extendedReader) DecodeReplicRocky(reader PacketReader, laye
 	return inner, err
 }
 
-func (layer *ReplicRocky) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *ReplicRocky) Serialize(writer PacketWriter, stream *PacketWriterBitstream) error {
 	err := stream.WriteByte(layer.SubpacketType)
 	if err != nil {
 		return err

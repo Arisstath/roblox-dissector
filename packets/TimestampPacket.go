@@ -5,14 +5,14 @@ type Timestamp struct {
 	// Timestamp of when this packet was sent
 	Timestamp  uint64
 	Timestamp2 uint64
-	stream     *extendedReader
+	stream     *PacketReaderBitstream
 }
 
 func NewTimestamp() *Timestamp {
 	return &Timestamp{}
 }
 
-func (thisBitstream *extendedReader) DecodeTimestamp(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisBitstream *PacketReaderBitstream) DecodeTimestamp(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewTimestamp()
 
 	var err error
@@ -29,7 +29,7 @@ func (thisBitstream *extendedReader) DecodeTimestamp(reader PacketReader, layers
 	return layer, err
 }
 
-func (layer *Timestamp) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *Timestamp) Serialize(writer PacketWriter, stream *PacketWriterBitstream) error {
 	var err error
 	err = stream.WriteByte(0x1B)
 	if err != nil {

@@ -8,12 +8,12 @@ type NewInstance struct {
 	Child *rbxfile.Instance
 }
 
-func (thisBitstream *extendedReader) DecodeNewInstance(reader PacketReader, layers *PacketLayers) (ReplicationSubpacket, error) {
+func (thisBitstream *PacketReaderBitstream) DecodeNewInstance(reader PacketReader, layers *PacketLayers) (ReplicationSubpacket, error) {
 	result, err := decodeReplicationInstance(reader, thisBitstream, layers)
 	return &NewInstance{result}, err
 }
 
-func (layer *NewInstance) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *NewInstance) Serialize(writer PacketWriter, stream *PacketWriterBitstream) error {
 	return serializeReplicationInstance(layer.Child, writer, stream)
 }
 

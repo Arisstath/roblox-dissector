@@ -16,7 +16,7 @@ const DEBUG bool = true
 
 // RakNetPacket describes any packet that can be serialized and written to UDP
 type RakNetPacket interface {
-	Serialize(writer PacketWriter, stream *extendedWriter) error
+	Serialize(writer PacketWriter, stream *PacketWriterBitstream) error
 }
 
 type RootLayer struct {
@@ -60,7 +60,7 @@ type ACKRange struct {
 // RakNetLayer is the outermost layer of all packets. It contains basic information
 // about every packet.
 type RakNetLayer struct {
-	payload *extendedReader
+	payload *PacketReaderBitstream
 	// Is the packet a simple pre-connection packet?
 	IsSimple bool
 	// If IsSimple is true, this is the packet type.
@@ -92,7 +92,7 @@ func IsOfflineMessage(data []byte) bool {
 	return bytes.Compare(data[1:1+len(OfflineMessageID)], OfflineMessageID) == 0
 }
 
-func (bitstream *extendedReader) DecodeRakNetLayer(reader PacketReader, packetType byte, layers *PacketLayers) (*RakNetLayer, error) {
+func (bitstream *PacketReaderBitstream) DecodeRakNetLayer(reader PacketReader, packetType byte, layers *PacketLayers) (*RakNetLayer, error) {
 	layer := NewRakNetLayer()
 
 	var err error
@@ -198,7 +198,7 @@ func (bitstream *extendedReader) DecodeRakNetLayer(reader PacketReader, packetTy
 	}
 }
 
-func (layer *RakNetLayer) Serialize(writer PacketWriter, outStream *extendedWriter) error {
+func (layer *RakNetLayer) Serialize(writer PacketWriter, outStream *PacketWriterBitstream) error {
 	var err error
 	err = outStream.writeBool(layer.IsValid)
 	if err != nil {

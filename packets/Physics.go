@@ -36,7 +36,7 @@ func NewPhysicsPacket() *PhysicsPacket {
 	return &PhysicsPacket{}
 }
 
-func (b *extendedReader) readPhysicsData(data *PhysicsData, motors bool, reader PacketReader) error {
+func (b *PacketReaderBitstream) readPhysicsData(data *PhysicsData, motors bool, reader PacketReader) error {
 	var err error
 	if motors {
 		data.Motors, err = b.readMotors()
@@ -71,7 +71,7 @@ func (b *extendedReader) readPhysicsData(data *PhysicsData, motors bool, reader 
 	return err
 }
 
-func (thisBitstream *extendedReader) DecodePhysicsPacket(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisBitstream *PacketReaderBitstream) DecodePhysicsPacket(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 
 	context := reader.Context()
 	layer := NewPhysicsPacket()
@@ -157,7 +157,7 @@ func (thisBitstream *extendedReader) DecodePhysicsPacket(reader PacketReader, la
 	return layer, nil
 }
 
-func (b *extendedWriter) writePhysicsData(val *PhysicsData, motors bool, writer PacketWriter) error {
+func (b *PacketWriterBitstream) writePhysicsData(val *PhysicsData, motors bool, writer PacketWriter) error {
 	var err error
 	if motors {
 		err = b.writeMotors(val.Motors)
@@ -190,7 +190,7 @@ func (b *extendedWriter) writePhysicsData(val *PhysicsData, motors bool, writer 
 	return err
 }
 
-func (layer *PhysicsPacket) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *PhysicsPacket) Serialize(writer PacketWriter, stream *PacketWriterBitstream) error {
 	err := stream.WriteByte(0x85)
 	if err != nil {
 		return err

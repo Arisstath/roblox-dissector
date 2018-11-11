@@ -28,7 +28,7 @@ func NewClusterPacket() *ClusterPacket {
 	return &ClusterPacket{}
 }
 
-func (thisBitstream *extendedReader) DecodeClusterPacket(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisBitstream *PacketReaderBitstream) DecodeClusterPacket(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewClusterPacket()
 
 	context := reader.Context()
@@ -181,6 +181,6 @@ func (thisBitstream *extendedReader) DecodeClusterPacket(reader PacketReader, la
 	return layer, err
 }
 
-func (layer *ClusterPacket) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *ClusterPacket) Serialize(writer PacketWriter, stream *PacketWriterBitstream) error {
 	return errors.New("not implemented!")
 }

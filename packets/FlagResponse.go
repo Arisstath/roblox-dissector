@@ -16,7 +16,7 @@ func NewFlagResponse() *FlagResponse {
 	return &FlagResponse{Params: make(map[string]bool)}
 }
 
-func (thisBitstream *extendedReader) DecodeFlagResponse(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisBitstream *PacketReaderBitstream) DecodeFlagResponse(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewFlagResponse()
 
 	var err error
@@ -60,7 +60,7 @@ func (thisBitstream *extendedReader) DecodeFlagResponse(reader PacketReader, lay
 	return layer, nil
 }
 
-func (layer *FlagResponse) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *FlagResponse) Serialize(writer PacketWriter, stream *PacketWriterBitstream) error {
 	var err error
 	err = stream.WriteByte(0x93)
 	if err != nil {

@@ -2,36 +2,36 @@ package peer
 
 import "errors"
 import "fmt"
-
+import "github.com/gskartwii/roblox-dissector/packets"
 import "strings"
 import "log"
 
-type decoderFunc func(*extendedReader, PacketReader, *PacketLayers) (RakNetPacket, error)
+type decoderFunc func(*packets.packets.PacketReaderBitstream, PacketReader, *PacketLayers) (RakNetPacket, error)
 
 var packetDecoders = map[byte]decoderFunc{
-	0x05: (*extendedReader).DecodeConnectionRequest1,
-	0x06: (*extendedReader).DecodeConnectionReply1,
-	0x07: (*extendedReader).DecodeConnectionRequest2,
-	0x08: (*extendedReader).DecodeConnectionReply2,
-	0x00: (*extendedReader).DecodeRakPing,
-	0x03: (*extendedReader).DecodeRakPong,
-	0x09: (*extendedReader).DecodePacket09Layer,
-	0x10: (*extendedReader).DecodePacket10Layer,
-	0x13: (*extendedReader).DecodePacket13Layer,
-	0x15: (*extendedReader).DecodeDisconnectionPacket,
-	0x1B: (*extendedReader).DecodeTimestamp,
+	0x05: (*packets.PacketReaderBitstream).DecodeConnectionRequest1,
+	0x06: (*packets.PacketReaderBitstream).DecodeConnectionReply1,
+	0x07: (*packets.PacketReaderBitstream).DecodeConnectionRequest2,
+	0x08: (*packets.PacketReaderBitstream).DecodeConnectionReply2,
+	0x00: (*packets.PacketReaderBitstream).DecodeRakPing,
+	0x03: (*packets.PacketReaderBitstream).DecodeRakPong,
+	0x09: (*packets.PacketReaderBitstream).DecodePacket09Layer,
+	0x10: (*packets.PacketReaderBitstream).DecodePacket10Layer,
+	0x13: (*packets.PacketReaderBitstream).DecodePacket13Layer,
+	0x15: (*packets.PacketReaderBitstream).DecodeDisconnectionPacket,
+	0x1B: (*packets.PacketReaderBitstream).DecodeTimestamp,
 
-	0x81: (*extendedReader).DecodeTopReplication,
-	0x83: (*extendedReader).DecodeReplicatorPacket,
-	0x85: (*extendedReader).DecodePhysicsPacket,
-	0x86: (*extendedReader).DecodeTouch,
-	0x8A: (*extendedReader).DecodeAuthPacket,
-	0x8D: (*extendedReader).DecodeClusterPacket,
-	0x8F: (*extendedReader).DecodeSpawnNamePacket,
-	0x90: (*extendedReader).DecodeFlagRequest,
-	0x92: (*extendedReader).DecodeVerifyPlaceId,
-	0x93: (*extendedReader).DecodeFlagResponse,
-	0x97: (*extendedReader).DecodeSchemaPacket,
+	0x81: (*packets.PacketReaderBitstream).DecodeTopReplication,
+	0x83: (*packets.PacketReaderBitstream).DecodeReplicatorPacket,
+	0x85: (*packets.PacketReaderBitstream).DecodePhysicsPacket,
+	0x86: (*packets.PacketReaderBitstream).DecodeTouch,
+	0x8A: (*packets.PacketReaderBitstream).DecodeAuthPacket,
+	0x8D: (*packets.PacketReaderBitstream).DecodeClusterPacket,
+	0x8F: (*packets.PacketReaderBitstream).DecodeSpawnNamePacket,
+	0x90: (*packets.PacketReaderBitstream).DecodeFlagRequest,
+	0x92: (*packets.PacketReaderBitstream).DecodeVerifyPlaceId,
+	0x93: (*packets.PacketReaderBitstream).DecodeFlagResponse,
+	0x97: (*packets.PacketReaderBitstream).DecodeSchemaPacket,
 }
 
 type ReceiveHandler func(byte, *PacketLayers)
@@ -112,7 +112,7 @@ func NewPacketReader() *DefaultPacketReader {
 	}
 }
 
-func (reader *DefaultPacketReader) readSimple(stream *extendedReader, packetType uint8, layers *PacketLayers) {
+func (reader *DefaultPacketReader) readSimple(stream *packets.PacketReaderBitstream, packetType uint8, layers *PacketLayers) {
 	var err error
 	layers.Root.logBuffer = new(strings.Builder)
 	layers.Root.Logger = log.New(layers.Root.logBuffer, "", log.Lmicroseconds|log.Ltime)
@@ -128,7 +128,7 @@ func (reader *DefaultPacketReader) readSimple(stream *extendedReader, packetType
 	reader.SimpleHandler(packetType, layers)
 }
 
-func (reader *DefaultPacketReader) readGeneric(stream *extendedReader, packetType uint8, layers *PacketLayers) {
+func (reader *DefaultPacketReader) readGeneric(stream *packets.PacketReaderBitstream, packetType uint8, layers *PacketLayers) {
 	var err error
 	if packetType == 0x1B { // ID_TIMESTAMP
 		tsLayer, err := packetDecoders[0x1B](stream, reader, layers)
