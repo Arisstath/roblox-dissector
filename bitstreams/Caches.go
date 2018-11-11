@@ -1,7 +1,7 @@
 package bitstreams
 
 // Cache represents a network cache that stores repeatable objects such as strings.
-type Cache interface {
+type cache interface {
 	// Get fetches the object matching a cache index.
 	Get(uint8) (interface{}, bool)
 	// Put creates a new object in the caches at the specific index.
@@ -13,27 +13,27 @@ type Cache interface {
 	LastWrite() uint8
 }
 
-// StringCache represents a cache that stores strings.
-type StringCache struct {
+// stringCache represents a cache that stores strings.
+type stringCache struct {
 	// Values contains the stored strings.
 	Values    [0x80]interface{}
 	lastWrite uint8
 }
 
 // Get implements Cache.Get()
-func (c *StringCache) Get(index uint8) (interface{}, bool) {
+func (c *stringCache) Get(index uint8) (interface{}, bool) {
 	a := c.Values[index]
 	return a, a != nil
 }
 
 // Put implements Cache.Put()
-func (c *StringCache) Put(val interface{}, index uint8) {
+func (c *stringCache) Put(val interface{}, index uint8) {
 	c.Values[index] = val.(string)
 	c.lastWrite = index
 }
 
 // Equal implements Cache.Equal()
-func (c *StringCache) Equal(index uint8, val interface{}) (bool, bool) {
+func (c *stringCache) Equal(index uint8, val interface{}) (bool, bool) {
 	val1 := c.Values[index]
 	if val1 == nil || val == nil {
 		return val1 == val, val1 == nil
@@ -42,31 +42,31 @@ func (c *StringCache) Equal(index uint8, val interface{}) (bool, bool) {
 }
 
 // LastWrite implements Cache.LastWrite()
-func (c *StringCache) LastWrite() uint8 {
+func (c *stringCache) LastWrite() uint8 {
 	return c.lastWrite
 }
 
-// SysAddrCache is a Cache that stores SystemAddress values.
-type SysAddrCache struct {
+// sysAddrCache is a Cache that stores SystemAddress values.
+type sysAddrCache struct {
 	// Values contains the stores SystemAddresses.
 	Values    [0x80]interface{}
 	lastWrite uint8
 }
 
 // Get implements Cache.Get().
-func (c *SysAddrCache) Get(index uint8) (interface{}, bool) {
+func (c *sysAddrCache) Get(index uint8) (interface{}, bool) {
 	a := c.Values[index]
 	return a, a != nil
 }
 
 // Put implements Cache.Put().
-func (c *SysAddrCache) Put(val interface{}, index uint8) {
+func (c *sysAddrCache) Put(val interface{}, index uint8) {
 	c.Values[index] = val.(rbxfile.ValueSystemAddress)
 	c.lastWrite = index
 }
 
 // Equal implements Cache.Equal().
-func (c *SysAddrCache) Equal(index uint8, val interface{}) (bool, bool) {
+func (c *sysAddrCache) Equal(index uint8, val interface{}) (bool, bool) {
 	val1 := c.Values[index]
 	if val1 == nil || val == nil {
 		return val1 == val, val1 == nil
@@ -75,31 +75,31 @@ func (c *SysAddrCache) Equal(index uint8, val interface{}) (bool, bool) {
 }
 
 // LastWrite implements Cache.LastWrite().
-func (c *SysAddrCache) LastWrite() uint8 {
+func (c *sysAddrCache) LastWrite() uint8 {
 	return c.lastWrite
 }
 
-// ByteSliceCache is a Cache that stores []byte objects.
-type ByteSliceCache struct {
+// byteSliceCache is a Cache that stores []byte objects.
+type byteSliceCache struct {
 	// Values contains the []byte objects.
 	Values    [0x80]interface{}
 	lastWrite uint8
 }
 
 // Get implements Cache.Get().
-func (c *ByteSliceCache) Get(index uint8) (interface{}, bool) {
+func (c *byteSliceCache) Get(index uint8) (interface{}, bool) {
 	a := c.Values[index]
 	return a, a != nil
 }
 
 // Put implements Cache.Put().
-func (c *ByteSliceCache) Put(val interface{}, index uint8) {
+func (c *byteSliceCache) Put(val interface{}, index uint8) {
 	c.Values[index] = val.([]byte)
 	c.lastWrite = index
 }
 
 // Equal implements Cache.Equal().
-func (c *ByteSliceCache) Equal(index uint8, val interface{}) (bool, bool) {
+func (c *byteSliceCache) Equal(index uint8, val interface{}) (bool, bool) {
 	val1 := c.Values[index]
 	if val1 == nil || val == nil {
 		return val1 == val, val1 == nil
@@ -108,23 +108,23 @@ func (c *ByteSliceCache) Equal(index uint8, val interface{}) (bool, bool) {
 }
 
 // LastWrite implements Cache.LastWrite().
-func (c *ByteSliceCache) LastWrite() uint8 {
+func (c *byteSliceCache) LastWrite() uint8 {
 	return c.lastWrite
 }
 
 type Caches struct {
-	String          StringCache
-	Object          StringCache
-	Content         StringCache
-	SystemAddress   SysAddrCache
-	ProtectedString ByteSliceCache
+	String          stringCache
+	Object          stringCache
+	Content         stringCache
+	SystemAddress   sysAddrCache
+	ProtectedString byteSliceCache
 }
 
 type cacheReadCallback func(*BitstreamReader) (interface{}, error)
 
 var CacheReadOOB = errors.New("Cache read is out of bounds")
 
-func (b *BitstreamReader) ReadWithCache(cache Cache, readCallback cacheReadCallback) (interface{}, error) {
+func (b *BitstreamReader) readWithCache(cache Cache, readCallback cacheReadCallback) (interface{}, error) {
 	var result interface{}
 	var err error
 	cacheIndex, err := b.ReadUint8()
@@ -156,27 +156,27 @@ func (b *BitstreamReader) ReadWithCache(cache Cache, readCallback cacheReadCallb
 func (b *BitstreamReader) ReadCached(caches *Caches) (string, error) {
 	cache := &caches.String
 
-	thisString, err := b.ReadWithCache(cache, (*BitstreamReader).ReadUint32AndString)
+	thisString, err := b.readWithCache(cache, (*BitstreamReader).ReadUint32AndString)
 	return thisString.(string), err
 }
 
 func (b *BitstreamReader) ReadCachedScope(caches *Caches) (string, error) {
 	cache := &caches.Object
-	thisString, err := b.ReadWithCache(cache, (*BitstreamReader).ReadUint32AndString)
+	thisString, err := b.readWithCache(cache, (*BitstreamReader).ReadUint32AndString)
 	return thisString.(string), err
 }
 
 func (b *BitstreamReader) ReadCachedContent(caches *Caches) (string, error) {
 	cache := &caches.Content
 
-	thisString, err := b.ReadWithCache(cache, (*BitstreamReader).ReadUint32AndString)
+	thisString, err := b.readWithCache(cache, (*BitstreamReader).ReadUint32AndString)
 	return thisString.(string), err
 }
 
 func (b *BitstreamReader) ReadNewCachedProtectedString(caches *Caches) ([]byte, error) {
 	cache := &caches.ProtectedString
 
-	thisString, err := b.ReadWithCache(cache, func(b *BitstreamReader) (interface{}, error) {
+	thisString, err := b.readWithCache(cache, func(b *BitstreamReader) (interface{}, error) {
 		stringLen, err := b.ReadUint32BE()
 		if err != nil {
 			return []byte{}, err
@@ -192,7 +192,7 @@ func (b *BitstreamReader) ReadNewCachedProtectedString(caches *Caches) ([]byte, 
 
 type cacheWriteCallback func(*BitstreamWriter, interface{}) error
 
-func (b *BitstreamWriter) WriteWithCache(value interface{}, cache Cache, writeCallback cacheWriteCallback) error {
+func (b *BitstreamWriter) WriteWithCache(value interface{}, cache cache, writeCallback cacheWriteCallback) error {
 	if value == nil {
 		return b.WriteByte(0x00)
 	}
