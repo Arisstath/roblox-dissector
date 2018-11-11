@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/gskartwii/rbxfile"
+    "github.com/gskartwii/roblox-dissector/schema"
 )
 
 type SerializeReader interface {
@@ -19,7 +20,7 @@ type SerializeReader interface {
 }
 type InstanceReader interface {
 	SerializeReader
-	ReadProperties(schema []StaticPropertySchema, properties map[string]rbxfile.Value, reader PacketReader) error
+	ReadProperties(schema []schema.StaticPropertySchema, properties map[string]rbxfile.Value, reader PacketReader) error
 }
 
 type SerializeWriter interface {
@@ -32,7 +33,7 @@ type SerializeWriter interface {
 }
 type InstanceWriter interface {
 	SerializeWriter
-	WriteProperties(schema []StaticPropertySchema, properties map[string]rbxfile.Value, writer PacketWriter) error
+	WriteProperties(schema []schema.StaticPropertySchema, properties map[string]rbxfile.Value, writer PacketWriter) error
 }
 
 func (b *BitstreamReader) ReadSerializedValue(reader PacketReader, valueType uint8, enumId uint16) (rbxfile.Value, error) {
@@ -78,7 +79,7 @@ func (b *BitstreamReader) ReadSerializedValue(reader PacketReader, valueType uin
 func (b *BitstreamReader) ReadObject(reader PacketReader) (Referent, error) {
 	return b.ReadObject(reader.Caches())
 }
-func (b *BitstreamReader) ReadProperties(schema []StaticPropertySchema, properties map[string]rbxfile.Value, reader PacketReader) error {
+func (b *BitstreamReader) ReadProperties(schema []schema.StaticPropertySchema, properties map[string]rbxfile.Value, reader PacketReader) error {
 	for i := 0; i < 2; i++ {
 		propertyIndex, err := b.ReadUint8()
 		last := "none"
@@ -140,7 +141,7 @@ func (b *BitstreamWriter) WriteSerializedValue(val rbxfile.Value, writer PacketW
 func (b *BitstreamWriter) WriteObject(object *rbxfile.Instance, writer PacketWriter) error {
 	return b.WriteObject(object, writer.Caches())
 }
-func (b *BitstreamWriter) WriteProperties(schema []StaticPropertySchema, properties map[string]rbxfile.Value, writer PacketWriter) error {
+func (b *BitstreamWriter) WriteProperties(schema []schema.StaticPropertySchema, properties map[string]rbxfile.Value, writer PacketWriter) error {
 	var err error
 	for i := 0; i < len(schema); i++ {
 		if is2ndRoundType(schema[i].Type) {
@@ -274,7 +275,7 @@ func (b *JoinSerializeReader) ReadSerializedValue(reader PacketReader, valueType
 func (b *JoinSerializeReader) ReadObject(reader PacketReader) (Referent, error) {
 	return b.ReadJoinObject(reader.Context())
 }
-func (b *JoinSerializeReader) ReadProperties(schema []StaticPropertySchema, properties map[string]rbxfile.Value, reader PacketReader) error {
+func (b *JoinSerializeReader) ReadProperties(schema []schema.StaticPropertySchema, properties map[string]rbxfile.Value, reader PacketReader) error {
 	propertyIndex, err := b.ReadUint8()
 	last := "none"
 	for err == nil && propertyIndex != 0xFF {
@@ -327,7 +328,7 @@ func (b *JoinSerializeWriter) WriteSerializedValue(val rbxfile.Value, writer Pac
 func (b *JoinSerializeWriter) WriteObject(object *rbxfile.Instance, writer PacketWriter) error {
 	return b.BitstreamWriter.WriteJoinObject(object, writer.Context())
 }
-func (b *JoinSerializeWriter) WriteProperties(schema []StaticPropertySchema, properties map[string]rbxfile.Value, writer PacketWriter) error {
+func (b *JoinSerializeWriter) WriteProperties(schema []schema.StaticPropertySchema, properties map[string]rbxfile.Value, writer PacketWriter) error {
 	var err error
 	for i := 0; i < len(schema); i++ {
 		name := schema[i].Name

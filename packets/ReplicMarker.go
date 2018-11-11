@@ -1,4 +1,4 @@
-package peer
+package packets
 
 // ID_MARKER
 type ReplicationMarker struct {

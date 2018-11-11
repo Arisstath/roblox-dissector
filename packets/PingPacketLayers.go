@@ -1,4 +1,4 @@
-package peer
+package packets
 
 // ID_CONNECTED_PING - client <-> server
 type RakPing struct {

@@ -1,4 +1,4 @@
-package peer
+package packets
 
 import (
 	"errors"
@@ -79,7 +79,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeChangeProperty(reader PacketRe
 	schema := context.StaticSchema.Properties[propertyIDx]
 	layer.PropertyName = schema.Name
 
-	layer.Value, err = schema.Decode(reader, thisBitstream, layers)
+	layer.Value, err = DecodeReplicationProperty(reader, thisBitstream, layers, schema)
 
 	return layer, err
 }
@@ -143,7 +143,7 @@ func (layer *ChangeProperty) Serialize(writer PacketWriter, stream *PacketWriter
 	}
 
 	// TODO: A different system for this?
-	err = context.StaticSchema.Properties[propertyID].Serialize(layer.Value, writer, stream)
+	err = SerializeReplicationProperty(layer.Value, writer, stream, context.StaticSchema.Properties[propertyID])
 	return err
 }
 

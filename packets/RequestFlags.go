@@ -1,4 +1,4 @@
-package peer
+package packets
 
 // ID_PROTOCOL_SYNC - client -> server
 type FlagRequest struct {

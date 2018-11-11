@@ -1,4 +1,4 @@
-package peer
+package packets
 
 // ID_PLACEID_VERIFICATION - client -> server
 type VerifyPlaceId struct {

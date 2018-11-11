@@ -36,42 +36,34 @@ var packetDecoders = map[byte]decoderFunc{
 
 type ReceiveHandler func(byte, *PacketLayers)
 
-type ContextualHandler interface {
-    SetContext(*CommunicationContext)
-	Context() *CommunicationContext
-    SetCaches(*Caches)
-	Caches() *Caches
-}
-
-// PacketReader is an interface that can be passed to packet decoders
-type PacketReader interface {
-    ContextualHandler
-    SetIsClient(bool)
-	IsClient() bool
-}
-
-type contextualHandler struct {
-	context  *CommunicationContext
+type defaultContextualHandler struct {
+    *util.CommunicationContext
 	caches   *Caches
 }
-func (handler *contextualHandler) Context() *CommunicationContext {
-	return handler.context
-}
-func (handler *contextualHandler) Caches() *Caches {
+func (handler *defaultContextualHandler) Caches() *Caches {
 	return handler.caches
 }
-func (handler *contextualHandler) SetCaches(val *Caches) {
+func (handler *defaultContextualHandler) SetCaches(val *Caches) {
 	handler.caches = val
 }
-func (handler *contextualHandler) SetContext(val *CommunicationContext) {
-	handler.context = val
+func (handler *defaultContextualHandler) Context() *util.CommunicationContext {
+	return handler.CommunicationContext
+}
+func (handler *defaultContextualHandler) SetContext(val *util.CommunicationContext) {
+	handler.CommunicationContext = val
+}
+func (handler *defaultContextualHandler) Schema() *schema.StaticSchema {
+    return handler.CommunicationContext.StaticSchema
+}
+func (handler *defaultContextualHandler) SetSchema(val *schema.StaticSchema) {
+	handler.CommunicationContext.StaticSchema = val
 }
 
 // PacketReader is a struct that can be used to read packets from a source
 // Pass packets in using ReadPacket() and bind to the given callbacks
 // to receive the results
 type DefaultPacketReader struct {
-    contextualHandler
+    defaultContextualHandler
 	// Callback for "simple" packets (pre-connection offline packets).
 	SimpleHandler ReceiveHandler
 	// Callback for ReliabilityLayer subpackets. This callback is invoked for every

@@ -12,7 +12,7 @@ func is2ndRoundType(typeId uint8) bool {
 	return ((id-3) > 0x1F || ((1<<(id-3))&uint32(0xC200000F)) == 0) && (id != 1) // thank you ARM compiler for optimizing this <3
 }
 
-func decodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader, layers *PacketLayers) (*Reference, error) {
+func DecodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader, layers *PacketLayers) (*Reference, error) {
 	var err error
 	var referent *Reference
 	context := reader.Context()
@@ -74,8 +74,12 @@ func decodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader
 	return referent, nil
 }
 
-func serializeReplicationInstance(reference *Reference, writer PacketWriter, stream InstanceWriter) error {
-	var err error
+func SerializeReplicationInstance(reference *Reference, writer PacketWriter, stream InstanceWriter) error {
+    // TODO: PacketWriter implement GetInstance() and CreateInstance()?
+    instance, err := writer.Context().InstancesByReferent.TryGetInstance(reference)
+    if err != nil {
+        return err
+    }
 	if instance == nil {
 		return errors.New("self is nil in serialize repl inst")
 	}

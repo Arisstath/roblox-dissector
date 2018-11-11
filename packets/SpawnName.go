@@ -1,4 +1,4 @@
-package peer
+package packets
 
 // ID_PREFERRED_SPAWN_NAME - client -> server
 type SpawnNamePacket struct {

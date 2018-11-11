@@ -1,4 +1,4 @@
-package peer
+package packets
 
 // ID_TIMESTAMP - client <-> server
 type Timestamp struct {

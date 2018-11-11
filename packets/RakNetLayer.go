@@ -1,6 +1,6 @@
 // The peer package can be used for communication with Roblox servers, as well as
 // parsing packets captured from Roblox network traffic.
-package peer
+package packets
 
 import (
 	"bytes"

@@ -1,4 +1,4 @@
-package peer
+package packets
 
 // ID_PING_BACK
 type DataPingBack struct {

@@ -12,22 +12,13 @@ func min(x, y uint) uint {
 	return y
 }
 
-type PacketWriter interface {
-    SetContext(*CommunicationContext)
-	Context() *CommunicationContext
-    SetToClient(bool)
-	ToClient() bool
-    SetCaches(*Caches)
-	Caches() *Caches
-}
-
 // TODO: Make an interface "Writable" that is implemented by Layers, RakNetPacket, ReplicationSubpacket?
 
 // PacketWriter is a struct used to write packets to a peer
 // Pass packets in using WriteSimple/WriteGeneric/etc.
 // and bind to the given callbacks
 type DefaultPacketWriter struct {
-    contextualHandler
+    defaultContextualHandler
 	// OutputHandler sends the data for all packets to be written.
 	OutputHandler   func([]byte)
 	orderingIndex   uint32
@@ -38,7 +29,6 @@ type DefaultPacketWriter struct {
 	// Set this to true if the packets produced by this writer are sent to a client.
     toClient bool
     caches   *Caches
-	context  *CommunicationContext
 }
 
 func NewPacketWriter() *DefaultPacketWriter {

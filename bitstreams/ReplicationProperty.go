@@ -4,9 +4,10 @@ import (
 	"errors"
 
 	"github.com/gskartwii/rbxfile"
+    "github.com/gskartwii/roblox-dissector/schema"
 )
 
-func (schema StaticPropertySchema) Decode(reader PacketReader, stream SerializeReader, layers *PacketLayers) (rbxfile.Value, error) {
+func DecodeReplicationProperty(reader PacketReader, stream SerializeReader, layers *PacketLayers, schema schema.StaticPropertySchema) (rbxfile.Value, error) {
 	val, err := stream.ReadSerializedValue(reader, schema.Type, schema.EnumID)
 	if err != nil {
 		return val, errors.New("while parsing " + schema.Name + ": " + err.Error())
@@ -18,6 +19,6 @@ func (schema StaticPropertySchema) Decode(reader PacketReader, stream SerializeR
 }
 
 // TODO: Better system?
-func (schema StaticPropertySchema) Serialize(value rbxfile.Value, writer PacketWriter, stream SerializeWriter) error {
+func SerializeReplicationProperty(value rbxfile.Value, writer PacketWriter, stream SerializeWriter, schema schema.StaticPropertySchema) error {
 	return stream.WriteSerializedValue(value, writer, schema.Type)
 }
