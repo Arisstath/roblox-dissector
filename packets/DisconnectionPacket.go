@@ -43,23 +43,23 @@ const (
 )
 
 // ID_DISCONNECTION_NOTIFICATION - client <-> server
-type Packet15Layer struct {
+type DisconnectionPacket struct {
 	Reason uint32
 }
 
-func NewPacket15Layer() *Packet15Layer {
-	return &Packet15Layer{}
+func NewDisconnectionPacket() *DisconnectionPacket {
+	return &DisconnectionPacket{}
 }
 
-func (thisBitstream *extendedReader) DecodePacket15Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-	layer := NewPacket15Layer()
+func (thisBitstream *extendedReader) DecodeDisconnectionPacket(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+	layer := NewDisconnectionPacket()
 
 	var err error
 	layer.Reason, err = thisBitstream.readUint32BE()
 	return layer, err
 }
 
-func (layer *Packet15Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *DisconnectionPacket) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	err := stream.WriteByte(0x15)
 	if err != nil {
 		return err

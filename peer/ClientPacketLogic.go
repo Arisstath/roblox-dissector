@@ -96,7 +96,7 @@ func (myClient *CustomClient) simple8Handler(packetType byte, layers *PacketLaye
 }
 
 func (myClient *CustomClient) sendPong(pingTime uint64) {
-	response := &Packet03Layer{
+	response := &RakPong{
 		SendPingTime: pingTime,
 		SendPongTime: uint64(time.Now().Unix()),
 	}
@@ -104,7 +104,7 @@ func (myClient *CustomClient) sendPong(pingTime uint64) {
 	myClient.WritePacket(response)
 }
 func (myClient *CustomClient) pingHandler(packetType byte, layers *PacketLayers) {
-	mainLayer := layers.Main.(*Packet00Layer)
+	mainLayer := layers.Main.(*RakPing)
 
 	myClient.sendPong(mainLayer.SendPingTime)
 }
@@ -370,7 +370,7 @@ func (myClient *CustomClient) FireRemote(instance *rbxfile.Instance, arguments .
 }
 
 func (myClient *CustomClient) disconnectHandler(packetType uint8, layers *PacketLayers) {
-	mainLayer := layers.Main.(*Packet15Layer)
+	mainLayer := layers.Main.(*DisconnectionPacket)
 	myClient.Logger.Printf("Disconnected because of reason %d\n", mainLayer.Reason)
 
 	myClient.disconnectInternal()

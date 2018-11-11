@@ -1,24 +1,24 @@
 package peer
 
 // ID_CONNECTED_PING - client <-> server
-type Packet00Layer struct {
+type RakPing struct {
 	// Timestamp (seconds)
 	SendPingTime uint64
 }
 
-func NewPacket00Layer() *Packet00Layer {
-	return &Packet00Layer{}
+func NewRakPing() *RakPing {
+	return &RakPing{}
 }
 
-func (thisBitstream *extendedReader) DecodePacket00Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-	layer := NewPacket00Layer()
+func (thisBitstream *extendedReader) DecodeRakPing(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+	layer := NewRakPing()
 
 	var err error
 	layer.SendPingTime, err = thisBitstream.readUint64BE()
 
 	return layer, err
 }
-func (layer *Packet00Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *RakPing) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
 	err = stream.WriteByte(0)
 	if err != nil {
@@ -29,19 +29,19 @@ func (layer *Packet00Layer) Serialize(writer PacketWriter, stream *extendedWrite
 }
 
 // ID_CONNECTED_PONG - client <-> server
-type Packet03Layer struct {
+type RakPong struct {
 	// Timestamp from ID_CONNECTED_PING
 	SendPingTime uint64
 	// Timestamp of reply (seconds)
 	SendPongTime uint64
 }
 
-func NewPacket03Layer() *Packet03Layer {
-	return &Packet03Layer{}
+func NewRakPong() *RakPong {
+	return &RakPong{}
 }
 
-func (thisBitstream *extendedReader) DecodePacket03Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-	layer := NewPacket03Layer()
+func (thisBitstream *extendedReader) DecodeRakPong(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+	layer := NewRakPong()
 
 	var err error
 	layer.SendPingTime, err = thisBitstream.readUint64BE()
@@ -53,7 +53,7 @@ func (thisBitstream *extendedReader) DecodePacket03Layer(reader PacketReader, la
 	return layer, err
 }
 
-func (layer *Packet03Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *RakPong) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
 	err = stream.WriteByte(3)
 	if err != nil {

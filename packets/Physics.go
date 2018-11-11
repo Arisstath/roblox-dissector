@@ -4,8 +4,8 @@ import (
 	"github.com/gskartwii/rbxfile"
 )
 
-// Packet85LayerSubpacket represents physics replication for one instance
-type Packet85LayerSubpacket struct {
+// PhysicsPacketSubpacket represents physics replication for one instance
+type PhysicsPacketSubpacket struct {
 	Data PhysicsData
 	// See http://wiki.roblox.com/index.php?title=API:Enum/HumanoidStateType
 	NetworkHumanoidState uint8
@@ -26,14 +26,14 @@ type PhysicsData struct {
 	PlatformChild      *rbxfile.Instance
 }
 
-// Packet85Layer ID_PHYSICS - client <-> server
-type Packet85Layer struct {
-	SubPackets []*Packet85LayerSubpacket
+// PhysicsPacket ID_PHYSICS - client <-> server
+type PhysicsPacket struct {
+	SubPackets []*PhysicsPacketSubpacket
 }
 
-// NewPacket85Layer Initializes a new Packet85Layer
-func NewPacket85Layer() *Packet85Layer {
-	return &Packet85Layer{}
+// NewPhysicsPacket Initializes a new PhysicsPacket
+func NewPhysicsPacket() *PhysicsPacket {
+	return &PhysicsPacket{}
 }
 
 func (b *extendedReader) readPhysicsData(data *PhysicsData, motors bool, reader PacketReader) error {
@@ -71,10 +71,10 @@ func (b *extendedReader) readPhysicsData(data *PhysicsData, motors bool, reader 
 	return err
 }
 
-func (thisBitstream *extendedReader) DecodePacket85Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisBitstream *extendedReader) DecodePhysicsPacket(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 
 	context := reader.Context()
-	layer := NewPacket85Layer()
+	layer := NewPhysicsPacket()
 	for {
 		referent, err := thisBitstream.readObject(reader.Caches())
 		// unordered packets may have problems with caches
@@ -85,7 +85,7 @@ func (thisBitstream *extendedReader) DecodePacket85Layer(reader PacketReader, la
 			break
 		}
 		layers.Root.Logger.Println("reading physics for ref", referent.String())
-		subpacket := &Packet85LayerSubpacket{}
+		subpacket := &PhysicsPacketSubpacket{}
 		// TODO: generic function for this
 		if err != CacheReadOOB {
             // Do not try to add callbacks on instances that don't have scopes
@@ -190,7 +190,7 @@ func (b *extendedWriter) writePhysicsData(val *PhysicsData, motors bool, writer 
 	return err
 }
 
-func (layer *Packet85Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *PhysicsPacket) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	err := stream.WriteByte(0x85)
 	if err != nil {
 		return err

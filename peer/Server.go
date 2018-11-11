@@ -257,15 +257,15 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 		},
 		FullReliableHandler: func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
 			if packetType == 0x0 {
-				mainLayer := layers.Main.(Packet00Layer)
-				response := &Packet03Layer{
+				mainLayer := layers.Main.(RakPing)
+				response := &RakPong{
 					SendPingTime: mainLayer.SendPingTime,
 					SendPongTime: mainLayer.SendPingTime + 10,
 				}
 
 				myClient.writer.WriteGeneric(context, 3, response, 2, addr)
 
-				response2 := &Packet00Layer{
+				response2 := &RakPing{
 					SendPingTime: mainLayer.SendPingTime + 10,
 				}
 				myClient.writer.WriteGeneric(context, 0, response2, 2, addr)
@@ -296,7 +296,7 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 
 				myClient.writer.WriteGeneric(context, 0x10, response, 2, addr)
 			} else if packetType == 0x90 {
-				response := &Packet93Layer{
+				response := &FlagResponse{
 					ProtocolSchemaSync:       true,
 					ApiDictionaryCompression: true,
 					Params: map[string]bool{

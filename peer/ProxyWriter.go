@@ -211,7 +211,7 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 
 			_, err = serverHalf.WritePacket(mainLayer)
 		case 0x85:
-			mainLayer := layers.Main.(*Packet85Layer)
+			mainLayer := layers.Main.(*PhysicsPacket)
 			_, err = serverHalf.WritePhysics(layers.Timestamp, mainLayer)
 		case 0x86:
 			mainLayer := layers.Main.(*Packet86Layer)

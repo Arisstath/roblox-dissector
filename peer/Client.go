@@ -497,7 +497,7 @@ func (myClient *CustomClient) disconnectInternal() error {
 }
 
 func (myClient *CustomClient) Disconnect() {
-	myClient.WritePacket(&Packet15Layer{
+	myClient.WritePacket(&DisconnectionPacket{
 		Reason: 0xFFFFFFFF,
 	})
 

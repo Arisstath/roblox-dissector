@@ -27,7 +27,7 @@ var NetworkHumanoidStates = [...]string{
 }
 
 func ShowPacket85(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) {
-	MainLayer := layers.Main.(*peer.Packet85Layer)
+	MainLayer := layers.Main.(*peer.PhysicsPacket)
 
 	layerLayout := NewBasicPacketViewer(packetType, context, layers)
 

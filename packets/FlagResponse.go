@@ -4,7 +4,7 @@ import "fmt"
 
 // ID_DICTIONARY_FORMAT - server -> client
 // Response to ID_PROTOCOL_SYNC (Packet90Layer)
-type Packet93Layer struct {
+type FlagResponse struct {
 	ProtocolSchemaSync bool
 	// Use dictionary compression?
 	ApiDictionaryCompression bool
@@ -12,13 +12,12 @@ type Packet93Layer struct {
 	Params map[string]bool
 }
 
-func NewPacket93Layer() *Packet93Layer {
-	return &Packet93Layer{Params: make(map[string]bool)}
+func NewFlagResponse() *FlagResponse {
+	return &FlagResponse{Params: make(map[string]bool)}
 }
 
-func (thisBitstream *extendedReader) DecodePacket93Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-	layer := NewPacket93Layer()
-	
+func (thisBitstream *extendedReader) DecodeFlagResponse(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+	layer := NewFlagResponse()
 
 	var err error
 	layer.ProtocolSchemaSync, err = thisBitstream.readBool()
@@ -61,7 +60,7 @@ func (thisBitstream *extendedReader) DecodePacket93Layer(reader PacketReader, la
 	return layer, nil
 }
 
-func (layer *Packet93Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *FlagResponse) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
 	err = stream.WriteByte(0x93)
 	if err != nil {
