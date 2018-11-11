@@ -9,10 +9,10 @@ import "log"
 type decoderFunc func(*extendedReader, PacketReader, *PacketLayers) (RakNetPacket, error)
 
 var packetDecoders = map[byte]decoderFunc{
-	0x05: (*extendedReader).DecodePacket05Layer,
-	0x06: (*extendedReader).DecodePacket06Layer,
-	0x07: (*extendedReader).DecodePacket07Layer,
-	0x08: (*extendedReader).DecodePacket08Layer,
+	0x05: (*extendedReader).DecodeConnectionRequest1,
+	0x06: (*extendedReader).DecodeConnectionReply1,
+	0x07: (*extendedReader).DecodeConnectionRequest2,
+	0x08: (*extendedReader).DecodeConnectionReply2,
 	0x00: (*extendedReader).DecodePacket00Layer,
 	0x03: (*extendedReader).DecodePacket03Layer,
 	0x09: (*extendedReader).DecodePacket09Layer,

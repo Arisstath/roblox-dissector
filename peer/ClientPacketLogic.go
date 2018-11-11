@@ -70,7 +70,7 @@ func (myClient *CustomClient) bindDefaultHandlers() {
 }
 
 func (myClient *CustomClient) sendResponse7() {
-	myClient.WriteSimple(&Packet07Layer{
+	myClient.WriteSimple(&ConnectionRequest2{
 		GUID:      myClient.GUID,
 		MTU:       1492,
 		IPAddress: &myClient.ServerAddress,

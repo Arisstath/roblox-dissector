@@ -431,7 +431,7 @@ func (myClient *CustomClient) createWriter() {
 }
 
 func (myClient *CustomClient) dial() {
-	connreqpacket := &Packet05Layer{ProtocolVersion: 5, maxLength: 1492}
+	connreqpacket := &ConnectionRequest1{ProtocolVersion: 5, maxLength: 1492}
 	go func() {
 		for i := 0; i < 5; i++ {
 			if myClient.Connected {

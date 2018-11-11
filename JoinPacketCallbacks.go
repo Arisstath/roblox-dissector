@@ -5,7 +5,7 @@ import "github.com/therecipe/qt/gui"
 import "github.com/Gskartwii/roblox-dissector/peer"
 
 func ShowPacket05(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) {
-	MainLayer := layers.Main.(*peer.Packet05Layer)
+	MainLayer := layers.Main.(*peer.ConnectionRequest1)
 
 	layerLayout := NewBasicPacketViewer(packetType, context, layers)
 
@@ -14,7 +14,7 @@ func ShowPacket05(packetType byte, context *peer.CommunicationContext, layers *p
 }
 
 func ShowPacket06(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) {
-	MainLayer := layers.Main.(*peer.Packet06Layer)
+	MainLayer := layers.Main.(*peer.ConnectionReply1)
 
 	layerLayout := NewBasicPacketViewer(packetType, context, layers)
 
@@ -29,7 +29,7 @@ func ShowPacket06(packetType byte, context *peer.CommunicationContext, layers *p
 }
 
 func ShowPacket07(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) {
-	MainLayer := layers.Main.(*peer.Packet07Layer)
+	MainLayer := layers.Main.(*peer.ConnectionRequest2)
 
 	layerLayout := NewBasicPacketViewer(packetType, context, layers)
 
@@ -44,7 +44,7 @@ func ShowPacket07(packetType byte, context *peer.CommunicationContext, layers *p
 }
 
 func ShowPacket08(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) {
-	MainLayer := layers.Main.(*peer.Packet08Layer)
+	MainLayer := layers.Main.(*peer.ConnectionReply2)
 
 	layerLayout := NewBasicPacketViewer(packetType, context, layers)
 

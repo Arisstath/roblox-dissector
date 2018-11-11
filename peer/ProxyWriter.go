@@ -101,7 +101,7 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 		}
 		println("client simple", packetType)
 		if packetType == 5 {
-			println("recv 5, protocol type", layers.Main.(*Packet05Layer).ProtocolVersion)
+			println("recv 5, protocol type", layers.Main.(*ConnectionRequest1).ProtocolVersion)
 		}
 		serverHalf.WriteSimple(layers.Main.(RakNetPacket))
 	}

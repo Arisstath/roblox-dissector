@@ -5,7 +5,7 @@ import (
 )
 
 // ID_OPEN_CONNECTION_REQUEST_1 - client -> server
-type Packet05Layer struct {
+type ConnectionRequest1 struct {
 	// RakNet protocol version, always 5
 	ProtocolVersion uint8
 	// internal
@@ -13,7 +13,7 @@ type Packet05Layer struct {
 }
 
 // ID_OPEN_CONNECTION_REPLY_1 - server -> client
-type Packet06Layer struct {
+type ConnectionReply1 struct {
 	// Server GUID
 	GUID uint64
 	// Use libcat encryption? Always false
@@ -23,7 +23,7 @@ type Packet06Layer struct {
 }
 
 // ID_OPEN_CONNECTION_REQUEST_2 - client -> server
-type Packet07Layer struct {
+type ConnectionRequest2 struct {
 	// Server external IP address
 	IPAddress *net.UDPAddr
 	// MTU in bytes
@@ -33,7 +33,7 @@ type Packet07Layer struct {
 }
 
 // ID_OPEN_CONNECTION_REPLY_2 - server -> client
-type Packet08Layer struct {
+type ConnectionReply2 struct {
 	// Server GUID
 	GUID uint64
 	// Client external IP address
@@ -79,17 +79,17 @@ type Packet13Layer struct {
 	SendPongTime uint64
 }
 
-func NewPacket05Layer() *Packet05Layer {
-	return &Packet05Layer{}
+func NewConnectionRequest1() *ConnectionRequest1 {
+	return &ConnectionRequest1{}
 }
-func NewPacket06Layer() *Packet06Layer {
-	return &Packet06Layer{}
+func NewConnectionReply1() *ConnectionReply1 {
+	return &ConnectionReply1{}
 }
-func NewPacket07Layer() *Packet07Layer {
-	return &Packet07Layer{}
+func NewConnectionRequest2() *ConnectionRequest2 {
+	return &ConnectionRequest2{}
 }
-func NewPacket08Layer() *Packet08Layer {
-	return &Packet08Layer{}
+func NewConnectionReply2() *ConnectionReply2 {
+	return &ConnectionReply2{}
 }
 func NewPacket09Layer() *Packet09Layer {
 	return &Packet09Layer{}
@@ -103,14 +103,14 @@ func NewPacket13Layer() *Packet13Layer {
 
 var voidOfflineMessage []byte = make([]byte, 0x10)
 
-func (thisBitstream *extendedReader) DecodePacket05Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisBitstream *extendedReader) DecodeConnectionRequest1(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	var err error
-	layer := NewPacket05Layer()
+	layer := NewConnectionRequest1()
 	layer.ProtocolVersion, err = thisBitstream.readUint8() // !! RakNetLayer will have read the offline message !!
 	return layer, err
 }
 
-func (layer *Packet05Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *ConnectionRequest1) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	err := stream.WriteByte(0x05)
 	if err != nil {
 		return err
@@ -128,8 +128,8 @@ func (layer *Packet05Layer) Serialize(writer PacketWriter, stream *extendedWrite
 	return err
 }
 
-func (thisBitstream *extendedReader) DecodePacket06Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-	layer := NewPacket06Layer()
+func (thisBitstream *extendedReader) DecodeConnectionReply1(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+	layer := NewConnectionReply1()
 
 	var err error
 	err = thisBitstream.bytes(voidOfflineMessage, 0x10)
@@ -148,7 +148,7 @@ func (thisBitstream *extendedReader) DecodePacket06Layer(reader PacketReader, la
 	return layer, err
 }
 
-func (layer *Packet06Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *ConnectionReply1) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
 	err = stream.WriteByte(0x06)
 	if err != nil {
@@ -170,8 +170,8 @@ func (layer *Packet06Layer) Serialize(writer PacketWriter, stream *extendedWrite
 	return err
 }
 
-func (thisBitstream *extendedReader) DecodePacket07Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-	layer := NewPacket07Layer()
+func (thisBitstream *extendedReader) DecodeConnectionRequest2(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+	layer := NewConnectionRequest2()
 
 	var err error
 	err = thisBitstream.bytes(voidOfflineMessage, 0x10)
@@ -190,7 +190,7 @@ func (thisBitstream *extendedReader) DecodePacket07Layer(reader PacketReader, la
 	return layer, err
 }
 
-func (layer *Packet07Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *ConnectionRequest2) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
 	err = stream.WriteByte(0x07)
 	if err != nil {
@@ -212,8 +212,8 @@ func (layer *Packet07Layer) Serialize(writer PacketWriter, stream *extendedWrite
 	return err
 }
 
-func (thisBitstream *extendedReader) DecodePacket08Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-	layer := NewPacket08Layer()
+func (thisBitstream *extendedReader) DecodeConnectionReply2(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+	layer := NewConnectionReply2()
 	
 
 	var err error
@@ -237,7 +237,7 @@ func (thisBitstream *extendedReader) DecodePacket08Layer(reader PacketReader, la
 	return layer, err
 }
 
-func (layer *Packet08Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *ConnectionReply2) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
 	err = stream.WriteByte(0x08)
 	if err != nil {

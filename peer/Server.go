@@ -234,7 +234,7 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 	packetReader := &PacketReader{
 		SimpleHandler: func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
 			if packetType == 0x5 {
-				response := &Packet06Layer{
+				response := &ConnectionReply1{
 					GUID:        server.GUID,
 					UseSecurity: false,
 					MTU:         1492,
@@ -242,7 +242,7 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 
 				myClient.writer.WriteSimple(6, response, addr)
 			} else if packetType == 0x7 {
-				response := &Packet08Layer{
+				response := &ConnectionReply2{
 					MTU:         1492,
 					UseSecurity: false,
 					IPAddress:   addr,
