@@ -1,4 +1,4 @@
-package peer
+package bitstreams
 
 import "github.com/gskartwii/rbxfile"
 import "github.com/gskartwii/roblox-dissector/peer"

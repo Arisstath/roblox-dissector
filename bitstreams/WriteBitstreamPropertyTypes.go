@@ -1,4 +1,4 @@
-package peer
+package bitstreams
 
 import "math"
 import "github.com/gskartwii/rbxfile"

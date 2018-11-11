@@ -1,4 +1,4 @@
-package peer
+package bitstreams
 
 import "github.com/gskartwii/go-bitstream"
 import "encoding/binary"

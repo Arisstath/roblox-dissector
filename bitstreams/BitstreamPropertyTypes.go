@@ -1,4 +1,4 @@
-package peer
+package bitstreams
 
 import "net"
 import "errors"
