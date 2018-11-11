@@ -417,11 +417,11 @@ func (b *BitstreamWriter) WriteHuffman(value []byte) error {
 		return err
 	}
 
-	err = b.writeUint32BE(uint32(len(value)))
+	err = b.WriteUint32BE(uint32(len(value)))
 	if err != nil {
 		return err
 	}
-	err = b.writeUint32BECompressed(uint32(bitLen))
+	err = b.WriteUint32BECompressed(uint32(bitLen))
 	if err != nil {
 		return err
 	}
@@ -438,7 +438,7 @@ func (b *BitstreamWriter) WriteCompressed(value []byte, length uint32, isUnsigne
 	var currentByte uint32
 	for currentByte = length>>3 - 1; currentByte > 0; currentByte-- {
 		isMatch := value[currentByte] == byteMatch
-		err = b.writeBool(isMatch)
+		err = b.WriteBool(isMatch)
 		if err != nil {
 			return err
 		}
@@ -448,13 +448,13 @@ func (b *BitstreamWriter) WriteCompressed(value []byte, length uint32, isUnsigne
 	}
 	lastByte := value[0]
 	if lastByte&0xF0 == halfByteMatch {
-		err = b.writeBool(true)
+		err = b.WriteBool(true)
 		if err != nil {
 			return err
 		}
 		return b.bits(4, uint64(lastByte))
 	}
-	err = b.writeBool(false)
+	err = b.WriteBool(false)
 	if err != nil {
 		return err
 	}
@@ -463,5 +463,5 @@ func (b *BitstreamWriter) WriteCompressed(value []byte, length uint32, isUnsigne
 func (b *BitstreamWriter) WriteUint32BECompressed(value uint32) error {
 	val := make([]byte, 4)
 	binary.BigEndian.PutUint32(val, value)
-	return b.writeCompressed(val, 32, true)
+	return b.WriteCompressed(val, 32, true)
 }

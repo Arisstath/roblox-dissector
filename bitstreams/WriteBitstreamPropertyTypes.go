@@ -7,54 +7,54 @@ import "strconv"
 import "net"
 
 func (b *BitstreamWriter) WriteUDim(val rbxfile.ValueUDim) error {
-	err := b.writeFloat32BE(val.Scale)
+	err := b.WriteFloat32BE(val.Scale)
 	if err != nil {
 		return err
 	}
-	return b.writeUint32BE(uint32(val.Offset))
+	return b.WriteUint32BE(uint32(val.Offset))
 }
 func (b *BitstreamWriter) WriteUDim2(val rbxfile.ValueUDim2) error {
-	err := b.writeUDim(val.X)
+	err := b.WriteUDim(val.X)
 	if err != nil {
 		return err
 	}
-	return b.writeUDim(val.Y)
+	return b.WriteUDim(val.Y)
 }
 
 func (b *BitstreamWriter) WriteRay(val rbxfile.ValueRay) error {
-	err := b.writeVector3Simple(val.Origin)
+	err := b.WriteVector3Simple(val.Origin)
 	if err != nil {
 		return err
 	}
-	return b.writeVector3Simple(val.Direction)
+	return b.WriteVector3Simple(val.Direction)
 }
 
 func (b *BitstreamWriter) WriteRegion3(val rbxfile.ValueRegion3) error {
-	err := b.writeVector3Simple(val.Start)
+	err := b.WriteVector3Simple(val.Start)
 	if err != nil {
 		return err
 	}
-	return b.writeVector3Simple(val.End)
+	return b.WriteVector3Simple(val.End)
 }
 
 func (b *BitstreamWriter) WriteRegion3int16(val rbxfile.ValueRegion3int16) error {
-	err := b.writeVector3int16(val.Start)
+	err := b.WriteVector3int16(val.Start)
 	if err != nil {
 		return err
 	}
-	return b.writeVector3int16(val.End)
+	return b.WriteVector3int16(val.End)
 }
 
 func (b *BitstreamWriter) WriteColor3(val rbxfile.ValueColor3) error {
-	err := b.writeFloat32BE(val.R)
+	err := b.WriteFloat32BE(val.R)
 	if err != nil {
 		return err
 	}
-	err = b.writeFloat32BE(val.G)
+	err = b.WriteFloat32BE(val.G)
 	if err != nil {
 		return err
 	}
-	return b.writeFloat32BE(val.B)
+	return b.WriteFloat32BE(val.B)
 }
 func (b *BitstreamWriter) WriteColor3uint8(val rbxfile.ValueColor3uint8) error {
 	err := b.WriteByte(val.R)
@@ -68,22 +68,22 @@ func (b *BitstreamWriter) WriteColor3uint8(val rbxfile.ValueColor3uint8) error {
 	return b.WriteByte(val.B)
 }
 func (b *BitstreamWriter) WriteVector2(val rbxfile.ValueVector2) error {
-	err := b.writeFloat32BE(val.X)
+	err := b.WriteFloat32BE(val.X)
 	if err != nil {
 		return err
 	}
-	return b.writeFloat32BE(val.Y)
+	return b.WriteFloat32BE(val.Y)
 }
 func (b *BitstreamWriter) WriteVector3Simple(val rbxfile.ValueVector3) error {
-	err := b.writeFloat32BE(val.X)
+	err := b.WriteFloat32BE(val.X)
 	if err != nil {
 		return err
 	}
-	err = b.writeFloat32BE(val.Y)
+	err = b.WriteFloat32BE(val.Y)
 	if err != nil {
 		return err
 	}
-	return b.writeFloat32BE(val.Z)
+	return b.WriteFloat32BE(val.Z)
 }
 func (b *BitstreamWriter) WriteVector3(val rbxfile.ValueVector3) error {
 	var err error
@@ -96,14 +96,14 @@ func (b *BitstreamWriter) WriteVector3(val rbxfile.ValueVector3) error {
 		val.Y < 0 ||
 		val.Z > 511.5 ||
 		val.Z < -511.5 {
-		err = b.writeBoolByte(false)
+		err = b.WriteBoolByte(false)
 		if err != nil {
 			return err
 		}
-		err = b.writeVector3Simple(val)
+		err = b.WriteVector3Simple(val)
 		return err
 	}
-	err = b.writeBoolByte(true)
+	err = b.WriteBoolByte(true)
 	if err != nil {
 		return err
 	}
@@ -126,22 +126,22 @@ func (b *BitstreamWriter) WriteVector3(val rbxfile.ValueVector3) error {
 }
 
 func (b *BitstreamWriter) WriteVector2int16(val rbxfile.ValueVector2int16) error {
-	err := b.writeUint16BE(uint16(val.X))
+	err := b.WriteUint16BE(uint16(val.X))
 	if err != nil {
 		return err
 	}
-	return b.writeUint16BE(uint16(val.Y))
+	return b.WriteUint16BE(uint16(val.Y))
 }
 func (b *BitstreamWriter) WriteVector3int16(val rbxfile.ValueVector3int16) error {
-	err := b.writeUint16BE(uint16(val.X))
+	err := b.WriteUint16BE(uint16(val.X))
 	if err != nil {
 		return err
 	}
-	err = b.writeUint16BE(uint16(val.Y))
+	err = b.WriteUint16BE(uint16(val.Y))
 	if err != nil {
 		return err
 	}
-	return b.writeUint16BE(uint16(val.Z))
+	return b.WriteUint16BE(uint16(val.Z))
 }
 
 func (b *BitstreamWriter) WriteAxes(val rbxfile.ValueAxes) error {
@@ -155,7 +155,7 @@ func (b *BitstreamWriter) WriteAxes(val rbxfile.ValueAxes) error {
 	if val.Z {
 		write |= 1
 	}
-	return b.writeUint32BE(uint32(write))
+	return b.WriteUint32BE(uint32(write))
 }
 func (b *BitstreamWriter) WriteFaces(val rbxfile.ValueFaces) error {
 	write := 0
@@ -177,19 +177,19 @@ func (b *BitstreamWriter) WriteFaces(val rbxfile.ValueFaces) error {
 	if val.Front {
 		write |= 1
 	}
-	return b.writeUint32BE(uint32(write))
+	return b.WriteUint32BE(uint32(write))
 }
 
 func (b *BitstreamWriter) WriteBrickColor(val rbxfile.ValueBrickColor) error {
-	return b.writeUint16BE(uint16(val))
+	return b.WriteUint16BE(uint16(val))
 }
 
 func (b *BitstreamWriter) WriteVarLengthString(val string) error {
-	err := b.writeUintUTF8(uint32(len(val)))
+	err := b.WriteUintUTF8(uint32(len(val)))
 	if err != nil {
 		return err
 	}
-	return b.writeASCII(val)
+	return b.WriteASCII(val)
 }
 
 func rotMatrixToQuaternion(r [9]float32) [4]float32 {
@@ -202,19 +202,19 @@ func rotMatrixToQuaternion(r [9]float32) [4]float32 {
 	}
 } // So nice to not have to worry about normalization on this side!
 func (b *BitstreamWriter) WriteCFrame(val rbxfile.ValueCFrame) error {
-	err := b.writeVector3Simple(val.Position)
+	err := b.WriteVector3Simple(val.Position)
 	if err != nil {
 		return err
 	}
-	err = b.writeBoolByte(false) // Not going to bother with lookup stuff
+	err = b.WriteBoolByte(false) // Not going to bother with lookup stuff
 	if err != nil {
 		return err
 	}
 
 	quat := rotMatrixToQuaternion(val.Rotation)
-	b.writeFloat16BE(quat[3], -1.0, 1.0)
+	b.WriteFloat16BE(quat[3], -1.0, 1.0)
 	for i := 0; i < 3; i++ {
-		err = b.writeFloat16BE(quat[i], -1.0, 1.0)
+		err = b.WriteFloat16BE(quat[i], -1.0, 1.0)
 		if err != nil {
 			return err
 		}
@@ -223,10 +223,10 @@ func (b *BitstreamWriter) WriteCFrame(val rbxfile.ValueCFrame) error {
 }
 
 func (b *BitstreamWriter) WriteSintUTF8(val int32) error {
-	return b.writeUintUTF8(uint32(val)<<1 ^ -(uint32(val) >> 31))
+	return b.WriteUintUTF8(uint32(val)<<1 ^ -(uint32(val) >> 31))
 }
 func (b *BitstreamWriter) WriteNewPSint(val rbxfile.ValueInt) error {
-	return b.writeSintUTF8(int32(val))
+	return b.WriteSintUTF8(int32(val))
 }
 func (b *BitstreamWriter) WriteVarint64(value uint64) error {
 	if value == 0 {
@@ -250,7 +250,7 @@ func (b *BitstreamWriter) WriteVarint64(value uint64) error {
 	return nil
 }
 func (b *BitstreamWriter) WriteVarsint64(val int64) error {
-	return b.writeVarint64(uint64(val)<<1 ^ -(uint64(val) >> 63))
+	return b.WriteVarint64(uint64(val)<<1 ^ -(uint64(val) >> 63))
 }
 
 var typeToNetworkConvTable = map[rbxfile.Type]uint8{
@@ -304,65 +304,65 @@ func (b *BitstreamWriter) WriteSerializedValueGeneric(val rbxfile.Value, valueTy
 	var err error
 	switch valueType {
 	case PROP_TYPE_ENUM:
-		err = b.writeNewEnumValue(val.(rbxfile.ValueToken))
+		err = b.WriteNewEnumValue(val.(rbxfile.ValueToken))
 	case PROP_TYPE_BINARYSTRING:
-		err = b.writeNewBinaryString(val.(rbxfile.ValueBinaryString))
+		err = b.WriteNewBinaryString(val.(rbxfile.ValueBinaryString))
 	case PROP_TYPE_PBOOL:
-		err = b.writePBool(val.(rbxfile.ValueBool))
+		err = b.WritePBool(val.(rbxfile.ValueBool))
 	case PROP_TYPE_PSINT:
-		err = b.writeNewPSint(val.(rbxfile.ValueInt))
+		err = b.WriteNewPSint(val.(rbxfile.ValueInt))
 	case PROP_TYPE_PFLOAT:
-		err = b.writePFloat(val.(rbxfile.ValueFloat))
+		err = b.WritePFloat(val.(rbxfile.ValueFloat))
 	case PROP_TYPE_PDOUBLE:
-		err = b.writePDouble(val.(rbxfile.ValueDouble))
+		err = b.WritePDouble(val.(rbxfile.ValueDouble))
 	case PROP_TYPE_UDIM:
-		err = b.writeUDim(val.(rbxfile.ValueUDim))
+		err = b.WriteUDim(val.(rbxfile.ValueUDim))
 	case PROP_TYPE_UDIM2:
-		err = b.writeUDim2(val.(rbxfile.ValueUDim2))
+		err = b.WriteUDim2(val.(rbxfile.ValueUDim2))
 	case PROP_TYPE_RAY:
-		err = b.writeRay(val.(rbxfile.ValueRay))
+		err = b.WriteRay(val.(rbxfile.ValueRay))
 	case PROP_TYPE_FACES:
-		err = b.writeFaces(val.(rbxfile.ValueFaces))
+		err = b.WriteFaces(val.(rbxfile.ValueFaces))
 	case PROP_TYPE_AXES:
-		err = b.writeAxes(val.(rbxfile.ValueAxes))
+		err = b.WriteAxes(val.(rbxfile.ValueAxes))
 	case PROP_TYPE_BRICKCOLOR:
-		err = b.writeBrickColor(val.(rbxfile.ValueBrickColor))
+		err = b.WriteBrickColor(val.(rbxfile.ValueBrickColor))
 	case PROP_TYPE_COLOR3:
-		err = b.writeColor3(val.(rbxfile.ValueColor3))
+		err = b.WriteColor3(val.(rbxfile.ValueColor3))
 	case PROP_TYPE_COLOR3UINT8:
-		err = b.writeColor3uint8(val.(rbxfile.ValueColor3uint8))
+		err = b.WriteColor3uint8(val.(rbxfile.ValueColor3uint8))
 	case PROP_TYPE_VECTOR2:
-		err = b.writeVector2(val.(rbxfile.ValueVector2))
+		err = b.WriteVector2(val.(rbxfile.ValueVector2))
 	case PROP_TYPE_VECTOR3_SIMPLE:
-		err = b.writeVector3Simple(val.(rbxfile.ValueVector3))
+		err = b.WriteVector3Simple(val.(rbxfile.ValueVector3))
 	case PROP_TYPE_VECTOR3_COMPLICATED:
-		err = b.writeVector3(val.(rbxfile.ValueVector3))
+		err = b.WriteVector3(val.(rbxfile.ValueVector3))
 	case PROP_TYPE_VECTOR2UINT16:
-		err = b.writeVector2int16(val.(rbxfile.ValueVector2int16))
+		err = b.WriteVector2int16(val.(rbxfile.ValueVector2int16))
 	case PROP_TYPE_VECTOR3UINT16:
-		err = b.writeVector3int16(val.(rbxfile.ValueVector3int16))
+		err = b.WriteVector3int16(val.(rbxfile.ValueVector3int16))
 	case PROP_TYPE_CFRAME_SIMPLE:
-		err = b.writeCFrameSimple(val.(rbxfile.ValueCFrame))
+		err = b.WriteCFrameSimple(val.(rbxfile.ValueCFrame))
 	case PROP_TYPE_CFRAME_COMPLICATED:
-		err = b.writeCFrame(val.(rbxfile.ValueCFrame))
+		err = b.WriteCFrame(val.(rbxfile.ValueCFrame))
 	case PROP_TYPE_NUMBERSEQUENCE:
-		err = b.writeNumberSequence(val.(rbxfile.ValueNumberSequence))
+		err = b.WriteNumberSequence(val.(rbxfile.ValueNumberSequence))
 	case PROP_TYPE_NUMBERSEQUENCEKEYPOINT:
-		err = b.writeNumberSequenceKeypoint(val.(rbxfile.ValueNumberSequenceKeypoint))
+		err = b.WriteNumberSequenceKeypoint(val.(rbxfile.ValueNumberSequenceKeypoint))
 	case PROP_TYPE_NUMBERRANGE:
-		err = b.writeNumberRange(val.(rbxfile.ValueNumberRange))
+		err = b.WriteNumberRange(val.(rbxfile.ValueNumberRange))
 	case PROP_TYPE_COLORSEQUENCE:
-		err = b.writeColorSequence(val.(rbxfile.ValueColorSequence))
+		err = b.WriteColorSequence(val.(rbxfile.ValueColorSequence))
 	case PROP_TYPE_COLORSEQUENCEKEYPOINT:
-		err = b.writeColorSequenceKeypoint(val.(rbxfile.ValueColorSequenceKeypoint))
+		err = b.WriteColorSequenceKeypoint(val.(rbxfile.ValueColorSequenceKeypoint))
 	case PROP_TYPE_RECT2D:
-		err = b.writeRect2D(val.(rbxfile.ValueRect2D))
+		err = b.WriteRect2D(val.(rbxfile.ValueRect2D))
 	case PROP_TYPE_PHYSICALPROPERTIES:
-		err = b.writePhysicalProperties(val.(rbxfile.ValuePhysicalProperties))
+		err = b.WritePhysicalProperties(val.(rbxfile.ValuePhysicalProperties))
 	case PROP_TYPE_INT64:
-		err = b.writeVarsint64(int64(val.(rbxfile.ValueInt64)))
+		err = b.WriteVarsint64(int64(val.(rbxfile.ValueInt64)))
 	case PROP_TYPE_STRING_NO_CACHE:
-		err = b.writePStringNoCache(val.(rbxfile.ValueString))
+		err = b.WritePStringNoCache(val.(rbxfile.ValueString))
 	default:
 		return errors.New("Unsupported property type: " + strconv.Itoa(int(valueType)))
 	}
@@ -375,7 +375,7 @@ func (b *BitstreamWriter) WriteNewTypeAndValue(val rbxfile.Value, writer PacketW
 	//println("Writing typeandvalue", valueType)
 	err = b.WriteByte(uint8(valueType))
 	if valueType == 7 {
-		err = b.writeUint16BE(val.(rbxfile.ValueToken).ID)
+		err = b.WriteUint16BE(val.(rbxfile.ValueToken).ID)
 		if err != nil {
 			return err
 		}
@@ -384,12 +384,12 @@ func (b *BitstreamWriter) WriteNewTypeAndValue(val rbxfile.Value, writer PacketW
 }
 
 func (b *BitstreamWriter) WriteNewTuple(val rbxfile.ValueTuple, writer PacketWriter) error {
-	err := b.writeUintUTF8(uint32(len(val)))
+	err := b.WriteUintUTF8(uint32(len(val)))
 	if err != nil {
 		return err
 	}
 	for i := 0; i < len(val); i++ {
-		err = b.writeNewTypeAndValue(val[i], writer)
+		err = b.WriteNewTypeAndValue(val[i], writer)
 		if err != nil {
 			return err
 		}
@@ -397,24 +397,24 @@ func (b *BitstreamWriter) WriteNewTuple(val rbxfile.ValueTuple, writer PacketWri
 	return nil
 }
 func (b *BitstreamWriter) WriteNewArray(val rbxfile.ValueArray, writer PacketWriter) error {
-	return b.writeNewTuple(rbxfile.ValueTuple(val), writer)
+	return b.WriteNewTuple(rbxfile.ValueTuple(val), writer)
 }
 
 func (b *BitstreamWriter) WriteNewDictionary(val rbxfile.ValueDictionary, writer PacketWriter) error {
-	err := b.writeUintUTF8(uint32(len(val)))
+	err := b.WriteUintUTF8(uint32(len(val)))
 	if err != nil {
 		return err
 	}
 	for key, value := range val {
-		err = b.writeUintUTF8(uint32(len(key)))
+		err = b.WriteUintUTF8(uint32(len(key)))
 		if err != nil {
 			return err
 		}
-		err = b.writeASCII(key)
+		err = b.WriteASCII(key)
 		if err != nil {
 			return err
 		}
-		err = b.writeNewTypeAndValue(value, writer)
+		err = b.WriteNewTypeAndValue(value, writer)
 		if err != nil {
 			return err
 		}
@@ -422,28 +422,28 @@ func (b *BitstreamWriter) WriteNewDictionary(val rbxfile.ValueDictionary, writer
 	return nil
 }
 func (b *BitstreamWriter) WriteNewMap(val rbxfile.ValueMap, writer PacketWriter) error {
-	return b.writeNewDictionary(rbxfile.ValueDictionary(val), writer)
+	return b.WriteNewDictionary(rbxfile.ValueDictionary(val), writer)
 }
 
 func (b *BitstreamWriter) WriteNumberSequenceKeypoint(val rbxfile.ValueNumberSequenceKeypoint) error {
-	err := b.writeFloat32BE(val.Time)
+	err := b.WriteFloat32BE(val.Time)
 	if err != nil {
 		return err
 	}
-	err = b.writeFloat32BE(val.Value)
+	err = b.WriteFloat32BE(val.Value)
 	if err != nil {
 		return err
 	}
-	err = b.writeFloat32BE(val.Envelope)
+	err = b.WriteFloat32BE(val.Envelope)
 	return err
 }
 func (b *BitstreamWriter) WriteNumberSequence(val rbxfile.ValueNumberSequence) error {
-	err := b.writeUint32BE(uint32(len(val)))
+	err := b.WriteUint32BE(uint32(len(val)))
 	if err != nil {
 		return err
 	}
 	for i := 0; i < len(val); i++ {
-		err = b.writeNumberSequenceKeypoint(val[i])
+		err = b.WriteNumberSequenceKeypoint(val[i])
 		if err != nil {
 			return err
 		}
@@ -451,31 +451,31 @@ func (b *BitstreamWriter) WriteNumberSequence(val rbxfile.ValueNumberSequence) e
 	return nil
 }
 func (b *BitstreamWriter) WriteNumberRange(val rbxfile.ValueNumberRange) error {
-	err := b.writeFloat32BE(val.Min)
+	err := b.WriteFloat32BE(val.Min)
 	if err != nil {
 		return err
 	}
-	return b.writeFloat32BE(val.Max)
+	return b.WriteFloat32BE(val.Max)
 }
 
 func (b *BitstreamWriter) WriteColorSequenceKeypoint(val rbxfile.ValueColorSequenceKeypoint) error {
-	err := b.writeFloat32BE(val.Time)
+	err := b.WriteFloat32BE(val.Time)
 	if err != nil {
 		return err
 	}
-	err = b.writeColor3(val.Value)
+	err = b.WriteColor3(val.Value)
 	if err != nil {
 		return err
 	}
-	return b.writeFloat32BE(val.Envelope)
+	return b.WriteFloat32BE(val.Envelope)
 }
 func (b *BitstreamWriter) WriteColorSequence(val rbxfile.ValueColorSequence) error {
-	err := b.writeUint32BE(uint32(len(val)))
+	err := b.WriteUint32BE(uint32(len(val)))
 	if err != nil {
 		return err
 	}
 	for i := 0; i < len(val); i++ {
-		err = b.writeColorSequenceKeypoint(val[i])
+		err = b.WriteColorSequenceKeypoint(val[i])
 		if err != nil {
 			return err
 		}
@@ -484,7 +484,7 @@ func (b *BitstreamWriter) WriteColorSequence(val rbxfile.ValueColorSequence) err
 }
 
 func (b *BitstreamWriter) WriteNewEnumValue(val rbxfile.ValueToken) error {
-	return b.writeUintUTF8(val.Value)
+	return b.WriteUintUTF8(val.Value)
 }
 
 func (b *BitstreamWriter) WriteSystemAddressRaw(val rbxfile.ValueSystemAddress) error {
@@ -506,81 +506,81 @@ func (b *BitstreamWriter) WriteSystemAddressRaw(val rbxfile.ValueSystemAddress) 
 		addr.IP[i] = addr.IP[i] ^ 0xFF
 	}
 
-	return b.writeUint16BE(uint16(addr.Port))
+	return b.WriteUint16BE(uint16(addr.Port))
 }
 
 func (b *BitstreamWriter) WriteSystemAddress(val rbxfile.ValueSystemAddress, caches *Caches) error {
-	return b.writeCachedSystemAddress(val, caches)
+	return b.WriteCachedSystemAddress(val, caches)
 }
 func (b *JoinSerializeWriter) WriteSystemAddress(val rbxfile.ValueSystemAddress) error {
-	return b.writeSystemAddressRaw(val)
+	return b.WriteSystemAddressRaw(val)
 }
 
 func (b *BitstreamWriter) WriteRect2D(val rbxfile.ValueRect2D) error {
-	err := b.writeFloat32BE(val.Min.X)
+	err := b.WriteFloat32BE(val.Min.X)
 	if err != nil {
 		return err
 	}
-	err = b.writeFloat32BE(val.Min.Y)
+	err = b.WriteFloat32BE(val.Min.Y)
 	if err != nil {
 		return err
 	}
-	err = b.writeFloat32BE(val.Max.X)
+	err = b.WriteFloat32BE(val.Max.X)
 	if err != nil {
 		return err
 	}
-	err = b.writeFloat32BE(val.Max.Y)
+	err = b.WriteFloat32BE(val.Max.Y)
 	return err
 }
 
 func (b *BitstreamWriter) WritePhysicalProperties(val rbxfile.ValuePhysicalProperties) error {
-	err := b.writeBoolByte(val.CustomPhysics)
+	err := b.WriteBoolByte(val.CustomPhysics)
 	if err != nil {
 		return err
 	}
 	if val.CustomPhysics {
-		err := b.writeFloat32BE(val.Density)
+		err := b.WriteFloat32BE(val.Density)
 		if err != nil {
 			return err
 		}
-		err = b.writeFloat32BE(val.Friction)
+		err = b.WriteFloat32BE(val.Friction)
 		if err != nil {
 			return err
 		}
-		err = b.writeFloat32BE(val.Elasticity)
+		err = b.WriteFloat32BE(val.Elasticity)
 		if err != nil {
 			return err
 		}
-		err = b.writeFloat32BE(val.FrictionWeight)
+		err = b.WriteFloat32BE(val.FrictionWeight)
 		if err != nil {
 			return err
 		}
-		err = b.writeFloat32BE(val.ElasticityWeight)
+		err = b.WriteFloat32BE(val.ElasticityWeight)
 	}
 	return err
 }
 
 func (b *BitstreamWriter) WriteCoordsMode0(val rbxfile.ValueVector3) error {
-	return b.writeVector3Simple(val)
+	return b.WriteVector3Simple(val)
 }
 func (b *BitstreamWriter) WriteCoordsMode1(val rbxfile.ValueVector3) error {
 	valRange := float32(math.Max(math.Max(math.Abs(float64(val.X)), math.Abs(float64(val.Y))), math.Abs(float64(val.Z))))
-	err := b.writeFloat32BE(valRange)
+	err := b.WriteFloat32BE(valRange)
 	if err != nil {
 		return err
 	}
 	if valRange <= 0.0000099999997 {
 		return nil
 	}
-	err = b.writeUint16BE(uint16(val.X/valRange*32767.0 + 32767.0))
+	err = b.WriteUint16BE(uint16(val.X/valRange*32767.0 + 32767.0))
 	if err != nil {
 		return err
 	}
-	err = b.writeUint16BE(uint16(val.Y/valRange*32767.0 + 32767.0))
+	err = b.WriteUint16BE(uint16(val.Y/valRange*32767.0 + 32767.0))
 	if err != nil {
 		return err
 	}
-	err = b.writeUint16BE(uint16(val.Z/valRange*32767.0 + 32767.0))
+	err = b.WriteUint16BE(uint16(val.Z/valRange*32767.0 + 32767.0))
 	return err
 }
 func (b *BitstreamWriter) WriteCoordsMode2(val rbxfile.ValueVector3) error {
@@ -588,15 +588,15 @@ func (b *BitstreamWriter) WriteCoordsMode2(val rbxfile.ValueVector3) error {
 	yShort := uint16((val.Y + 1024.0) * 16.0)
 	zShort := uint16((val.Z + 1024.0) * 16.0)
 
-	err := b.writeUint16BE((xShort&0x7F)<<7 | (xShort >> 8))
+	err := b.WriteUint16BE((xShort&0x7F)<<7 | (xShort >> 8))
 	if err != nil {
 		return err
 	}
-	err = b.writeUint16BE((yShort&0x7F)<<7 | (yShort >> 8))
+	err = b.WriteUint16BE((yShort&0x7F)<<7 | (yShort >> 8))
 	if err != nil {
 		return err
 	}
-	err = b.writeUint16BE((zShort&0x7F)<<7 | (zShort >> 8))
+	err = b.WriteUint16BE((zShort&0x7F)<<7 | (zShort >> 8))
 	return err
 }
 
@@ -691,7 +691,7 @@ func (b *BitstreamWriter) WritePhysicsCoords(val rbxfile.ValueVector3) error {
 		val1 |= uint32(yScaleInt&0x3FF) << 10
 		val1 |= uint32(zScaleInt) & 0x3FF
 
-		err = b.writeUint32BE(val1)
+		err = b.WriteUint32BE(val1)
 		if err != nil {
 			return err
 		}
@@ -728,11 +728,11 @@ func (b *BitstreamWriter) WritePhysicsCoords(val rbxfile.ValueVector3) error {
 		val2 |= uint32((yScaleInt << 21) & 0x7FE00000)
 		val2 |= uint32(zScaleInt & 0x1FFFFF)
 
-		err = b.writeUint32BE(val1)
+		err = b.WriteUint32BE(val1)
 		if err != nil {
 			return err
 		}
-		err = b.writeUint32BE(val2)
+		err = b.WriteUint32BE(val2)
 		if err != nil {
 			return err
 		}
@@ -762,15 +762,15 @@ func (b *BitstreamWriter) WritePhysicsCoords(val rbxfile.ValueVector3) error {
 			return err
 		}
 
-		err = b.writeUint16BE(uint16(xScaleInt))
+		err = b.WriteUint16BE(uint16(xScaleInt))
 		if err != nil {
 			return err
 		}
-		err = b.writeUint16BE(uint16(yScaleInt))
+		err = b.WriteUint16BE(uint16(yScaleInt))
 		if err != nil {
 			return err
 		}
-		err = b.writeUint16BE(uint16(zScaleInt))
+		err = b.WriteUint16BE(uint16(zScaleInt))
 		if err != nil {
 			return err
 		}
@@ -782,9 +782,9 @@ func (b *BitstreamWriter) WritePhysicsCoords(val rbxfile.ValueVector3) error {
 func (b *BitstreamWriter) WriteMatrixMode0(val [9]float32) error {
 	var err error
 	q := rotMatrixToQuaternion(val)
-	b.writeFloat32BE(q[3])
+	b.WriteFloat32BE(q[3])
 	for i := 0; i < 3; i++ {
-		err = b.writeFloat32BE(q[i])
+		err = b.WriteFloat32BE(q[i])
 		if err != nil {
 			return err
 		}
@@ -793,18 +793,18 @@ func (b *BitstreamWriter) WriteMatrixMode0(val [9]float32) error {
 }
 func (b *BitstreamWriter) WriteMatrixMode1(val [9]float32) error {
 	q := rotMatrixToQuaternion(val)
-	err := b.writeBoolByte(q[3] < 0) // sqrt doesn't return negative numbers
+	err := b.WriteBoolByte(q[3] < 0) // sqrt doesn't return negative numbers
 	if err != nil {
 		return err
 	}
 	for i := 0; i < 3; i++ {
-		err = b.writeBoolByte(q[i] < 0)
+		err = b.WriteBoolByte(q[i] < 0)
 		if err != nil {
 			return err
 		}
 	}
 	for i := 0; i < 3; i++ {
-		err = b.writeUint16LE(uint16(math.Abs(float64(q[i]))))
+		err = b.WriteUint16LE(uint16(math.Abs(float64(q[i]))))
 		if err != nil {
 			return err
 		}
@@ -812,7 +812,7 @@ func (b *BitstreamWriter) WriteMatrixMode1(val [9]float32) error {
 	return nil
 }
 func (b *BitstreamWriter) WriteMatrixMode2(val [9]float32) error {
-	return b.writeMatrixMode1(val)
+	return b.WriteMatrixMode1(val)
 }
 func (b *BitstreamWriter) WritePhysicsMatrix(val [9]float32) error {
 	var err error
@@ -860,7 +860,7 @@ func (b *BitstreamWriter) WritePhysicsMatrix(val [9]float32) error {
 	val2Int := int32(val2) & 0x7FFF
 	val3Int := int32(val3) & 0x7FFF
 
-	err = b.writeUint16BE(uint16(val1Int))
+	err = b.WriteUint16BE(uint16(val1Int))
 	if err != nil {
 		return err
 	}
@@ -870,15 +870,15 @@ func (b *BitstreamWriter) WritePhysicsMatrix(val [9]float32) error {
 	val2Encoded |= uint32(val2Int << 15)
 	val2Encoded |= uint32(val3Int << 0)
 
-	err = b.writeUint32BE(uint32(val2Encoded))
+	err = b.WriteUint32BE(uint32(val2Encoded))
 	return err
 }
 func (b *BitstreamWriter) WritePhysicsCFrame(val rbxfile.ValueCFrame) error {
-	err := b.writePhysicsCoords(val.Position)
+	err := b.WritePhysicsCoords(val.Position)
 	if err != nil {
 		return err
 	}
-	return b.writePhysicsMatrix(val.Rotation)
+	return b.WritePhysicsMatrix(val.Rotation)
 }
 
 func (b *BitstreamWriter) WritePhysicsVelocity(val rbxfile.ValueVector3) error {
@@ -970,7 +970,7 @@ func (b *BitstreamWriter) WritePhysicsVelocity(val rbxfile.ValueVector3) error {
 	val1 |= uint32(yScaleInt << 8)
 	val1 |= uint32(xScaleInt << 20)
 
-	err = b.writeUint32BE(val1)
+	err = b.WriteUint32BE(val1)
 	return err
 }
 
@@ -1021,7 +1021,7 @@ func (b *BitstreamWriter) WriteMotor(motor PhysicsMotor) error {
 	}
 
 	if hasCoords {
-		err = b.writePhysicsCoords(motor.Position)
+		err = b.WritePhysicsCoords(motor.Position)
 		if err != nil {
 			return err
 		}
@@ -1078,19 +1078,19 @@ func (b *BitstreamWriter) WriteMotor(motor PhysicsMotor) error {
 		val1Encoded |= uint32(val2Int << 10)
 		val1Encoded |= uint32(val3Int << 0)
 
-		err = b.writeUint32BE(uint32(val1Encoded))
+		err = b.WriteUint32BE(uint32(val1Encoded))
 		return err
 	}
 	return nil
 }
 
 func (b *BitstreamWriter) WriteMotors(val []PhysicsMotor) error {
-	err := b.writeUintUTF8(uint32(len(val)))
+	err := b.WriteUintUTF8(uint32(len(val)))
 	if err != nil {
 		return err
 	}
 	for i := 0; i < len(val); i++ {
-		err = b.writeMotor(val[i])
+		err = b.WriteMotor(val[i])
 		if err != nil {
 			return err
 		}

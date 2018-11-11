@@ -223,24 +223,24 @@ func (b *BitstreamWriter) WriteWithCache(value interface{}, cache Cache, writeCa
 func (b *BitstreamWriter) WriteCached(val string, caches *Caches) error {
 	cache := &caches.String
 
-	return b.writeWithCache(val, cache, (*BitstreamWriter).writeUint32AndString)
+	return b.WriteWithCache(val, cache, (*BitstreamWriter).WriteUint32AndString)
 }
 func (b *BitstreamWriter) WriteCachedObject(val string, caches *Caches) error {
 	cache := &caches.Object
 
-	return b.writeWithCache(val, cache, (*BitstreamWriter).writeUint32AndString)
+	return b.WriteWithCache(val, cache, (*BitstreamWriter).WriteUint32AndString)
 }
 func (b *BitstreamWriter) WriteCachedContent(val string, caches *Caches) error {
 	cache := &caches.Content
 
-	return b.writeWithCache(val, cache, (*BitstreamWriter).writeUint32AndString)
+	return b.WriteWithCache(val, cache, (*BitstreamWriter).WriteUint32AndString)
 }
 func (b *BitstreamWriter) WriteNewCachedProtectedString(val []byte, caches *Caches) error {
 	cache := &caches.ProtectedString
 
-	return b.writeWithCache(val, cache, func(b *BitstreamWriter, val interface{}) error {
+	return b.WriteWithCache(val, cache, func(b *BitstreamWriter, val interface{}) error {
 		str := val.([]byte)
-		err := b.writeUint32BE(uint32(len(str)))
+		err := b.WriteUint32BE(uint32(len(str)))
 		if err != nil {
 			return err
 		}
@@ -250,7 +250,7 @@ func (b *BitstreamWriter) WriteNewCachedProtectedString(val []byte, caches *Cach
 func (b *BitstreamWriter) WriteCachedSystemAddress(val rbxfile.ValueSystemAddress, caches *Caches) error {
 	cache := &caches.SystemAddress
 
-	return b.writeWithCache(val, cache, func(b *BitstreamWriter, val interface{}) error {
-		return b.writeSystemAddressRaw(val.(rbxfile.ValueSystemAddress))
+	return b.WriteWithCache(val, cache, func(b *BitstreamWriter, val interface{}) error {
+		return b.WriteSystemAddressRaw(val.(rbxfile.ValueSystemAddress))
 	})
 }

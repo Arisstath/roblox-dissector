@@ -29,7 +29,7 @@ func (b *BitstreamWriter) WriteAddress(value *net.UDPAddr) error {
 		value.IP[i] = value.IP[i] ^ 0xFF
 	}
 
-	err = b.writeUint16BE(uint16(value.Port))
+	err = b.WriteUint16BE(uint16(value.Port))
 	return err
 }
 
@@ -46,13 +46,13 @@ func (b *BitstreamWriter) WriteJoinObject(reference *Reference, context *Communi
 		if err != nil {
 			return err
 		}
-		err = b.writeASCII(reference.Scope)
+		err = b.WriteASCII(reference.Scope)
 	}
 	if err != nil {
 		return err
 	}
 
-	return b.writeUint32LE(reference.Id)
+	return b.WriteUint32LE(reference.Id)
 }
 
 // TODO: Implement a similar system for readers, where it simply returns an instance
@@ -61,15 +61,15 @@ func (b *BitstreamWriter) WriteObject(reference *Reference, caches *Caches) erro
 	if reference == nil || reference.IsNull {
 		return b.WriteByte(0x00)
 	}
-	err = b.writeCachedObject(reference.Scope, caches)
+	err = b.WriteCachedObject(reference.Scope, caches)
 	if err != nil {
 		return err
 	}
-	return b.writeUint32LE(reference.Id)
+	return b.WriteUint32LE(reference.Id)
 }
 func (b *BitstreamWriter) WriteAnyObject(reference *Reference, writer PacketWriter, isJoinData bool) error {
 	if isJoinData {
-		return b.writeJoinObject(reference, writer.Context())
+		return b.WriteJoinObject(reference, writer.Context())
 	}
-	return b.writeObject(reference, writer.Caches())
+	return b.WriteObject(reference, writer.Caches())
 }

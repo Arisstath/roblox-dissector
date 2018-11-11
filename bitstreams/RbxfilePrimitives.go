@@ -56,31 +56,31 @@ func (b *BitstreamReader) readContent(caches *Caches) (rbxfile.ValueContent, err
 
 
 func (b *BitstreamWriter) WritePBool(val rbxfile.ValueBool) error {
-	return b.writeBoolByte(bool(val))
+	return b.WriteBoolByte(bool(val))
 }
 func (b *BitstreamWriter) WritePSint(val rbxfile.ValueInt) error {
-	return b.writeUint32BE(uint32(val))
+	return b.WriteUint32BE(uint32(val))
 }
 func (b *BitstreamWriter) WritePFloat(val rbxfile.ValueFloat) error {
-	return b.writeFloat32BE(float32(val))
+	return b.WriteFloat32BE(float32(val))
 }
 func (b *BitstreamWriter) WritePDouble(val rbxfile.ValueDouble) error {
-	return b.writeFloat64BE(float64(val))
+	return b.WriteFloat64BE(float64(val))
 }
 func (b *BitstreamWriter) WriteNewPString(val rbxfile.ValueString, caches *Caches) error {
-	return b.writeCached(string(val), caches)
+	return b.WriteCached(string(val), caches)
 }
 func (b *BitstreamWriter) WritePStringNoCache(val rbxfile.ValueString) error {
-	return b.writeVarLengthString(string(val))
+	return b.WriteVarLengthString(string(val))
 }
 func (b *BitstreamWriter) WriteNewProtectedString(val rbxfile.ValueProtectedString, caches *Caches) error {
-	return b.writeNewCachedProtectedString([]byte(val), caches)
+	return b.WriteNewCachedProtectedString([]byte(val), caches)
 }
 func (b *BitstreamWriter) WriteNewBinaryString(val rbxfile.ValueBinaryString) error {
-	return b.writeVarLengthString(string(val))
+	return b.WriteVarLengthString(string(val))
 }
 func (b *BitstreamWriter) WriteNewContent(val rbxfile.ValueContent, caches *Caches) error {
-	return b.writeCachedContent(string(val), caches)
+	return b.WriteCachedContent(string(val), caches)
 }
 func (b *BitstreamWriter) WriteCFrameSimple(val rbxfile.ValueCFrame) error {
 	return errors.New("not implemented!")

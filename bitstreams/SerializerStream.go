@@ -109,36 +109,36 @@ func (b *BitstreamWriter) WriteSerializedValue(val rbxfile.Value, writer PacketW
 	var err error
 	switch valueType {
 	case PROP_TYPE_STRING:
-		err = b.writeNewPString(val.(rbxfile.ValueString), writer.Caches())
+		err = b.WriteNewPString(val.(rbxfile.ValueString), writer.Caches())
 	case PROP_TYPE_PROTECTEDSTRING_0:
-		err = b.writeNewProtectedString(val.(rbxfile.ValueProtectedString), writer.Caches())
+		err = b.WriteNewProtectedString(val.(rbxfile.ValueProtectedString), writer.Caches())
 	case PROP_TYPE_PROTECTEDSTRING_1:
-		err = b.writeNewProtectedString(val.(rbxfile.ValueProtectedString), writer.Caches())
+		err = b.WriteNewProtectedString(val.(rbxfile.ValueProtectedString), writer.Caches())
 	case PROP_TYPE_PROTECTEDSTRING_2:
-		err = b.writeNewProtectedString(val.(rbxfile.ValueProtectedString), writer.Caches())
+		err = b.WriteNewProtectedString(val.(rbxfile.ValueProtectedString), writer.Caches())
 	case PROP_TYPE_PROTECTEDSTRING_3:
-		err = b.writeNewProtectedString(val.(rbxfile.ValueProtectedString), writer.Caches())
+		err = b.WriteNewProtectedString(val.(rbxfile.ValueProtectedString), writer.Caches())
 	case PROP_TYPE_INSTANCE:
-		err = b.writeObject(val.(rbxfile.ValueReference).Instance, writer.Caches())
+		err = b.WriteObject(val.(rbxfile.ValueReference).Instance, writer.Caches())
 	case PROP_TYPE_CONTENT:
-		err = b.writeNewContent(val.(rbxfile.ValueContent), writer.Caches())
+		err = b.WriteNewContent(val.(rbxfile.ValueContent), writer.Caches())
 	case PROP_TYPE_SYSTEMADDRESS:
-		err = b.writeSystemAddress(val.(rbxfile.ValueSystemAddress), writer.Caches())
+		err = b.WriteSystemAddress(val.(rbxfile.ValueSystemAddress), writer.Caches())
 	case PROP_TYPE_TUPLE:
-		err = b.writeNewTuple(val.(rbxfile.ValueTuple), writer)
+		err = b.WriteNewTuple(val.(rbxfile.ValueTuple), writer)
 	case PROP_TYPE_ARRAY:
-		err = b.writeNewArray(val.(rbxfile.ValueArray), writer)
+		err = b.WriteNewArray(val.(rbxfile.ValueArray), writer)
 	case PROP_TYPE_DICTIONARY:
-		err = b.writeNewDictionary(val.(rbxfile.ValueDictionary), writer)
+		err = b.WriteNewDictionary(val.(rbxfile.ValueDictionary), writer)
 	case PROP_TYPE_MAP:
-		err = b.writeNewMap(val.(rbxfile.ValueMap), writer)
+		err = b.WriteNewMap(val.(rbxfile.ValueMap), writer)
 	default:
-		return b.writeSerializedValueGeneric(val, valueType)
+		return b.WriteSerializedValueGeneric(val, valueType)
 	}
 	return err
 }
 func (b *BitstreamWriter) WriteObject(object *rbxfile.Instance, writer PacketWriter) error {
-	return b.writeObject(object, writer.Caches())
+	return b.WriteObject(object, writer.Caches())
 }
 func (b *BitstreamWriter) WriteProperties(schema []StaticPropertySchema, properties map[string]rbxfile.Value, writer PacketWriter) error {
 	var err error
@@ -304,28 +304,28 @@ func (b *JoinSerializeWriter) WriteSerializedValue(val rbxfile.Value, writer Pac
 	var err error
 	switch valueType {
 	case PROP_TYPE_STRING:
-		err = b.writeNewPString(val.(rbxfile.ValueString))
+		err = b.WriteNewPString(val.(rbxfile.ValueString))
 	case PROP_TYPE_PROTECTEDSTRING_0:
-		err = b.writeNewProtectedString(val.(rbxfile.ValueProtectedString))
+		err = b.WriteNewProtectedString(val.(rbxfile.ValueProtectedString))
 	case PROP_TYPE_PROTECTEDSTRING_1:
-		err = b.writeNewProtectedString(val.(rbxfile.ValueProtectedString))
+		err = b.WriteNewProtectedString(val.(rbxfile.ValueProtectedString))
 	case PROP_TYPE_PROTECTEDSTRING_2:
-		err = b.writeNewProtectedString(val.(rbxfile.ValueProtectedString))
+		err = b.WriteNewProtectedString(val.(rbxfile.ValueProtectedString))
 	case PROP_TYPE_PROTECTEDSTRING_3:
-		err = b.writeNewProtectedString(val.(rbxfile.ValueProtectedString))
+		err = b.WriteNewProtectedString(val.(rbxfile.ValueProtectedString))
 	case PROP_TYPE_INSTANCE:
 		err = b.WriteObject(val.(rbxfile.ValueReference).Instance, writer)
 	case PROP_TYPE_CONTENT:
-		err = b.writeNewContent(val.(rbxfile.ValueContent))
+		err = b.WriteNewContent(val.(rbxfile.ValueContent))
 	case PROP_TYPE_SYSTEMADDRESS:
-		err = b.writeSystemAddress(val.(rbxfile.ValueSystemAddress))
+		err = b.WriteSystemAddress(val.(rbxfile.ValueSystemAddress))
 	default:
-		return b.writeSerializedValueGeneric(val, valueType)
+		return b.WriteSerializedValueGeneric(val, valueType)
 	}
 	return err
 }
 func (b *JoinSerializeWriter) WriteObject(object *rbxfile.Instance, writer PacketWriter) error {
-	return b.BitstreamWriter.writeJoinObject(object, writer.Context())
+	return b.BitstreamWriter.WriteJoinObject(object, writer.Context())
 }
 func (b *JoinSerializeWriter) WriteProperties(schema []StaticPropertySchema, properties map[string]rbxfile.Value, writer PacketWriter) error {
 	var err error
@@ -353,11 +353,11 @@ func (b *JoinSerializeWriter) WriteProperties(schema []StaticPropertySchema, pro
 }
 
 func (b *JoinSerializeWriter) WriteNewPString(val rbxfile.ValueString) error {
-	return b.BitstreamWriter.writePStringNoCache(val)
+	return b.BitstreamWriter.WritePStringNoCache(val)
 }
 func (b *JoinSerializeWriter) WriteNewProtectedString(val rbxfile.ValueProtectedString) error {
-	return b.BitstreamWriter.writePStringNoCache(rbxfile.ValueString(val))
+	return b.BitstreamWriter.WritePStringNoCache(rbxfile.ValueString(val))
 }
 func (b *JoinSerializeWriter) WriteNewContent(val rbxfile.ValueContent) error {
-	return b.writeUint32AndString(string(val))
+	return b.WriteUint32AndString(string(val))
 }

@@ -195,7 +195,7 @@ func (b *BitstreamWriter) WriteUint24LE(value uint32) error {
 }
 
 func (b *BitstreamWriter) WriteFloat32BE(value float32) error {
-	return b.writeUint32BE(math.Float32bits(value))
+	return b.WriteUint32BE(math.Float32bits(value))
 }
 
 func (b *BitstreamWriter) WriteFloat64BE(value float64) error {
@@ -203,7 +203,7 @@ func (b *BitstreamWriter) WriteFloat64BE(value float64) error {
 }
 
 func (b *BitstreamWriter) WriteFloat16BE(value float32, min float32, max float32) error {
-	return b.writeUint16BE(uint16(value / (max - min) * 65535.0))
+	return b.WriteUint16BE(uint16(value / (max - min) * 65535.0))
 }
 
 func (b *BitstreamWriter) WriteBoolByte(value bool) error {
@@ -242,10 +242,10 @@ func (b *BitstreamWriter) WriteUintUTF8(value uint32) error {
 
 func (b *BitstreamWriter) WriteUint32AndString(val interface{}) error {
 	str := val.(string)
-	err := b.writeUint32BE(uint32(len(str)))
+	err := b.WriteUint32BE(uint32(len(str)))
 	if err != nil {
 		return err
 	}
-	return b.writeASCII(str)
+	return b.WriteASCII(str)
 }
 

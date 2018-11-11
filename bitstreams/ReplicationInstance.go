@@ -86,11 +86,11 @@ func serializeReplicationInstance(reference *Reference, writer PacketWriter, str
 
 	context := writer.Context()
 	schemaIdx := uint16(context.StaticSchema.ClassesByName[instance.ClassName])
-	err = stream.writeUint16BE(schemaIdx)
+	err = stream.WriteUint16BE(schemaIdx)
 	if err != nil {
 		return err
 	}
-	err = stream.writeBoolByte(true) // ???
+	err = stream.WriteBoolByte(true) // ???
 	if err != nil {
 		return err
 	}
