@@ -2,7 +2,7 @@ package peer
 
 import "errors"
 
-type Packet83_11 struct {
+type Stats struct {
 	SkipStats1 bool
 	Stats_1_1  []byte
 	Stats_1_2  float32
@@ -23,9 +23,9 @@ type Packet83_11 struct {
 	DataThroughputRatio   float32
 }
 
-func (thisBitstream *extendedReader) DecodePacket83_11(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
+func (thisBitstream *extendedReader) DecodeStats(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
 	var err error
-	inner := &Packet83_11{}
+	inner := &Stats{}
 	
 	inner.SkipStats1, err = thisBitstream.readBool()
 	if err != nil {
@@ -113,13 +113,13 @@ func (thisBitstream *extendedReader) DecodePacket83_11(reader PacketReader, laye
 	return inner, nil
 }
 
-func (layer *Packet83_11) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *Stats) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	return errors.New("packet 83_11 not implemented!")
 }
 
-func (Packet83_11) Type() uint8 {
+func (Stats) Type() uint8 {
 	return 0x11
 }
-func (Packet83_11) TypeString() string {
+func (Stats) TypeString() string {
 	return "ID_REPLIC_STATS"
 }

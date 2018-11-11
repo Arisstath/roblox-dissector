@@ -7,17 +7,17 @@ import "github.com/gskartwii/go-bitstream"
 import "github.com/DataDog/zstd"
 
 // ID_JOINDATA
-type Packet83_0B struct {
+type ReplicateJoinData struct {
 	// Instances replicated by the server
 	Instances []*rbxfile.Instance
 }
 
-func NewPacket83_0BLayer() *Packet83_0B {
-	return &Packet83_0B{}
+func NewReplicateJoinDataLayer() *ReplicateJoinData {
+	return &ReplicateJoinData{}
 }
 
-func (thisBitstream *extendedReader) DecodePacket83_0B(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
-	layer := NewPacket83_0BLayer()
+func (thisBitstream *extendedReader) DecodeReplicateJoinData(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
+	layer := NewReplicateJoinDataLayer()
 
 	thisBitstream.Align()
 	arrayLen, err := thisBitstream.readUint32BE()
@@ -51,7 +51,7 @@ func (thisBitstream *extendedReader) DecodePacket83_0B(reader PacketReader, laye
 	return layer, nil
 }
 
-func (layer *Packet83_0B) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *ReplicateJoinData) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
 	err = stream.Align()
 	if err != nil {
@@ -105,9 +105,9 @@ func (layer *Packet83_0B) Serialize(writer PacketWriter, stream *extendedWriter)
 	return err
 }
 
-func (Packet83_0B) Type() uint8 {
+func (ReplicateJoinData) Type() uint8 {
 	return 0xB
 }
-func (Packet83_0B) TypeString() string {
+func (ReplicateJoinData) TypeString() string {
 	return "ID_REPLIC_JOI_NDATA"
 }

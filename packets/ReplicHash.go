@@ -3,7 +3,7 @@ package peer
 import "fmt"
 
 // ID_HASH
-type Packet83_12 struct {
+type ReplicateHash struct {
 	HashList       []uint32
 	SecurityTokens [3]uint32
 }
@@ -41,9 +41,9 @@ func getRbxNonce(base uint32, query uint32) uint32 {
 	return (queryState - baseState) * 0xA89ED915
 }
 
-func (stream *extendedReader) DecodePacket83_12(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
+func (stream *extendedReader) DecodeReplicateHash(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
 	var err error
-	inner := &Packet83_12{}
+	inner := &ReplicateHash{}
 	numItems, err := stream.readUint8()
 	if err != nil {
 		return inner, err
@@ -95,13 +95,13 @@ func (stream *extendedReader) DecodePacket83_12(reader PacketReader, layers *Pac
 	return inner, nil
 }
 
-func (layer *Packet83_12) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *ReplicateHash) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	return nil
 }
 
-func (Packet83_12) Type() uint8 {
+func (ReplicateHash) Type() uint8 {
 	return 0x12
 }
-func (Packet83_12) TypeString() string {
+func (ReplicateHash) TypeString() string {
 	return "ID_REPLIC_HASH"
 }

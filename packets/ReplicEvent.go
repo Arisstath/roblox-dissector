@@ -8,7 +8,7 @@ import (
 )
 
 // ID_EVENT
-type Packet83_07 struct {
+type ReplicateEvent struct {
 	// Instance that the event was invoked on
 	Instance *rbxfile.Instance
 	// Name of the event
@@ -17,9 +17,9 @@ type Packet83_07 struct {
 	Event *ReplicationEvent
 }
 
-func (thisBitstream *extendedReader) DecodePacket83_07(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
+func (thisBitstream *extendedReader) DecodeReplicateEvent(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
 	var err error
-	layer := &Packet83_07{}
+	layer := &ReplicateEvent{}
 
 	referent, err := thisBitstream.readObject(reader.Caches())
 	if err != nil {
@@ -54,7 +54,7 @@ func (thisBitstream *extendedReader) DecodePacket83_07(reader PacketReader, laye
 	return layer, err
 }
 
-func (layer *Packet83_07) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *ReplicateEvent) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	if layer.Instance == nil {
 		return errors.New("self is nil in serialize repl inst")
 	}
@@ -79,9 +79,9 @@ func (layer *Packet83_07) Serialize(writer PacketWriter, stream *extendedWriter)
 	return schema.Serialize(layer.Event, writer, stream)
 }
 
-func (Packet83_07) Type() uint8 {
+func (ReplicateEvent) Type() uint8 {
 	return 7
 }
-func (Packet83_07) TypeString() string {
+func (ReplicateEvent) TypeString() string {
 	return "ID_REPLIC_EVENT"
 }

@@ -1,14 +1,14 @@
 package peer
 
 // ID_TAG
-type Packet83_10 struct {
+type ReplicationTag struct {
 	// 12 or 13
 	TagId uint32
 }
 
-func (thisBitstream *extendedReader) DecodePacket83_10(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
+func (thisBitstream *extendedReader) DecodeReplicationTag(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
 	var err error
-	inner := &Packet83_10{}
+	inner := &ReplicationTag{}
 
 	inner.TagId, err = thisBitstream.readUint32BE()
 	if err != nil {
@@ -18,13 +18,13 @@ func (thisBitstream *extendedReader) DecodePacket83_10(reader PacketReader, laye
 	return inner, err
 }
 
-func (layer *Packet83_10) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *ReplicationTag) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	return stream.writeUint32BE(layer.TagId)
 }
 
-func (Packet83_10) Type() uint8 {
+func (ReplicationTag) Type() uint8 {
 	return 0x10
 }
-func (Packet83_10) TypeString() string {
+func (ReplicationTag) TypeString() string {
 	return "ID_REPLIC_TAG"
 }

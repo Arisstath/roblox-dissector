@@ -31,19 +31,19 @@ var Packet83Subpackets map[uint8]string = map[uint8]string{
 }
 
 var Packet83Decoders = map[uint8](func(*extendedReader, PacketReader, *PacketLayers) (Packet83Subpacket, error)){
-	0x01: (*extendedReader).DecodePacket83_01,
-	0x02: (*extendedReader).DecodePacket83_02,
-	0x03: (*extendedReader).DecodePacket83_03,
-	0x04: (*extendedReader).DecodePacket83_04,
-	0x05: (*extendedReader).DecodePacket83_05,
-	0x06: (*extendedReader).DecodePacket83_06,
-	0x07: (*extendedReader).DecodePacket83_07,
-	0x09: (*extendedReader).DecodePacket83_09,
-	0x0A: (*extendedReader).DecodePacket83_0A,
-	0x0B: (*extendedReader).DecodePacket83_0B,
-	0x10: (*extendedReader).DecodePacket83_10,
-	0x11: (*extendedReader).DecodePacket83_11,
-	0x12: (*extendedReader).DecodePacket83_12,
+	0x01: (*extendedReader).DecodeDeleteInstance,
+	0x02: (*extendedReader).DecodeNewInstance,
+	0x03: (*extendedReader).DecodeChangeProperty,
+	0x04: (*extendedReader).DecodeReplicationMarker,
+	0x05: (*extendedReader).DecodeDataPing,
+	0x06: (*extendedReader).DecodeDataPingBack,
+	0x07: (*extendedReader).DecodeReplicateEvent,
+	0x09: (*extendedReader).DecodeReplicRocky,
+	0x0A: (*extendedReader).DecodeAckProperty,
+	0x0B: (*extendedReader).DecodeReplicateJoinData,
+	0x10: (*extendedReader).DecodeReplicationTag,
+	0x11: (*extendedReader).DecodeStats,
+	0x12: (*extendedReader).DecodeReplicateHash,
 }
 
 // A subpacket contained within a 0x83 (ID_DATA) packet

@@ -3,23 +3,23 @@ package peer
 import "github.com/gskartwii/rbxfile"
 
 // ID_CREATE_INSTANCE
-type Packet83_02 struct {
+type NewInstance struct {
 	// The instance that was created
 	Child *rbxfile.Instance
 }
 
-func (thisBitstream *extendedReader) DecodePacket83_02(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
+func (thisBitstream *extendedReader) DecodeNewInstance(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
 	result, err := decodeReplicationInstance(reader, thisBitstream, layers)
-	return &Packet83_02{result}, err
+	return &NewInstance{result}, err
 }
 
-func (layer *Packet83_02) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *NewInstance) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	return serializeReplicationInstance(layer.Child, writer, stream)
 }
 
-func (Packet83_02) Type() uint8 {
+func (NewInstance) Type() uint8 {
 	return 2
 }
-func (Packet83_02) TypeString() string {
+func (NewInstance) TypeString() string {
 	return "ID_REPLIC_NEW_INSTANCE"
 }

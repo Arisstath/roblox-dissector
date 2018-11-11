@@ -7,8 +7,8 @@ import (
 	"github.com/gskartwii/rbxfile"
 )
 
-// Packet83_03 describes an ID_CHANGE_PROPERTY data subpacket.
-type Packet83_03 struct {
+// ChangeProperty describes an ID_CHANGE_PROPERTY data subpacket.
+type ChangeProperty struct {
 	// Instance that had the property change
 	Instance    *rbxfile.Instance
 	Bool1       bool
@@ -20,9 +20,9 @@ type Packet83_03 struct {
 	Value rbxfile.Value
 }
 
-func (thisBitstream *extendedReader) DecodePacket83_03(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
+func (thisBitstream *extendedReader) DecodeChangeProperty(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
 	var err error
-	layer := &Packet83_03{}
+	layer := &ChangeProperty{}
 
 	referent, err := thisBitstream.readObject(reader.Caches())
 	if err != nil {
@@ -84,7 +84,7 @@ func (thisBitstream *extendedReader) DecodePacket83_03(reader PacketReader, laye
 	return layer, err
 }
 
-func (layer *Packet83_03) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *ChangeProperty) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	if layer.Instance == nil {
 		return errors.New("self is nil in serialize repl prop")
 	}
@@ -147,9 +147,9 @@ func (layer *Packet83_03) Serialize(writer PacketWriter, stream *extendedWriter)
 	return err
 }
 
-func (Packet83_03) Type() uint8 {
+func (ChangeProperty) Type() uint8 {
 	return 3
 }
-func (Packet83_03) TypeString() string {
+func (ChangeProperty) TypeString() string {
 	return "ID_REPLIC_PROP"
 }

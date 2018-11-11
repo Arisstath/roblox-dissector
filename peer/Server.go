@@ -361,20 +361,20 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 
 				myClient.writer.WriteGeneric(context, 0x81, initInstances, 3, addr)
 
-				joinData := &Packet83_0B{make([]*rbxfile.Instance, 0, len(services)+1)}
+				joinData := &ReplicateJoinData{make([]*rbxfile.Instance, 0, len(services)+1)}
 				replicationResponse := &Packet83Layer{
 					SubPackets: []Packet83Subpacket{
-						&Packet83_10{
+						&ReplicationTag{
 							TagId: 12,
 						},
 						joinData,
-						&Packet83_05{
+						&DataPing{
 							false,
 							294470000,
 							0,
 							0,
 						},
-						&Packet83_10{
+						&ReplicationTag{
 							TagId: 13,
 						},
 					},
@@ -390,7 +390,7 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 
 				myClient.writer.WriteGeneric(context, 0x83, replicationResponse, 3, addr)
 
-				onlyWorkspaceJoinData := &Packet83_0B{make([]*rbxfile.Instance, 0)}
+				onlyWorkspaceJoinData := &ReplicateJoinData{make([]*rbxfile.Instance, 0)}
 				InputObject := &rbxfile.Instance{
 					ClassName:  "InputObject",
 					Reference:  strconv.Itoa(int(myClient.instanceID)),
@@ -455,7 +455,7 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 					[]Packet83Subpacket{onlyWorkspaceJoinData},
 				}, 3, addr)
 
-				allDefaultsJoinData := &Packet83_0B{make([]*rbxfile.Instance, 0, len(context.StaticSchema.Instances))}
+				allDefaultsJoinData := &ReplicateJoinData{make([]*rbxfile.Instance, 0, len(context.StaticSchema.Instances))}
 
 				humanoid := &rbxfile.Instance{
 					ClassName:  "Humanoid",

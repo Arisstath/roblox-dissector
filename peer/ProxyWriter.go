@@ -162,36 +162,36 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 			modifiedSubpackets := mainLayer.SubPackets[:0] // in case packets need to be dropped
 			for _, subpacket := range mainLayer.SubPackets {
 				switch subpacket.(type) {
-				case *Packet83_02:
-					instPacket := subpacket.(*Packet83_02)
+				case *NewInstance:
+					instPacket := subpacket.(*NewInstance)
 					println("patching osplatform", instPacket.Child.Name())
 					if instPacket.Child.ClassName == "Player" {
 						// patch OsPlatform!
 						instPacket.Child.Properties["OsPlatform"] = rbxfile.ValueString(writer.SecuritySettings.OsPlatform)
 					}
 					modifiedSubpackets = append(modifiedSubpackets, subpacket)
-				case *Packet83_09:
+				case *ReplicRocky:
 					// patch id response
 					println("patching id resp")
-					pmcPacket := subpacket.(*Packet83_09)
+					pmcPacket := subpacket.(*ReplicRocky)
 					if pmcPacket.SubpacketType == 6 {
-						pmcSubpacket := pmcPacket.Subpacket.(*Packet83_09_06)
+						pmcSubpacket := pmcPacket.Subpacket.(*ReplicRocky_06)
 						pmcSubpacket.Int2 = writer.SecuritySettings.IdChallengeResponse - pmcSubpacket.Int1
 						modifiedSubpackets = append(modifiedSubpackets, subpacket)
 					} // if not type 6, drop it!
-				case *Packet83_12:
+				case *ReplicateHash:
 					println("permanently dropping hash packet")
 					// IMPORTANT! We don't drop the entire hash packet 0x83 containers!
 					// Under heavy stress, the Roblox client may pack everything inside the container,
 					// including hash packets.
 					// It used to seem that this was not the case, but I was proven wrong.
-				case *Packet83_05:
-					pingPacket := subpacket.(*Packet83_05)
+				case *DataPing:
+					pingPacket := subpacket.(*DataPing)
 					pingPacket.SendStats = 0
 					pingPacket.ExtraStats = 0
 					modifiedSubpackets = append(modifiedSubpackets, subpacket)
-				case *Packet83_06:
-					pingPacket := subpacket.(*Packet83_06)
+				case *DataPingBack:
+					pingPacket := subpacket.(*DataPingBack)
 					pingPacket.SendStats = 0
 					pingPacket.ExtraStats = 0
 					modifiedSubpackets = append(modifiedSubpackets, subpacket)

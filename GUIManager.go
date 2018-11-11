@@ -203,7 +203,7 @@ func (m *MyPacketListView) BindCallback(packetType byte, context *peer.Communica
 	if packetType == 0x83 && layers.Main != nil && layers.Reliability != nil && layers.Reliability.SplitBuffer.IsFinal {
 		mainLayer := layers.Main.(*peer.Packet83Layer)
 		for _, subpacket := range mainLayer.SubPackets {
-			if subpacket.Type() == 0x7 && strings.Contains(subpacket.(*peer.Packet83_07).EventName, "Remote") { // highlight events
+			if subpacket.Type() == 0x7 && strings.Contains(subpacket.(*peer.ReplicateEvent).EventName, "Remote") { // highlight events
 				paintItems(row, gui.NewQColor3(0, 0, 255, 127))
 				break
 			}
@@ -800,7 +800,7 @@ func GUIMain() {
 		player := players.Children[0]
 		println("chose player", player.Name())
 		chatEvent := replicatedStorage.FindFirstChild("DefaultChatSystemChatEvents", false).FindFirstChild("SayMessageRequest", false)
-		subpacket := &peer.Packet83_07{
+		subpacket := &peer.ReplicateEvent{
 			Instance:  chatEvent,
 			EventName: "OnServerEvent",
 			Event: &peer.ReplicationEvent{

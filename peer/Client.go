@@ -466,7 +466,7 @@ func (myClient *CustomClient) startDataPing() {
 			<-myClient.dataPingTicker.C
 
 			myClient.WritePacket(&Packet83Layer{
-				[]Packet83Subpacket{&Packet83_05{
+				[]Packet83Subpacket{&DataPing{
 					SendStats:  8,
 					Timestamp:  uint64(time.Now().Unix()),
 					IsPingBack: false,

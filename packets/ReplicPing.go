@@ -1,7 +1,7 @@
 package peer
 
 // ID_PING
-type Packet83_05 struct {
+type DataPing struct {
 	// Always false
 	IsPingBack bool
 	Timestamp  uint64
@@ -10,9 +10,9 @@ type Packet83_05 struct {
 	ExtraStats uint32
 }
 
-func (thisBitstream *extendedReader) DecodePacket83_05(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
+func (thisBitstream *extendedReader) DecodeDataPing(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
 	var err error
-	inner := &Packet83_05{}
+	inner := &DataPing{}
 
 	inner.IsPingBack, err = thisBitstream.readBoolByte()
 	if err != nil {
@@ -38,7 +38,7 @@ func (thisBitstream *extendedReader) DecodePacket83_05(reader PacketReader, laye
 	return inner, err
 }
 
-func (layer *Packet83_05) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *DataPing) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
 	err = stream.writeBoolByte(layer.IsPingBack)
 	if err != nil {
@@ -60,9 +60,9 @@ func (layer *Packet83_05) Serialize(writer PacketWriter, stream *extendedWriter)
 	return err
 }
 
-func (Packet83_05) Type() uint8 {
+func (DataPing) Type() uint8 {
 	return 5
 }
-func (Packet83_05) TypeString() string {
+func (DataPing) TypeString() string {
 	return "ID_REPLIC_PING"
 }

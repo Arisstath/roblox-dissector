@@ -7,17 +7,17 @@ import (
 	"github.com/gskartwii/rbxfile"
 )
 
-// Packet83_0A describes a ID_PROP_ACK packet.
-type Packet83_0A struct {
+// AckProperty describes a ID_PROP_ACK packet.
+type AckProperty struct {
 	// Instance that had the property change
 	Instance     *rbxfile.Instance
 	PropertyName string
 	Versions     []uint32
 }
 
-func (thisBitstream *extendedReader) DecodePacket83_0A(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
+func (thisBitstream *extendedReader) DecodeAckProperty(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
 	var err error
-	layer := &Packet83_0A{}
+	layer := &AckProperty{}
 
 	referent, err := thisBitstream.readObject(reader.Caches())
 	if err != nil {
@@ -60,7 +60,7 @@ func (thisBitstream *extendedReader) DecodePacket83_0A(reader PacketReader, laye
 	return layer, err
 }
 
-func (layer *Packet83_0A) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *AckProperty) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	err := stream.writeObject(layer.Instance, writer.Caches())
 	if err != nil {
 		return err
@@ -85,9 +85,9 @@ func (layer *Packet83_0A) Serialize(writer PacketWriter, stream *extendedWriter)
 	return nil
 }
 
-func (Packet83_0A) Type() uint8 {
+func (AckProperty) Type() uint8 {
 	return 0xA
 }
-func (Packet83_0A) TypeString() string {
+func (AckProperty) TypeString() string {
 	return "ID_REPLIC_CFRAME_ACK"
 }
