@@ -19,20 +19,19 @@ var packetDecoders = map[byte]decoderFunc{
 	0x10: (*extendedReader).DecodePacket10Layer,
 	0x13: (*extendedReader).DecodePacket13Layer,
 	0x15: (*extendedReader).DecodeDisconnectionPacket,
-	0x1B: (*extendedReader).DecodePacket1BLayer,
+	0x1B: (*extendedReader).DecodeTimestamp,
 
-	0x81: (*extendedReader).DecodePacket81Layer,
-	//0x82: DecodePacket82Layer,
+	0x81: (*extendedReader).DecodeTopReplication,
 	0x83: (*extendedReader).DecodeReplicatorPacket,
 	0x85: (*extendedReader).DecodePhysicsPacket,
-	0x86: (*extendedReader).DecodePacket86Layer,
+	0x86: (*extendedReader).DecodeTouch,
 	0x8A: (*extendedReader).DecodeAuthPacket,
 	0x8D: (*extendedReader).DecodeClusterPacket,
-	0x8F: (*extendedReader).DecodePacket8FLayer,
-	0x90: (*extendedReader).DecodePacket90Layer,
-	0x92: (*extendedReader).DecodePacket92Layer,
+	0x8F: (*extendedReader).DecodeSpawnNamePacket,
+	0x90: (*extendedReader).DecodeFlagRequest,
+	0x92: (*extendedReader).DecodeVerifyPlaceId,
 	0x93: (*extendedReader).DecodeFlagResponse,
-	0x97: (*extendedReader).DecodePacket97Layer,
+	0x97: (*extendedReader).DecodeSchemaPacket,
 }
 
 type ReceiveHandler func(byte, *PacketLayers)
@@ -139,7 +138,7 @@ func (reader *DefaultPacketReader) readGeneric(stream *extendedReader, packetTyp
 			layers.Error = fmt.Errorf("Failed to decode timestamped packet: %s", err.Error())
 			return
 		}
-		layers.Timestamp = tsLayer.(*Packet1BLayer)
+		layers.Timestamp = tsLayer.(*Timestamp)
 		packetType, err = stream.ReadByte()
 		if err != nil {
 			println("timestamp type fail")

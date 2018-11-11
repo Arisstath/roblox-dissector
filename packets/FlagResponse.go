@@ -3,7 +3,7 @@ package peer
 import "fmt"
 
 // ID_DICTIONARY_FORMAT - server -> client
-// Response to ID_PROTOCOL_SYNC (Packet90Layer)
+// Response to ID_PROTOCOL_SYNC (FlagRequest)
 type FlagResponse struct {
 	ProtocolSchemaSync bool
 	// Use dictionary compression?

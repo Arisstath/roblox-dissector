@@ -190,7 +190,7 @@ func (writer *DefaultPacketWriter) WriteReliablePacket(data []byte, packet *Reli
 	return nil
 }
 
-func (writer *DefaultPacketWriter) WriteTimestamped(timestamp *Packet1BLayer, generic RakNetPacket, reliability uint32) ([]byte, error) {
+func (writer *DefaultPacketWriter) WriteTimestamped(timestamp *Timestamp, generic RakNetPacket, reliability uint32) ([]byte, error) {
 	output := make([]byte, 0, 1492)
 	buffer := bytes.NewBuffer(output) // Will allocate more if needed
 	stream := &extendedWriter{bitstream.NewWriter(buffer)}
@@ -241,6 +241,6 @@ func (writer *DefaultPacketWriter) WriteGeneric(generic RakNetPacket, reliabilit
 func (writer *DefaultPacketWriter) WritePacket(generic RakNetPacket) ([]byte, error) {
     return writer.WriteGeneric(generic, RELIABLE_ORD)
 }
-func (writer *DefaultPacketWriter) WritePhysics(timestamp *Packet1BLayer, generic RakNetPacket) ([]byte, error) {
+func (writer *DefaultPacketWriter) WritePhysics(timestamp *Timestamp, generic RakNetPacket) ([]byte, error) {
     return writer.WriteTimestamped(timestamp, generic, UNRELIABLE)
 }

@@ -1,17 +1,17 @@
 package peer
 
 // ID_PROTOCOL_SYNC - client -> server
-type Packet90Layer struct {
+type FlagRequest struct {
 	SchemaVersion  uint32
 	RequestedFlags []string
 }
 
-func NewPacket90Layer() *Packet90Layer {
-	return &Packet90Layer{}
+func NewFlagRequest() *FlagRequest {
+	return &FlagRequest{}
 }
 
-func (thisBitstream *extendedReader) DecodePacket90Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-	layer := NewPacket90Layer()
+func (thisBitstream *extendedReader) DecodeFlagRequest(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+	layer := NewFlagRequest()
 
 	var err error
 	layer.SchemaVersion, err = thisBitstream.readUint32BE()
@@ -35,7 +35,7 @@ func (thisBitstream *extendedReader) DecodePacket90Layer(reader PacketReader, la
 	return layer, nil
 }
 
-func (layer *Packet90Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *FlagRequest) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	err := stream.WriteByte(0x90)
 	if err != nil {
 		return err

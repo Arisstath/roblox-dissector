@@ -7,9 +7,9 @@ import (
 	"github.com/gskartwii/rbxfile"
 )
 
-// Describes a global service from ID_SET_GLOBALS (Packet81Layer)
-type Packet81LayerItem struct {
-	// Class ID, according to ID_NEW_SCHEMA (Packet97Layer)
+// Describes a global service from ID_SET_GLOBALS (TopReplication)
+type TopReplicationItem struct {
+	// Class ID, according to ID_NEW_SCHEMA (SchemaPacket)
 	ClassID  uint16
 	Instance *rbxfile.Instance
 	Bool1    bool
@@ -17,7 +17,7 @@ type Packet81LayerItem struct {
 }
 
 // ID_SET_GLOBALS - server -> client
-type Packet81Layer struct {
+type TopReplication struct {
 	// Is streaming enabled?
 	StreamJob bool
 	// Is Filtering enabled?
@@ -29,15 +29,15 @@ type Packet81Layer struct {
 	Int1           uint32
 	Int2           uint32
 	// List of services to be set
-	Items []*Packet81LayerItem
+	Items []*TopReplicationItem
 }
 
-func NewPacket81Layer() *Packet81Layer {
-	return &Packet81Layer{}
+func NewTopReplication() *TopReplication {
+	return &TopReplication{}
 }
 
-func (thisBitstream *extendedReader) DecodePacket81Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-	layer := NewPacket81Layer()
+func (thisBitstream *extendedReader) DecodeTopReplication(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+	layer := NewTopReplication()
 	
 	var err error
 
@@ -91,9 +91,9 @@ func (thisBitstream *extendedReader) DecodePacket81Layer(reader PacketReader, la
 	context := reader.Context()
 	context.DataModel = &rbxfile.Root{make([]*rbxfile.Instance, arrayLen)}
 
-	layer.Items = make([]*Packet81LayerItem, arrayLen)
+	layer.Items = make([]*TopReplicationItem, arrayLen)
 	for i := 0; i < int(arrayLen); i++ {
-		thisItem := &Packet81LayerItem{}
+		thisItem := &TopReplicationItem{}
 		referent, err := thisBitstream.readJoinObject(context)
 		if err != nil {
 			return layer, err
@@ -132,7 +132,7 @@ func (thisBitstream *extendedReader) DecodePacket81Layer(reader PacketReader, la
 	return layer, nil
 }
 
-func (layer *Packet81Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *TopReplication) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
 	err = stream.WriteByte(0x81)
 	if err != nil {

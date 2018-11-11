@@ -7,7 +7,7 @@ import (
 )
 
 // Touch replication for a single touch
-type Packet86LayerSubpacket struct {
+type TouchSubpacket struct {
 	Instance1 *rbxfile.Instance
 	Instance2 *rbxfile.Instance
 	// Touch started? If false, ended.
@@ -15,21 +15,21 @@ type Packet86LayerSubpacket struct {
 }
 
 // ID_TOUCHES - client <-> server
-type Packet86Layer struct {
-	SubPackets []*Packet86LayerSubpacket
+type Touch struct {
+	SubPackets []*TouchSubpacket
 }
 
-func NewPacket86Layer() *Packet86Layer {
-	return &Packet86Layer{}
+func NewTouch() *Touch {
+	return &Touch{}
 }
 
-func (thisBitstream *extendedReader) DecodePacket86Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisBitstream *extendedReader) DecodeTouch(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	
 
-	layer := NewPacket86Layer()
+	layer := NewTouch()
 	context := reader.Context()
 	for {
-		subpacket := &Packet86LayerSubpacket{}
+		subpacket := &TouchSubpacket{}
 		referent, err := thisBitstream.readObject(reader.Caches())
 		// hopefully we don't need to check for CacheReadOOB here
 		if err != nil {
@@ -63,7 +63,7 @@ func (thisBitstream *extendedReader) DecodePacket86Layer(reader PacketReader, la
 	return layer, nil
 }
 
-func (layer *Packet86Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *Touch) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	err := stream.WriteByte(0x86)
 	if err != nil {
 		return err

@@ -44,7 +44,7 @@ type PacketLayers struct {
 	// Contains data about the split packets this packet has.
 	SplitPacket *SplitPacketBuffer
 	// Timestamped packets (i.e. physics packets) may have a Timestamp layer.
-	Timestamp *Packet1BLayer
+	Timestamp *Timestamp
 	// Almost all packets have a Main layer. The exceptions to this are ACKs and NAKs.
 	Main interface{}
 	// Possible parsing error?

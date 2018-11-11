@@ -165,16 +165,16 @@ type StaticSchema struct {
 
 // ID_NEW_SCHEMA - server -> client
 // Negotiates a network schema with the client
-type Packet97Layer struct {
+type SchemaPacket struct {
 	Schema StaticSchema
 }
 
-func NewPacket97Layer() *Packet97Layer {
-	return &Packet97Layer{}
+func NewSchemaPacket() *SchemaPacket {
+	return &SchemaPacket{}
 }
 
-func (thisBitstream *extendedReader) DecodePacket97Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-	layer := NewPacket97Layer()
+func (thisBitstream *extendedReader) DecodeSchemaPacket(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+	layer := NewSchemaPacket()
 	
 
 	var err error
@@ -366,7 +366,7 @@ func (thisBitstream *extendedReader) DecodePacket97Layer(reader PacketReader, la
 	return layer, err
 }
 
-func (layer *Packet97Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *SchemaPacket) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
 
 	err = stream.WriteByte(0x97)

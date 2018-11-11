@@ -1,16 +1,16 @@
 package peer
 
 // ID_PREFERRED_SPAWN_NAME - client -> server
-type Packet8FLayer struct {
+type SpawnNamePacket struct {
 	SpawnName string
 }
 
-func NewPacket8FLayer() *Packet8FLayer {
-	return &Packet8FLayer{}
+func NewSpawnNamePacket() *SpawnNamePacket {
+	return &SpawnNamePacket{}
 }
 
-func (thisBitstream *extendedReader) DecodePacket8FLayer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-	layer := NewPacket8FLayer()
+func (thisBitstream *extendedReader) DecodeSpawnNamePacket(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+	layer := NewSpawnNamePacket()
 
 	var err error
 	spawnName, err := thisBitstream.readVarLengthString()
@@ -18,7 +18,7 @@ func (thisBitstream *extendedReader) DecodePacket8FLayer(reader PacketReader, la
 	return layer, err
 }
 
-func (layer *Packet8FLayer) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *SpawnNamePacket) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	err := stream.WriteByte(0x8F)
 	if err != nil {
 		return err

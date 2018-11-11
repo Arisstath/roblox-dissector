@@ -133,7 +133,7 @@ func (myClient *CustomClient) sendResponse13(pingTime uint64) {
 	myClient.WritePacket(response)
 }
 func (myClient *CustomClient) sendProtocolSync() {
-	response90 := &Packet90Layer{
+	response90 := &FlagRequest{
 		SchemaVersion: 36,
 		RequestedFlags: []string{
 			"AllowMoreAngles",
@@ -155,7 +155,7 @@ func (myClient *CustomClient) sendProtocolSync() {
 	myClient.WritePacket(response90)
 }
 func (myClient *CustomClient) sendPlaceIdVerification(placeId int64) {
-	response92 := &Packet92Layer{
+	response92 := &VerifyPlaceId{
 		PlaceId: placeId,
 	}
 	myClient.WritePacket(response92)
@@ -175,7 +175,7 @@ func (myClient *CustomClient) submitTicket() {
 	myClient.WritePacket(response8A)
 }
 func (myClient *CustomClient) sendSpawnName() {
-	response8F := &Packet8FLayer{
+	response8F := &SpawnNamePacket{
 		SpawnName: "",
 	}
 	myClient.WritePacket(response8F)
@@ -191,7 +191,7 @@ func (myClient *CustomClient) packet10Handler(packetType uint8, layers *PacketLa
 }
 
 func (myClient *CustomClient) topReplicationHandler(packetType uint8, layers *PacketLayers) {
-	mainLayer := layers.Main.(*Packet81Layer)
+	mainLayer := layers.Main.(*TopReplication)
 	for _, inst := range mainLayer.Items { // this may result in instances being announced twice!
 		// be careful.
 		myClient.instanceHandlers.Fire(inst.Instance)

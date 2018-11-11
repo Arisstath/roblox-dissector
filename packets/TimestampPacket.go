@@ -1,19 +1,19 @@
 package peer
 
 // ID_TIMESTAMP - client <-> server
-type Packet1BLayer struct {
+type Timestamp struct {
 	// Timestamp of when this packet was sent
 	Timestamp  uint64
 	Timestamp2 uint64
 	stream     *extendedReader
 }
 
-func NewPacket1BLayer() *Packet1BLayer {
-	return &Packet1BLayer{}
+func NewTimestamp() *Timestamp {
+	return &Timestamp{}
 }
 
-func (thisBitstream *extendedReader) DecodePacket1BLayer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-	layer := NewPacket1BLayer()
+func (thisBitstream *extendedReader) DecodeTimestamp(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+	layer := NewTimestamp()
 
 	var err error
 	layer.Timestamp, err = thisBitstream.bits(64)
@@ -29,7 +29,7 @@ func (thisBitstream *extendedReader) DecodePacket1BLayer(reader PacketReader, la
 	return layer, err
 }
 
-func (layer *Packet1BLayer) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *Timestamp) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
 	err = stream.WriteByte(0x1B)
 	if err != nil {

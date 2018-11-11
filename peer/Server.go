@@ -312,7 +312,7 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 
 				myClient.writer.WriteGeneric(context, 0x93, response, 3, addr)
 			} else if packetType == 0x82 { // TODO: What packet should the server react to when communication with Studio?
-				response2 := &Packet97Layer{*server.Schema}
+				response2 := &SchemaPacket{*server.Schema}
 				context.StaticSchema = server.Schema
 
 				myClient.writer.WriteGeneric(context, 0x97, response2, 3, addr)
@@ -323,8 +323,8 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 				var workspace *rbxfile.Instance
 				var replicatedStorage *rbxfile.Instance
 
-				initInstances := &Packet81Layer{
-					Items: make([]*Packet81LayerItem, len(services)),
+				initInstances := &TopReplication{
+					Items: make([]*TopReplicationItem, len(services)),
 					DistributedPhysicsEnabled: true,
 					StreamJob:                 false,
 					FilteringEnabled:          false,
@@ -344,7 +344,7 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 					}
 					myClient.instanceID++
 
-					item := &Packet81LayerItem{
+					item := &TopReplicationItem{
 						ClassID:  uint16(classID),
 						Instance: instance,
 						Bool1:    false,
