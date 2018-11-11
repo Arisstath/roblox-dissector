@@ -192,7 +192,7 @@ func (b *BitstreamReader) readNewCachedProtectedString(caches *Caches) ([]byte, 
 
 type cacheWriteCallback func(*BitstreamWriter, interface{}) error
 
-func (b *BitstreamWriter) writeWithCache(value interface{}, cache Cache, writeCallback cacheWriteCallback) error {
+func (b *BitstreamWriter) WriteWithCache(value interface{}, cache Cache, writeCallback cacheWriteCallback) error {
 	if value == nil {
 		return b.WriteByte(0x00)
 	}
@@ -220,22 +220,22 @@ func (b *BitstreamWriter) writeWithCache(value interface{}, cache Cache, writeCa
 	}
 }
 
-func (b *BitstreamWriter) writeCached(val string, caches *Caches) error {
+func (b *BitstreamWriter) WriteCached(val string, caches *Caches) error {
 	cache := &caches.String
 
 	return b.writeWithCache(val, cache, (*BitstreamWriter).writeUint32AndString)
 }
-func (b *BitstreamWriter) writeCachedObject(val string, caches *Caches) error {
+func (b *BitstreamWriter) WriteCachedObject(val string, caches *Caches) error {
 	cache := &caches.Object
 
 	return b.writeWithCache(val, cache, (*BitstreamWriter).writeUint32AndString)
 }
-func (b *BitstreamWriter) writeCachedContent(val string, caches *Caches) error {
+func (b *BitstreamWriter) WriteCachedContent(val string, caches *Caches) error {
 	cache := &caches.Content
 
 	return b.writeWithCache(val, cache, (*BitstreamWriter).writeUint32AndString)
 }
-func (b *BitstreamWriter) writeNewCachedProtectedString(val []byte, caches *Caches) error {
+func (b *BitstreamWriter) WriteNewCachedProtectedString(val []byte, caches *Caches) error {
 	cache := &caches.ProtectedString
 
 	return b.writeWithCache(val, cache, func(b *BitstreamWriter, val interface{}) error {
@@ -247,7 +247,7 @@ func (b *BitstreamWriter) writeNewCachedProtectedString(val []byte, caches *Cach
 		return b.allBytes(val.([]byte))
 	})
 }
-func (b *BitstreamWriter) writeCachedSystemAddress(val rbxfile.ValueSystemAddress, caches *Caches) error {
+func (b *BitstreamWriter) WriteCachedSystemAddress(val rbxfile.ValueSystemAddress, caches *Caches) error {
 	cache := &caches.SystemAddress
 
 	return b.writeWithCache(val, cache, func(b *BitstreamWriter, val interface{}) error {

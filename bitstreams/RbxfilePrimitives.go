@@ -55,33 +55,33 @@ func (b *BitstreamReader) readContent(caches *Caches) (rbxfile.ValueContent, err
 }
 
 
-func (b *BitstreamWriter) writePBool(val rbxfile.ValueBool) error {
+func (b *BitstreamWriter) WritePBool(val rbxfile.ValueBool) error {
 	return b.writeBoolByte(bool(val))
 }
-func (b *BitstreamWriter) writePSint(val rbxfile.ValueInt) error {
+func (b *BitstreamWriter) WritePSint(val rbxfile.ValueInt) error {
 	return b.writeUint32BE(uint32(val))
 }
-func (b *BitstreamWriter) writePFloat(val rbxfile.ValueFloat) error {
+func (b *BitstreamWriter) WritePFloat(val rbxfile.ValueFloat) error {
 	return b.writeFloat32BE(float32(val))
 }
-func (b *BitstreamWriter) writePDouble(val rbxfile.ValueDouble) error {
+func (b *BitstreamWriter) WritePDouble(val rbxfile.ValueDouble) error {
 	return b.writeFloat64BE(float64(val))
 }
-func (b *BitstreamWriter) writeNewPString(val rbxfile.ValueString, caches *Caches) error {
+func (b *BitstreamWriter) WriteNewPString(val rbxfile.ValueString, caches *Caches) error {
 	return b.writeCached(string(val), caches)
 }
-func (b *BitstreamWriter) writePStringNoCache(val rbxfile.ValueString) error {
+func (b *BitstreamWriter) WritePStringNoCache(val rbxfile.ValueString) error {
 	return b.writeVarLengthString(string(val))
 }
-func (b *BitstreamWriter) writeNewProtectedString(val rbxfile.ValueProtectedString, caches *Caches) error {
+func (b *BitstreamWriter) WriteNewProtectedString(val rbxfile.ValueProtectedString, caches *Caches) error {
 	return b.writeNewCachedProtectedString([]byte(val), caches)
 }
-func (b *BitstreamWriter) writeNewBinaryString(val rbxfile.ValueBinaryString) error {
+func (b *BitstreamWriter) WriteNewBinaryString(val rbxfile.ValueBinaryString) error {
 	return b.writeVarLengthString(string(val))
 }
-func (b *BitstreamWriter) writeNewContent(val rbxfile.ValueContent, caches *Caches) error {
+func (b *BitstreamWriter) WriteNewContent(val rbxfile.ValueContent, caches *Caches) error {
 	return b.writeCachedContent(string(val), caches)
 }
-func (b *BitstreamWriter) writeCFrameSimple(val rbxfile.ValueCFrame) error {
+func (b *BitstreamWriter) WriteCFrameSimple(val rbxfile.ValueCFrame) error {
 	return errors.New("not implemented!")
 }

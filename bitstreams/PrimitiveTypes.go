@@ -156,57 +156,57 @@ func (b *BitstreamReader) readVarLengthString() (string, error) {
 	return b.readASCII(int(stringLen))
 }
 
-func (b *BitstreamWriter) writeBool(value bool) error {
+func (b *BitstreamWriter) WriteBool(value bool) error {
 	return b.WriteBit(bitstream.Bit(value))
 }
 
-func (b *BitstreamWriter) writeUint16BE(value uint16) error {
+func (b *BitstreamWriter) WriteUint16BE(value uint16) error {
 	dest := make([]byte, 2)
 	binary.BigEndian.PutUint16(dest, value)
 	return b.bytes(2, dest)
 }
-func (b *BitstreamWriter) writeUint16LE(value uint16) error {
+func (b *BitstreamWriter) WriteUint16LE(value uint16) error {
 	dest := make([]byte, 2)
 	binary.LittleEndian.PutUint16(dest, value)
 	return b.bytes(2, dest)
 }
 
-func (b *BitstreamWriter) writeUint32BE(value uint32) error {
+func (b *BitstreamWriter) WriteUint32BE(value uint32) error {
 	dest := make([]byte, 4)
 	binary.BigEndian.PutUint32(dest, value)
 	return b.bytes(4, dest)
 }
-func (b *BitstreamWriter) writeUint32LE(value uint32) error {
+func (b *BitstreamWriter) WriteUint32LE(value uint32) error {
 	dest := make([]byte, 4)
 	binary.LittleEndian.PutUint32(dest, value)
 	return b.bytes(4, dest)
 }
 
-func (b *BitstreamWriter) writeUint64BE(value uint64) error {
+func (b *BitstreamWriter) WriteUint64BE(value uint64) error {
 	dest := make([]byte, 8)
 	binary.BigEndian.PutUint64(dest, value)
 	return b.bytes(8, dest)
 }
 
-func (b *BitstreamWriter) writeUint24LE(value uint32) error {
+func (b *BitstreamWriter) WriteUint24LE(value uint32) error {
 	dest := make([]byte, 4)
 	binary.LittleEndian.PutUint32(dest, value)
 	return b.bytes(3, dest)
 }
 
-func (b *BitstreamWriter) writeFloat32BE(value float32) error {
+func (b *BitstreamWriter) WriteFloat32BE(value float32) error {
 	return b.writeUint32BE(math.Float32bits(value))
 }
 
-func (b *BitstreamWriter) writeFloat64BE(value float64) error {
+func (b *BitstreamWriter) WriteFloat64BE(value float64) error {
 	return b.bits(64, math.Float64bits(value))
 }
 
-func (b *BitstreamWriter) writeFloat16BE(value float32, min float32, max float32) error {
+func (b *BitstreamWriter) WriteFloat16BE(value float32, min float32, max float32) error {
 	return b.writeUint16BE(uint16(value / (max - min) * 65535.0))
 }
 
-func (b *BitstreamWriter) writeBoolByte(value bool) error {
+func (b *BitstreamWriter) WriteBoolByte(value bool) error {
 	if value {
 		return b.WriteByte(1)
 	} else {
@@ -214,11 +214,11 @@ func (b *BitstreamWriter) writeBoolByte(value bool) error {
 	}
 }
 
-func (b *BitstreamWriter) writeASCII(value string) error {
+func (b *BitstreamWriter) WriteASCII(value string) error {
 	return b.allBytes([]byte(value))
 }
 
-func (b *BitstreamWriter) writeUintUTF8(value uint32) error {
+func (b *BitstreamWriter) WriteUintUTF8(value uint32) error {
 	if value == 0 {
 		return b.WriteByte(0)
 	}
@@ -240,7 +240,7 @@ func (b *BitstreamWriter) writeUintUTF8(value uint32) error {
 	return nil
 }
 
-func (b *BitstreamWriter) writeUint32AndString(val interface{}) error {
+func (b *BitstreamWriter) WriteUint32AndString(val interface{}) error {
 	str := val.(string)
 	err := b.writeUint32BE(uint32(len(str)))
 	if err != nil {

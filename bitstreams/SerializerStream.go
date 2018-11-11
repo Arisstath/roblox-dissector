@@ -352,12 +352,12 @@ func (b *JoinSerializeWriter) WriteProperties(schema []StaticPropertySchema, pro
 	return err
 }
 
-func (b *JoinSerializeWriter) writeNewPString(val rbxfile.ValueString) error {
+func (b *JoinSerializeWriter) WriteNewPString(val rbxfile.ValueString) error {
 	return b.BitstreamWriter.writePStringNoCache(val)
 }
-func (b *JoinSerializeWriter) writeNewProtectedString(val rbxfile.ValueProtectedString) error {
+func (b *JoinSerializeWriter) WriteNewProtectedString(val rbxfile.ValueProtectedString) error {
 	return b.BitstreamWriter.writePStringNoCache(rbxfile.ValueString(val))
 }
-func (b *JoinSerializeWriter) writeNewContent(val rbxfile.ValueContent) error {
+func (b *JoinSerializeWriter) WriteNewContent(val rbxfile.ValueContent) error {
 	return b.writeUint32AndString(string(val))
 }

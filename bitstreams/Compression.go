@@ -404,7 +404,7 @@ func (b *BitstreamReader) readFloat16BE(floatMin float32, floatMax float32) (flo
 	return outFloat, nil
 }
 
-func (b *BitstreamWriter) writeHuffman(value []byte) error {
+func (b *BitstreamWriter) WriteHuffman(value []byte) error {
 	encodedBuffer := new(bytes.Buffer)
 	encodedStream := &BitstreamWriter{bitstream.NewWriter(encodedBuffer)}
 
@@ -428,7 +428,7 @@ func (b *BitstreamWriter) writeHuffman(value []byte) error {
 	return b.allBytes(encodedBuffer.Bytes())
 }
 
-func (b *BitstreamWriter) writeCompressed(value []byte, length uint32, isUnsigned bool) error {
+func (b *BitstreamWriter) WriteCompressed(value []byte, length uint32, isUnsigned bool) error {
 	var byteMatch, halfByteMatch byte
 	var err error
 	if !isUnsigned {
@@ -460,7 +460,7 @@ func (b *BitstreamWriter) writeCompressed(value []byte, length uint32, isUnsigne
 	}
 	return b.WriteByte(lastByte)
 }
-func (b *BitstreamWriter) writeUint32BECompressed(value uint32) error {
+func (b *BitstreamWriter) WriteUint32BECompressed(value uint32) error {
 	val := make([]byte, 4)
 	binary.BigEndian.PutUint32(val, value)
 	return b.writeCompressed(val, 32, true)
