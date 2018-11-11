@@ -12,9 +12,9 @@ func is2ndRoundType(typeId uint8) bool {
 	return ((id-3) > 0x1F || ((1<<(id-3))&uint32(0xC200000F)) == 0) && (id != 1) // thank you ARM compiler for optimizing this <3
 }
 
-func decodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader, layers *PacketLayers) (*rbxfile.Instance, error) {
+func decodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader, layers *PacketLayers) (*Reference, error) {
 	var err error
-	var referent Referent
+	var referent *Reference
 	context := reader.Context()
 
 	referent, err = thisBitstream.ReadObject(reader)
@@ -31,7 +31,7 @@ func decodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader
 
 	schemaIDx, err := thisBitstream.readUint16BE()
 	if int(schemaIDx) > len(context.StaticSchema.Instances) {
-		return thisInstance, fmt.Errorf("class idx %d is higher than %d", schemaIDx, len(context.StaticSchema.Instances))
+		return referent, fmt.Errorf("class idx %d is higher than %d", schemaIDx, len(context.StaticSchema.Instances))
 	}
 	schema := context.StaticSchema.Instances[schemaIDx]
 	thisInstance.ClassName = schema.Name
@@ -39,22 +39,22 @@ func decodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader
 
 	unkBool, err := thisBitstream.readBoolByte()
 	if err != nil {
-		return thisInstance, err
+		return referent, err
 	}
 	layers.Root.Logger.Println("unkbool:", unkBool)
 	thisInstance.Properties = make(map[string]rbxfile.Value, len(schema.Properties))
 
 	err = thisBitstream.ReadProperties(schema.Properties, thisInstance.Properties, reader)
 	if err != nil {
-		return thisInstance, err
+		return referent, err
 	}
 
-	referent, err = thisBitstream.ReadObject(reader)
+    parentRef, err := thisBitstream.ReadObject(reader)
 	if err != nil {
-		return thisInstance, errors.New("while parsing parent: " + err.Error())
+		return referent, errors.New("while parsing parent: " + err.Error())
 	}
 	if referent.IsNull() {
-		return thisInstance, errors.New("parent is null")
+		return referent, errors.New("parent is null")
 	}
 	if len(referent) > 0x50 {
 		layers.Root.Logger.Println("Parent: (invalid), ", len(referent))
@@ -62,19 +62,19 @@ func decodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader
 		layers.Root.Logger.Println("Parent: ", referent)
 	}
 
-	context.InstancesByReferent.AddInstance(Referent(thisInstance.Reference), thisInstance)
-	parent, err := context.InstancesByReferent.TryGetInstance(referent)
+	context.InstancesByReferent.AddInstance(referent, thisInstance)
+	parent, err := context.InstancesByReferent.TryGetInstance(parentRef)
 	if parent != nil {
-		return thisInstance, parent.AddChild(thisInstance)
+		return referent, parent.AddChild(thisInstance)
 	}
 	if err != nil && !thisInstance.IsService {
-		return thisInstance, errors.New("not service yet parent doesn't exist") // the parents of services don't exist
+		return referent, errors.New("not service yet parent doesn't exist") // the parents of services don't exist
 	}
 
-	return thisInstance, nil
+	return referent, nil
 }
 
-func serializeReplicationInstance(instance *rbxfile.Instance, writer PacketWriter, stream InstanceWriter) error {
+func serializeReplicationInstance(reference *Reference, writer PacketWriter, stream InstanceWriter) error {
 	var err error
 	if instance == nil {
 		return errors.New("self is nil in serialize repl inst")

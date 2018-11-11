@@ -197,6 +197,48 @@ type JoinSerializeReader struct {
 	*extendedReader
 }
 
+func (b *JoinSerializeReader) readNewContent() (rbxfile.ValueContent, error) {
+	res, err := b.readNewPString()
+	return rbxfile.ValueContent(res), err
+}
+func (b *JoinSerializeReader) readNewProtectedString() (rbxfile.ValueProtectedString, error) {
+	res, err := b.readNewPString()
+	return rbxfile.ValueProtectedString(res), err
+}
+func (b *JoinSerializeReader) readNewPString() (rbxfile.ValueString, error) {
+	val, err := b.readVarLengthString()
+	return rbxfile.ValueString(val), err
+}
+func (b *JoinSerializeReader) readContent() (rbxfile.ValueContent, error) {
+	var result string
+	stringLen, err := b.readUint32BE()
+	if err != nil {
+		return rbxfile.ValueContent(result), err
+	}
+	result, err = b.readASCII(int(stringLen))
+	return rbxfile.ValueContent(result), err
+}
+func (b *JoinSerializeReader) readSystemAddress() (rbxfile.ValueSystemAddress, error) {
+	var err error
+	thisAddress := rbxfile.ValueSystemAddress("0.0.0.0:0")
+	thisAddr := net.UDPAddr{}
+	thisAddr.IP = make([]byte, 4)
+	err = b.bytes(thisAddr.IP, 4)
+	if err != nil {
+		return thisAddress, err
+	}
+	for i := 0; i < 4; i++ {
+		thisAddr.IP[i] = thisAddr.IP[i] ^ 0xFF // bitwise NOT
+	}
+
+	port, err := b.readUint16BE()
+	thisAddr.Port = int(port)
+	if err != nil {
+		return thisAddress, err
+	}
+	return rbxfile.ValueSystemAddress(thisAddr.String()), nil
+}
+
 func (b *JoinSerializeReader) ReadSerializedValue(reader PacketReader, valueType uint8, enumId uint16) (rbxfile.Value, error) {
 	var err error
 	var result rbxfile.Value
@@ -308,4 +350,14 @@ func (b *JoinSerializeWriter) WriteProperties(schema []StaticPropertySchema, pro
 	}
 	err = b.WriteByte(0xFF)
 	return err
+}
+
+func (b *JoinSerializeWriter) writeNewPString(val rbxfile.ValueString) error {
+	return b.extendedWriter.writePStringNoCache(val)
+}
+func (b *JoinSerializeWriter) writeNewProtectedString(val rbxfile.ValueProtectedString) error {
+	return b.extendedWriter.writePStringNoCache(rbxfile.ValueString(val))
+}
+func (b *JoinSerializeWriter) writeNewContent(val rbxfile.ValueContent) error {
+	return b.writeUint32AndString(string(val))
 }

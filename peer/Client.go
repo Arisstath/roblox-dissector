@@ -11,6 +11,7 @@ import "encoding/hex"
 import "log"
 import "github.com/gskartwii/rbxfile"
 import "sync"
+import "github.com/gskartwii/roblox-dissector/packets"
 
 var LauncherStatuses = [...]string{
 	"Wait",

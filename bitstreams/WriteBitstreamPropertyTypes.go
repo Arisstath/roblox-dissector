@@ -144,19 +144,6 @@ func (b *extendedWriter) writeVector3int16(val rbxfile.ValueVector3int16) error 
 	return b.writeUint16BE(uint16(val.Z))
 }
 
-func (b *extendedWriter) writePBool(val rbxfile.ValueBool) error {
-	return b.writeBoolByte(bool(val))
-}
-func (b *extendedWriter) writePSint(val rbxfile.ValueInt) error {
-	return b.writeUint32BE(uint32(val))
-}
-func (b *extendedWriter) writePFloat(val rbxfile.ValueFloat) error {
-	return b.writeFloat32BE(float32(val))
-}
-func (b *extendedWriter) writePDouble(val rbxfile.ValueDouble) error {
-	return b.writeFloat64BE(float64(val))
-}
-
 func (b *extendedWriter) writeAxes(val rbxfile.ValueAxes) error {
 	write := 0
 	if val.X {
@@ -203,37 +190,6 @@ func (b *extendedWriter) writeVarLengthString(val string) error {
 		return err
 	}
 	return b.writeASCII(val)
-}
-
-func (b *extendedWriter) writeNewPString(val rbxfile.ValueString, caches *Caches) error {
-	return b.writeCached(string(val), caches)
-}
-func (b *extendedWriter) writePStringNoCache(val rbxfile.ValueString) error {
-	return b.writeVarLengthString(string(val))
-}
-
-func (b *extendedWriter) writeNewProtectedString(val rbxfile.ValueProtectedString, caches *Caches) error {
-	return b.writeNewCachedProtectedString([]byte(val), caches)
-}
-func (b *extendedWriter) writeNewBinaryString(val rbxfile.ValueBinaryString) error {
-	return b.writeVarLengthString(string(val))
-}
-func (b *extendedWriter) writeNewContent(val rbxfile.ValueContent, caches *Caches) error {
-	return b.writeCachedContent(string(val), caches)
-}
-
-func (b *JoinSerializeWriter) writeNewPString(val rbxfile.ValueString) error {
-	return b.extendedWriter.writePStringNoCache(val)
-}
-func (b *JoinSerializeWriter) writeNewProtectedString(val rbxfile.ValueProtectedString) error {
-	return b.extendedWriter.writePStringNoCache(rbxfile.ValueString(val))
-}
-func (b *JoinSerializeWriter) writeNewContent(val rbxfile.ValueContent) error {
-	return b.writeUint32AndString(string(val))
-}
-
-func (b *extendedWriter) writeCFrameSimple(val rbxfile.ValueCFrame) error {
-	return errors.New("not implemented!")
 }
 
 func rotMatrixToQuaternion(r [9]float32) [4]float32 {
