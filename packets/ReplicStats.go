@@ -23,7 +23,7 @@ type Stats struct {
 	DataThroughputRatio   float32
 }
 
-func (thisBitstream *PacketReaderBitstream) DecodeStats(reader PacketReader, layers *PacketLayers) (ReplicationSubpacket, error) {
+func (thisBitstream *PacketReaderBitstream) DecodeStats(reader util.PacketReader, layers *PacketLayers) (ReplicationSubpacket, error) {
 	var err error
 	inner := &Stats{}
 	
@@ -113,7 +113,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeStats(reader PacketReader, lay
 	return inner, nil
 }
 
-func (layer *Stats) Serialize(writer PacketWriter, stream *PacketWriterBitstream) error {
+func (layer *Stats) Serialize(writer util.PacketWriter, stream *PacketWriterBitstream) error {
 	return errors.New("packet 83_11 not implemented!")
 }
 

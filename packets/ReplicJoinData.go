@@ -16,7 +16,7 @@ func NewReplicateJoinDataLayer() *ReplicateJoinData {
 	return &ReplicateJoinData{}
 }
 
-func (thisBitstream *PacketReaderBitstream) DecodeReplicateJoinData(reader PacketReader, layers *PacketLayers) (ReplicationSubpacket, error) {
+func (thisBitstream *PacketReaderBitstream) DecodeReplicateJoinData(reader util.PacketReader, layers *PacketLayers) (ReplicationSubpacket, error) {
 	layer := NewReplicateJoinDataLayer()
 
 	thisBitstream.Align()
@@ -51,7 +51,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeReplicateJoinData(reader Packe
 	return layer, nil
 }
 
-func (layer *ReplicateJoinData) Serialize(writer PacketWriter, stream *PacketWriterBitstream) error {
+func (layer *ReplicateJoinData) Serialize(writer util.PacketWriter, stream *PacketWriterBitstream) error {
 	var err error
 	err = stream.Align()
 	if err != nil {

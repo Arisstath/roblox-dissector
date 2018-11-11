@@ -9,7 +9,7 @@ func NewSpawnNamePacket() *SpawnNamePacket {
 	return &SpawnNamePacket{}
 }
 
-func (thisBitstream *PacketReaderBitstream) DecodeSpawnNamePacket(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisBitstream *PacketReaderBitstream) DecodeSpawnNamePacket(reader util.PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewSpawnNamePacket()
 
 	var err error
@@ -18,7 +18,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeSpawnNamePacket(reader PacketR
 	return layer, err
 }
 
-func (layer *SpawnNamePacket) Serialize(writer PacketWriter, stream *PacketWriterBitstream) error {
+func (layer *SpawnNamePacket) Serialize(writer util.PacketWriter, stream *PacketWriterBitstream) error {
 	err := stream.WriteByte(0x8F)
 	if err != nil {
 		return err

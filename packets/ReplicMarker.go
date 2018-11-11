@@ -5,7 +5,7 @@ type ReplicationMarker struct {
 	MarkerId uint32
 }
 
-func (thisBitstream *PacketReaderBitstream) DecodeReplicationMarker(reader PacketReader, layers *PacketLayers) (ReplicationSubpacket, error) {
+func (thisBitstream *PacketReaderBitstream) DecodeReplicationMarker(reader util.PacketReader, layers *PacketLayers) (ReplicationSubpacket, error) {
 	var err error
 	inner := &ReplicationMarker{}
 
@@ -17,7 +17,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeReplicationMarker(reader Packe
 	return inner, err
 }
 
-func (layer *ReplicationMarker) Serialize(writer PacketWriter, stream *PacketWriterBitstream) error {
+func (layer *ReplicationMarker) Serialize(writer util.PacketWriter, stream *PacketWriterBitstream) error {
 	return stream.writeUint32LE(layer.MarkerId)
 }
 

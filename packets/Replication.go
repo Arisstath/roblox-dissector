@@ -48,7 +48,7 @@ var ReplicationDecoders = map[uint8](func(*PacketReaderBitstream, PacketReader, 
 
 // A subpacket contained within a 0x83 (ID_DATA) packet
 type ReplicationSubpacket interface {
-	Serialize(writer PacketWriter, stream *PacketWriterBitstream) error
+	Serialize(writer util.PacketWriter, stream *PacketWriterBitstream) error
 	Type() uint8
 	TypeString() string
 }
@@ -62,7 +62,7 @@ func NewReplicatorPacket() *ReplicatorPacket {
 	return &ReplicatorPacket{}
 }
 
-func (thisBitstream *PacketReaderBitstream) DecodeReplicatorPacket(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisBitstream *PacketReaderBitstream) DecodeReplicatorPacket(reader util.PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewReplicatorPacket()
 
 	packetType, err := thisBitstream.readUint8()
@@ -96,7 +96,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeReplicatorPacket(reader Packet
 	return layer, nil
 }
 
-func (layer *ReplicatorPacket) Serialize(writer PacketWriter, stream *PacketWriterBitstream) error {
+func (layer *ReplicatorPacket) Serialize(writer util.PacketWriter, stream *PacketWriterBitstream) error {
 	var err error
 	err = stream.WriteByte(0x83)
 	if err != nil {

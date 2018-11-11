@@ -12,7 +12,7 @@ type DeleteInstance struct {
 	Instance *rbxfile.Instance
 }
 
-func (thisBitstream *PacketReaderBitstream) DecodeDeleteInstance(reader PacketReader, layers *PacketLayers) (ReplicationSubpacket, error) {
+func (thisBitstream *PacketReaderBitstream) DecodeDeleteInstance(reader util.PacketReader, layers *PacketLayers) (ReplicationSubpacket, error) {
 	var err error
 	inner := &DeleteInstance{}
 
@@ -28,7 +28,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeDeleteInstance(reader PacketRe
 	return inner, err
 }
 
-func (layer *DeleteInstance) Serialize(writer PacketWriter, stream *PacketWriterBitstream) error {
+func (layer *DeleteInstance) Serialize(writer util.PacketWriter, stream *PacketWriterBitstream) error {
 	if layer.Instance == nil {
 		return errors.New("Instance to delete can't be nil!")
 	}

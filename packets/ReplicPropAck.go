@@ -15,7 +15,7 @@ type AckProperty struct {
 	Versions     []uint32
 }
 
-func (thisBitstream *PacketReaderBitstream) DecodeAckProperty(reader PacketReader, layers *PacketLayers) (ReplicationSubpacket, error) {
+func (thisBitstream *PacketReaderBitstream) DecodeAckProperty(reader util.PacketReader, layers *PacketLayers) (ReplicationSubpacket, error) {
 	var err error
 	layer := &AckProperty{}
 
@@ -60,7 +60,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeAckProperty(reader PacketReade
 	return layer, err
 }
 
-func (layer *AckProperty) Serialize(writer PacketWriter, stream *PacketWriterBitstream) error {
+func (layer *AckProperty) Serialize(writer util.PacketWriter, stream *PacketWriterBitstream) error {
 	err := stream.writeObject(layer.Instance, writer.Caches())
 	if err != nil {
 		return err

@@ -17,7 +17,7 @@ type ReplicateEvent struct {
 	Event *ReplicationEvent
 }
 
-func (thisBitstream *PacketReaderBitstream) DecodeReplicateEvent(reader PacketReader, layers *PacketLayers) (ReplicationSubpacket, error) {
+func (thisBitstream *PacketReaderBitstream) DecodeReplicateEvent(reader util.PacketReader, layers *PacketLayers) (ReplicationSubpacket, error) {
 	var err error
 	layer := &ReplicateEvent{}
 
@@ -54,7 +54,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeReplicateEvent(reader PacketRe
 	return layer, err
 }
 
-func (layer *ReplicateEvent) Serialize(writer PacketWriter, stream *PacketWriterBitstream) error {
+func (layer *ReplicateEvent) Serialize(writer util.PacketWriter, stream *PacketWriterBitstream) error {
 	if layer.Instance == nil {
 		return errors.New("self is nil in serialize repl inst")
 	}

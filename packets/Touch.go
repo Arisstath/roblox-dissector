@@ -23,7 +23,7 @@ func NewTouch() *Touch {
 	return &Touch{}
 }
 
-func (thisBitstream *PacketReaderBitstream) DecodeTouch(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisBitstream *PacketReaderBitstream) DecodeTouch(reader util.PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	
 
 	layer := NewTouch()
@@ -63,7 +63,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeTouch(reader PacketReader, lay
 	return layer, nil
 }
 
-func (layer *Touch) Serialize(writer PacketWriter, stream *PacketWriterBitstream) error {
+func (layer *Touch) Serialize(writer util.PacketWriter, stream *PacketWriterBitstream) error {
 	err := stream.WriteByte(0x86)
 	if err != nil {
 		return err

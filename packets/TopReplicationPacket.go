@@ -36,7 +36,7 @@ func NewTopReplication() *TopReplication {
 	return &TopReplication{}
 }
 
-func (thisBitstream *PacketReaderBitstream) DecodeTopReplication(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisBitstream *PacketReaderBitstream) DecodeTopReplication(reader util.PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewTopReplication()
 	
 	var err error
@@ -132,7 +132,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeTopReplication(reader PacketRe
 	return layer, nil
 }
 
-func (layer *TopReplication) Serialize(writer PacketWriter, stream *PacketWriterBitstream) error {
+func (layer *TopReplication) Serialize(writer util.PacketWriter, stream *PacketWriterBitstream) error {
 	var err error
 	err = stream.WriteByte(0x81)
 	if err != nil {

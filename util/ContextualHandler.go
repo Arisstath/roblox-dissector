@@ -69,3 +69,4 @@ type PacketWriter interface {
     ContextualHandler
     SetToClient(bool)
     ToClient() bool
+}

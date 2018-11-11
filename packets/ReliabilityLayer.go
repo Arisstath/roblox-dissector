@@ -70,7 +70,7 @@ func (packet *ReliablePacket) IsOrdered() bool {
 	return packet.Reliability == UNRELIABLE_SEQ || packet.Reliability == RELIABLE_SEQ || packet.Reliability == RELIABLE_ORD || packet.Reliability == RELIABLE_ORD_ACK_RECP
 }
 
-func (thisBitstream *PacketReaderBitstream) DecodeReliabilityLayer(reader PacketReader, layers *PacketLayers) (*ReliabilityLayer, error) {
+func (thisBitstream *PacketReaderBitstream) DecodeReliabilityLayer(reader util.PacketReader, layers *PacketLayers) (*ReliabilityLayer, error) {
 	layer := NewReliabilityLayer()
 
 	var reliability uint64
@@ -146,7 +146,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeReliabilityLayer(reader Packet
 	return layer, nil
 }
 
-func (layer *ReliabilityLayer) Serialize(writer PacketWriter, outputStream *PacketWriterBitstream) error {
+func (layer *ReliabilityLayer) Serialize(writer util.PacketWriter, outputStream *PacketWriterBitstream) error {
 	var err error
 	for _, packet := range layer.Packets {
 		reliability := uint64(packet.Reliability)

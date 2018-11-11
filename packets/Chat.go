@@ -13,7 +13,7 @@ func NewOldChatPacket() *OldChatPacket {
 	return &OldChatPacket{}
 }
 
-func (thisBitstream *PacketReaderBitstream) DecodeOldChatPacket(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisBitstream *PacketReaderBitstream) DecodeOldChatPacket(reader util.PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	context := reader.Context()
 	layer := NewOldChatPacket()
 	var ref Referent
@@ -37,7 +37,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeOldChatPacket(reader PacketRea
 	return layer, err
 }
 
-func (layer *OldChatPacket) Serialize(writer PacketWriter, stream *PacketWriterBitstream) error {
+func (layer *OldChatPacket) Serialize(writer util.PacketWriter, stream *PacketWriterBitstream) error {
 	scope, id := refToObject(Referent(layer.Instance.Reference))
 	err := stream.writeUint32AndString(scope)
 	if err != nil {

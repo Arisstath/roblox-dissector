@@ -16,7 +16,7 @@ const DEBUG bool = true
 
 // RakNetPacket describes any packet that can be serialized and written to UDP
 type RakNetPacket interface {
-	Serialize(writer PacketWriter, stream *PacketWriterBitstream) error
+	Serialize(writer util.PacketWriter, stream *PacketWriterBitstream) error
 }
 
 type RootLayer struct {
@@ -92,7 +92,7 @@ func IsOfflineMessage(data []byte) bool {
 	return bytes.Compare(data[1:1+len(OfflineMessageID)], OfflineMessageID) == 0
 }
 
-func (bitstream *PacketReaderBitstream) DecodeRakNetLayer(reader PacketReader, packetType byte, layers *PacketLayers) (*RakNetLayer, error) {
+func (bitstream *PacketReaderBitstream) DecodeRakNetLayer(reader util.PacketReader, packetType byte, layers *PacketLayers) (*RakNetLayer, error) {
 	layer := NewRakNetLayer()
 
 	var err error
@@ -198,7 +198,7 @@ func (bitstream *PacketReaderBitstream) DecodeRakNetLayer(reader PacketReader, p
 	}
 }
 
-func (layer *RakNetLayer) Serialize(writer PacketWriter, outStream *PacketWriterBitstream) error {
+func (layer *RakNetLayer) Serialize(writer util.PacketWriter, outStream *PacketWriterBitstream) error {
 	var err error
 	err = outStream.writeBool(layer.IsValid)
 	if err != nil {

@@ -18,7 +18,7 @@ func NewSchemaPacket() *SchemaPacket {
 	return &SchemaPacket{}
 }
 
-func (thisBitstream *PacketReaderBitstream) DecodeSchemaPacket(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisBitstream *PacketReaderBitstream) DecodeSchemaPacket(reader util.PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewSchemaPacket()
 
 	var err error
@@ -210,7 +210,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeSchemaPacket(reader PacketRead
 	return layer, err
 }
 
-func (layer *SchemaPacket) Serialize(writer PacketWriter, stream *PacketWriterBitstream) error {
+func (layer *SchemaPacket) Serialize(writer util.PacketWriter, stream *PacketWriterBitstream) error {
 	var err error
 
 	err = stream.WriteByte(0x97)

@@ -73,7 +73,7 @@ func NewAuthPacket() *AuthPacket {
 	return &AuthPacket{}
 }
 
-func (stream *PacketReaderBitstream) DecodeAuthPacket(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (stream *PacketReaderBitstream) DecodeAuthPacket(reader util.PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewAuthPacket()
 
 	lenBytes := bitsToBytes(uint(layers.Reliability.LengthInBits)) - 1 // -1 for packet id
@@ -179,7 +179,7 @@ func (stream *PacketReaderBitstream) DecodeAuthPacket(reader PacketReader, layer
 	return layer, nil
 }
 
-func (layer *AuthPacket) Serialize(writer PacketWriter, stream *PacketWriterBitstream) error {
+func (layer *AuthPacket) Serialize(writer util.PacketWriter, stream *PacketWriterBitstream) error {
 	rawBuffer := new(bytes.Buffer)
 	rawStream := &PacketWriterBitstream{bitstream.NewWriter(rawBuffer)}
 	var err error

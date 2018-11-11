@@ -12,7 +12,7 @@ func NewTimestamp() *Timestamp {
 	return &Timestamp{}
 }
 
-func (thisBitstream *PacketReaderBitstream) DecodeTimestamp(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisBitstream *PacketReaderBitstream) DecodeTimestamp(reader util.PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewTimestamp()
 
 	var err error
@@ -29,7 +29,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeTimestamp(reader PacketReader,
 	return layer, err
 }
 
-func (layer *Timestamp) Serialize(writer PacketWriter, stream *PacketWriterBitstream) error {
+func (layer *Timestamp) Serialize(writer util.PacketWriter, stream *PacketWriterBitstream) error {
 	var err error
 	err = stream.WriteByte(0x1B)
 	if err != nil {
