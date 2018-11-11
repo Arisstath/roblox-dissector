@@ -362,8 +362,8 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 				myClient.writer.WriteGeneric(context, 0x81, initInstances, 3, addr)
 
 				joinData := &ReplicateJoinData{make([]*rbxfile.Instance, 0, len(services)+1)}
-				replicationResponse := &Packet83Layer{
-					SubPackets: []Packet83Subpacket{
+				replicationResponse := &ReplicatorPacket{
+					SubPackets: []ReplicationSubpacket{
 						&ReplicationTag{
 							TagId: 12,
 						},
@@ -451,8 +451,8 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 				onlyWorkspaceJoinData.Instances = append(onlyWorkspaceJoinData.Instances, PlayerGui)
 				workspace.AddChild(PlayerGui)
 
-				myClient.writer.WriteGeneric(context, 0x83, &Packet83Layer{
-					[]Packet83Subpacket{onlyWorkspaceJoinData},
+				myClient.writer.WriteGeneric(context, 0x83, &ReplicatorPacket{
+					[]ReplicationSubpacket{onlyWorkspaceJoinData},
 				}, 3, addr)
 
 				allDefaultsJoinData := &ReplicateJoinData{make([]*rbxfile.Instance, 0, len(context.StaticSchema.Instances))}
@@ -516,8 +516,8 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 					replicatedStorage.AddChild(instance)
 				}
 
-				myClient.writer.WriteGeneric(context, 0x83, &Packet83Layer{
-					[]Packet83Subpacket{allDefaultsJoinData},
+				myClient.writer.WriteGeneric(context, 0x83, &ReplicatorPacket{
+					[]ReplicationSubpacket{allDefaultsJoinData},
 				}, 3, addr)
 			}
 		},

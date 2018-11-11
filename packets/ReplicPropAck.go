@@ -15,7 +15,7 @@ type AckProperty struct {
 	Versions     []uint32
 }
 
-func (thisBitstream *extendedReader) DecodeAckProperty(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
+func (thisBitstream *extendedReader) DecodeAckProperty(reader PacketReader, layers *PacketLayers) (ReplicationSubpacket, error) {
 	var err error
 	layer := &AckProperty{}
 

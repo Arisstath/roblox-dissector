@@ -23,7 +23,7 @@ var packetDecoders = map[byte]decoderFunc{
 
 	0x81: (*extendedReader).DecodePacket81Layer,
 	//0x82: DecodePacket82Layer,
-	0x83: (*extendedReader).DecodePacket83Layer,
+	0x83: (*extendedReader).DecodeReplicatorPacket,
 	0x85: (*extendedReader).DecodePhysicsPacket,
 	0x86: (*extendedReader).DecodePacket86Layer,
 	0x8A: (*extendedReader).DecodeAuthPacket,

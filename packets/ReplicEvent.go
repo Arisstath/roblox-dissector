@@ -17,7 +17,7 @@ type ReplicateEvent struct {
 	Event *ReplicationEvent
 }
 
-func (thisBitstream *extendedReader) DecodeReplicateEvent(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
+func (thisBitstream *extendedReader) DecodeReplicateEvent(reader PacketReader, layers *PacketLayers) (ReplicationSubpacket, error) {
 	var err error
 	layer := &ReplicateEvent{}
 

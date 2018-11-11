@@ -201,14 +201,14 @@ func (myClient *CustomClient) topReplicationHandler(packetType uint8, layers *Pa
 }
 
 func (myClient *CustomClient) dataHandler(packetType uint8, layers *PacketLayers) {
-	mainLayer := layers.Main.(*Packet83Layer)
+	mainLayer := layers.Main.(*ReplicatorPacket)
 	for _, item := range mainLayer.SubPackets {
 		myClient.dataHandlers.Fire(item.Type(), layers, item)
 	}
 }
 
-func (myClient *CustomClient) WriteDataPackets(packets ...Packet83Subpacket) {
-	myClient.WritePacket(&Packet83Layer{
+func (myClient *CustomClient) WriteDataPackets(packets ...ReplicationSubpacket) {
+	myClient.WritePacket(&ReplicatorPacket{
 		SubPackets: packets,
 	})
 }
@@ -222,7 +222,7 @@ func (myClient *CustomClient) sendDataPingBack() {
 
 	myClient.WriteDataPackets(response)
 }
-func (myClient *CustomClient) dataPingHandler(packetType uint8, layers *PacketLayers, item Packet83Subpacket) {
+func (myClient *CustomClient) dataPingHandler(packetType uint8, layers *PacketLayers, item ReplicationSubpacket) {
 	myClient.sendDataPingBack()
 }
 
@@ -235,7 +235,7 @@ func (myClient *CustomClient) sendDataIdResponse(challengeInt uint32) {
 		},
 	})
 }
-func (myClient *CustomClient) idChallengeHandler(packetType uint8, layers *PacketLayers, item Packet83Subpacket) {
+func (myClient *CustomClient) idChallengeHandler(packetType uint8, layers *PacketLayers, item ReplicationSubpacket) {
 	mainPacket := item.(*ReplicRocky)
 	if mainPacket.SubpacketType == 5 {
 		myClient.Logger.Println("recv id challenge!")
@@ -243,7 +243,7 @@ func (myClient *CustomClient) idChallengeHandler(packetType uint8, layers *Packe
 	}
 }
 
-func (myClient *CustomClient) eventHandler(packetType uint8, layers *PacketLayers, item Packet83Subpacket) {
+func (myClient *CustomClient) eventHandler(packetType uint8, layers *PacketLayers, item ReplicationSubpacket) {
 	mainPacket := item.(*ReplicateEvent)
 
 	myClient.eventHandlers.Fire(mainPacket.Instance, mainPacket.EventName, mainPacket.Event)
@@ -291,13 +291,13 @@ func (myClient *CustomClient) handlePlayersService(players *rbxfile.Instance) {
 	myClient.instanceHandlers.Fire(myPlayer)
 }
 
-func (myClient *CustomClient) newInstanceHandler(packetType uint8, layers *PacketLayers, subpacket Packet83Subpacket) {
+func (myClient *CustomClient) newInstanceHandler(packetType uint8, layers *PacketLayers, subpacket ReplicationSubpacket) {
 	mainpacket := subpacket.(*NewInstance)
 
 	myClient.instanceHandlers.Fire(mainpacket.Child)
 }
 
-func (myClient *CustomClient) joinDataHandler(packetType uint8, layers *PacketLayers, subpacket Packet83Subpacket) {
+func (myClient *CustomClient) joinDataHandler(packetType uint8, layers *PacketLayers, subpacket ReplicationSubpacket) {
 	mainpacket := subpacket.(*ReplicateJoinData)
 
 	for _, inst := range mainpacket.Instances {
@@ -395,7 +395,7 @@ func (myClient *CustomClient) MakeChildChan(instance *rbxfile.Instance) chan *rb
 	return newChan
 }
 
-func (myClient *CustomClient) deleteHandler(packetType uint8, layers *PacketLayers, subpacket Packet83Subpacket) {
+func (myClient *CustomClient) deleteHandler(packetType uint8, layers *PacketLayers, subpacket ReplicationSubpacket) {
 	mainpacket := subpacket.(*DeleteInstance)
 
 	myClient.deleteHandlers.Fire(mainpacket.Instance)
@@ -427,7 +427,7 @@ func (myClient *CustomClient) MakeGroupDeleteChan(instances []*rbxfile.Instance)
 		channel.referents[i] = Referent(inst.Reference)
 	}
 
-	channel.binding = myClient.dataHandlers.Bind(1, func(packetType uint8, layers *PacketLayers, subpacket Packet83Subpacket) {
+	channel.binding = myClient.dataHandlers.Bind(1, func(packetType uint8, layers *PacketLayers, subpacket ReplicationSubpacket) {
 		mainpacket := subpacket.(*DeleteInstance)
 		for _, inst := range channel.referents {
 			if string(inst) == mainpacket.Instance.Reference {

@@ -7,7 +7,7 @@ import (
 )
 
 // List of string names for all 0x83 subpackets
-var Packet83Subpackets map[uint8]string = map[uint8]string{
+var ReplicationSubpackets map[uint8]string = map[uint8]string{
 	0xFF: "ID_REPLIC_???",
 	0x00: "ID_REPLIC_END",
 	0x01: "ID_REPLIC_DELETE_INSTANCE",
@@ -30,7 +30,7 @@ var Packet83Subpackets map[uint8]string = map[uint8]string{
 	0x12: "ID_REPLIC_HASH",
 }
 
-var Packet83Decoders = map[uint8](func(*extendedReader, PacketReader, *PacketLayers) (Packet83Subpacket, error)){
+var ReplicationDecoders = map[uint8](func(*extendedReader, PacketReader, *PacketLayers) (ReplicationSubpacket, error)){
 	0x01: (*extendedReader).DecodeDeleteInstance,
 	0x02: (*extendedReader).DecodeNewInstance,
 	0x03: (*extendedReader).DecodeChangeProperty,
@@ -47,39 +47,39 @@ var Packet83Decoders = map[uint8](func(*extendedReader, PacketReader, *PacketLay
 }
 
 // A subpacket contained within a 0x83 (ID_DATA) packet
-type Packet83Subpacket interface {
+type ReplicationSubpacket interface {
 	Serialize(writer PacketWriter, stream *extendedWriter) error
 	Type() uint8
 	TypeString() string
 }
 
 // ID_DATA - client <-> server
-type Packet83Layer struct {
-	SubPackets []Packet83Subpacket
+type ReplicatorPacket struct {
+	SubPackets []ReplicationSubpacket
 }
 
-func NewPacket83Layer() *Packet83Layer {
-	return &Packet83Layer{}
+func NewReplicatorPacket() *ReplicatorPacket {
+	return &ReplicatorPacket{}
 }
 
-func (thisBitstream *extendedReader) DecodePacket83Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-	layer := NewPacket83Layer()
+func (thisBitstream *extendedReader) DecodeReplicatorPacket(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+	layer := NewReplicatorPacket()
 
 	packetType, err := thisBitstream.readUint8()
 	if err != nil {
 		return layer, err
 	}
 
-	var inner Packet83Subpacket
+	var inner ReplicationSubpacket
 	for packetType != 0 {
 		//println("parsing subpacket", packetType)
-		decoder, ok := Packet83Decoders[packetType]
+		decoder, ok := ReplicationDecoders[packetType]
 		if !ok {
 			return layer, errors.New("don't know how to parse replication subpacket: " + strconv.Itoa(int(packetType)))
 		}
 		inner, err = decoder(thisBitstream, reader, layers)
 		if err != nil {
-			return layer, errors.New("parsing subpacket " + Packet83Subpackets[packetType] + ": " + err.Error())
+			return layer, errors.New("parsing subpacket " + ReplicationSubpackets[packetType] + ": " + err.Error())
 		}
 
 		layer.SubPackets = append(layer.SubPackets, inner)
@@ -96,7 +96,7 @@ func (thisBitstream *extendedReader) DecodePacket83Layer(reader PacketReader, la
 	return layer, nil
 }
 
-func (layer *Packet83Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *ReplicatorPacket) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
 	err = stream.WriteByte(0x83)
 	if err != nil {

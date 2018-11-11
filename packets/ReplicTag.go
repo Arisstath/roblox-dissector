@@ -6,7 +6,7 @@ type ReplicationTag struct {
 	TagId uint32
 }
 
-func (thisBitstream *extendedReader) DecodeReplicationTag(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
+func (thisBitstream *extendedReader) DecodeReplicationTag(reader PacketReader, layers *PacketLayers) (ReplicationSubpacket, error) {
 	var err error
 	inner := &ReplicationTag{}
 

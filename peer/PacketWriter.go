@@ -19,7 +19,7 @@ type PacketWriter interface {
 	Caches() *Caches
 }
 
-// TODO: Make an interface "Writable" that is implemented by Layers, RakNetPacket, Packet83Subpacket?
+// TODO: Make an interface "Writable" that is implemented by Layers, RakNetPacket, ReplicationSubpacket?
 
 // PacketWriter is a struct used to write packets to a peer
 // Pass packets in using WriteSimple/WriteGeneric/etc.

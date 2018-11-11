@@ -158,7 +158,7 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 		}
 		switch packetType {
 		case 0x83:
-			mainLayer := layers.Main.(*Packet83Layer)
+			mainLayer := layers.Main.(*ReplicatorPacket)
 			modifiedSubpackets := mainLayer.SubPackets[:0] // in case packets need to be dropped
 			for _, subpacket := range mainLayer.SubPackets {
 				switch subpacket.(type) {

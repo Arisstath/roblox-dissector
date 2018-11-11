@@ -16,7 +16,7 @@ func NewReplicateJoinDataLayer() *ReplicateJoinData {
 	return &ReplicateJoinData{}
 }
 
-func (thisBitstream *extendedReader) DecodeReplicateJoinData(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
+func (thisBitstream *extendedReader) DecodeReplicateJoinData(reader PacketReader, layers *PacketLayers) (ReplicationSubpacket, error) {
 	layer := NewReplicateJoinDataLayer()
 
 	thisBitstream.Align()

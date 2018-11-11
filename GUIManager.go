@@ -201,7 +201,7 @@ func (m *MyPacketListView) BindCallback(packetType byte, context *peer.Communica
 	}
 
 	if packetType == 0x83 && layers.Main != nil && layers.Reliability != nil && layers.Reliability.SplitBuffer.IsFinal {
-		mainLayer := layers.Main.(*peer.Packet83Layer)
+		mainLayer := layers.Main.(*peer.ReplicatorPacket)
 		for _, subpacket := range mainLayer.SubPackets {
 			if subpacket.Type() == 0x7 && strings.Contains(subpacket.(*peer.ReplicateEvent).EventName, "Remote") { // highlight events
 				paintItems(row, gui.NewQColor3(0, 0, 255, 127))
@@ -814,8 +814,8 @@ func GUIMain() {
 			},
 		}
 
-		packetViewer.InjectPacket <- &peer.Packet83Layer{
-			SubPackets: []peer.Packet83Subpacket{subpacket},
+		packetViewer.InjectPacket <- &peer.ReplicatorPacket{
+			SubPackets: []peer.ReplicationSubpacket{subpacket},
 		}
 	})
 

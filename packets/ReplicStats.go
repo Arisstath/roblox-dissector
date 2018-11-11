@@ -23,7 +23,7 @@ type Stats struct {
 	DataThroughputRatio   float32
 }
 
-func (thisBitstream *extendedReader) DecodeStats(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
+func (thisBitstream *extendedReader) DecodeStats(reader PacketReader, layers *PacketLayers) (ReplicationSubpacket, error) {
 	var err error
 	inner := &Stats{}
 	

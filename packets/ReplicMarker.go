@@ -5,7 +5,7 @@ type ReplicationMarker struct {
 	MarkerId uint32
 }
 
-func (thisBitstream *extendedReader) DecodeReplicationMarker(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
+func (thisBitstream *extendedReader) DecodeReplicationMarker(reader PacketReader, layers *PacketLayers) (ReplicationSubpacket, error) {
 	var err error
 	inner := &ReplicationMarker{}
 

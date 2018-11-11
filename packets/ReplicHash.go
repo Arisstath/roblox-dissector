@@ -41,7 +41,7 @@ func getRbxNonce(base uint32, query uint32) uint32 {
 	return (queryState - baseState) * 0xA89ED915
 }
 
-func (stream *extendedReader) DecodeReplicateHash(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
+func (stream *extendedReader) DecodeReplicateHash(reader PacketReader, layers *PacketLayers) (ReplicationSubpacket, error) {
 	var err error
 	inner := &ReplicateHash{}
 	numItems, err := stream.readUint8()

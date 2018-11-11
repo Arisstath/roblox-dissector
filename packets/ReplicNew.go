@@ -8,7 +8,7 @@ type NewInstance struct {
 	Child *rbxfile.Instance
 }
 
-func (thisBitstream *extendedReader) DecodeNewInstance(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
+func (thisBitstream *extendedReader) DecodeNewInstance(reader PacketReader, layers *PacketLayers) (ReplicationSubpacket, error) {
 	result, err := decodeReplicationInstance(reader, thisBitstream, layers)
 	return &NewInstance{result}, err
 }

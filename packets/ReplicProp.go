@@ -20,7 +20,7 @@ type ChangeProperty struct {
 	Value rbxfile.Value
 }
 
-func (thisBitstream *extendedReader) DecodeChangeProperty(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
+func (thisBitstream *extendedReader) DecodeChangeProperty(reader PacketReader, layers *PacketLayers) (ReplicationSubpacket, error) {
 	var err error
 	layer := &ChangeProperty{}
 

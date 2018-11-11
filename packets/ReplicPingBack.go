@@ -10,7 +10,7 @@ type DataPingBack struct {
 	ExtraStats uint32
 }
 
-func (thisBitstream *extendedReader) DecodeDataPingBack(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
+func (thisBitstream *extendedReader) DecodeDataPingBack(reader PacketReader, layers *PacketLayers) (ReplicationSubpacket, error) {
 	var err error
 	inner := &DataPingBack{}
 
