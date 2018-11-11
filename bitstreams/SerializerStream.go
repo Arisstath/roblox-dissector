@@ -12,7 +12,7 @@ type SerializeReader interface {
 
 	// We must also ask for the following methods for compatibility reasons.
 	// Any better way to do this? I can't tell Go that the interface
-	// will always implement everything from *extendedReader...
+	// will always implement everything from *BitstreamReader...
 	readUint16BE() (uint16, error)
 	readBoolByte() (bool, error)
 	readUint8() (uint8, error)
@@ -35,7 +35,7 @@ type InstanceWriter interface {
 	WriteProperties(schema []StaticPropertySchema, properties map[string]rbxfile.Value, writer PacketWriter) error
 }
 
-func (b *extendedReader) ReadSerializedValue(reader PacketReader, valueType uint8, enumId uint16) (rbxfile.Value, error) {
+func (b *BitstreamReader) ReadSerializedValue(reader PacketReader, valueType uint8, enumId uint16) (rbxfile.Value, error) {
 	var err error
 	var result rbxfile.Value
 	switch valueType {
@@ -75,10 +75,10 @@ func (b *extendedReader) ReadSerializedValue(reader PacketReader, valueType uint
 	}
 	return result, err
 }
-func (b *extendedReader) ReadObject(reader PacketReader) (Referent, error) {
+func (b *BitstreamReader) ReadObject(reader PacketReader) (Referent, error) {
 	return b.readObject(reader.Caches())
 }
-func (b *extendedReader) ReadProperties(schema []StaticPropertySchema, properties map[string]rbxfile.Value, reader PacketReader) error {
+func (b *BitstreamReader) ReadProperties(schema []StaticPropertySchema, properties map[string]rbxfile.Value, reader PacketReader) error {
 	for i := 0; i < 2; i++ {
 		propertyIndex, err := b.readUint8()
 		last := "none"
@@ -102,7 +102,7 @@ func (b *extendedReader) ReadProperties(schema []StaticPropertySchema, propertie
 	return nil
 }
 
-func (b *extendedWriter) WriteSerializedValue(val rbxfile.Value, writer PacketWriter, valueType uint8) error {
+func (b *BitstreamWriter) WriteSerializedValue(val rbxfile.Value, writer PacketWriter, valueType uint8) error {
 	if val == nil {
 		return nil
 	}
@@ -137,10 +137,10 @@ func (b *extendedWriter) WriteSerializedValue(val rbxfile.Value, writer PacketWr
 	}
 	return err
 }
-func (b *extendedWriter) WriteObject(object *rbxfile.Instance, writer PacketWriter) error {
+func (b *BitstreamWriter) WriteObject(object *rbxfile.Instance, writer PacketWriter) error {
 	return b.writeObject(object, writer.Caches())
 }
-func (b *extendedWriter) WriteProperties(schema []StaticPropertySchema, properties map[string]rbxfile.Value, writer PacketWriter) error {
+func (b *BitstreamWriter) WriteProperties(schema []StaticPropertySchema, properties map[string]rbxfile.Value, writer PacketWriter) error {
 	var err error
 	for i := 0; i < len(schema); i++ {
 		if is2ndRoundType(schema[i].Type) {
@@ -194,7 +194,7 @@ func (b *extendedWriter) WriteProperties(schema []StaticPropertySchema, properti
 }
 
 type JoinSerializeReader struct {
-	*extendedReader
+	*BitstreamReader
 }
 
 func (b *JoinSerializeReader) readNewContent() (rbxfile.ValueContent, error) {
@@ -267,7 +267,7 @@ func (b *JoinSerializeReader) ReadSerializedValue(reader PacketReader, valueType
 	case PROP_TYPE_SYSTEMADDRESS:
 		result, err = b.readSystemAddress()
 	default:
-		return b.extendedReader.readSerializedValueGeneric(reader, valueType, enumId)
+		return b.BitstreamReader.readSerializedValueGeneric(reader, valueType, enumId)
 	}
 	return result, err
 }
@@ -294,7 +294,7 @@ func (b *JoinSerializeReader) ReadProperties(schema []StaticPropertySchema, prop
 }
 
 type JoinSerializeWriter struct {
-	*extendedWriter
+	*BitstreamWriter
 }
 
 func (b *JoinSerializeWriter) WriteSerializedValue(val rbxfile.Value, writer PacketWriter, valueType uint8) error {
@@ -325,7 +325,7 @@ func (b *JoinSerializeWriter) WriteSerializedValue(val rbxfile.Value, writer Pac
 	return err
 }
 func (b *JoinSerializeWriter) WriteObject(object *rbxfile.Instance, writer PacketWriter) error {
-	return b.extendedWriter.writeJoinObject(object, writer.Context())
+	return b.BitstreamWriter.writeJoinObject(object, writer.Context())
 }
 func (b *JoinSerializeWriter) WriteProperties(schema []StaticPropertySchema, properties map[string]rbxfile.Value, writer PacketWriter) error {
 	var err error
@@ -353,10 +353,10 @@ func (b *JoinSerializeWriter) WriteProperties(schema []StaticPropertySchema, pro
 }
 
 func (b *JoinSerializeWriter) writeNewPString(val rbxfile.ValueString) error {
-	return b.extendedWriter.writePStringNoCache(val)
+	return b.BitstreamWriter.writePStringNoCache(val)
 }
 func (b *JoinSerializeWriter) writeNewProtectedString(val rbxfile.ValueProtectedString) error {
-	return b.extendedWriter.writePStringNoCache(rbxfile.ValueString(val))
+	return b.BitstreamWriter.writePStringNoCache(rbxfile.ValueString(val))
 }
 func (b *JoinSerializeWriter) writeNewContent(val rbxfile.ValueContent) error {
 	return b.writeUint32AndString(string(val))

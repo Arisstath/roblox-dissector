@@ -1,6 +1,6 @@
 package bitstreams
 // readNewTypeAndValue is never used by join data!
-func (b *extendedReader) readNewTypeAndValue(reader PacketReader) (rbxfile.Value, error) {
+func (b *BitstreamReader) readNewTypeAndValue(reader PacketReader) (rbxfile.Value, error) {
 	var val rbxfile.Value
 	thisType, err := b.readUint8()
 	if err != nil {
@@ -19,7 +19,7 @@ func (b *extendedReader) readNewTypeAndValue(reader PacketReader) (rbxfile.Value
 	return val, err
 }
 
-func (b *extendedReader) readSerializedValueGeneric(reader PacketReader, valueType uint8, enumId uint16) (rbxfile.Value, error) {
+func (b *BitstreamReader) readSerializedValueGeneric(reader PacketReader, valueType uint8, enumId uint16) (rbxfile.Value, error) {
 	var err error
 	var result rbxfile.Value
 	var temp string

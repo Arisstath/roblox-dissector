@@ -113,7 +113,7 @@ func generateHuffmanFromFrequencyTable(frequencyTable []uint32) *huffmanEncoding
 	return this
 }
 
-func (tree *huffmanEncodingTree) decodeArray(input *extendedReader, sizeInBits uint, maxCharsToWrite uint, output []byte) error {
+func (tree *huffmanEncodingTree) decodeArray(input *BitstreamReader, sizeInBits uint, maxCharsToWrite uint, output []byte) error {
 	var currentNode *huffmanEncodingTreeNode
 
 	var outputWriteIndex uint = 0
@@ -142,7 +142,7 @@ func (tree *huffmanEncodingTree) decodeArray(input *extendedReader, sizeInBits u
 	return nil
 }
 
-func (tree *huffmanEncodingTree) encodeArray(stream *extendedWriter, value []byte) (uint16, error) {
+func (tree *huffmanEncodingTree) encodeArray(stream *BitstreamWriter, value []byte) (uint16, error) {
 	var err error
 	var bitsUsed uint16
 	for counter := 0; counter < len(value); counter++ {

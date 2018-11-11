@@ -120,11 +120,11 @@ type Caches struct {
 	ProtectedString ByteSliceCache
 }
 
-type cacheReadCallback func(*extendedReader) (interface{}, error)
+type cacheReadCallback func(*BitstreamReader) (interface{}, error)
 
 var CacheReadOOB = errors.New("Cache read is out of bounds")
 
-func (b *extendedReader) readWithCache(cache Cache, readCallback cacheReadCallback) (interface{}, error) {
+func (b *BitstreamReader) readWithCache(cache Cache, readCallback cacheReadCallback) (interface{}, error) {
 	var result interface{}
 	var err error
 	cacheIndex, err := b.readUint8()
@@ -153,30 +153,30 @@ func (b *extendedReader) readWithCache(cache Cache, readCallback cacheReadCallba
 }
 
 // TODO: Perhaps make readWithCache() operate with a member function of the cache instead?
-func (b *extendedReader) readCached(caches *Caches) (string, error) {
+func (b *BitstreamReader) readCached(caches *Caches) (string, error) {
 	cache := &caches.String
 
-	thisString, err := b.readWithCache(cache, (*extendedReader).readUint32AndString)
+	thisString, err := b.readWithCache(cache, (*BitstreamReader).readUint32AndString)
 	return thisString.(string), err
 }
 
-func (b *extendedReader) readCachedScope(caches *Caches) (string, error) {
+func (b *BitstreamReader) readCachedScope(caches *Caches) (string, error) {
 	cache := &caches.Object
-	thisString, err := b.readWithCache(cache, (*extendedReader).readUint32AndString)
+	thisString, err := b.readWithCache(cache, (*BitstreamReader).readUint32AndString)
 	return thisString.(string), err
 }
 
-func (b *extendedReader) readCachedContent(caches *Caches) (string, error) {
+func (b *BitstreamReader) readCachedContent(caches *Caches) (string, error) {
 	cache := &caches.Content
 
-	thisString, err := b.readWithCache(cache, (*extendedReader).readUint32AndString)
+	thisString, err := b.readWithCache(cache, (*BitstreamReader).readUint32AndString)
 	return thisString.(string), err
 }
 
-func (b *extendedReader) readNewCachedProtectedString(caches *Caches) ([]byte, error) {
+func (b *BitstreamReader) readNewCachedProtectedString(caches *Caches) ([]byte, error) {
 	cache := &caches.ProtectedString
 
-	thisString, err := b.readWithCache(cache, func(b *extendedReader) (interface{}, error) {
+	thisString, err := b.readWithCache(cache, func(b *BitstreamReader) (interface{}, error) {
 		stringLen, err := b.readUint32BE()
 		if err != nil {
 			return []byte{}, err
@@ -190,9 +190,9 @@ func (b *extendedReader) readNewCachedProtectedString(caches *Caches) ([]byte, e
 	return thisString.([]byte), err
 }
 
-type cacheWriteCallback func(*extendedWriter, interface{}) error
+type cacheWriteCallback func(*BitstreamWriter, interface{}) error
 
-func (b *extendedWriter) writeWithCache(value interface{}, cache Cache, writeCallback cacheWriteCallback) error {
+func (b *BitstreamWriter) writeWithCache(value interface{}, cache Cache, writeCallback cacheWriteCallback) error {
 	if value == nil {
 		return b.WriteByte(0x00)
 	}
@@ -220,25 +220,25 @@ func (b *extendedWriter) writeWithCache(value interface{}, cache Cache, writeCal
 	}
 }
 
-func (b *extendedWriter) writeCached(val string, caches *Caches) error {
+func (b *BitstreamWriter) writeCached(val string, caches *Caches) error {
 	cache := &caches.String
 
-	return b.writeWithCache(val, cache, (*extendedWriter).writeUint32AndString)
+	return b.writeWithCache(val, cache, (*BitstreamWriter).writeUint32AndString)
 }
-func (b *extendedWriter) writeCachedObject(val string, caches *Caches) error {
+func (b *BitstreamWriter) writeCachedObject(val string, caches *Caches) error {
 	cache := &caches.Object
 
-	return b.writeWithCache(val, cache, (*extendedWriter).writeUint32AndString)
+	return b.writeWithCache(val, cache, (*BitstreamWriter).writeUint32AndString)
 }
-func (b *extendedWriter) writeCachedContent(val string, caches *Caches) error {
+func (b *BitstreamWriter) writeCachedContent(val string, caches *Caches) error {
 	cache := &caches.Content
 
-	return b.writeWithCache(val, cache, (*extendedWriter).writeUint32AndString)
+	return b.writeWithCache(val, cache, (*BitstreamWriter).writeUint32AndString)
 }
-func (b *extendedWriter) writeNewCachedProtectedString(val []byte, caches *Caches) error {
+func (b *BitstreamWriter) writeNewCachedProtectedString(val []byte, caches *Caches) error {
 	cache := &caches.ProtectedString
 
-	return b.writeWithCache(val, cache, func(b *extendedWriter, val interface{}) error {
+	return b.writeWithCache(val, cache, func(b *BitstreamWriter, val interface{}) error {
 		str := val.([]byte)
 		err := b.writeUint32BE(uint32(len(str)))
 		if err != nil {
@@ -247,10 +247,10 @@ func (b *extendedWriter) writeNewCachedProtectedString(val []byte, caches *Cache
 		return b.allBytes(val.([]byte))
 	})
 }
-func (b *extendedWriter) writeCachedSystemAddress(val rbxfile.ValueSystemAddress, caches *Caches) error {
+func (b *BitstreamWriter) writeCachedSystemAddress(val rbxfile.ValueSystemAddress, caches *Caches) error {
 	cache := &caches.SystemAddress
 
-	return b.writeWithCache(val, cache, func(b *extendedWriter, val interface{}) error {
+	return b.writeWithCache(val, cache, func(b *BitstreamWriter, val interface{}) error {
 		return b.writeSystemAddressRaw(val.(rbxfile.ValueSystemAddress))
 	})
 }

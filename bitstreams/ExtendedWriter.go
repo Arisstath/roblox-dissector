@@ -7,11 +7,11 @@ import "github.com/gskartwii/rbxfile"
 import "math"
 import "bytes"
 
-type extendedWriter struct {
+type BitstreamWriter struct {
 	*bitstream.BitWriter
 }
 
-func (b *extendedWriter) writeAddress(value *net.UDPAddr) error {
+func (b *BitstreamWriter) writeAddress(value *net.UDPAddr) error {
 	err := b.WriteByte(4)
 	if err != nil {
 		return err
@@ -33,7 +33,7 @@ func (b *extendedWriter) writeAddress(value *net.UDPAddr) error {
 	return err
 }
 
-func (b *extendedWriter) writeJoinObject(reference *Reference, context *CommunicationContext) error {
+func (b *BitstreamWriter) writeJoinObject(reference *Reference, context *CommunicationContext) error {
 	var err error
 	if reference == nil || reference.IsNull {
 		err = b.WriteByte(0)
@@ -56,7 +56,7 @@ func (b *extendedWriter) writeJoinObject(reference *Reference, context *Communic
 }
 
 // TODO: Implement a similar system for readers, where it simply returns an instance
-func (b *extendedWriter) writeObject(reference *Reference, caches *Caches) error {
+func (b *BitstreamWriter) writeObject(reference *Reference, caches *Caches) error {
 	var err error
 	if reference == nil || reference.IsNull {
 		return b.WriteByte(0x00)
@@ -67,7 +67,7 @@ func (b *extendedWriter) writeObject(reference *Reference, caches *Caches) error
 	}
 	return b.writeUint32LE(reference.Id)
 }
-func (b *extendedWriter) writeAnyObject(reference *Reference, writer PacketWriter, isJoinData bool) error {
+func (b *BitstreamWriter) writeAnyObject(reference *Reference, writer PacketWriter, isJoinData bool) error {
 	if isJoinData {
 		return b.writeJoinObject(reference, writer.Context())
 	}

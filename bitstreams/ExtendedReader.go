@@ -12,7 +12,7 @@ type BitstreamReader struct {
 	*bitstream.BitReader
 }
 
-func (b *extendedReader) readAddress() (*net.UDPAddr, error) {
+func (b *BitstreamReader) readAddress() (*net.UDPAddr, error) {
 	version, err := b.readUint8()
 	if err != nil {
 		return nil, err
@@ -36,7 +36,7 @@ func (b *extendedReader) readAddress() (*net.UDPAddr, error) {
 	return &net.UDPAddr{address, int(port), ""}, nil
 }
 
-func (b *extendedReader) readJoinReferent(context *CommunicationContext) (string, uint32, error) {
+func (b *BitstreamReader) readJoinReferent(context *CommunicationContext) (string, uint32, error) {
 	stringLen, err := b.readUint8()
 	if err != nil {
 		return "", 0, err

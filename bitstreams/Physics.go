@@ -12,10 +12,10 @@ func (m PhysicsMotor) String() string {
 	return rbxfile.ValueCFrame(m).String()
 }
 
-func (b *extendedReader) readCoordsMode0() (rbxfile.ValueVector3, error) {
+func (b *BitstreamReader) readCoordsMode0() (rbxfile.ValueVector3, error) {
 	return b.readVector3Simple()
 }
-func (b *extendedReader) readCoordsMode1() (rbxfile.ValueVector3, error) {
+func (b *BitstreamReader) readCoordsMode1() (rbxfile.ValueVector3, error) {
 	value := rbxfile.ValueVector3{}
 	cRange, err := b.readFloat32BE()
 	if err != nil {
@@ -41,7 +41,7 @@ func (b *extendedReader) readCoordsMode1() (rbxfile.ValueVector3, error) {
 	value.Z = (float32(z)/32767.0 - 1.0) * cRange
 	return value, nil
 }
-func (b *extendedReader) readCoordsMode2() (rbxfile.ValueVector3, error) {
+func (b *BitstreamReader) readCoordsMode2() (rbxfile.ValueVector3, error) {
 	val := rbxfile.ValueVector3{}
 	x, err := b.bits(15)
 	if err != nil {
@@ -65,7 +65,7 @@ func (b *extendedReader) readCoordsMode2() (rbxfile.ValueVector3, error) {
 	return val, nil
 }
 
-func (b *extendedReader) readPhysicsCoords() (rbxfile.ValueVector3, error) {
+func (b *BitstreamReader) readPhysicsCoords() (rbxfile.ValueVector3, error) {
 	var val rbxfile.ValueVector3
 	flags, err := b.readUint8()
 	if err != nil {
@@ -144,7 +144,7 @@ func (b *extendedReader) readPhysicsCoords() (rbxfile.ValueVector3, error) {
 	return val, err
 }
 
-func (b *extendedReader) readMatrixMode0() ([9]float32, error) {
+func (b *BitstreamReader) readMatrixMode0() ([9]float32, error) {
 	var val [9]float32
 	var err error
 
@@ -169,7 +169,7 @@ func (b *extendedReader) readMatrixMode0() ([9]float32, error) {
 	return quaternionToRotMatrix(q), nil
 }
 
-func (b *extendedReader) readMatrixMode1() ([9]float32, error) {
+func (b *BitstreamReader) readMatrixMode1() ([9]float32, error) {
 	q := [4]float32{}
 	var val [9]float32
 	invertW, err := b.readBool()
@@ -219,7 +219,7 @@ func (b *extendedReader) readMatrixMode1() ([9]float32, error) {
 	q = [4]float32{xs, ys, zs, w}
 	return quaternionToRotMatrix(q), nil
 }
-func (b *extendedReader) readMatrixMode2() ([9]float32, error) {
+func (b *BitstreamReader) readMatrixMode2() ([9]float32, error) {
 	return b.readMatrixMode1()
 }
 
@@ -231,7 +231,7 @@ var quaternionIndices = [4][3]int{
 	[3]int{0, 1, 2}, // index 3
 }
 
-func (b *extendedReader) readPhysicsMatrix() ([9]float32, error) {
+func (b *BitstreamReader) readPhysicsMatrix() ([9]float32, error) {
 	var quat [4]float32
 	var err error
 
@@ -266,7 +266,7 @@ func (b *extendedReader) readPhysicsMatrix() ([9]float32, error) {
 	return quaternionToRotMatrix(quat), err
 }
 
-func (b *extendedReader) readPhysicsCFrame() (rbxfile.ValueCFrame, error) {
+func (b *BitstreamReader) readPhysicsCFrame() (rbxfile.ValueCFrame, error) {
 	var val rbxfile.ValueCFrame
 	coords, err := b.readPhysicsCoords()
 	if err != nil {
@@ -279,7 +279,7 @@ func (b *extendedReader) readPhysicsCFrame() (rbxfile.ValueCFrame, error) {
 	return rbxfile.ValueCFrame{coords, matrix}, nil
 }
 
-func (b *extendedReader) readPhysicsMotor() (PhysicsMotor, error) {
+func (b *BitstreamReader) readPhysicsMotor() (PhysicsMotor, error) {
 	var motor PhysicsMotor
 	flags, err := b.readUint8()
 	if err != nil {
@@ -321,7 +321,7 @@ func (b *extendedReader) readPhysicsMotor() (PhysicsMotor, error) {
 	return motor, nil
 }
 
-func (b *extendedReader) readMotors() ([]PhysicsMotor, error) {
+func (b *BitstreamReader) readMotors() ([]PhysicsMotor, error) {
 	countMotors, err := b.readVarint64()
 	if err != nil {
 		return nil, err
@@ -342,7 +342,7 @@ func (b *extendedReader) readMotors() ([]PhysicsMotor, error) {
 	return motors, nil
 }
 
-func (b *extendedReader) readPhysicsVelocity() (rbxfile.ValueVector3, error) {
+func (b *BitstreamReader) readPhysicsVelocity() (rbxfile.ValueVector3, error) {
 	var val rbxfile.ValueVector3
 	flags, err := b.readUint8()
 	if err != nil || flags == 0 {

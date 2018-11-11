@@ -264,7 +264,7 @@ func init() {
 		0})
 }
 
-func (b *extendedReader) readCompressed(dest []byte, size uint32, unsignedData bool) error {
+func (b *BitstreamReader) readCompressed(dest []byte, size uint32, unsignedData bool) error {
 	var currentByte uint32 = (size >> 3) - 1
 	var byteMatch, halfByteMatch byte
 
@@ -310,7 +310,7 @@ func (b *extendedReader) readCompressed(dest []byte, size uint32, unsignedData b
 	return nil
 }
 
-func (b *extendedReader) readUint32BECompressed(unsignedData bool) (uint32, error) {
+func (b *BitstreamReader) readUint32BECompressed(unsignedData bool) (uint32, error) {
 	dest := make([]byte, 4)
 	err := b.readCompressed(dest, 32, unsignedData)
 	if err != nil {
@@ -319,7 +319,7 @@ func (b *extendedReader) readUint32BECompressed(unsignedData bool) (uint32, erro
 	return binary.BigEndian.Uint32(dest), nil
 }
 
-func (b *extendedReader) readHuffman() ([]byte, error) {
+func (b *BitstreamReader) readHuffman() ([]byte, error) {
 	var name []byte
 	maxCharLen, err := b.readUint32BE()
 	if err != nil {
@@ -339,7 +339,7 @@ func (b *extendedReader) readHuffman() ([]byte, error) {
 	return name, err
 }
 
-func (b *extendedReader) RegionToGZipStream() (*extendedReader, error) {
+func (b *BitstreamReader) RegionToGZipStream() (*BitstreamReader, error) {
 	compressedLen, err := b.readUint32BE()
 	if err != nil {
 		return nil, err
@@ -358,10 +358,10 @@ func (b *extendedReader) RegionToGZipStream() (*extendedReader, error) {
 		return nil, err
 	}
 
-	return &extendedReader{bitstream.NewReader(gzipStream)}, err
+	return &BitstreamReader{bitstream.NewReader(gzipStream)}, err
 }
 
-func (b *extendedReader) RegionToZStdStream() (*extendedReader, error) {
+func (b *BitstreamReader) RegionToZStdStream() (*BitstreamReader, error) {
 	compressedLen, err := b.readUint32BE()
 	if err != nil {
 		return nil, err
@@ -386,10 +386,10 @@ func (b *extendedReader) RegionToZStdStream() (*extendedReader, error) {
 	}*/
 
 	zstdStream := zstd.NewReader(bytes.NewReader(compressed))
-	return &extendedReader{bitstream.NewReader(zstdStream)}, nil
+	return &BitstreamReader{bitstream.NewReader(zstdStream)}, nil
 }
 
-func (b *extendedReader) readFloat16BE(floatMin float32, floatMax float32) (float32, error) {
+func (b *BitstreamReader) readFloat16BE(floatMin float32, floatMax float32) (float32, error) {
 	scale, err := b.readUint16BE()
 	if err != nil {
 		return 0.0, err
@@ -404,9 +404,9 @@ func (b *extendedReader) readFloat16BE(floatMin float32, floatMax float32) (floa
 	return outFloat, nil
 }
 
-func (b *extendedWriter) writeHuffman(value []byte) error {
+func (b *BitstreamWriter) writeHuffman(value []byte) error {
 	encodedBuffer := new(bytes.Buffer)
-	encodedStream := &extendedWriter{bitstream.NewWriter(encodedBuffer)}
+	encodedStream := &BitstreamWriter{bitstream.NewWriter(encodedBuffer)}
 
 	bitLen, err := englishTree.encodeArray(encodedStream, value)
 	if err != nil {
@@ -428,7 +428,7 @@ func (b *extendedWriter) writeHuffman(value []byte) error {
 	return b.allBytes(encodedBuffer.Bytes())
 }
 
-func (b *extendedWriter) writeCompressed(value []byte, length uint32, isUnsigned bool) error {
+func (b *BitstreamWriter) writeCompressed(value []byte, length uint32, isUnsigned bool) error {
 	var byteMatch, halfByteMatch byte
 	var err error
 	if !isUnsigned {
@@ -460,7 +460,7 @@ func (b *extendedWriter) writeCompressed(value []byte, length uint32, isUnsigned
 	}
 	return b.WriteByte(lastByte)
 }
-func (b *extendedWriter) writeUint32BECompressed(value uint32) error {
+func (b *BitstreamWriter) writeUint32BECompressed(value uint32) error {
 	val := make([]byte, 4)
 	binary.BigEndian.PutUint32(val, value)
 	return b.writeCompressed(val, 32, true)

@@ -4,7 +4,7 @@ import "net"
 import "errors"
 import "github.com/gskartwii/rbxfile"
 
-func (b *extendedReader) readUDim() (rbxfile.ValueUDim, error) {
+func (b *BitstreamReader) readUDim() (rbxfile.ValueUDim, error) {
 	var err error
 	val := rbxfile.ValueUDim{}
 	val.Scale, err = b.readFloat32BE()
@@ -16,7 +16,7 @@ func (b *extendedReader) readUDim() (rbxfile.ValueUDim, error) {
 	return val, err
 }
 
-func (b *extendedReader) readUDim2() (rbxfile.ValueUDim2, error) {
+func (b *BitstreamReader) readUDim2() (rbxfile.ValueUDim2, error) {
 	var err error
 	val := rbxfile.ValueUDim2{rbxfile.ValueUDim{}, rbxfile.ValueUDim{}}
 	val.X.Scale, err = b.readFloat32BE()
@@ -37,7 +37,7 @@ func (b *extendedReader) readUDim2() (rbxfile.ValueUDim2, error) {
 	return val, err
 }
 
-func (b *extendedReader) readRay() (rbxfile.ValueRay, error) {
+func (b *BitstreamReader) readRay() (rbxfile.ValueRay, error) {
 	var err error
 	val := rbxfile.ValueRay{}
 	val.Origin, err = b.readVector3Simple()
@@ -48,7 +48,7 @@ func (b *extendedReader) readRay() (rbxfile.ValueRay, error) {
 	return val, err
 }
 
-func (b *extendedReader) readRegion3() (rbxfile.ValueRegion3, error) {
+func (b *BitstreamReader) readRegion3() (rbxfile.ValueRegion3, error) {
 	var err error
 	val := rbxfile.ValueRegion3{}
 	val.Start, err = b.readVector3Simple()
@@ -58,7 +58,7 @@ func (b *extendedReader) readRegion3() (rbxfile.ValueRegion3, error) {
 	val.End, err = b.readVector3Simple()
 	return val, err
 }
-func (b *extendedReader) readRegion3int16() (rbxfile.ValueRegion3int16, error) {
+func (b *BitstreamReader) readRegion3int16() (rbxfile.ValueRegion3int16, error) {
 	var err error
 	val := rbxfile.ValueRegion3int16{}
 	val.Start, err = b.readVector3int16()
@@ -69,7 +69,7 @@ func (b *extendedReader) readRegion3int16() (rbxfile.ValueRegion3int16, error) {
 	return val, err
 }
 
-func (b *extendedReader) readColor3() (rbxfile.ValueColor3, error) {
+func (b *BitstreamReader) readColor3() (rbxfile.ValueColor3, error) {
 	var err error
 	val := rbxfile.ValueColor3{}
 	val.R, err = b.readFloat32BE()
@@ -84,7 +84,7 @@ func (b *extendedReader) readColor3() (rbxfile.ValueColor3, error) {
 	return val, err
 }
 
-func (b *extendedReader) readColor3uint8() (rbxfile.ValueColor3uint8, error) {
+func (b *BitstreamReader) readColor3uint8() (rbxfile.ValueColor3uint8, error) {
 	var err error
 	val := rbxfile.ValueColor3uint8{}
 	val.R, err = b.readUint8()
@@ -99,7 +99,7 @@ func (b *extendedReader) readColor3uint8() (rbxfile.ValueColor3uint8, error) {
 	return val, err
 }
 
-func (b *extendedReader) readVector2() (rbxfile.ValueVector2, error) {
+func (b *BitstreamReader) readVector2() (rbxfile.ValueVector2, error) {
 	var err error
 	val := rbxfile.ValueVector2{}
 	val.X, err = b.readFloat32BE()
@@ -111,7 +111,7 @@ func (b *extendedReader) readVector2() (rbxfile.ValueVector2, error) {
 }
 
 // reads a simple Vector3 value (f32 X, f32 Y, f32 Z)
-func (b *extendedReader) readVector3Simple() (rbxfile.ValueVector3, error) {
+func (b *BitstreamReader) readVector3Simple() (rbxfile.ValueVector3, error) {
 	var err error
 	val := rbxfile.ValueVector3{}
 	val.X, err = b.readFloat32BE()
@@ -127,7 +127,7 @@ func (b *extendedReader) readVector3Simple() (rbxfile.ValueVector3, error) {
 }
 
 // reads a complicated Vector3 value
-func (b *extendedReader) readVector3() (rbxfile.ValueVector3, error) {
+func (b *BitstreamReader) readVector3() (rbxfile.ValueVector3, error) {
 	isInteger, err := b.readBool()
 	if err != nil {
 		return rbxfile.ValueVector3{}, err
@@ -167,7 +167,7 @@ func (b *extendedReader) readVector3() (rbxfile.ValueVector3, error) {
 	return val, err
 }
 
-func (b *extendedReader) readVector2int16() (rbxfile.ValueVector2int16, error) {
+func (b *BitstreamReader) readVector2int16() (rbxfile.ValueVector2int16, error) {
 	var err error
 	val := rbxfile.ValueVector2int16{}
 	valX, err := b.readUint16BE()
@@ -180,7 +180,7 @@ func (b *extendedReader) readVector2int16() (rbxfile.ValueVector2int16, error) {
 	return val, err
 }
 
-func (b *extendedReader) readVector3int16() (rbxfile.ValueVector3int16, error) {
+func (b *BitstreamReader) readVector3int16() (rbxfile.ValueVector3int16, error) {
 	var err error
 	var val rbxfile.ValueVector3int16
 	valX, err := b.readUint16BE()
@@ -196,7 +196,7 @@ func (b *extendedReader) readVector3int16() (rbxfile.ValueVector3int16, error) {
 	return val, err
 }
 
-func (b *extendedReader) readAxes() (rbxfile.ValueAxes, error) {
+func (b *BitstreamReader) readAxes() (rbxfile.ValueAxes, error) {
 	val, err := b.readUint32BE()
 	axesVal := rbxfile.ValueAxes{
 		X: val&4 != 0,
@@ -205,7 +205,7 @@ func (b *extendedReader) readAxes() (rbxfile.ValueAxes, error) {
 	}
 	return axesVal, err
 }
-func (b *extendedReader) readFaces() (rbxfile.ValueFaces, error) {
+func (b *BitstreamReader) readFaces() (rbxfile.ValueFaces, error) {
 	val, err := b.readUint32BE()
 	facesVal := rbxfile.ValueFaces{
 		Right:  val&32 != 0,
@@ -217,7 +217,7 @@ func (b *extendedReader) readFaces() (rbxfile.ValueFaces, error) {
 	}
 	return facesVal, err
 }
-func (b *extendedReader) readBrickColor() (rbxfile.ValueBrickColor, error) {
+func (b *BitstreamReader) readBrickColor() (rbxfile.ValueBrickColor, error) {
 	val, err := b.readUint16BE()
 	return rbxfile.ValueBrickColor(val), err
 }
@@ -229,13 +229,13 @@ func ConstructReferent(scope string, id uint32) *Referent {
     return &Referent{Scope: scope, Id: id}
 }
 
-func (b *extendedReader) readJoinObject(context *CommunicationContext) (Reference, error) {
+func (b *BitstreamReader) readJoinObject(context *CommunicationContext) (Reference, error) {
 	referent, referentInt, err := b.readJoinReferent(context)
 	serialized := ConstructReferent(referent, referentInt)
 
 	return Referent(serialized), err
 }
-func (b *extendedReader) readObject(caches *Caches) (Reference, error) {
+func (b *BitstreamReader) readObject(caches *Caches) (Reference, error) {
 	var referentInt uint32
 	referent, err := b.readCachedScope(caches)
 	if err != nil && err != CacheReadOOB { // TODO: hack! physics packets may have problems with caches
@@ -251,7 +251,7 @@ func (b *extendedReader) readObject(caches *Caches) (Reference, error) {
 }
 
 // TODO: Make this function uniform with other cache functions
-func (b *extendedReader) readSystemAddress(caches *Caches) (rbxfile.ValueSystemAddress, error) {
+func (b *BitstreamReader) readSystemAddress(caches *Caches) (rbxfile.ValueSystemAddress, error) {
 	cache := &caches.SystemAddress
 
 	thisAddress := rbxfile.ValueSystemAddress("0.0.0.0:0")
@@ -293,7 +293,7 @@ func (b *extendedReader) readSystemAddress(caches *Caches) (rbxfile.ValueSystemA
 	return rbxfile.ValueSystemAddress(thisAddr.String()), nil
 }
 
-func (b *extendedReader) readNewEnumValue(enumID uint16) (rbxfile.ValueToken, error) {
+func (b *BitstreamReader) readNewEnumValue(enumID uint16) (rbxfile.ValueToken, error) {
 	val, err := b.readUintUTF8()
 	token := rbxfile.ValueToken{
 		Value: val,
@@ -302,7 +302,7 @@ func (b *extendedReader) readNewEnumValue(enumID uint16) (rbxfile.ValueToken, er
 	return token, err
 }
 
-func (b *extendedReader) readNewTuple(reader PacketReader) (rbxfile.ValueTuple, error) {
+func (b *BitstreamReader) readNewTuple(reader PacketReader) (rbxfile.ValueTuple, error) {
 	var tuple rbxfile.ValueTuple
 	tupleLen, err := b.readUintUTF8()
 	if err != nil {
@@ -323,12 +323,12 @@ func (b *extendedReader) readNewTuple(reader PacketReader) (rbxfile.ValueTuple, 
 	return tuple, nil
 }
 
-func (b *extendedReader) readNewArray(reader PacketReader) (rbxfile.ValueArray, error) {
+func (b *BitstreamReader) readNewArray(reader PacketReader) (rbxfile.ValueArray, error) {
 	array, err := b.readNewTuple(reader)
 	return rbxfile.ValueArray(array), err
 }
 
-func (b *extendedReader) readNewDictionary(reader PacketReader) (rbxfile.ValueDictionary, error) {
+func (b *BitstreamReader) readNewDictionary(reader PacketReader) (rbxfile.ValueDictionary, error) {
 	var dictionary rbxfile.ValueDictionary
 	dictionaryLen, err := b.readUintUTF8()
 	if err != nil {
@@ -356,12 +356,12 @@ func (b *extendedReader) readNewDictionary(reader PacketReader) (rbxfile.ValueDi
 	return dictionary, nil
 }
 
-func (b *extendedReader) readNewMap(reader PacketReader) (rbxfile.ValueMap, error) {
+func (b *BitstreamReader) readNewMap(reader PacketReader) (rbxfile.ValueMap, error) {
 	thisMap, err := b.readNewDictionary(reader)
 	return rbxfile.ValueMap(thisMap), err
 }
 
-func (b *extendedReader) readNumberSequenceKeypoint() (rbxfile.ValueNumberSequenceKeypoint, error) {
+func (b *BitstreamReader) readNumberSequenceKeypoint() (rbxfile.ValueNumberSequenceKeypoint, error) {
 	var err error
 	thisKeypoint := rbxfile.ValueNumberSequenceKeypoint{}
 	thisKeypoint.Time, err = b.readFloat32BE()
@@ -376,7 +376,7 @@ func (b *extendedReader) readNumberSequenceKeypoint() (rbxfile.ValueNumberSequen
 	return thisKeypoint, err
 }
 
-func (b *extendedReader) readNumberSequence() (rbxfile.ValueNumberSequence, error) {
+func (b *BitstreamReader) readNumberSequence() (rbxfile.ValueNumberSequence, error) {
 	var err error
 	numKeypoints, err := b.readUint32BE()
 	if err != nil {
@@ -397,7 +397,7 @@ func (b *extendedReader) readNumberSequence() (rbxfile.ValueNumberSequence, erro
 	return thisSequence, nil
 }
 
-func (b *extendedReader) readNumberRange() (rbxfile.ValueNumberRange, error) {
+func (b *BitstreamReader) readNumberRange() (rbxfile.ValueNumberRange, error) {
 	thisRange := rbxfile.ValueNumberRange{}
 	var err error
 	thisRange.Min, err = b.readFloat32BE()
@@ -408,7 +408,7 @@ func (b *extendedReader) readNumberRange() (rbxfile.ValueNumberRange, error) {
 	return thisRange, err
 }
 
-func (b *extendedReader) readColorSequenceKeypoint() (rbxfile.ValueColorSequenceKeypoint, error) {
+func (b *BitstreamReader) readColorSequenceKeypoint() (rbxfile.ValueColorSequenceKeypoint, error) {
 	var err error
 	thisKeypoint := rbxfile.ValueColorSequenceKeypoint{}
 	thisKeypoint.Time, err = b.readFloat32BE()
@@ -423,7 +423,7 @@ func (b *extendedReader) readColorSequenceKeypoint() (rbxfile.ValueColorSequence
 	return thisKeypoint, err
 }
 
-func (b *extendedReader) readColorSequence() (rbxfile.ValueColorSequence, error) {
+func (b *BitstreamReader) readColorSequence() (rbxfile.ValueColorSequence, error) {
 	var err error
 	numKeypoints, err := b.readUint32BE()
 	if err != nil {
@@ -444,7 +444,7 @@ func (b *extendedReader) readColorSequence() (rbxfile.ValueColorSequence, error)
 	return thisSequence, nil
 }
 
-func (b *extendedReader) readRect2D() (rbxfile.ValueRect2D, error) {
+func (b *BitstreamReader) readRect2D() (rbxfile.ValueRect2D, error) {
 	var err error
 	thisRect := rbxfile.ValueRect2D{rbxfile.ValueVector2{}, rbxfile.ValueVector2{}}
 
@@ -464,7 +464,7 @@ func (b *extendedReader) readRect2D() (rbxfile.ValueRect2D, error) {
 	return thisRect, err
 }
 
-func (b *extendedReader) readPhysicalProperties() (rbxfile.ValuePhysicalProperties, error) {
+func (b *BitstreamReader) readPhysicalProperties() (rbxfile.ValuePhysicalProperties, error) {
 	var err error
 	props := rbxfile.ValuePhysicalProperties{}
 	props.CustomPhysics, err = b.readBoolByte()
