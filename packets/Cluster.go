@@ -19,17 +19,17 @@ type Chunk struct {
 }
 
 // ID_ROBLOX_CLUSTER: server -> client
-type Packet8DLayer struct {
+type ClusterPacket struct {
 	Instance *rbxfile.Instance
 	Chunks   []Chunk
 }
 
-func NewPacket8DLayer() *Packet8DLayer {
-	return &Packet8DLayer{}
+func NewClusterPacket() *ClusterPacket {
+	return &ClusterPacket{}
 }
 
-func (thisBitstream *extendedReader) DecodePacket8DLayer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-	layer := NewPacket8DLayer()
+func (thisBitstream *extendedReader) DecodeClusterPacket(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+	layer := NewClusterPacket()
 
 	context := reader.Context()
 
@@ -181,6 +181,6 @@ func (thisBitstream *extendedReader) DecodePacket8DLayer(reader PacketReader, la
 	return layer, err
 }
 
-func (layer *Packet8DLayer) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *ClusterPacket) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	return errors.New("not implemented!")
 }

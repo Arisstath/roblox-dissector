@@ -4,19 +4,18 @@ import (
 	"github.com/gskartwii/rbxfile"
 )
 
-type Packet87Layer struct {
+type OldChatPacket struct {
 	Instance *rbxfile.Instance
 	Message  string
 }
 
-func NewPacket87Layer() *Packet87Layer {
-	return &Packet87Layer{}
+func NewOldChatPacket() *OldChatPacket {
+	return &OldChatPacket{}
 }
 
-func (thisBitstream *extendedReader) DecodePacket87Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-	
+func (thisBitstream *extendedReader) DecodeOldChatPacket(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	context := reader.Context()
-	layer := NewPacket87Layer()
+	layer := NewOldChatPacket()
 	var ref Referent
 
 	scope, err := thisBitstream.readLengthAndString()
@@ -38,7 +37,7 @@ func (thisBitstream *extendedReader) DecodePacket87Layer(reader PacketReader, la
 	return layer, err
 }
 
-func (layer *Packet87Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *OldChatPacket) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	scope, id := refToObject(Referent(layer.Instance.Reference))
 	err := stream.writeUint32AndString(scope)
 	if err != nil {

@@ -56,7 +56,7 @@ func hashClientTicket(ticket string) uint32 {
 }
 
 // ID_SUBMIT_TICKET - client -> server
-type Packet8ALayer struct {
+type AuthPacket struct {
 	PlayerId      int64
 	ClientTicket  string
 	DataModelHash string
@@ -69,12 +69,12 @@ type Packet8ALayer struct {
 	GoldenHash        uint32
 }
 
-func NewPacket8ALayer() *Packet8ALayer {
-	return &Packet8ALayer{}
+func NewAuthPacket() *AuthPacket {
+	return &AuthPacket{}
 }
 
-func (stream *extendedReader) DecodePacket8ALayer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-	layer := NewPacket8ALayer()
+func (stream *extendedReader) DecodeAuthPacket(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+	layer := NewAuthPacket()
 
 	lenBytes := bitsToBytes(uint(layers.Reliability.LengthInBits)) - 1 // -1 for packet id
 	data, err := stream.readString(int(lenBytes))
@@ -179,7 +179,7 @@ func (stream *extendedReader) DecodePacket8ALayer(reader PacketReader, layers *P
 	return layer, nil
 }
 
-func (layer *Packet8ALayer) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (layer *AuthPacket) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	rawBuffer := new(bytes.Buffer)
 	rawStream := &extendedWriter{bitstream.NewWriter(rawBuffer)}
 	var err error

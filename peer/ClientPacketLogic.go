@@ -161,7 +161,7 @@ func (myClient *CustomClient) sendPlaceIdVerification(placeId int64) {
 	myClient.WritePacket(response92)
 }
 func (myClient *CustomClient) submitTicket() {
-	response8A := &Packet8ALayer{
+	response8A := &AuthPacket{
 		PlayerId:          myClient.PlayerId,
 		ClientTicket:      myClient.clientTicket,
 		DataModelHash:     myClient.SecuritySettings.DataModelHash,

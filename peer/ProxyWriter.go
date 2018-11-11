@@ -203,7 +203,7 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 
 			_, err = serverHalf.WritePacket(mainLayer)
 		case 0x8A:
-			mainLayer := layers.Main.(*Packet8ALayer)
+			mainLayer := layers.Main.(*AuthPacket)
 			mainLayer.DataModelHash = writer.SecuritySettings.DataModelHash
 			mainLayer.SecurityKey = writer.SecuritySettings.SecurityKey
 			mainLayer.Platform = writer.SecuritySettings.OsPlatform
@@ -217,7 +217,7 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 			mainLayer := layers.Main.(*Packet86Layer)
 			_, err = serverHalf.WritePacket(mainLayer)
 		case 0x87:
-			mainLayer := layers.Main.(*Packet87Layer)
+			mainLayer := layers.Main.(*OldChatPacket)
 			_, err = serverHalf.WritePacket(mainLayer)
 		}
 		if err != nil {
