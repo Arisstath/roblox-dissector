@@ -12,27 +12,27 @@ func (m PhysicsMotor) String() string {
 	return rbxfile.ValueCFrame(m).String()
 }
 
-func (b *BitstreamReader) readCoordsMode0() (rbxfile.ValueVector3, error) {
-	return b.readVector3Simple()
+func (b *BitstreamReader) ReadCoordsMode0() (rbxfile.ValueVector3, error) {
+	return b.ReadVector3Simple()
 }
-func (b *BitstreamReader) readCoordsMode1() (rbxfile.ValueVector3, error) {
+func (b *BitstreamReader) ReadCoordsMode1() (rbxfile.ValueVector3, error) {
 	value := rbxfile.ValueVector3{}
-	cRange, err := b.readFloat32BE()
+	cRange, err := b.ReadFloat32BE()
 	if err != nil {
 		return value, err
 	}
 	if cRange <= 0.0000099999997 { // Has to be precise
 		return rbxfile.ValueVector3{0, 0, 0}, nil
 	}
-	x, err := b.readUint16BE()
+	x, err := b.ReadUint16BE()
 	if err != nil {
 		return value, err
 	}
-	y, err := b.readUint16BE()
+	y, err := b.ReadUint16BE()
 	if err != nil {
 		return value, err
 	}
-	z, err := b.readUint16BE()
+	z, err := b.ReadUint16BE()
 	if err != nil {
 		return value, err
 	}
@@ -41,7 +41,7 @@ func (b *BitstreamReader) readCoordsMode1() (rbxfile.ValueVector3, error) {
 	value.Z = (float32(z)/32767.0 - 1.0) * cRange
 	return value, nil
 }
-func (b *BitstreamReader) readCoordsMode2() (rbxfile.ValueVector3, error) {
+func (b *BitstreamReader) ReadCoordsMode2() (rbxfile.ValueVector3, error) {
 	val := rbxfile.ValueVector3{}
 	x, err := b.bits(15)
 	if err != nil {
@@ -65,9 +65,9 @@ func (b *BitstreamReader) readCoordsMode2() (rbxfile.ValueVector3, error) {
 	return val, nil
 }
 
-func (b *BitstreamReader) readPhysicsCoords() (rbxfile.ValueVector3, error) {
+func (b *BitstreamReader) ReadPhysicsCoords() (rbxfile.ValueVector3, error) {
 	var val rbxfile.ValueVector3
-	flags, err := b.readUint8()
+	flags, err := b.ReadUint8()
 	if err != nil {
 		return val, err
 	}
@@ -79,11 +79,11 @@ func (b *BitstreamReader) readPhysicsCoords() (rbxfile.ValueVector3, error) {
 		if exp > 10 { // when scale is > 0x400
 			// minimum precision is 2^11/2^21 = 2^-10
 			// 21 bits per value
-			val1, err := b.readUint32BE()
+			val1, err := b.ReadUint32BE()
 			if err != nil {
 				return val, err
 			}
-			val2, err := b.readUint32BE()
+			val2, err := b.ReadUint32BE()
 			if err != nil {
 				return val, err
 			}
@@ -101,15 +101,15 @@ func (b *BitstreamReader) readPhysicsCoords() (rbxfile.ValueVector3, error) {
 		} else { // when scale is in range 0x10 < scale <= 0x400
 			// 16 bits per value (and sign), precision ranges from 1/4096 to 1/128
 			// 2^16 = 65536, so values range from -16~16 to -512~512
-			x, err := b.readUint16BE()
+			x, err := b.ReadUint16BE()
 			if err != nil {
 				return val, err
 			}
-			y, err := b.readUint16BE()
+			y, err := b.ReadUint16BE()
 			if err != nil {
 				return val, err
 			}
-			z, err := b.readUint16BE()
+			z, err := b.ReadUint16BE()
 			if err != nil {
 				return val, err
 			}
@@ -127,7 +127,7 @@ func (b *BitstreamReader) readPhysicsCoords() (rbxfile.ValueVector3, error) {
 			val.Z = float32(float32(v21) * 0.000015259022 * scale)
 		}
 	} else { // when scale is in range 0 <= scale <= 0x10
-		val1, err := b.readUint32BE()
+		val1, err := b.ReadUint32BE()
 		if err != nil {
 			return val, err
 		}
@@ -144,24 +144,24 @@ func (b *BitstreamReader) readPhysicsCoords() (rbxfile.ValueVector3, error) {
 	return val, err
 }
 
-func (b *BitstreamReader) readMatrixMode0() ([9]float32, error) {
+func (b *BitstreamReader) ReadMatrixMode0() ([9]float32, error) {
 	var val [9]float32
 	var err error
 
 	q := [4]float32{}
-	q[3], err = b.readFloat32BE()
+	q[3], err = b.ReadFloat32BE()
 	if err != nil {
 		return val, err
 	}
-	q[0], err = b.readFloat32BE()
+	q[0], err = b.ReadFloat32BE()
 	if err != nil {
 		return val, err
 	}
-	q[1], err = b.readFloat32BE()
+	q[1], err = b.ReadFloat32BE()
 	if err != nil {
 		return val, err
 	}
-	q[2], err = b.readFloat32BE()
+	q[2], err = b.ReadFloat32BE()
 	if err != nil {
 		return val, err
 	}
@@ -169,34 +169,34 @@ func (b *BitstreamReader) readMatrixMode0() ([9]float32, error) {
 	return quaternionToRotMatrix(q), nil
 }
 
-func (b *BitstreamReader) readMatrixMode1() ([9]float32, error) {
+func (b *BitstreamReader) ReadMatrixMode1() ([9]float32, error) {
 	q := [4]float32{}
 	var val [9]float32
-	invertW, err := b.readBool()
+	invertW, err := b.ReadBool()
 	if err != nil {
 		return val, err
 	}
-	invertX, err := b.readBool()
+	invertX, err := b.ReadBool()
 	if err != nil {
 		return val, err
 	}
-	invertY, err := b.readBool()
+	invertY, err := b.ReadBool()
 	if err != nil {
 		return val, err
 	}
-	invertZ, err := b.readBool()
+	invertZ, err := b.ReadBool()
 	if err != nil {
 		return val, err
 	}
-	x, err := b.readUint16LE()
+	x, err := b.ReadUint16LE()
 	if err != nil {
 		return val, err
 	}
-	y, err := b.readUint16LE()
+	y, err := b.ReadUint16LE()
 	if err != nil {
 		return val, err
 	}
-	z, err := b.readUint16LE()
+	z, err := b.ReadUint16LE()
 	if err != nil {
 		return val, err
 	}
@@ -219,8 +219,8 @@ func (b *BitstreamReader) readMatrixMode1() ([9]float32, error) {
 	q = [4]float32{xs, ys, zs, w}
 	return quaternionToRotMatrix(q), nil
 }
-func (b *BitstreamReader) readMatrixMode2() ([9]float32, error) {
-	return b.readMatrixMode1()
+func (b *BitstreamReader) ReadMatrixMode2() ([9]float32, error) {
+	return b.ReadMatrixMode1()
 }
 
 var quaternionIndices = [4][3]int{
@@ -231,15 +231,15 @@ var quaternionIndices = [4][3]int{
 	[3]int{0, 1, 2}, // index 3
 }
 
-func (b *BitstreamReader) readPhysicsMatrix() ([9]float32, error) {
+func (b *BitstreamReader) ReadPhysicsMatrix() ([9]float32, error) {
 	var quat [4]float32
 	var err error
 
-	val1, err := b.readUint16BE()
+	val1, err := b.ReadUint16BE()
 	if err != nil {
 		return [9]float32{}, err
 	}
-	val2, err := b.readUint32BE()
+	val2, err := b.ReadUint32BE()
 	if err != nil {
 		return [9]float32{}, err
 	}
@@ -266,28 +266,28 @@ func (b *BitstreamReader) readPhysicsMatrix() ([9]float32, error) {
 	return quaternionToRotMatrix(quat), err
 }
 
-func (b *BitstreamReader) readPhysicsCFrame() (rbxfile.ValueCFrame, error) {
+func (b *BitstreamReader) ReadPhysicsCFrame() (rbxfile.ValueCFrame, error) {
 	var val rbxfile.ValueCFrame
-	coords, err := b.readPhysicsCoords()
+	coords, err := b.ReadPhysicsCoords()
 	if err != nil {
 		return val, err
 	}
-	matrix, err := b.readPhysicsMatrix()
+	matrix, err := b.ReadPhysicsMatrix()
 	if err != nil {
 		return val, err
 	}
 	return rbxfile.ValueCFrame{coords, matrix}, nil
 }
 
-func (b *BitstreamReader) readPhysicsMotor() (PhysicsMotor, error) {
+func (b *BitstreamReader) ReadPhysicsMotor() (PhysicsMotor, error) {
 	var motor PhysicsMotor
-	flags, err := b.readUint8()
+	flags, err := b.ReadUint8()
 	if err != nil {
 		return motor, err
 	}
 
 	if flags&1 == 1 {
-		motor.Position, err = b.readPhysicsCoords()
+		motor.Position, err = b.ReadPhysicsCoords()
 		if err != nil {
 			return motor, err
 		}
@@ -296,7 +296,7 @@ func (b *BitstreamReader) readPhysicsMotor() (PhysicsMotor, error) {
 	if flags&2 == 2 {
 		var quat [4]float32
 
-		val1, err := b.readUint32BE()
+		val1, err := b.ReadUint32BE()
 		if err != nil {
 			return motor, err
 		}
@@ -321,8 +321,8 @@ func (b *BitstreamReader) readPhysicsMotor() (PhysicsMotor, error) {
 	return motor, nil
 }
 
-func (b *BitstreamReader) readMotors() ([]PhysicsMotor, error) {
-	countMotors, err := b.readVarint64()
+func (b *BitstreamReader) ReadMotors() ([]PhysicsMotor, error) {
+	countMotors, err := b.ReadVarint64()
 	if err != nil {
 		return nil, err
 	}
@@ -334,7 +334,7 @@ func (b *BitstreamReader) readMotors() ([]PhysicsMotor, error) {
 	motors := make([]PhysicsMotor, countMotors)
 	var i uint64
 	for i = 0; i < countMotors; i++ {
-		motors[i], err = b.readPhysicsMotor()
+		motors[i], err = b.ReadPhysicsMotor()
 		if err != nil {
 			return motors, err
 		}
@@ -342,16 +342,16 @@ func (b *BitstreamReader) readMotors() ([]PhysicsMotor, error) {
 	return motors, nil
 }
 
-func (b *BitstreamReader) readPhysicsVelocity() (rbxfile.ValueVector3, error) {
+func (b *BitstreamReader) ReadPhysicsVelocity() (rbxfile.ValueVector3, error) {
 	var val rbxfile.ValueVector3
-	flags, err := b.readUint8()
+	flags, err := b.ReadUint8()
 	if err != nil || flags == 0 {
 		return val, err
 	}
 	exp := flags>>4 - 1
 	scale := float32(math.Exp2(float64(exp)))
 	val1 := flags & 0xF
-	val2, err := b.readUint32BE()
+	val2, err := b.ReadUint32BE()
 	if err != nil {
 		return val, err
 	}

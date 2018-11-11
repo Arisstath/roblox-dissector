@@ -124,10 +124,10 @@ type cacheReadCallback func(*BitstreamReader) (interface{}, error)
 
 var CacheReadOOB = errors.New("Cache read is out of bounds")
 
-func (b *BitstreamReader) readWithCache(cache Cache, readCallback cacheReadCallback) (interface{}, error) {
+func (b *BitstreamReader) ReadWithCache(cache Cache, readCallback cacheReadCallback) (interface{}, error) {
 	var result interface{}
 	var err error
-	cacheIndex, err := b.readUint8()
+	cacheIndex, err := b.ReadUint8()
 	if err != nil {
 		return "", err
 	}
@@ -153,35 +153,35 @@ func (b *BitstreamReader) readWithCache(cache Cache, readCallback cacheReadCallb
 }
 
 // TODO: Perhaps make readWithCache() operate with a member function of the cache instead?
-func (b *BitstreamReader) readCached(caches *Caches) (string, error) {
+func (b *BitstreamReader) ReadCached(caches *Caches) (string, error) {
 	cache := &caches.String
 
-	thisString, err := b.readWithCache(cache, (*BitstreamReader).readUint32AndString)
+	thisString, err := b.ReadWithCache(cache, (*BitstreamReader).ReadUint32AndString)
 	return thisString.(string), err
 }
 
-func (b *BitstreamReader) readCachedScope(caches *Caches) (string, error) {
+func (b *BitstreamReader) ReadCachedScope(caches *Caches) (string, error) {
 	cache := &caches.Object
-	thisString, err := b.readWithCache(cache, (*BitstreamReader).readUint32AndString)
+	thisString, err := b.ReadWithCache(cache, (*BitstreamReader).ReadUint32AndString)
 	return thisString.(string), err
 }
 
-func (b *BitstreamReader) readCachedContent(caches *Caches) (string, error) {
+func (b *BitstreamReader) ReadCachedContent(caches *Caches) (string, error) {
 	cache := &caches.Content
 
-	thisString, err := b.readWithCache(cache, (*BitstreamReader).readUint32AndString)
+	thisString, err := b.ReadWithCache(cache, (*BitstreamReader).ReadUint32AndString)
 	return thisString.(string), err
 }
 
-func (b *BitstreamReader) readNewCachedProtectedString(caches *Caches) ([]byte, error) {
+func (b *BitstreamReader) ReadNewCachedProtectedString(caches *Caches) ([]byte, error) {
 	cache := &caches.ProtectedString
 
-	thisString, err := b.readWithCache(cache, func(b *BitstreamReader) (interface{}, error) {
-		stringLen, err := b.readUint32BE()
+	thisString, err := b.ReadWithCache(cache, func(b *BitstreamReader) (interface{}, error) {
+		stringLen, err := b.ReadUint32BE()
 		if err != nil {
 			return []byte{}, err
 		}
-		thisString, err := b.readString(int(stringLen))
+		thisString, err := b.ReadString(int(stringLen))
 		return thisString, err
 	})
 	if _, ok := thisString.(string); ok {

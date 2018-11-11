@@ -121,7 +121,7 @@ func (tree *huffmanEncodingTree) decodeArray(input *BitstreamReader, sizeInBits 
 
 	var counter uint
 	for counter = 0; counter < sizeInBits; counter++ {
-		bit, err := input.readBool()
+		bit, err := input.ReadBool()
 		if err != nil {
 			return err
 		}

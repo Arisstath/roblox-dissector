@@ -2,57 +2,57 @@ package bitstreams
 import "encoding/binary"
 import "errors"
 
-func (b *BitstreamReader) readBool() (bool, error) {
+func (b *BitstreamReader) ReadBool() (bool, error) {
 	res, err := b.ReadBit()
 	return bool(res), err
 }
 
-func (b *BitstreamReader) readUint16BE() (uint16, error) {
+func (b *BitstreamReader) ReadUint16BE() (uint16, error) {
 	dest := make([]byte, 2)
 	err := b.bytes(dest, 2)
 	return binary.BigEndian.Uint16(dest), err
 }
 
-func (b *BitstreamReader) readUint16LE() (uint16, error) {
+func (b *BitstreamReader) ReadUint16LE() (uint16, error) {
 	dest := make([]byte, 2)
 	err := b.bytes(dest, 2)
 	return binary.LittleEndian.Uint16(dest), err
 }
 
-func (b *BitstreamReader) readBoolByte() (bool, error) {
+func (b *BitstreamReader) ReadBoolByte() (bool, error) {
 	res, err := b.bits(8)
 	return res == 1, err
 }
 
-func (b *BitstreamReader) readUint24LE() (uint32, error) {
+func (b *BitstreamReader) ReadUint24LE() (uint32, error) {
 	dest := make([]byte, 4)
 	err := b.bytes(dest, 3)
 	return binary.LittleEndian.Uint32(dest), err
 }
 
-func (b *BitstreamReader) readUint32BE() (uint32, error) {
+func (b *BitstreamReader) ReadUint32BE() (uint32, error) {
 	dest := make([]byte, 4)
 	err := b.bytes(dest, 4)
 	return binary.BigEndian.Uint32(dest), err
 }
-func (b *BitstreamReader) readUint32LE() (uint32, error) {
+func (b *BitstreamReader) ReadUint32LE() (uint32, error) {
 	dest := make([]byte, 4)
 	err := b.bytes(dest, 4)
 	return binary.LittleEndian.Uint32(dest), err
 }
 
-func (b *BitstreamReader) readUint64BE() (uint64, error) {
+func (b *BitstreamReader) ReadUint64BE() (uint64, error) {
 	dest := make([]byte, 8)
 	err := b.bytes(dest, 8)
 	return binary.BigEndian.Uint64(dest), err
 }
 
-func (b *BitstreamReader) readUint8() (uint8, error) {
+func (b *BitstreamReader) ReadUint8() (uint8, error) {
 	res, err := b.bits(8)
 	return uint8(res), err
 }
 
-func (b *BitstreamReader) readString(length int) ([]byte, error) {
+func (b *BitstreamReader) ReadString(length int) ([]byte, error) {
 	var dest []byte
 	if uint(length) > 0x1000000 {
 		return dest, errors.New("Sanity check: string too long")
@@ -63,39 +63,39 @@ func (b *BitstreamReader) readString(length int) ([]byte, error) {
 }
 
 // Previously readLengthAndString
-func (b *BitstreamReader) readUint16AndString() (string, error) {
+func (b *BitstreamReader) ReadUint16AndString() (string, error) {
 	var ret []byte
-	thisLen, err := b.readUint16BE()
+	thisLen, err := b.ReadUint16BE()
 	if err != nil {
 		return "", err
 	}
 	b.Align()
-	ret, err = b.readString(int(thisLen))
+	ret, err = b.ReadString(int(thisLen))
 	return string(ret), err
 }
 
-func (b *BitstreamReader) readASCII(length int) (string, error) {
-	res, err := b.readString(length)
+func (b *BitstreamReader) ReadASCII(length int) (string, error) {
+	res, err := b.ReadString(length)
 	return string(res), err
 }
 
-func (b *BitstreamReader) readFloat32LE() (float32, error) {
-	intf, err := b.readUint32LE()
+func (b *BitstreamReader) ReadFloat32LE() (float32, error) {
+	intf, err := b.ReadUint32LE()
 	if err != nil {
 		return 0.0, err
 	}
 	return math.Float32frombits(intf), err
 }
 
-func (b *BitstreamReader) readFloat32BE() (float32, error) {
-	intf, err := b.readUint32BE()
+func (b *BitstreamReader) ReadFloat32BE() (float32, error) {
+	intf, err := b.ReadUint32BE()
 	if err != nil {
 		return 0.0, err
 	}
 	return math.Float32frombits(intf), err
 }
 
-func (b *BitstreamReader) readFloat64BE() (float64, error) {
+func (b *BitstreamReader) ReadFloat64BE() (float64, error) {
 	intf, err := b.bits(64)
 	if err != nil {
 		return 0.0, err
@@ -103,15 +103,15 @@ func (b *BitstreamReader) readFloat64BE() (float64, error) {
 	return math.Float64frombits(intf), err
 }
 
-func (b *BitstreamReader) readUint32AndString() (interface{}, error) {
-	stringLen, err := b.readUint32BE()
+func (b *BitstreamReader) ReadUint32AndString() (interface{}, error) {
+	stringLen, err := b.ReadUint32BE()
 	if err != nil {
 		return "", err
 	}
-	return b.readASCII(int(stringLen))
+	return b.ReadASCII(int(stringLen))
 }
 
-func (b *BitstreamReader) readUintUTF8() (uint32, error) {
+func (b *BitstreamReader) ReadUintUTF8() (uint32, error) {
 	var res uint32
 	thisByte, err := b.ReadByte()
 	var shiftIndex uint32
@@ -125,11 +125,11 @@ func (b *BitstreamReader) readUintUTF8() (uint32, error) {
 	}
 	return res, err
 }
-func (b *BitstreamReader) readSintUTF8() (int32, error) {
-	res, err := b.readUintUTF8()
+func (b *BitstreamReader) ReadSintUTF8() (int32, error) {
+	res, err := b.ReadUintUTF8()
 	return int32((res >> 1) ^ -(res & 1)), err
 }
-func (b *BitstreamReader) readVarint64() (uint64, error) {
+func (b *BitstreamReader) ReadVarint64() (uint64, error) {
 	var res uint64
 	thisByte, err := b.ReadByte()
 	var shiftIndex uint32
@@ -143,17 +143,17 @@ func (b *BitstreamReader) readVarint64() (uint64, error) {
 	}
 	return res, err
 }
-func (b *BitstreamReader) readVarsint64() (int64, error) {
-	res, err := b.readVarint64()
+func (b *BitstreamReader) ReadVarsint64() (int64, error) {
+	res, err := b.ReadVarint64()
 	return int64((res >> 1) ^ -(res & 1)), err
 }
 
-func (b *BitstreamReader) readVarLengthString() (string, error) {
-	stringLen, err := b.readUintUTF8()
+func (b *BitstreamReader) ReadVarLengthString() (string, error) {
+	stringLen, err := b.ReadUintUTF8()
 	if err != nil {
 		return "", err
 	}
-	return b.readASCII(int(stringLen))
+	return b.ReadASCII(int(stringLen))
 }
 
 func (b *BitstreamWriter) WriteBool(value bool) error {

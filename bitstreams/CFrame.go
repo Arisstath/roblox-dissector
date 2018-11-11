@@ -2,7 +2,7 @@ package bitstreams
 import "github.com/gskartwii/rbxfile"
 import "errors"
 
-func (b *BitstreamReader) readCFrameSimple() (rbxfile.ValueCFrame, error) {
+func (b *BitstreamReader) ReadCFrameSimple() (rbxfile.ValueCFrame, error) {
 	return rbxfile.ValueCFrame{}, nil // nop for now, since nothing uses this
 }
 
@@ -104,15 +104,15 @@ func lookupRotMatrix(special uint64) [9]float32 {
 	return trueRet
 }
 
-func (b *BitstreamReader) readCFrame() (rbxfile.ValueCFrame, error) {
+func (b *BitstreamReader) ReadCFrame() (rbxfile.ValueCFrame, error) {
 	var err error
 	val := rbxfile.ValueCFrame{}
-	val.Position, err = b.readVector3Simple()
+	val.Position, err = b.ReadVector3Simple()
 	if err != nil {
 		return val, err
 	}
 
-	special, err := b.readUint8()
+	special, err := b.ReadUint8()
 	if err != nil {
 		return val, err
 	}
@@ -126,7 +126,7 @@ func (b *BitstreamReader) readCFrame() (rbxfile.ValueCFrame, error) {
 		}
 		val.Rotation = lookupRotMatrix(uint64(special - 1))
 	} else {
-		val.Rotation, err = b.readPhysicsMatrix()
+		val.Rotation, err = b.ReadPhysicsMatrix()
 	}
 
 	return val, err

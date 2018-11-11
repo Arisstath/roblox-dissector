@@ -40,15 +40,15 @@ func (b *BitstreamReader) ReadSerializedValue(reader PacketReader, valueType uin
 	var result rbxfile.Value
 	switch valueType {
 	case PROP_TYPE_STRING:
-		result, err = b.readNewPString(reader.Caches())
+		result, err = b.ReadNewPString(reader.Caches())
 	case PROP_TYPE_PROTECTEDSTRING_0:
-		result, err = b.readNewProtectedString(reader.Caches())
+		result, err = b.ReadNewProtectedString(reader.Caches())
 	case PROP_TYPE_PROTECTEDSTRING_1:
-		result, err = b.readNewProtectedString(reader.Caches())
+		result, err = b.ReadNewProtectedString(reader.Caches())
 	case PROP_TYPE_PROTECTEDSTRING_2:
-		result, err = b.readNewProtectedString(reader.Caches())
+		result, err = b.ReadNewProtectedString(reader.Caches())
 	case PROP_TYPE_PROTECTEDSTRING_3:
-		result, err = b.readNewProtectedString(reader.Caches())
+		result, err = b.ReadNewProtectedString(reader.Caches())
 	case PROP_TYPE_INSTANCE:
 		var referent Referent
 		referent, err = b.ReadObject(reader)
@@ -59,28 +59,28 @@ func (b *BitstreamReader) ReadSerializedValue(reader PacketReader, valueType uin
 		instance, _ := reader.Context().InstancesByReferent.TryGetInstance(referent)
 		result = rbxfile.ValueReference{instance}
 	case PROP_TYPE_CONTENT:
-		result, err = b.readNewContent(reader.Caches())
+		result, err = b.ReadNewContent(reader.Caches())
 	case PROP_TYPE_SYSTEMADDRESS:
-		result, err = b.readSystemAddress(reader.Caches())
+		result, err = b.ReadSystemAddress(reader.Caches())
 	case PROP_TYPE_TUPLE:
-		result, err = b.readNewTuple(reader)
+		result, err = b.ReadNewTuple(reader)
 	case PROP_TYPE_ARRAY:
-		result, err = b.readNewArray(reader)
+		result, err = b.ReadNewArray(reader)
 	case PROP_TYPE_DICTIONARY:
-		result, err = b.readNewDictionary(reader)
+		result, err = b.ReadNewDictionary(reader)
 	case PROP_TYPE_MAP:
-		result, err = b.readNewMap(reader)
+		result, err = b.ReadNewMap(reader)
 	default:
-		return b.readSerializedValueGeneric(reader, valueType, enumId)
+		return b.ReadSerializedValueGeneric(reader, valueType, enumId)
 	}
 	return result, err
 }
 func (b *BitstreamReader) ReadObject(reader PacketReader) (Referent, error) {
-	return b.readObject(reader.Caches())
+	return b.ReadObject(reader.Caches())
 }
 func (b *BitstreamReader) ReadProperties(schema []StaticPropertySchema, properties map[string]rbxfile.Value, reader PacketReader) error {
 	for i := 0; i < 2; i++ {
-		propertyIndex, err := b.readUint8()
+		propertyIndex, err := b.ReadUint8()
 		last := "none"
 		for err == nil && propertyIndex != 0xFF {
 			if int(propertyIndex) > len(schema) {
@@ -93,7 +93,7 @@ func (b *BitstreamReader) ReadProperties(schema []StaticPropertySchema, properti
 			}
 			properties[schema[propertyIndex].Name] = value
 			last = schema[propertyIndex].Name
-			propertyIndex, err = b.readUint8()
+			propertyIndex, err = b.ReadUint8()
 		}
 		if err != nil {
 			return err
@@ -197,28 +197,28 @@ type JoinSerializeReader struct {
 	*BitstreamReader
 }
 
-func (b *JoinSerializeReader) readNewContent() (rbxfile.ValueContent, error) {
-	res, err := b.readNewPString()
+func (b *JoinSerializeReader) ReadNewContent() (rbxfile.ValueContent, error) {
+	res, err := b.ReadNewPString()
 	return rbxfile.ValueContent(res), err
 }
-func (b *JoinSerializeReader) readNewProtectedString() (rbxfile.ValueProtectedString, error) {
-	res, err := b.readNewPString()
+func (b *JoinSerializeReader) ReadNewProtectedString() (rbxfile.ValueProtectedString, error) {
+	res, err := b.ReadNewPString()
 	return rbxfile.ValueProtectedString(res), err
 }
-func (b *JoinSerializeReader) readNewPString() (rbxfile.ValueString, error) {
-	val, err := b.readVarLengthString()
+func (b *JoinSerializeReader) ReadNewPString() (rbxfile.ValueString, error) {
+	val, err := b.ReadVarLengthString()
 	return rbxfile.ValueString(val), err
 }
-func (b *JoinSerializeReader) readContent() (rbxfile.ValueContent, error) {
+func (b *JoinSerializeReader) ReadContent() (rbxfile.ValueContent, error) {
 	var result string
-	stringLen, err := b.readUint32BE()
+	stringLen, err := b.ReadUint32BE()
 	if err != nil {
 		return rbxfile.ValueContent(result), err
 	}
-	result, err = b.readASCII(int(stringLen))
+	result, err = b.ReadASCII(int(stringLen))
 	return rbxfile.ValueContent(result), err
 }
-func (b *JoinSerializeReader) readSystemAddress() (rbxfile.ValueSystemAddress, error) {
+func (b *JoinSerializeReader) ReadSystemAddress() (rbxfile.ValueSystemAddress, error) {
 	var err error
 	thisAddress := rbxfile.ValueSystemAddress("0.0.0.0:0")
 	thisAddr := net.UDPAddr{}
@@ -231,7 +231,7 @@ func (b *JoinSerializeReader) readSystemAddress() (rbxfile.ValueSystemAddress, e
 		thisAddr.IP[i] = thisAddr.IP[i] ^ 0xFF // bitwise NOT
 	}
 
-	port, err := b.readUint16BE()
+	port, err := b.ReadUint16BE()
 	thisAddr.Port = int(port)
 	if err != nil {
 		return thisAddress, err
@@ -244,18 +244,18 @@ func (b *JoinSerializeReader) ReadSerializedValue(reader PacketReader, valueType
 	var result rbxfile.Value
 	switch valueType {
 	case PROP_TYPE_STRING:
-		result, err = b.readNewPString()
+		result, err = b.ReadNewPString()
 	case PROP_TYPE_PROTECTEDSTRING_0:
-		result, err = b.readNewProtectedString()
+		result, err = b.ReadNewProtectedString()
 	case PROP_TYPE_PROTECTEDSTRING_1:
-		result, err = b.readNewProtectedString()
+		result, err = b.ReadNewProtectedString()
 	case PROP_TYPE_PROTECTEDSTRING_2:
-		result, err = b.readNewProtectedString()
+		result, err = b.ReadNewProtectedString()
 	case PROP_TYPE_PROTECTEDSTRING_3:
-		result, err = b.readNewProtectedString()
+		result, err = b.ReadNewProtectedString()
 	case PROP_TYPE_INSTANCE:
 		var referent Referent
-		referent, err = b.readJoinObject(reader.Context())
+		referent, err = b.ReadJoinObject(reader.Context())
 		if err != nil {
 			return nil, err
 		}
@@ -263,19 +263,19 @@ func (b *JoinSerializeReader) ReadSerializedValue(reader PacketReader, valueType
 		instance, _ := reader.Context().InstancesByReferent.TryGetInstance(referent)
 		result = rbxfile.ValueReference{instance}
 	case PROP_TYPE_CONTENT:
-		result, err = b.readNewContent()
+		result, err = b.ReadNewContent()
 	case PROP_TYPE_SYSTEMADDRESS:
-		result, err = b.readSystemAddress()
+		result, err = b.ReadSystemAddress()
 	default:
-		return b.BitstreamReader.readSerializedValueGeneric(reader, valueType, enumId)
+		return b.BitstreamReader.ReadSerializedValueGeneric(reader, valueType, enumId)
 	}
 	return result, err
 }
 func (b *JoinSerializeReader) ReadObject(reader PacketReader) (Referent, error) {
-	return b.readJoinObject(reader.Context())
+	return b.ReadJoinObject(reader.Context())
 }
 func (b *JoinSerializeReader) ReadProperties(schema []StaticPropertySchema, properties map[string]rbxfile.Value, reader PacketReader) error {
-	propertyIndex, err := b.readUint8()
+	propertyIndex, err := b.ReadUint8()
 	last := "none"
 	for err == nil && propertyIndex != 0xFF {
 		if int(propertyIndex) > len(schema) {
@@ -288,7 +288,7 @@ func (b *JoinSerializeReader) ReadProperties(schema []StaticPropertySchema, prop
 		}
 		properties[schema[propertyIndex].Name] = value
 		last = schema[propertyIndex].Name
-		propertyIndex, err = b.readUint8()
+		propertyIndex, err = b.ReadUint8()
 	}
 	return err
 }

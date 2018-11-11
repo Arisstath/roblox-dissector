@@ -29,7 +29,7 @@ func decodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader
 		return nil, err
 	}
 
-	schemaIDx, err := thisBitstream.readUint16BE()
+	schemaIDx, err := thisBitstream.ReadUint16BE()
 	if int(schemaIDx) > len(context.StaticSchema.Instances) {
 		return referent, fmt.Errorf("class idx %d is higher than %d", schemaIDx, len(context.StaticSchema.Instances))
 	}
@@ -37,7 +37,7 @@ func decodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader
 	thisInstance.ClassName = schema.Name
 	layers.Root.Logger.Println("will parse", referent, schema.Name, len(schema.Properties))
 
-	unkBool, err := thisBitstream.readBoolByte()
+	unkBool, err := thisBitstream.ReadBoolByte()
 	if err != nil {
 		return referent, err
 	}

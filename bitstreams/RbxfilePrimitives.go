@@ -1,56 +1,56 @@
 package bitstreams
 import "github.com/gskartwii/rbxfile"
 
-func (b *BitstreamReader) readNewPSint() (rbxfile.ValueInt, error) {
-	val, err := b.readSintUTF8()
+func (b *BitstreamReader) ReadNewPSint() (rbxfile.ValueInt, error) {
+	val, err := b.ReadSintUTF8()
 	return rbxfile.ValueInt(val), err
 }
-func (b *BitstreamReader) readPBool() (rbxfile.ValueBool, error) {
-	val, err := b.readBoolByte()
+func (b *BitstreamReader) ReadPBool() (rbxfile.ValueBool, error) {
+	val, err := b.ReadBoolByte()
 	return rbxfile.ValueBool(val), err
 }
 
 // reads a signed integer
-func (b *BitstreamReader) readPSInt() (rbxfile.ValueInt, error) {
-	val, err := b.readUint32BE()
+func (b *BitstreamReader) ReadPSInt() (rbxfile.ValueInt, error) {
+	val, err := b.ReadUint32BE()
 	return rbxfile.ValueInt(val), err
 }
 
 // reads a single-precision float
-func (b *BitstreamReader) readPFloat() (rbxfile.ValueFloat, error) {
-	val, err := b.readFloat32BE()
+func (b *BitstreamReader) ReadPFloat() (rbxfile.ValueFloat, error) {
+	val, err := b.ReadFloat32BE()
 	return rbxfile.ValueFloat(val), err
 }
 
 // reads a double-precision float
-func (b *BitstreamReader) readPDouble() (rbxfile.ValueDouble, error) {
-	val, err := b.readFloat64BE()
+func (b *BitstreamReader) ReadPDouble() (rbxfile.ValueDouble, error) {
+	val, err := b.ReadFloat64BE()
 	return rbxfile.ValueDouble(val), err
 }
-func (b *BitstreamReader) readNewPString(caches *Caches) (rbxfile.ValueString, error) {
-	val, err := b.readCached(caches)
+func (b *BitstreamReader) ReadNewPString(caches *Caches) (rbxfile.ValueString, error) {
+	val, err := b.ReadCached(caches)
 	return rbxfile.ValueString(val), err
 }
 
-func (b *BitstreamReader) readNewProtectedString(caches *Caches) (rbxfile.ValueProtectedString, error) {
-	res, err := b.readNewCachedProtectedString(caches)
+func (b *BitstreamReader) ReadNewProtectedString(caches *Caches) (rbxfile.ValueProtectedString, error) {
+	res, err := b.ReadNewCachedProtectedString(caches)
 	return rbxfile.ValueProtectedString(res), err
 }
 
-func (b *BitstreamReader) readNewContent(caches *Caches) (rbxfile.ValueContent, error) {
-	res, err := b.readCachedContent(caches)
+func (b *BitstreamReader) ReadNewContent(caches *Caches) (rbxfile.ValueContent, error) {
+	res, err := b.ReadCachedContent(caches)
 	return rbxfile.ValueContent(res), err
 }
-func (b *BitstreamReader) readNewBinaryString() (rbxfile.ValueBinaryString, error) {
-	res, err := b.readVarLengthString()
+func (b *BitstreamReader) ReadNewBinaryString() (rbxfile.ValueBinaryString, error) {
+	res, err := b.ReadVarLengthString()
 	return rbxfile.ValueBinaryString(res), err
 }
-func (b *BitstreamReader) readInt64() (rbxfile.ValueInt64, error) {
-	val, err := b.readVarsint64()
+func (b *BitstreamReader) ReadInt64() (rbxfile.ValueInt64, error) {
+	val, err := b.ReadVarsint64()
 	return rbxfile.ValueInt64(val), err
 }
-func (b *BitstreamReader) readContent(caches *Caches) (rbxfile.ValueContent, error) {
-	val, err := b.readCachedContent(caches)
+func (b *BitstreamReader) ReadContent(caches *Caches) (rbxfile.ValueContent, error) {
+	val, err := b.ReadCachedContent(caches)
 	return rbxfile.ValueContent(val), err
 }
 

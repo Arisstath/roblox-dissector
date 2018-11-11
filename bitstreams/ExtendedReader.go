@@ -12,8 +12,8 @@ type BitstreamReader struct {
 	*bitstream.BitReader
 }
 
-func (b *BitstreamReader) readAddress() (*net.UDPAddr, error) {
-	version, err := b.readUint8()
+func (b *BitstreamReader) ReadAddress() (*net.UDPAddr, error) {
+	version, err := b.ReadUint8()
 	if err != nil {
 		return nil, err
 	}
@@ -28,7 +28,7 @@ func (b *BitstreamReader) readAddress() (*net.UDPAddr, error) {
 	for i := 0; i < 4; i++ {
 		address[i] = address[i] ^ 0xFF // bitwise NOT
 	}
-	port, err := b.readUint16BE()
+	port, err := b.ReadUint16BE()
 	if err != nil {
 		return nil, err
 	}
@@ -36,8 +36,8 @@ func (b *BitstreamReader) readAddress() (*net.UDPAddr, error) {
 	return &net.UDPAddr{address, int(port), ""}, nil
 }
 
-func (b *BitstreamReader) readJoinReferent(context *CommunicationContext) (string, uint32, error) {
-	stringLen, err := b.readUint8()
+func (b *BitstreamReader) ReadJoinReferent(context *CommunicationContext) (string, uint32, error) {
+	stringLen, err := b.ReadUint8()
 	if err != nil {
 		return "", 0, err
 	}
@@ -46,7 +46,7 @@ func (b *BitstreamReader) readJoinReferent(context *CommunicationContext) (strin
 	}
 	var ref string
 	if stringLen != 0xFF {
-		ref, err = b.readASCII(int(stringLen))
+		ref, err = b.ReadASCII(int(stringLen))
 		if len(ref) != 0x23 {
 			println("WARN: wrong ref len!! this should never happen, unless you are communicating with a non-standard peer")
 		}
@@ -57,7 +57,7 @@ func (b *BitstreamReader) readJoinReferent(context *CommunicationContext) (strin
 		ref = context.InstanceTopScope
 	}
 
-	intVal, err := b.readUint32LE()
+	intVal, err := b.ReadUint32LE()
 	if err != nil && err != io.EOF {
 		return "", 0, err
 	}
