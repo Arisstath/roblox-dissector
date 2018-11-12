@@ -6,6 +6,7 @@ import (
 	"github.com/gskartwii/rbxfile"
     "github.com/gskartwii/roblox-dissector/schema"
     "github.com/gskartwii/roblox-dissector/util"
+    "net"
 )
 
 type SerializeReader interface {
@@ -58,8 +59,8 @@ func (b *BitstreamReader) ReadSerializedValue(reader util.PacketReader, valueTyp
 			return nil, err
 		}
 		// Note: NULL is a valid referent!
-		instance, _ := reader.Context().InstancesByReferent.TryGetInstance(referent)
-		result = rbxfile.ValueReference{instance}
+		instance, _ := reader.TryGetInstance(referent)
+		result = instance.Reference
 	case schema.PROP_TYPE_CONTENT:
 		result, err = b.ReadNewContent(reader.Caches())
 	case schema.PROP_TYPE_SYSTEMADDRESS:
@@ -121,7 +122,7 @@ func (b *BitstreamWriter) WriteSerializedValue(val rbxfile.Value, writer util.Pa
 	case schema.PROP_TYPE_PROTECTEDSTRING_3:
 		err = b.WriteNewProtectedString(val.(rbxfile.ValueProtectedString), writer.Caches())
 	case schema.PROP_TYPE_INSTANCE:
-		err = b.WriteObject(val.(rbxfile.ValueReference).Instance, writer.Caches())
+		err = b.WriteReference(val.(util.Reference), writer.Caches())
 	case schema.PROP_TYPE_CONTENT:
 		err = b.WriteNewContent(val.(rbxfile.ValueContent), writer.Caches())
 	case schema.PROP_TYPE_SYSTEMADDRESS:
@@ -161,7 +162,7 @@ func (b *BitstreamWriter) WriteProperties(schema []schema.StaticPropertySchema, 
 		}
 
 		//println("serializing", i, name, value.String())
-		err = schema[i].Serialize(value, writer, b)
+		err = SerializeReplicationProperty(value, writer, b, schema[i])
 		if err != nil {
 			return err
 		}
@@ -186,7 +187,7 @@ func (b *BitstreamWriter) WriteProperties(schema []schema.StaticPropertySchema, 
 			return err
 		}
 
-		err = schema[i].Serialize(value, writer, b)
+		err = SerializeReplicationProperty(value, writer, b, schema[i])
 		if err != nil {
 			return err
 		}
@@ -225,7 +226,7 @@ func (b *JoinSerializeReader) ReadSystemAddress() (rbxfile.ValueSystemAddress, e
 	thisAddress := rbxfile.ValueSystemAddress("0.0.0.0:0")
 	thisAddr := net.UDPAddr{}
 	thisAddr.IP = make([]byte, 4)
-	err = b.bytes(thisAddr.IP, 4)
+	err = b.Read(thisAddr.IP)
 	if err != nil {
 		return thisAddress, err
 	}
@@ -257,13 +258,13 @@ func (b *JoinSerializeReader) ReadSerializedValue(reader util.PacketReader, valu
 		result, err = b.ReadNewProtectedString()
 	case schema.PROP_TYPE_INSTANCE:
 		var referent util.Reference
-		referent, err = b.ReadJoinObject(reader.Context())
+		referent, err = b.ReadJoinObject(reader.TopScope())
 		if err != nil {
 			return nil, err
 		}
 		// Note: NULL is a valid referent!
-		instance, _ := reader.Context().InstancesByReferent.TryGetInstance(referent)
-		result = rbxfile.ValueReference{instance}
+		instance, _ := reader.TryGetInstance(referent)
+        result = instance.Reference
 	case schema.PROP_TYPE_CONTENT:
 		result, err = b.ReadNewContent()
 	case schema.PROP_TYPE_SYSTEMADDRESS:
@@ -274,7 +275,7 @@ func (b *JoinSerializeReader) ReadSerializedValue(reader util.PacketReader, valu
 	return result, err
 }
 func (b *JoinSerializeReader) ReadObject(reader util.PacketReader) (util.Reference, error) {
-	return b.ReadJoinObject(reader.Context())
+	return b.ReadJoinObject(reader.TopScope())
 }
 func (b *JoinSerializeReader) ReadProperties(schema []schema.StaticPropertySchema, properties map[string]rbxfile.Value, reader util.PacketReader) error {
 	propertyIndex, err := b.ReadUint8()
@@ -316,7 +317,7 @@ func (b *JoinSerializeWriter) WriteSerializedValue(val rbxfile.Value, writer uti
 	case schema.PROP_TYPE_PROTECTEDSTRING_3:
 		err = b.WriteNewProtectedString(val.(rbxfile.ValueProtectedString))
 	case schema.PROP_TYPE_INSTANCE:
-		err = b.WriteObject(val.(rbxfile.ValueReference).Instance, writer)
+		err = b.WriteReference(val.(util.Reference), writer.Caches())
 	case schema.PROP_TYPE_CONTENT:
 		err = b.WriteNewContent(val.(rbxfile.ValueContent))
 	case schema.PROP_TYPE_SYSTEMADDRESS:
@@ -327,7 +328,7 @@ func (b *JoinSerializeWriter) WriteSerializedValue(val rbxfile.Value, writer uti
 	return err
 }
 func (b *JoinSerializeWriter) WriteObject(reference util.Reference, writer util.PacketWriter) error {
-	return b.BitstreamWriter.WriteJoinObject(object, writer.Context())
+	return b.BitstreamWriter.WriteJoinObject(reference, writer.TopScope())
 }
 func (b *JoinSerializeWriter) WriteProperties(schema []schema.StaticPropertySchema, properties map[string]rbxfile.Value, writer util.PacketWriter) error {
 	var err error
@@ -345,7 +346,7 @@ func (b *JoinSerializeWriter) WriteProperties(schema []schema.StaticPropertySche
 		}
 
 		//println("serializing", i, name, value.String())
-		err = schema[i].Serialize(value, writer, b)
+        err = SerializeReplicationProperty(value, writer, b, schema[i])
 		if err != nil {
 			return err
 		}

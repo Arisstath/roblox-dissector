@@ -1,7 +1,6 @@
 package bitstreams
 
 import "github.com/gskartwii/go-bitstream"
-import "github.com/gskartwii/roblox-dissector/util"
 import "errors"
 import "net"
 import "io"
@@ -34,7 +33,7 @@ func (b *BitstreamReader) ReadAddress() (*net.UDPAddr, error) {
 	return &net.UDPAddr{address, int(port), ""}, nil
 }
 
-func (b *BitstreamReader) ReadJoinReferent(context *util.CommunicationContext) (string, uint32, error) {
+func (b *BitstreamReader) ReadJoinReferent(scope string) (string, uint32, error) {
 	stringLen, err := b.ReadUint8()
 	if err != nil {
 		return "", 0, err
@@ -52,7 +51,7 @@ func (b *BitstreamReader) ReadJoinReferent(context *util.CommunicationContext) (
 			return "", 0, err
 		}
 	} else {
-		ref = context.InstanceTopScope
+		ref = scope
 	}
 
 	intVal, err := b.ReadUint32LE()

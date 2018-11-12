@@ -38,6 +38,10 @@ func (c *CommunicationContext) IsClient(peer *net.UDPAddr) bool {
 func (c *CommunicationContext) IsServer(peer *net.UDPAddr) bool {
 	return c.Server.Port == peer.Port && bytes.Compare(c.Server.IP, peer.IP) == 0
 }
+func (c *CommunicationContext) TopScope() string {
+    return c.InstanceTopScope
+}
+
 type Reference struct {
     Scope string
     Id uint32
@@ -47,20 +51,27 @@ type Reference struct {
 func NewReference(scope string, id uint32) Reference {
     return Reference{IsNull: id == 0, Scope: scope, Id: id}
 }
-func (ref *Reference) String() string {
+func (ref Reference) String() string {
     if ref.IsNull {
-        return "nil"
+        return "<nil>"
     }
     return fmt.Sprintf("%s_%d", ref.Scope, ref.Id)
+}
+func (Reference) Type() rbxfile.Type {
+    return rbxfile.TypeReference
+}
+func (ref Reference) Copy() rbxfile.Value {
+    return ref
 }
 
 type ContextualHandler interface {
     SetCaches(*Caches)
 	Caches() *Caches
-    TryGetInstance(Reference) (*rbxfile.Instance, error)
-    OnAddInstance(Reference, func(*rbxfile.Instance))
-    CreateInstance(Reference) (*rbxfile.Instance, error)
+    TryGetInstance(Reference) (DeserializedInstance, error)
+    OnAddInstance(Reference, func(DeserializedInstance))
+    CreateInstance(Reference) (DeserializedInstance, error)
     Schema() *schema.StaticSchema
+    TopScope() string
 }
 
 // PacketReader is an interface that can be passed to packet decoders

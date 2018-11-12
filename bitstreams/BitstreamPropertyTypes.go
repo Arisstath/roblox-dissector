@@ -223,8 +223,8 @@ func (b *BitstreamReader) ReadBrickColor() (rbxfile.ValueBrickColor, error) {
 	return rbxfile.ValueBrickColor(val), err
 }
 
-func (b *BitstreamReader) ReadJoinObject(context *util.CommunicationContext) (util.Reference, error) {
-	referent, referentInt, err := b.ReadJoinReferent(context)
+func (b *BitstreamReader) ReadJoinObject(scope string) (util.Reference, error) {
+	referent, referentInt, err := b.ReadJoinReferent(scope)
 	serialized := util.NewReference(referent, referentInt)
 
 	return serialized, err

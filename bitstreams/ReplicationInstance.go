@@ -13,57 +13,60 @@ func is2ndRoundType(typeId uint8) bool {
 	return ((id-3) > 0x1F || ((1<<(id-3))&uint32(0xC200000F)) == 0) && (id != 1) // thank you ARM compiler for optimizing this <3
 }
 
-func DecodeReplicationInstance(reader util.PacketReader, thisBitstream InstanceReader) (util.Reference, error) {
+func DecodeReplicationInstance(reader util.PacketReader, thisBitstream InstanceReader) (util.DeserializedInstance, error) {
 	var err error
+    var instance util.DeserializedInstance
 	var referent util.Reference
 
 	referent, err = thisBitstream.ReadObject(reader)
 	if err != nil {
-		return referent, errors.New("while parsing self: " + err.Error())
+		return instance, errors.New("while parsing self: " + err.Error())
 	}
 	if referent.IsNull {
-		return referent, errors.New("self is nil in decodeReplicationInstance")
+		return instance, errors.New("self is nil in decodeReplicationInstance")
 	}
-	thisInstance, err := reader.CreateInstance(referent)
+	instance, err = reader.CreateInstance(referent)
 	if err != nil {
-		return referent, err
+		return instance, err
 	}
+    thisInstance := instance.Instance
 
 	schemaIDx, err := thisBitstream.ReadUint16BE()
 	if int(schemaIDx) > len(reader.Schema().Instances) {
-		return referent, fmt.Errorf("class idx %d is higher than %d", schemaIDx, len(reader.Schema().Instances))
+		return instance, fmt.Errorf("class idx %d is higher than %d", schemaIDx, len(reader.Schema().Instances))
 	}
 	schema := reader.Schema().Instances[schemaIDx]
 	thisInstance.ClassName = schema.Name
 
-	unkBool, err := thisBitstream.ReadBoolByte()
+	_, err = thisBitstream.ReadBoolByte()
 	if err != nil {
-		return referent, err
+		return instance, err
 	}
 	thisInstance.Properties = make(map[string]rbxfile.Value, len(schema.Properties))
 
 	err = thisBitstream.ReadProperties(schema.Properties, thisInstance.Properties, reader)
 	if err != nil {
-		return referent, err
+		return instance, err
 	}
 
     parentRef, err := thisBitstream.ReadObject(reader)
 	if err != nil {
-		return referent, errors.New("while parsing parent: " + err.Error())
+		return instance, errors.New("while parsing parent: " + err.Error())
 	}
 	if parentRef.IsNull {
-		return referent, errors.New("parent is null")
+		return instance, errors.New("parent is null")
 	}
 
 	parent, err := reader.TryGetInstance(parentRef)
-	if parent != nil {
-		return referent, parent.AddChild(thisInstance)
+    instance.Parent = parent.Reference
+	if parent.Instance != nil {
+		return instance, parent.AddChild(thisInstance)
 	}
 	if err != nil && !thisInstance.IsService {
-		return referent, errors.New("not service yet parent doesn't exist") // the parents of services don't exist
+		return instance, errors.New("not service yet parent doesn't exist") // the parents of services don't exist
 	}
 
-	return referent, nil
+	return instance, nil
 }
 
 func SerializeReplicationInstance(reference util.Reference, writer util.PacketWriter, stream InstanceWriter) error {
@@ -72,10 +75,10 @@ func SerializeReplicationInstance(reference util.Reference, writer util.PacketWr
     if err != nil {
         return err
     }
-	if instance == nil {
+	if instance.Instance == nil {
 		return errors.New("self is nil in serialize repl inst")
 	}
-	err = stream.WriteObject(reference, writer)
+	err = stream.WriteObject(instance.Reference, writer)
 	if err != nil {
 		return err
 	}
@@ -96,5 +99,5 @@ func SerializeReplicationInstance(reference util.Reference, writer util.PacketWr
 		return err
 	}
 
-	return stream.WriteObject(instance.Parent(), writer)
+	return stream.WriteObject(instance.Parent, writer)
 }

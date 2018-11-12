@@ -115,15 +115,15 @@ func (b *BitstreamWriter) WriteVector3(val rbxfile.ValueVector3) error {
 	xScaled = (xScaled >> 8 & 7) | ((xScaled & 0xFF) << 3)
 	yScaled = (yScaled >> 8 & 7) | ((yScaled & 0xFF) << 3)
 	zScaled = (zScaled >> 8 & 7) | ((zScaled & 0xFF) << 3)
-	err = b.bits(11, uint64(xScaled))
+	err = b.WriteBits(uint64(xScaled), 11)
 	if err != nil {
 		return err
 	}
-	err = b.bits(11, uint64(yScaled))
+	err = b.WriteBits(uint64(yScaled), 11)
 	if err != nil {
 		return err
 	}
-	err = b.bits(11, uint64(zScaled))
+	err = b.WriteBits(uint64(zScaled), 11)
 	return err
 }
 
@@ -305,65 +305,65 @@ func (b *BitstreamWriter) WriteSerializedValueGeneric(val rbxfile.Value, valueTy
 	}
 	var err error
 	switch valueType {
-	case PROP_TYPE_ENUM:
+	case schema.PROP_TYPE_ENUM:
 		err = b.WriteNewEnumValue(val.(rbxfile.ValueToken))
-	case PROP_TYPE_BINARYSTRING:
+	case schema.PROP_TYPE_BINARYSTRING:
 		err = b.WriteNewBinaryString(val.(rbxfile.ValueBinaryString))
-	case PROP_TYPE_PBOOL:
+	case schema.PROP_TYPE_PBOOL:
 		err = b.WritePBool(val.(rbxfile.ValueBool))
-	case PROP_TYPE_PSINT:
+	case schema.PROP_TYPE_PSINT:
 		err = b.WriteNewPSint(val.(rbxfile.ValueInt))
-	case PROP_TYPE_PFLOAT:
+	case schema.PROP_TYPE_PFLOAT:
 		err = b.WritePFloat(val.(rbxfile.ValueFloat))
-	case PROP_TYPE_PDOUBLE:
+	case schema.PROP_TYPE_PDOUBLE:
 		err = b.WritePDouble(val.(rbxfile.ValueDouble))
-	case PROP_TYPE_UDIM:
+	case schema.PROP_TYPE_UDIM:
 		err = b.WriteUDim(val.(rbxfile.ValueUDim))
-	case PROP_TYPE_UDIM2:
+	case schema.PROP_TYPE_UDIM2:
 		err = b.WriteUDim2(val.(rbxfile.ValueUDim2))
-	case PROP_TYPE_RAY:
+	case schema.PROP_TYPE_RAY:
 		err = b.WriteRay(val.(rbxfile.ValueRay))
-	case PROP_TYPE_FACES:
+	case schema.PROP_TYPE_FACES:
 		err = b.WriteFaces(val.(rbxfile.ValueFaces))
-	case PROP_TYPE_AXES:
+	case schema.PROP_TYPE_AXES:
 		err = b.WriteAxes(val.(rbxfile.ValueAxes))
-	case PROP_TYPE_BRICKCOLOR:
+	case schema.PROP_TYPE_BRICKCOLOR:
 		err = b.WriteBrickColor(val.(rbxfile.ValueBrickColor))
-	case PROP_TYPE_COLOR3:
+	case schema.PROP_TYPE_COLOR3:
 		err = b.WriteColor3(val.(rbxfile.ValueColor3))
-	case PROP_TYPE_COLOR3UINT8:
+	case schema.PROP_TYPE_COLOR3UINT8:
 		err = b.WriteColor3uint8(val.(rbxfile.ValueColor3uint8))
-	case PROP_TYPE_VECTOR2:
+	case schema.PROP_TYPE_VECTOR2:
 		err = b.WriteVector2(val.(rbxfile.ValueVector2))
-	case PROP_TYPE_VECTOR3_SIMPLE:
+	case schema.PROP_TYPE_VECTOR3_SIMPLE:
 		err = b.WriteVector3Simple(val.(rbxfile.ValueVector3))
-	case PROP_TYPE_VECTOR3_COMPLICATED:
+	case schema.PROP_TYPE_VECTOR3_COMPLICATED:
 		err = b.WriteVector3(val.(rbxfile.ValueVector3))
-	case PROP_TYPE_VECTOR2UINT16:
+	case schema.PROP_TYPE_VECTOR2UINT16:
 		err = b.WriteVector2int16(val.(rbxfile.ValueVector2int16))
-	case PROP_TYPE_VECTOR3UINT16:
+	case schema.PROP_TYPE_VECTOR3UINT16:
 		err = b.WriteVector3int16(val.(rbxfile.ValueVector3int16))
-	case PROP_TYPE_CFRAME_SIMPLE:
+	case schema.PROP_TYPE_CFRAME_SIMPLE:
 		err = b.WriteCFrameSimple(val.(rbxfile.ValueCFrame))
-	case PROP_TYPE_CFRAME_COMPLICATED:
+	case schema.PROP_TYPE_CFRAME_COMPLICATED:
 		err = b.WriteCFrame(val.(rbxfile.ValueCFrame))
-	case PROP_TYPE_NUMBERSEQUENCE:
+	case schema.PROP_TYPE_NUMBERSEQUENCE:
 		err = b.WriteNumberSequence(val.(rbxfile.ValueNumberSequence))
-	case PROP_TYPE_NUMBERSEQUENCEKEYPOINT:
+	case schema.PROP_TYPE_NUMBERSEQUENCEKEYPOINT:
 		err = b.WriteNumberSequenceKeypoint(val.(rbxfile.ValueNumberSequenceKeypoint))
-	case PROP_TYPE_NUMBERRANGE:
+	case schema.PROP_TYPE_NUMBERRANGE:
 		err = b.WriteNumberRange(val.(rbxfile.ValueNumberRange))
-	case PROP_TYPE_COLORSEQUENCE:
+	case schema.PROP_TYPE_COLORSEQUENCE:
 		err = b.WriteColorSequence(val.(rbxfile.ValueColorSequence))
-	case PROP_TYPE_COLORSEQUENCEKEYPOINT:
+	case schema.PROP_TYPE_COLORSEQUENCEKEYPOINT:
 		err = b.WriteColorSequenceKeypoint(val.(rbxfile.ValueColorSequenceKeypoint))
-	case PROP_TYPE_RECT2D:
+	case schema.PROP_TYPE_RECT2D:
 		err = b.WriteRect2D(val.(rbxfile.ValueRect2D))
-	case PROP_TYPE_PHYSICALPROPERTIES:
+	case schema.PROP_TYPE_PHYSICALPROPERTIES:
 		err = b.WritePhysicalProperties(val.(rbxfile.ValuePhysicalProperties))
-	case PROP_TYPE_INT64:
+	case schema.PROP_TYPE_INT64:
 		err = b.WriteVarsint64(int64(val.(rbxfile.ValueInt64)))
-	case PROP_TYPE_STRING_NO_CACHE:
+	case schema.PROP_TYPE_STRING_NO_CACHE:
 		err = b.WritePStringNoCache(val.(rbxfile.ValueString))
 	default:
 		return errors.New("Unsupported property type: " + strconv.Itoa(int(valueType)))
@@ -498,7 +498,7 @@ func (b *BitstreamWriter) WriteSystemAddressRaw(val rbxfile.ValueSystemAddress) 
 		addr.IP[i] = addr.IP[i] ^ 0xFF // bitwise NOT
 	}
 
-	err = b.bytes(4, addr.IP)
+	err = b.WriteN(addr.IP, 4)
 	if err != nil {
 		return err
 	}

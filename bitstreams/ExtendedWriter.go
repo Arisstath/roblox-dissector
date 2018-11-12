@@ -45,13 +45,13 @@ func (b *BitstreamWriter) WriteAddress(value *net.UDPAddr) error {
 	return err
 }
 
-func (b *BitstreamWriter) WriteJoinObject(reference util.Reference, context *util.CommunicationContext) error {
+func (b *BitstreamWriter) WriteJoinObject(reference util.Reference, scope string) error {
 	var err error
 	if reference.IsNull {
 		err = b.WriteByte(0)
 		return err
 	}
-	if reference.Scope == context.InstanceTopScope {
+	if reference.Scope == scope {
 		err = b.WriteByte(0xFF)
 	} else {
 		err = b.WriteByte(uint8(len(reference.Scope)))
@@ -78,9 +78,9 @@ func (b *BitstreamWriter) WriteReference(reference util.Reference, caches *util.
 	}
 	return b.WriteUint32LE(reference.Id)
 }
-func (b *BitstreamWriter) WriteAnyObject(reference util.Reference, context *util.CommunicationContext, caches *util.Caches, isJoinData bool) error {
+func (b *BitstreamWriter) WriteAnyObject(reference util.Reference, scope string, caches *util.Caches, isJoinData bool) error {
 	if isJoinData {
-		return b.WriteJoinObject(reference, context)
+		return b.WriteJoinObject(reference, scope)
 	}
 	return b.WriteReference(reference, caches)
 }
