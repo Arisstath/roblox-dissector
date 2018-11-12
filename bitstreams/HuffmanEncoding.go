@@ -147,7 +147,7 @@ func (tree *huffmanEncodingTree) encodeArray(stream *BitstreamWriter, value []by
 	var bitsUsed uint16
 	for counter := 0; counter < len(value); counter++ {
 		bitsUsed += tree.encodingTable[value[counter]].bitLength
-		err = stream.bits(int(tree.encodingTable[value[counter]].bitLength), tree.encodingTable[value[counter]].encoding)
+		err = stream.WriteBits(tree.encodingTable[value[counter]].encoding, int(tree.encodingTable[value[counter]].bitLength))
 		if err != nil {
 			return bitsUsed, err
 		}
@@ -157,7 +157,7 @@ func (tree *huffmanEncodingTree) encodeArray(stream *BitstreamWriter, value []by
 		for counter := 0; counter < 256; counter++ {
 			if tree.encodingTable[counter].bitLength > remainingBits {
 				bitsUsed += remainingBits
-				return bitsUsed, stream.bits(int(remainingBits), tree.encodingTable[counter].encoding >> (tree.encodingTable[counter].bitLength - remainingBits))
+				return bitsUsed, stream.WriteBits(tree.encodingTable[counter].encoding >> (tree.encodingTable[counter].bitLength - remainingBits), int(remainingBits))
 			}
 		}
 		return bitsUsed, errors.New("could not find encoding longer than remainingBits")

@@ -43,17 +43,17 @@ func (b *BitstreamReader) ReadCoordsMode1() (rbxfile.ValueVector3, error) {
 }
 func (b *BitstreamReader) ReadCoordsMode2() (rbxfile.ValueVector3, error) {
 	val := rbxfile.ValueVector3{}
-	x, err := b.bits(15)
+	x, err := b.ReadBits(15)
 	if err != nil {
 		return val, err
 	}
 	xShort := uint16((x >> 7) | ((x & 0x7F) << 8))
-	y, err := b.bits(14)
+	y, err := b.ReadBits(14)
 	if err != nil {
 		return val, err
 	}
 	yShort := uint16((y >> 6) | ((y & 0x3F) >> 8))
-	z, err := b.bits(15)
+	z, err := b.ReadBits(15)
 	if err != nil {
 		return val, err
 	}

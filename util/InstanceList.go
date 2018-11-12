@@ -1,21 +1,25 @@
 package util
 
 import "github.com/gskartwii/rbxfile"
-import "github.com/gskartwii/roblox-dissector/bitstreams"
 import "errors"
 
 type InstanceListScope struct {
     Instances map[uint32]*rbxfile.Instance
     AddCallbacks map[uint32][]func(*rbxfile.Instance)
+}
 
 type InstanceList struct {
     Scopes map[string]InstanceListScope
 }
 
-func (l *InstanceList) GetScope(ref Reference) map[uint32]*rbxfile.Instance {
+func NewInstanceList() *InstanceList {
+    return &InstanceList{Scopes: make(map[string]InstanceListScope)}
+}
+
+func (l *InstanceList) GetScope(ref Reference) InstanceListScope {
     scope, ok := l.Scopes[ref.Scope]
     if !ok {
-        scope = make(map[uint32]*rbxfile.Instance)
+        scope = InstanceListScope{Instances: make(map[uint32]*rbxfile.Instance), AddCallbacks: make(map[uint32][]func(*rbxfile.Instance))}
         l.Scopes[ref.Scope] = scope
     }
     return scope
@@ -25,7 +29,7 @@ func (l *InstanceList) CreateInstance(ref Reference) (*rbxfile.Instance, error) 
 	if ref.IsNull {
 		return nil, errors.New("Instance to create is nil!")
 	}
-	instance := l.GetScope(ref).Instance[ref.Id]
+	instance := l.GetScope(ref).Instances[ref.Id]
 	if instance == nil {
 		instance = &rbxfile.Instance{Reference: ref.String(), Properties: make(map[string]rbxfile.Value)}
 		l.AddInstance(ref, instance)

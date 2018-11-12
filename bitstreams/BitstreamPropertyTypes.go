@@ -3,6 +3,7 @@ package bitstreams
 import "net"
 import "errors"
 import "github.com/gskartwii/rbxfile"
+import "github.com/gskartwii/roblox-dissector/util"
 
 func (b *BitstreamReader) ReadUDim() (rbxfile.ValueUDim, error) {
 	var err error
@@ -136,7 +137,7 @@ func (b *BitstreamReader) ReadVector3() (rbxfile.ValueVector3, error) {
 		return b.ReadVector3Simple()
 	}
 	val := rbxfile.ValueVector3{}
-	x, err := b.bits(11)
+	x, err := b.ReadBits(11)
 	if err != nil {
 		return val, err
 	}
@@ -145,13 +146,13 @@ func (b *BitstreamReader) ReadVector3() (rbxfile.ValueVector3, error) {
 		xShort |= 0xFC00
 	}
 
-	y, err := b.bits(11)
+	y, err := b.ReadBits(11)
 	if err != nil {
 		return val, err
 	}
 	yShort := uint16((y >> 3) | ((y & 7) << 8))
 
-	z, err := b.bits(11)
+	z, err := b.ReadBits(11)
 	if err != nil {
 		return val, err
 	}
@@ -222,36 +223,29 @@ func (b *BitstreamReader) ReadBrickColor() (rbxfile.ValueBrickColor, error) {
 	return rbxfile.ValueBrickColor(val), err
 }
 
-func ConstructReferent(scope string, id uint32) *Referent {
-	if referentInt == 0 {
-        return &Referent{IsNull: true}
-	}
-    return &Referent{Scope: scope, Id: id}
-}
-
-func (b *BitstreamReader) ReadJoinObject(context *CommunicationContext) (Reference, error) {
+func (b *BitstreamReader) ReadJoinObject(context *util.CommunicationContext) (util.Reference, error) {
 	referent, referentInt, err := b.ReadJoinReferent(context)
-	serialized := ConstructReferent(referent, referentInt)
+	serialized := util.NewReference(referent, referentInt)
 
-	return Referent(serialized), err
+	return serialized, err
 }
-func (b *BitstreamReader) ReadObject(caches *Caches) (Reference, error) {
+func (b *BitstreamReader) ReadReference(caches *util.Caches) (util.Reference, error) {
 	var referentInt uint32
 	referent, err := b.ReadCachedScope(caches)
 	if err != nil && err != CacheReadOOB { // TODO: hack! physics packets may have problems with caches
-		return "", err
+		return util.Reference{}, err
 	}
 	if referent != "NULL" {
 		referentInt, err = b.ReadUint32LE()
 	}
 
-	serialized := objectToRef(referent, referentInt)
+	serialized := util.NewReference(referent, referentInt)
 
-	return Referent(serialized), err
+	return serialized, err
 }
 
 // TODO: Make this function uniform with other cache functions
-func (b *BitstreamReader) ReadSystemAddress(caches *Caches) (rbxfile.ValueSystemAddress, error) {
+func (b *BitstreamReader) ReadSystemAddress(caches *util.Caches) (rbxfile.ValueSystemAddress, error) {
 	cache := &caches.SystemAddress
 
 	thisAddress := rbxfile.ValueSystemAddress("0.0.0.0:0")
@@ -274,7 +268,7 @@ func (b *BitstreamReader) ReadSystemAddress(caches *Caches) (rbxfile.ValueSystem
 	}
 	thisAddr := net.UDPAddr{}
 	thisAddr.IP = make([]byte, 4)
-	err = b.bytes(thisAddr.IP, 4)
+	err = b.Read(thisAddr.IP)
 	if err != nil {
 		return thisAddress, err
 	}
@@ -302,7 +296,7 @@ func (b *BitstreamReader) ReadNewEnumValue(enumID uint16) (rbxfile.ValueToken, e
 	return token, err
 }
 
-func (b *BitstreamReader) ReadNewTuple(reader PacketReader) (rbxfile.ValueTuple, error) {
+func (b *BitstreamReader) ReadNewTuple(reader util.PacketReader) (rbxfile.ValueTuple, error) {
 	var tuple rbxfile.ValueTuple
 	tupleLen, err := b.ReadUintUTF8()
 	if err != nil {
@@ -323,12 +317,12 @@ func (b *BitstreamReader) ReadNewTuple(reader PacketReader) (rbxfile.ValueTuple,
 	return tuple, nil
 }
 
-func (b *BitstreamReader) ReadNewArray(reader PacketReader) (rbxfile.ValueArray, error) {
+func (b *BitstreamReader) ReadNewArray(reader util.PacketReader) (rbxfile.ValueArray, error) {
 	array, err := b.ReadNewTuple(reader)
 	return rbxfile.ValueArray(array), err
 }
 
-func (b *BitstreamReader) ReadNewDictionary(reader PacketReader) (rbxfile.ValueDictionary, error) {
+func (b *BitstreamReader) ReadNewDictionary(reader util.PacketReader) (rbxfile.ValueDictionary, error) {
 	var dictionary rbxfile.ValueDictionary
 	dictionaryLen, err := b.ReadUintUTF8()
 	if err != nil {
@@ -356,7 +350,7 @@ func (b *BitstreamReader) ReadNewDictionary(reader PacketReader) (rbxfile.ValueD
 	return dictionary, nil
 }
 
-func (b *BitstreamReader) ReadNewMap(reader PacketReader) (rbxfile.ValueMap, error) {
+func (b *BitstreamReader) ReadNewMap(reader util.PacketReader) (rbxfile.ValueMap, error) {
 	thisMap, err := b.ReadNewDictionary(reader)
 	return rbxfile.ValueMap(thisMap), err
 }

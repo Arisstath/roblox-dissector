@@ -1,6 +1,8 @@
 package bitstreams
+import "github.com/gskartwii/go-bitstream"
 import "encoding/binary"
 import "errors"
+import "math"
 
 func (b *BitstreamReader) ReadBool() (bool, error) {
 	res, err := b.ReadBit()
@@ -9,46 +11,46 @@ func (b *BitstreamReader) ReadBool() (bool, error) {
 
 func (b *BitstreamReader) ReadUint16BE() (uint16, error) {
 	dest := make([]byte, 2)
-	err := b.bytes(dest, 2)
+	err := b.Read(dest)
 	return binary.BigEndian.Uint16(dest), err
 }
 
 func (b *BitstreamReader) ReadUint16LE() (uint16, error) {
 	dest := make([]byte, 2)
-	err := b.bytes(dest, 2)
+	err := b.Read(dest)
 	return binary.LittleEndian.Uint16(dest), err
 }
 
 func (b *BitstreamReader) ReadBoolByte() (bool, error) {
-	res, err := b.bits(8)
+	res, err := b.ReadBits(8)
 	return res == 1, err
 }
 
 func (b *BitstreamReader) ReadUint24LE() (uint32, error) {
 	dest := make([]byte, 4)
-	err := b.bytes(dest, 3)
+    err := b.Read(dest[:3])
 	return binary.LittleEndian.Uint32(dest), err
 }
 
 func (b *BitstreamReader) ReadUint32BE() (uint32, error) {
 	dest := make([]byte, 4)
-	err := b.bytes(dest, 4)
+	err := b.Read(dest)
 	return binary.BigEndian.Uint32(dest), err
 }
 func (b *BitstreamReader) ReadUint32LE() (uint32, error) {
 	dest := make([]byte, 4)
-	err := b.bytes(dest, 4)
+	err := b.Read(dest)
 	return binary.LittleEndian.Uint32(dest), err
 }
 
 func (b *BitstreamReader) ReadUint64BE() (uint64, error) {
 	dest := make([]byte, 8)
-	err := b.bytes(dest, 8)
+	err := b.Read(dest)
 	return binary.BigEndian.Uint64(dest), err
 }
 
 func (b *BitstreamReader) ReadUint8() (uint8, error) {
-	res, err := b.bits(8)
+	res, err := b.ReadBits(8)
 	return uint8(res), err
 }
 
@@ -58,7 +60,7 @@ func (b *BitstreamReader) ReadString(length int) ([]byte, error) {
 		return dest, errors.New("Sanity check: string too long")
 	}
 	dest = make([]byte, length)
-	err := b.bytes(dest, length)
+	err := b.Read(dest)
 	return dest, err
 }
 
@@ -96,7 +98,7 @@ func (b *BitstreamReader) ReadFloat32BE() (float32, error) {
 }
 
 func (b *BitstreamReader) ReadFloat64BE() (float64, error) {
-	intf, err := b.bits(64)
+	intf, err := b.ReadBits(64)
 	if err != nil {
 		return 0.0, err
 	}
@@ -163,35 +165,35 @@ func (b *BitstreamWriter) WriteBool(value bool) error {
 func (b *BitstreamWriter) WriteUint16BE(value uint16) error {
 	dest := make([]byte, 2)
 	binary.BigEndian.PutUint16(dest, value)
-	return b.bytes(2, dest)
+	return b.WriteAll(dest)
 }
 func (b *BitstreamWriter) WriteUint16LE(value uint16) error {
 	dest := make([]byte, 2)
 	binary.LittleEndian.PutUint16(dest, value)
-	return b.bytes(2, dest)
+	return b.WriteAll(dest)
 }
 
 func (b *BitstreamWriter) WriteUint32BE(value uint32) error {
 	dest := make([]byte, 4)
 	binary.BigEndian.PutUint32(dest, value)
-	return b.bytes(4, dest)
+	return b.WriteAll(dest)
 }
 func (b *BitstreamWriter) WriteUint32LE(value uint32) error {
 	dest := make([]byte, 4)
 	binary.LittleEndian.PutUint32(dest, value)
-	return b.bytes(4, dest)
+	return b.WriteAll(dest)
 }
 
 func (b *BitstreamWriter) WriteUint64BE(value uint64) error {
 	dest := make([]byte, 8)
 	binary.BigEndian.PutUint64(dest, value)
-	return b.bytes(8, dest)
+	return b.WriteAll(dest)
 }
 
 func (b *BitstreamWriter) WriteUint24LE(value uint32) error {
 	dest := make([]byte, 4)
 	binary.LittleEndian.PutUint32(dest, value)
-	return b.bytes(3, dest)
+    return b.WriteAll(dest[:3])
 }
 
 func (b *BitstreamWriter) WriteFloat32BE(value float32) error {
@@ -199,7 +201,7 @@ func (b *BitstreamWriter) WriteFloat32BE(value float32) error {
 }
 
 func (b *BitstreamWriter) WriteFloat64BE(value float64) error {
-	return b.bits(64, math.Float64bits(value))
+	return b.WriteBits(math.Float64bits(value), 64)
 }
 
 func (b *BitstreamWriter) WriteFloat16BE(value float32, min float32, max float32) error {
@@ -215,7 +217,7 @@ func (b *BitstreamWriter) WriteBoolByte(value bool) error {
 }
 
 func (b *BitstreamWriter) WriteASCII(value string) error {
-	return b.allBytes([]byte(value))
+	return b.WriteAll([]byte(value))
 }
 
 func (b *BitstreamWriter) WriteUintUTF8(value uint32) error {

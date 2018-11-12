@@ -6,7 +6,7 @@ import "github.com/gskartwii/roblox-dissector/packets"
 import "strings"
 import "log"
 
-type decoderFunc func(*packets.packets.PacketReaderBitstream, PacketReader, *PacketLayers) (RakNetPacket, error)
+type decoderFunc func(*packets.PacketReaderBitstream, PacketReader, *PacketLayers) (RakNetPacket, error)
 
 var packetDecoders = map[byte]decoderFunc{
 	0x05: (*packets.PacketReaderBitstream).DecodeConnectionRequest1,

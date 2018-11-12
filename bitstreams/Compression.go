@@ -1,267 +1,16 @@
 package bitstreams
 import "github.com/DataDog/zstd"
 import "compress/gzip"
+import "encoding/binary"
+import "errors"
+import "fmt"
+import "bytes"
+import "github.com/gskartwii/go-bitstream"
 
 var englishTree *huffmanEncodingTree
 
 func init() {
-	englishTree = generateHuffmanFromFrequencyTable([]uint32{
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		722,
-		0,
-		0,
-		2,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		11084,
-		58,
-		63,
-		1,
-		0,
-		31,
-		0,
-		317,
-		64,
-		64,
-		44,
-		0,
-		695,
-		62,
-		980,
-		266,
-		69,
-		67,
-		56,
-		7,
-		73,
-		3,
-		14,
-		2,
-		69,
-		1,
-		167,
-		9,
-		1,
-		2,
-		25,
-		94,
-		0,
-		195,
-		139,
-		34,
-		96,
-		48,
-		103,
-		56,
-		125,
-		653,
-		21,
-		5,
-		23,
-		64,
-		85,
-		44,
-		34,
-		7,
-		92,
-		76,
-		147,
-		12,
-		14,
-		57,
-		15,
-		39,
-		15,
-		1,
-		1,
-		1,
-		2,
-		3,
-		0,
-		3611,
-		845,
-		1077,
-		1884,
-		5870,
-		841,
-		1057,
-		2501,
-		3212,
-		164,
-		531,
-		2019,
-		1330,
-		3056,
-		4037,
-		848,
-		47,
-		2586,
-		2919,
-		4771,
-		1707,
-		535,
-		1106,
-		152,
-		1243,
-		100,
-		0,
-		2,
-		0,
-		10,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0})
+	englishTree = generateHuffmanFromFrequencyTable([]uint32{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 722, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11084, 58, 63, 1, 0, 31, 0, 317, 64, 64, 44, 0, 695, 62, 980, 266, 69, 67, 56, 7, 73, 3, 14, 2, 69, 1, 167, 9, 1, 2, 25, 94, 0, 195, 139, 34, 96, 48, 103, 56, 125, 653, 21, 5, 23, 64, 85, 44, 34, 7, 92, 76, 147, 12, 14, 57, 15, 39, 15, 1, 1, 1, 2, 3, 0, 3611, 845, 1077, 1884, 5870, 841, 1057, 2501, 3212, 164, 531, 2019, 1330, 3056, 4037, 848, 47, 2586, 2919, 4771, 1707, 535, 1106, 152, 1243, 100, 0, 2, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
 }
 
 func (b *BitstreamReader) ReadCompressed(dest []byte, size uint32, unsignedData bool) error {
@@ -285,7 +34,7 @@ func (b *BitstreamReader) ReadCompressed(dest []byte, size uint32, unsignedData 
 			dest[currentByte] = byteMatch
 			currentByte--
 		} else {
-			err = b.bytes(dest, int(currentByte+1))
+            err = b.Read(dest[:currentByte+1])
 			return err
 		}
 	}
@@ -296,13 +45,13 @@ func (b *BitstreamReader) ReadCompressed(dest []byte, size uint32, unsignedData 
 	}
 
 	if res {
-		res, err := b.bits(4)
+		res, err := b.ReadBits(4)
 		if err != nil {
 			return err
 		}
 		dest[currentByte] = byte(res) | halfByteMatch
 	} else {
-		err := b.bytes(dest[currentByte:], 1)
+		err := b.Read(dest[currentByte:currentByte+1])
 		if err != nil {
 			return err
 		}
@@ -347,7 +96,7 @@ func (b *BitstreamReader) RegionToGZipStream() (*BitstreamReader, error) {
 	println("compressedLen:", compressedLen)
 
 	compressed := make([]byte, compressedLen)
-	err = b.bytes(compressed, int(compressedLen))
+	err = b.Read(compressed)
 	if err != nil {
 		return nil, err
 	}
@@ -373,7 +122,7 @@ func (b *BitstreamReader) RegionToZStdStream() (*BitstreamReader, error) {
 	}
 
 	compressed := make([]byte, compressedLen)
-	err = b.bytes(compressed, int(compressedLen))
+	err = b.Read(compressed)
 	if err != nil {
 		return nil, err
 	}
@@ -425,7 +174,13 @@ func (b *BitstreamWriter) WriteHuffman(value []byte) error {
 	if err != nil {
 		return err
 	}
-	return b.allBytes(encodedBuffer.Bytes())
+    n, err := b.Write(encodedBuffer.Bytes())
+    if err != nil {
+        return err
+    } else if n < encodedBuffer.Len() {
+        return errors.New("couldn't write enough bytes")
+    }
+    return nil
 }
 
 func (b *BitstreamWriter) WriteCompressed(value []byte, length uint32, isUnsigned bool) error {
@@ -443,7 +198,13 @@ func (b *BitstreamWriter) WriteCompressed(value []byte, length uint32, isUnsigne
 			return err
 		}
 		if !isMatch {
-			return b.allBytes(value[:currentByte+1])
+            n, err := b.Write(value[:currentByte+1])
+            if err != nil {
+                return err
+            } else if n < int(currentByte+1) {
+                return errors.New("couldn't write enough bytes")
+            }
+            return nil
 		}
 	}
 	lastByte := value[0]
@@ -452,7 +213,7 @@ func (b *BitstreamWriter) WriteCompressed(value []byte, length uint32, isUnsigne
 		if err != nil {
 			return err
 		}
-		return b.bits(4, uint64(lastByte))
+		return b.WriteBits(uint64(lastByte), 4)
 	}
 	err = b.WriteBool(false)
 	if err != nil {

@@ -2,13 +2,14 @@ package bitstreams
 
 import "github.com/gskartwii/rbxfile"
 import "github.com/gskartwii/roblox-dissector/schema"
+import "github.com/gskartwii/roblox-dissector/util"
 
 // ReplicationEvent describes an event invocation replication packet.
 type ReplicationEvent struct {
 	Arguments []rbxfile.Value
 }
 
-func DecodeReplicationProperty(reader PacketReader, thisBitstream SerializeReader, layers *PacketLayers, schema *schema.StaticEventSchema) (*ReplicationEvent, error) {
+func DecodeReplicationEvent(reader util.PacketReader, thisBitstream SerializeReader, schema *schema.StaticEventSchema) (*ReplicationEvent, error) {
 	var err error
 	var thisVal rbxfile.Value
 
@@ -25,7 +26,7 @@ func DecodeReplicationProperty(reader PacketReader, thisBitstream SerializeReade
 	return event, nil
 }
 
-func SerializeReplicationProperty(event *ReplicationEvent, writer PacketWriter, stream SerializeWriter, schema *schema.StaticEventSchema) error {
+func SerializeReplicationEvent(event *ReplicationEvent, writer util.PacketWriter, stream SerializeWriter, schema *schema.StaticEventSchema) error {
 	for i, argSchema := range schema.Arguments {
 		//println("Writing argument", argSchema.Type)
 		err := stream.WriteSerializedValue(event.Arguments[i], writer, argSchema.Type)

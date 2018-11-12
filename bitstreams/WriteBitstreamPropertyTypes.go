@@ -2,6 +2,8 @@ package bitstreams
 
 import "math"
 import "github.com/gskartwii/rbxfile"
+import "github.com/gskartwii/roblox-dissector/util"
+import "github.com/gskartwii/roblox-dissector/schema"
 import "errors"
 import "strconv"
 import "net"
@@ -254,41 +256,41 @@ func (b *BitstreamWriter) WriteVarsint64(val int64) error {
 }
 
 var typeToNetworkConvTable = map[rbxfile.Type]uint8{
-	rbxfile.TypeString:                 PROP_TYPE_STRING,
-	rbxfile.TypeBinaryString:           PROP_TYPE_BINARYSTRING,
-	rbxfile.TypeProtectedString:        PROP_TYPE_PROTECTEDSTRING_0,
-	rbxfile.TypeContent:                PROP_TYPE_CONTENT,
-	rbxfile.TypeBool:                   PROP_TYPE_PBOOL,
-	rbxfile.TypeInt:                    PROP_TYPE_PSINT,
-	rbxfile.TypeFloat:                  PROP_TYPE_PFLOAT,
-	rbxfile.TypeDouble:                 PROP_TYPE_PDOUBLE,
-	rbxfile.TypeUDim:                   PROP_TYPE_UDIM,
-	rbxfile.TypeUDim2:                  PROP_TYPE_UDIM2,
-	rbxfile.TypeRay:                    PROP_TYPE_RAY,
-	rbxfile.TypeFaces:                  PROP_TYPE_FACES,
-	rbxfile.TypeAxes:                   PROP_TYPE_AXES,
-	rbxfile.TypeBrickColor:             PROP_TYPE_BRICKCOLOR,
-	rbxfile.TypeColor3:                 PROP_TYPE_COLOR3,
-	rbxfile.TypeVector2:                PROP_TYPE_VECTOR2,
-	rbxfile.TypeVector3:                PROP_TYPE_VECTOR3_COMPLICATED,
-	rbxfile.TypeCFrame:                 PROP_TYPE_CFRAME_COMPLICATED,
-	rbxfile.TypeToken:                  PROP_TYPE_ENUM,
-	rbxfile.TypeReference:              PROP_TYPE_INSTANCE,
-	rbxfile.TypeVector3int16:           PROP_TYPE_VECTOR3UINT16,
-	rbxfile.TypeVector2int16:           PROP_TYPE_VECTOR2UINT16,
-	rbxfile.TypeNumberSequence:         PROP_TYPE_NUMBERSEQUENCE,
-	rbxfile.TypeColorSequence:          PROP_TYPE_COLORSEQUENCE,
-	rbxfile.TypeNumberRange:            PROP_TYPE_NUMBERRANGE,
-	rbxfile.TypeRect2D:                 PROP_TYPE_RECT2D,
-	rbxfile.TypePhysicalProperties:     PROP_TYPE_PHYSICALPROPERTIES,
-	rbxfile.TypeColor3uint8:            PROP_TYPE_COLOR3UINT8,
-	rbxfile.TypeNumberSequenceKeypoint: PROP_TYPE_NUMBERSEQUENCEKEYPOINT,
-	rbxfile.TypeColorSequenceKeypoint:  PROP_TYPE_COLORSEQUENCEKEYPOINT,
-	rbxfile.TypeSystemAddress:          PROP_TYPE_SYSTEMADDRESS,
-	rbxfile.TypeMap:                    PROP_TYPE_MAP,
-	rbxfile.TypeDictionary:             PROP_TYPE_DICTIONARY,
-	rbxfile.TypeArray:                  PROP_TYPE_ARRAY,
-	rbxfile.TypeTuple:                  PROP_TYPE_TUPLE,
+	rbxfile.TypeString:                 schema.PROP_TYPE_STRING,
+	rbxfile.TypeBinaryString:           schema.PROP_TYPE_BINARYSTRING,
+	rbxfile.TypeProtectedString:        schema.PROP_TYPE_PROTECTEDSTRING_0,
+	rbxfile.TypeContent:                schema.PROP_TYPE_CONTENT,
+	rbxfile.TypeBool:                   schema.PROP_TYPE_PBOOL,
+	rbxfile.TypeInt:                    schema.PROP_TYPE_PSINT,
+	rbxfile.TypeFloat:                  schema.PROP_TYPE_PFLOAT,
+	rbxfile.TypeDouble:                 schema.PROP_TYPE_PDOUBLE,
+	rbxfile.TypeUDim:                   schema.PROP_TYPE_UDIM,
+	rbxfile.TypeUDim2:                  schema.PROP_TYPE_UDIM2,
+	rbxfile.TypeRay:                    schema.PROP_TYPE_RAY,
+	rbxfile.TypeFaces:                  schema.PROP_TYPE_FACES,
+	rbxfile.TypeAxes:                   schema.PROP_TYPE_AXES,
+	rbxfile.TypeBrickColor:             schema.PROP_TYPE_BRICKCOLOR,
+	rbxfile.TypeColor3:                 schema.PROP_TYPE_COLOR3,
+	rbxfile.TypeVector2:                schema.PROP_TYPE_VECTOR2,
+	rbxfile.TypeVector3:                schema.PROP_TYPE_VECTOR3_COMPLICATED,
+	rbxfile.TypeCFrame:                 schema.PROP_TYPE_CFRAME_COMPLICATED,
+	rbxfile.TypeToken:                  schema.PROP_TYPE_ENUM,
+	rbxfile.TypeReference:              schema.PROP_TYPE_INSTANCE,
+	rbxfile.TypeVector3int16:           schema.PROP_TYPE_VECTOR3UINT16,
+	rbxfile.TypeVector2int16:           schema.PROP_TYPE_VECTOR2UINT16,
+	rbxfile.TypeNumberSequence:         schema.PROP_TYPE_NUMBERSEQUENCE,
+	rbxfile.TypeColorSequence:          schema.PROP_TYPE_COLORSEQUENCE,
+	rbxfile.TypeNumberRange:            schema.PROP_TYPE_NUMBERRANGE,
+	rbxfile.TypeRect2D:                 schema.PROP_TYPE_RECT2D,
+	rbxfile.TypePhysicalProperties:     schema.PROP_TYPE_PHYSICALPROPERTIES,
+	rbxfile.TypeColor3uint8:            schema.PROP_TYPE_COLOR3UINT8,
+	rbxfile.TypeNumberSequenceKeypoint: schema.PROP_TYPE_NUMBERSEQUENCEKEYPOINT,
+	rbxfile.TypeColorSequenceKeypoint:  schema.PROP_TYPE_COLORSEQUENCEKEYPOINT,
+	rbxfile.TypeSystemAddress:          schema.PROP_TYPE_SYSTEMADDRESS,
+	rbxfile.TypeMap:                    schema.PROP_TYPE_MAP,
+	rbxfile.TypeDictionary:             schema.PROP_TYPE_DICTIONARY,
+	rbxfile.TypeArray:                  schema.PROP_TYPE_ARRAY,
+	rbxfile.TypeTuple:                  schema.PROP_TYPE_TUPLE,
 }
 
 func typeToNetwork(val rbxfile.Value) uint8 {
@@ -369,7 +371,7 @@ func (b *BitstreamWriter) WriteSerializedValueGeneric(val rbxfile.Value, valueTy
 	return err
 }
 
-func (b *BitstreamWriter) WriteNewTypeAndValue(val rbxfile.Value, writer PacketWriter) error {
+func (b *BitstreamWriter) WriteNewTypeAndValue(val rbxfile.Value, writer util.PacketWriter) error {
 	var err error
 	valueType := typeToNetwork(val)
 	//println("Writing typeandvalue", valueType)
@@ -383,7 +385,7 @@ func (b *BitstreamWriter) WriteNewTypeAndValue(val rbxfile.Value, writer PacketW
 	return b.WriteSerializedValue(val, writer, valueType)
 }
 
-func (b *BitstreamWriter) WriteNewTuple(val rbxfile.ValueTuple, writer PacketWriter) error {
+func (b *BitstreamWriter) WriteNewTuple(val rbxfile.ValueTuple, writer util.PacketWriter) error {
 	err := b.WriteUintUTF8(uint32(len(val)))
 	if err != nil {
 		return err
@@ -396,11 +398,11 @@ func (b *BitstreamWriter) WriteNewTuple(val rbxfile.ValueTuple, writer PacketWri
 	}
 	return nil
 }
-func (b *BitstreamWriter) WriteNewArray(val rbxfile.ValueArray, writer PacketWriter) error {
+func (b *BitstreamWriter) WriteNewArray(val rbxfile.ValueArray, writer util.PacketWriter) error {
 	return b.WriteNewTuple(rbxfile.ValueTuple(val), writer)
 }
 
-func (b *BitstreamWriter) WriteNewDictionary(val rbxfile.ValueDictionary, writer PacketWriter) error {
+func (b *BitstreamWriter) WriteNewDictionary(val rbxfile.ValueDictionary, writer util.PacketWriter) error {
 	err := b.WriteUintUTF8(uint32(len(val)))
 	if err != nil {
 		return err
@@ -421,7 +423,7 @@ func (b *BitstreamWriter) WriteNewDictionary(val rbxfile.ValueDictionary, writer
 	}
 	return nil
 }
-func (b *BitstreamWriter) WriteNewMap(val rbxfile.ValueMap, writer PacketWriter) error {
+func (b *BitstreamWriter) WriteNewMap(val rbxfile.ValueMap, writer util.PacketWriter) error {
 	return b.WriteNewDictionary(rbxfile.ValueDictionary(val), writer)
 }
 
@@ -509,7 +511,7 @@ func (b *BitstreamWriter) WriteSystemAddressRaw(val rbxfile.ValueSystemAddress) 
 	return b.WriteUint16BE(uint16(addr.Port))
 }
 
-func (b *BitstreamWriter) WriteSystemAddress(val rbxfile.ValueSystemAddress, caches *Caches) error {
+func (b *BitstreamWriter) WriteSystemAddress(val rbxfile.ValueSystemAddress, caches *util.Caches) error {
 	return b.WriteCachedSystemAddress(val, caches)
 }
 func (b *JoinSerializeWriter) WriteSystemAddress(val rbxfile.ValueSystemAddress) error {

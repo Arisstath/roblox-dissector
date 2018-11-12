@@ -5,53 +5,54 @@ import (
 
 	"github.com/gskartwii/rbxfile"
     "github.com/gskartwii/roblox-dissector/schema"
+    "github.com/gskartwii/roblox-dissector/util"
 )
 
 type SerializeReader interface {
-	ReadSerializedValue(reader PacketReader, valType uint8, enumId uint16) (rbxfile.Value, error)
-	ReadObject(reader PacketReader) (Referent, error)
+	ReadSerializedValue(reader util.PacketReader, valType uint8, enumId uint16) (rbxfile.Value, error)
+	ReadObject(reader util.PacketReader) (util.Reference, error)
 
 	// We must also ask for the following methods for compatibility reasons.
 	// Any better way to do this? I can't tell Go that the interface
 	// will always implement everything from *BitstreamReader...
-	readUint16BE() (uint16, error)
-	readBoolByte() (bool, error)
-	readUint8() (uint8, error)
+	ReadUint16BE() (uint16, error)
+	ReadBoolByte() (bool, error)
+	ReadUint8() (uint8, error)
 }
 type InstanceReader interface {
 	SerializeReader
-	ReadProperties(schema []schema.StaticPropertySchema, properties map[string]rbxfile.Value, reader PacketReader) error
+	ReadProperties(schema []schema.StaticPropertySchema, properties map[string]rbxfile.Value, reader util.PacketReader) error
 }
 
 type SerializeWriter interface {
-	WriteSerializedValue(val rbxfile.Value, writer PacketWriter, valType uint8) error
-	WriteObject(object *rbxfile.Instance, writer PacketWriter) error
+	WriteSerializedValue(val rbxfile.Value, writer util.PacketWriter, valType uint8) error
+	WriteObject(object util.Reference, writer util.PacketWriter) error
 
-	writeUint16BE(uint16) error
-	writeBoolByte(bool) error
+	WriteUint16BE(uint16) error
+	WriteBoolByte(bool) error
 	WriteByte(uint8) error
 }
 type InstanceWriter interface {
 	SerializeWriter
-	WriteProperties(schema []schema.StaticPropertySchema, properties map[string]rbxfile.Value, writer PacketWriter) error
+	WriteProperties(schema []schema.StaticPropertySchema, properties map[string]rbxfile.Value, writer util.PacketWriter) error
 }
 
-func (b *BitstreamReader) ReadSerializedValue(reader PacketReader, valueType uint8, enumId uint16) (rbxfile.Value, error) {
+func (b *BitstreamReader) ReadSerializedValue(reader util.PacketReader, valueType uint8, enumId uint16) (rbxfile.Value, error) {
 	var err error
 	var result rbxfile.Value
 	switch valueType {
-	case PROP_TYPE_STRING:
+	case schema.PROP_TYPE_STRING:
 		result, err = b.ReadNewPString(reader.Caches())
-	case PROP_TYPE_PROTECTEDSTRING_0:
+	case schema.PROP_TYPE_PROTECTEDSTRING_0:
 		result, err = b.ReadNewProtectedString(reader.Caches())
-	case PROP_TYPE_PROTECTEDSTRING_1:
+	case schema.PROP_TYPE_PROTECTEDSTRING_1:
 		result, err = b.ReadNewProtectedString(reader.Caches())
-	case PROP_TYPE_PROTECTEDSTRING_2:
+	case schema.PROP_TYPE_PROTECTEDSTRING_2:
 		result, err = b.ReadNewProtectedString(reader.Caches())
-	case PROP_TYPE_PROTECTEDSTRING_3:
+	case schema.PROP_TYPE_PROTECTEDSTRING_3:
 		result, err = b.ReadNewProtectedString(reader.Caches())
-	case PROP_TYPE_INSTANCE:
-		var referent Referent
+	case schema.PROP_TYPE_INSTANCE:
+		var referent util.Reference
 		referent, err = b.ReadObject(reader)
 		if err != nil {
 			return nil, err
@@ -59,27 +60,27 @@ func (b *BitstreamReader) ReadSerializedValue(reader PacketReader, valueType uin
 		// Note: NULL is a valid referent!
 		instance, _ := reader.Context().InstancesByReferent.TryGetInstance(referent)
 		result = rbxfile.ValueReference{instance}
-	case PROP_TYPE_CONTENT:
+	case schema.PROP_TYPE_CONTENT:
 		result, err = b.ReadNewContent(reader.Caches())
-	case PROP_TYPE_SYSTEMADDRESS:
+	case schema.PROP_TYPE_SYSTEMADDRESS:
 		result, err = b.ReadSystemAddress(reader.Caches())
-	case PROP_TYPE_TUPLE:
+	case schema.PROP_TYPE_TUPLE:
 		result, err = b.ReadNewTuple(reader)
-	case PROP_TYPE_ARRAY:
+	case schema.PROP_TYPE_ARRAY:
 		result, err = b.ReadNewArray(reader)
-	case PROP_TYPE_DICTIONARY:
+	case schema.PROP_TYPE_DICTIONARY:
 		result, err = b.ReadNewDictionary(reader)
-	case PROP_TYPE_MAP:
+	case schema.PROP_TYPE_MAP:
 		result, err = b.ReadNewMap(reader)
 	default:
 		return b.ReadSerializedValueGeneric(reader, valueType, enumId)
 	}
 	return result, err
 }
-func (b *BitstreamReader) ReadObject(reader PacketReader) (Referent, error) {
-	return b.ReadObject(reader.Caches())
+func (b *BitstreamReader) ReadObject(reader util.PacketReader) (util.Reference, error) {
+	return b.ReadReference(reader.Caches())
 }
-func (b *BitstreamReader) ReadProperties(schema []schema.StaticPropertySchema, properties map[string]rbxfile.Value, reader PacketReader) error {
+func (b *BitstreamReader) ReadProperties(schema []schema.StaticPropertySchema, properties map[string]rbxfile.Value, reader util.PacketReader) error {
 	for i := 0; i < 2; i++ {
 		propertyIndex, err := b.ReadUint8()
 		last := "none"
@@ -103,45 +104,45 @@ func (b *BitstreamReader) ReadProperties(schema []schema.StaticPropertySchema, p
 	return nil
 }
 
-func (b *BitstreamWriter) WriteSerializedValue(val rbxfile.Value, writer PacketWriter, valueType uint8) error {
+func (b *BitstreamWriter) WriteSerializedValue(val rbxfile.Value, writer util.PacketWriter, valueType uint8) error {
 	if val == nil {
 		return nil
 	}
 	var err error
 	switch valueType {
-	case PROP_TYPE_STRING:
+	case schema.PROP_TYPE_STRING:
 		err = b.WriteNewPString(val.(rbxfile.ValueString), writer.Caches())
-	case PROP_TYPE_PROTECTEDSTRING_0:
+	case schema.PROP_TYPE_PROTECTEDSTRING_0:
 		err = b.WriteNewProtectedString(val.(rbxfile.ValueProtectedString), writer.Caches())
-	case PROP_TYPE_PROTECTEDSTRING_1:
+	case schema.PROP_TYPE_PROTECTEDSTRING_1:
 		err = b.WriteNewProtectedString(val.(rbxfile.ValueProtectedString), writer.Caches())
-	case PROP_TYPE_PROTECTEDSTRING_2:
+	case schema.PROP_TYPE_PROTECTEDSTRING_2:
 		err = b.WriteNewProtectedString(val.(rbxfile.ValueProtectedString), writer.Caches())
-	case PROP_TYPE_PROTECTEDSTRING_3:
+	case schema.PROP_TYPE_PROTECTEDSTRING_3:
 		err = b.WriteNewProtectedString(val.(rbxfile.ValueProtectedString), writer.Caches())
-	case PROP_TYPE_INSTANCE:
+	case schema.PROP_TYPE_INSTANCE:
 		err = b.WriteObject(val.(rbxfile.ValueReference).Instance, writer.Caches())
-	case PROP_TYPE_CONTENT:
+	case schema.PROP_TYPE_CONTENT:
 		err = b.WriteNewContent(val.(rbxfile.ValueContent), writer.Caches())
-	case PROP_TYPE_SYSTEMADDRESS:
+	case schema.PROP_TYPE_SYSTEMADDRESS:
 		err = b.WriteSystemAddress(val.(rbxfile.ValueSystemAddress), writer.Caches())
-	case PROP_TYPE_TUPLE:
+	case schema.PROP_TYPE_TUPLE:
 		err = b.WriteNewTuple(val.(rbxfile.ValueTuple), writer)
-	case PROP_TYPE_ARRAY:
+	case schema.PROP_TYPE_ARRAY:
 		err = b.WriteNewArray(val.(rbxfile.ValueArray), writer)
-	case PROP_TYPE_DICTIONARY:
+	case schema.PROP_TYPE_DICTIONARY:
 		err = b.WriteNewDictionary(val.(rbxfile.ValueDictionary), writer)
-	case PROP_TYPE_MAP:
+	case schema.PROP_TYPE_MAP:
 		err = b.WriteNewMap(val.(rbxfile.ValueMap), writer)
 	default:
 		return b.WriteSerializedValueGeneric(val, valueType)
 	}
 	return err
 }
-func (b *BitstreamWriter) WriteObject(object *rbxfile.Instance, writer PacketWriter) error {
-	return b.WriteObject(object, writer.Caches())
+func (b *BitstreamWriter) WriteObject(object util.Reference, writer util.PacketWriter) error {
+	return b.WriteReference(object, writer.Caches())
 }
-func (b *BitstreamWriter) WriteProperties(schema []schema.StaticPropertySchema, properties map[string]rbxfile.Value, writer PacketWriter) error {
+func (b *BitstreamWriter) WriteProperties(schema []schema.StaticPropertySchema, properties map[string]rbxfile.Value, writer util.PacketWriter) error {
 	var err error
 	for i := 0; i < len(schema); i++ {
 		if is2ndRoundType(schema[i].Type) {
@@ -240,22 +241,22 @@ func (b *JoinSerializeReader) ReadSystemAddress() (rbxfile.ValueSystemAddress, e
 	return rbxfile.ValueSystemAddress(thisAddr.String()), nil
 }
 
-func (b *JoinSerializeReader) ReadSerializedValue(reader PacketReader, valueType uint8, enumId uint16) (rbxfile.Value, error) {
+func (b *JoinSerializeReader) ReadSerializedValue(reader util.PacketReader, valueType uint8, enumId uint16) (rbxfile.Value, error) {
 	var err error
 	var result rbxfile.Value
 	switch valueType {
-	case PROP_TYPE_STRING:
+	case schema.PROP_TYPE_STRING:
 		result, err = b.ReadNewPString()
-	case PROP_TYPE_PROTECTEDSTRING_0:
+	case schema.PROP_TYPE_PROTECTEDSTRING_0:
 		result, err = b.ReadNewProtectedString()
-	case PROP_TYPE_PROTECTEDSTRING_1:
+	case schema.PROP_TYPE_PROTECTEDSTRING_1:
 		result, err = b.ReadNewProtectedString()
-	case PROP_TYPE_PROTECTEDSTRING_2:
+	case schema.PROP_TYPE_PROTECTEDSTRING_2:
 		result, err = b.ReadNewProtectedString()
-	case PROP_TYPE_PROTECTEDSTRING_3:
+	case schema.PROP_TYPE_PROTECTEDSTRING_3:
 		result, err = b.ReadNewProtectedString()
-	case PROP_TYPE_INSTANCE:
-		var referent Referent
+	case schema.PROP_TYPE_INSTANCE:
+		var referent util.Reference
 		referent, err = b.ReadJoinObject(reader.Context())
 		if err != nil {
 			return nil, err
@@ -263,19 +264,19 @@ func (b *JoinSerializeReader) ReadSerializedValue(reader PacketReader, valueType
 		// Note: NULL is a valid referent!
 		instance, _ := reader.Context().InstancesByReferent.TryGetInstance(referent)
 		result = rbxfile.ValueReference{instance}
-	case PROP_TYPE_CONTENT:
+	case schema.PROP_TYPE_CONTENT:
 		result, err = b.ReadNewContent()
-	case PROP_TYPE_SYSTEMADDRESS:
+	case schema.PROP_TYPE_SYSTEMADDRESS:
 		result, err = b.ReadSystemAddress()
 	default:
 		return b.BitstreamReader.ReadSerializedValueGeneric(reader, valueType, enumId)
 	}
 	return result, err
 }
-func (b *JoinSerializeReader) ReadObject(reader PacketReader) (Referent, error) {
+func (b *JoinSerializeReader) ReadObject(reader util.PacketReader) (util.Reference, error) {
 	return b.ReadJoinObject(reader.Context())
 }
-func (b *JoinSerializeReader) ReadProperties(schema []schema.StaticPropertySchema, properties map[string]rbxfile.Value, reader PacketReader) error {
+func (b *JoinSerializeReader) ReadProperties(schema []schema.StaticPropertySchema, properties map[string]rbxfile.Value, reader util.PacketReader) error {
 	propertyIndex, err := b.ReadUint8()
 	last := "none"
 	for err == nil && propertyIndex != 0xFF {
@@ -298,37 +299,37 @@ type JoinSerializeWriter struct {
 	*BitstreamWriter
 }
 
-func (b *JoinSerializeWriter) WriteSerializedValue(val rbxfile.Value, writer PacketWriter, valueType uint8) error {
+func (b *JoinSerializeWriter) WriteSerializedValue(val rbxfile.Value, writer util.PacketWriter, valueType uint8) error {
 	if val == nil {
 		return nil
 	}
 	var err error
 	switch valueType {
-	case PROP_TYPE_STRING:
+	case schema.PROP_TYPE_STRING:
 		err = b.WriteNewPString(val.(rbxfile.ValueString))
-	case PROP_TYPE_PROTECTEDSTRING_0:
+	case schema.PROP_TYPE_PROTECTEDSTRING_0:
 		err = b.WriteNewProtectedString(val.(rbxfile.ValueProtectedString))
-	case PROP_TYPE_PROTECTEDSTRING_1:
+	case schema.PROP_TYPE_PROTECTEDSTRING_1:
 		err = b.WriteNewProtectedString(val.(rbxfile.ValueProtectedString))
-	case PROP_TYPE_PROTECTEDSTRING_2:
+	case schema.PROP_TYPE_PROTECTEDSTRING_2:
 		err = b.WriteNewProtectedString(val.(rbxfile.ValueProtectedString))
-	case PROP_TYPE_PROTECTEDSTRING_3:
+	case schema.PROP_TYPE_PROTECTEDSTRING_3:
 		err = b.WriteNewProtectedString(val.(rbxfile.ValueProtectedString))
-	case PROP_TYPE_INSTANCE:
+	case schema.PROP_TYPE_INSTANCE:
 		err = b.WriteObject(val.(rbxfile.ValueReference).Instance, writer)
-	case PROP_TYPE_CONTENT:
+	case schema.PROP_TYPE_CONTENT:
 		err = b.WriteNewContent(val.(rbxfile.ValueContent))
-	case PROP_TYPE_SYSTEMADDRESS:
+	case schema.PROP_TYPE_SYSTEMADDRESS:
 		err = b.WriteSystemAddress(val.(rbxfile.ValueSystemAddress))
 	default:
 		return b.WriteSerializedValueGeneric(val, valueType)
 	}
 	return err
 }
-func (b *JoinSerializeWriter) WriteObject(object *rbxfile.Instance, writer PacketWriter) error {
+func (b *JoinSerializeWriter) WriteObject(reference util.Reference, writer util.PacketWriter) error {
 	return b.BitstreamWriter.WriteJoinObject(object, writer.Context())
 }
-func (b *JoinSerializeWriter) WriteProperties(schema []schema.StaticPropertySchema, properties map[string]rbxfile.Value, writer PacketWriter) error {
+func (b *JoinSerializeWriter) WriteProperties(schema []schema.StaticPropertySchema, properties map[string]rbxfile.Value, writer util.PacketWriter) error {
 	var err error
 	for i := 0; i < len(schema); i++ {
 		name := schema[i].Name

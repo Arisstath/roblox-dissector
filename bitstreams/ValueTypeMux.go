@@ -1,6 +1,9 @@
 package bitstreams
+import "github.com/gskartwii/roblox-dissector/util"
+import "github.com/gskartwii/rbxfile"
+
 // readNewTypeAndValue is never used by join data!
-func (b *BitstreamReader) ReadNewTypeAndValue(reader PacketReader) (rbxfile.Value, error) {
+func (b *BitstreamReader) ReadNewTypeAndValue(reader util.PacketReader) (rbxfile.Value, error) {
 	var val rbxfile.Value
 	thisType, err := b.ReadUint8()
 	if err != nil {
@@ -19,7 +22,7 @@ func (b *BitstreamReader) ReadNewTypeAndValue(reader PacketReader) (rbxfile.Valu
 	return val, err
 }
 
-func (b *BitstreamReader) ReadSerializedValueGeneric(reader PacketReader, valueType uint8, enumId uint16) (rbxfile.Value, error) {
+func (b *BitstreamReader) ReadSerializedValueGeneric(reader util.PacketReader, valueType uint8, enumId uint16) (rbxfile.Value, error) {
 	var err error
 	var result rbxfile.Value
 	var temp string

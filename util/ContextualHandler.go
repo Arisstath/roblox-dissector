@@ -3,6 +3,7 @@ import "github.com/gskartwii/rbxfile"
 import "github.com/gskartwii/roblox-dissector/schema"
 import "net"
 import "bytes"
+import "fmt"
 
 type CommunicationContext struct {
     *InstanceList
@@ -26,10 +27,8 @@ type CommunicationContext struct {
 
 func NewCommunicationContext() *CommunicationContext {
 	return &CommunicationContext{
-		InstancesByReferent: InstanceList{
-			Instances: make(map[string]*rbxfile.Instance),
-		},
-		InstanceTopScope: "WARNING_UNASSIGNED_TOP_SCOPE",
+		InstanceList: NewInstanceList(),
+        InstanceTopScope: "WARNING_UNASSIGNED_TOP_SCOPE",
 	}
 }
 
@@ -45,16 +44,23 @@ type Reference struct {
     IsNull bool
 }
 
-func NewReference(scope string, id uint32) *Reference {
-    return &Reference{IsNull: id == 0, Scope: scope, Id: id}
+func NewReference(scope string, id uint32) Reference {
+    return Reference{IsNull: id == 0, Scope: scope, Id: id}
 }
+func (ref *Reference) String() string {
+    if ref.IsNull {
+        return "nil"
+    }
+    return fmt.Sprintf("%s_%d", ref.Scope, ref.Id)
+}
+
 type ContextualHandler interface {
     SetCaches(*Caches)
 	Caches() *Caches
-    TryGetInstance(*Reference) *rbxfile.Instance
-    OnAddInstance(*Reference, func(*rbxfile.Instance))
-    CreateInstance(*Reference)
-    Schema() *schems.StaticSchema
+    TryGetInstance(Reference) (*rbxfile.Instance, error)
+    OnAddInstance(Reference, func(*rbxfile.Instance))
+    CreateInstance(Reference) (*rbxfile.Instance, error)
+    Schema() *schema.StaticSchema
 }
 
 // PacketReader is an interface that can be passed to packet decoders

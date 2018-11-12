@@ -1,12 +1,10 @@
 package bitstreams
 
 import "github.com/gskartwii/go-bitstream"
+import "github.com/gskartwii/roblox-dissector/util"
 import "errors"
 import "net"
-import "math"
-import "bytes"
 import "io"
-import "fmt"
 
 type BitstreamReader struct {
 	*bitstream.BitReader
@@ -21,7 +19,7 @@ func (b *BitstreamReader) ReadAddress() (*net.UDPAddr, error) {
 		return nil, errors.New("Unsupported version")
 	}
 	var address net.IP = make([]byte, 4)
-	err = b.bytes(address, 4)
+	err = b.Read(address)
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +34,7 @@ func (b *BitstreamReader) ReadAddress() (*net.UDPAddr, error) {
 	return &net.UDPAddr{address, int(port), ""}, nil
 }
 
-func (b *BitstreamReader) ReadJoinReferent(context *CommunicationContext) (string, uint32, error) {
+func (b *BitstreamReader) ReadJoinReferent(context *util.CommunicationContext) (string, uint32, error) {
 	stringLen, err := b.ReadUint8()
 	if err != nil {
 		return "", 0, err

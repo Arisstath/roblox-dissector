@@ -1,14 +1,26 @@
 package bitstreams
 
 import "github.com/gskartwii/go-bitstream"
-import "encoding/binary"
+import "github.com/gskartwii/roblox-dissector/util"
 import "net"
-import "github.com/gskartwii/rbxfile"
-import "math"
-import "bytes"
+import "errors"
 
 type BitstreamWriter struct {
 	*bitstream.BitWriter
+}
+
+func (b *BitstreamWriter) WriteN(data []byte, n int) error {
+    m, err := b.Write(data)
+    if err != nil {
+        return err
+    } else if m < n {
+        return errors.New("couldn't write enough bytes")
+    }
+    return nil
+}
+
+func (b *BitstreamWriter) WriteAll(data []byte) error {
+    return b.WriteN(data, len(data))
 }
 
 func (b *BitstreamWriter) WriteAddress(value *net.UDPAddr) error {
@@ -19,7 +31,7 @@ func (b *BitstreamWriter) WriteAddress(value *net.UDPAddr) error {
 	for i := 0; i < len(value.IP); i++ {
 		value.IP[i] = value.IP[i] ^ 0xFF // bitwise NOT
 	}
-	err = b.bytes(4, value.IP[len(value.IP)-4:])
+	err = b.WriteN(value.IP[len(value.IP)-4:], 4)
 	if err != nil {
 		return err
 	}
@@ -33,9 +45,9 @@ func (b *BitstreamWriter) WriteAddress(value *net.UDPAddr) error {
 	return err
 }
 
-func (b *BitstreamWriter) WriteJoinObject(reference *Reference, context *CommunicationContext) error {
+func (b *BitstreamWriter) WriteJoinObject(reference util.Reference, context *util.CommunicationContext) error {
 	var err error
-	if reference == nil || reference.IsNull {
+	if reference.IsNull {
 		err = b.WriteByte(0)
 		return err
 	}
@@ -55,10 +67,9 @@ func (b *BitstreamWriter) WriteJoinObject(reference *Reference, context *Communi
 	return b.WriteUint32LE(reference.Id)
 }
 
-// TODO: Implement a similar system for readers, where it simply returns an instance
-func (b *BitstreamWriter) WriteObject(reference *Reference, caches *Caches) error {
+func (b *BitstreamWriter) WriteReference(reference util.Reference, caches *util.Caches) error {
 	var err error
-	if reference == nil || reference.IsNull {
+	if reference.IsNull {
 		return b.WriteByte(0x00)
 	}
 	err = b.WriteCachedObject(reference.Scope, caches)
@@ -67,9 +78,9 @@ func (b *BitstreamWriter) WriteObject(reference *Reference, caches *Caches) erro
 	}
 	return b.WriteUint32LE(reference.Id)
 }
-func (b *BitstreamWriter) WriteAnyObject(reference *Reference, writer PacketWriter, isJoinData bool) error {
+func (b *BitstreamWriter) WriteAnyObject(reference util.Reference, context *util.CommunicationContext, caches *util.Caches, isJoinData bool) error {
 	if isJoinData {
-		return b.WriteJoinObject(reference, writer.Context())
+		return b.WriteJoinObject(reference, context)
 	}
-	return b.WriteObject(reference, writer.Caches())
+	return b.WriteReference(reference, caches)
 }

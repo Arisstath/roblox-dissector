@@ -1,6 +1,7 @@
 package bitstreams
 import "github.com/gskartwii/rbxfile"
 import "errors"
+import "math"
 
 func (b *BitstreamReader) ReadCFrameSimple() (rbxfile.ValueCFrame, error) {
 	return rbxfile.ValueCFrame{}, nil // nop for now, since nothing uses this
