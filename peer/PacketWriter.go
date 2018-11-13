@@ -11,11 +11,11 @@ func min(x, y uint) uint {
 }
 
 type PacketWriter interface {
-    SetContext(*CommunicationContext)
+	SetContext(*CommunicationContext)
 	Context() *CommunicationContext
-    SetToClient(bool)
+	SetToClient(bool)
 	ToClient() bool
-    SetCaches(*Caches)
+	SetCaches(*Caches)
 	Caches() *Caches
 }
 
@@ -25,7 +25,7 @@ type PacketWriter interface {
 // Pass packets in using WriteSimple/WriteGeneric/etc.
 // and bind to the given callbacks
 type DefaultPacketWriter struct {
-    contextualHandler
+	contextualHandler
 	// OutputHandler sends the data for all packets to be written.
 	OutputHandler   func([]byte)
 	orderingIndex   uint32
@@ -34,8 +34,8 @@ type DefaultPacketWriter struct {
 	reliableNumber  uint32
 	datagramNumber  uint32
 	// Set this to true if the packets produced by this writer are sent to a client.
-    toClient bool
-    caches   *Caches
+	toClient bool
+	caches   *Caches
 	context  *CommunicationContext
 }
 
@@ -239,8 +239,8 @@ func (writer *DefaultPacketWriter) WriteGeneric(generic RakNetPacket, reliabilit
 }
 
 func (writer *DefaultPacketWriter) WritePacket(generic RakNetPacket) ([]byte, error) {
-    return writer.WriteGeneric(generic, RELIABLE_ORD)
+	return writer.WriteGeneric(generic, RELIABLE_ORD)
 }
 func (writer *DefaultPacketWriter) WritePhysics(timestamp *Packet1BLayer, generic RakNetPacket) ([]byte, error) {
-    return writer.WriteTimestamped(timestamp, generic, UNRELIABLE)
+	return writer.WriteTimestamped(timestamp, generic, UNRELIABLE)
 }

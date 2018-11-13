@@ -351,12 +351,12 @@ func (myClient *CustomClient) ConnectWithAuthTicket(placeId uint32, ticket strin
 
 // Automatically fills in any needed hashes/key for Windows 10 clients
 func (settings *SecuritySettings) InitWin10() {
-	settings.SecurityKey = "2e427f51c4dab762fe9e3471c6cfa1650841723b!c41c6af331e84e7d96dca37f759078fa\002"
+	settings.SecurityKey = "2e427f51c4dab762fe9e3471c6cfa1650841723b!0876ee92795a4a0705e8948cc3d7f209\002"
 	settings.OsPlatform = "Windows_Universal"
 	settings.GoldenHash = 0xC001CAFE
 	settings.DataModelHash = "ios,ios"
 	settings.UserAgent = "Roblox/WinINet"
-	settings.IdChallengeResponse = 0x512265E4
+	settings.IdChallengeResponse = 0x906CB6E4
 }
 
 // Automatically fills in any needed hashes/key for Android clients
@@ -380,33 +380,35 @@ func (myClient *CustomClient) ConnectGuest(placeId uint32, genderId uint8) error
 }
 
 func (myClient *CustomClient) defaultAckHandler(layers *PacketLayers) {
-	if myClient.ACKHandler != nil {
-		myClient.ACKHandler(layers)
+	// nop
+	if layers.Error != nil {
+		println("ack error: ", layers.Error.Error())
 	}
 }
 func (myClient *CustomClient) defaultReliabilityLayerHandler(layers *PacketLayers) {
 	myClient.mustACK = append(myClient.mustACK, int(layers.RakNet.DatagramNumber))
-	if myClient.ReliabilityLayerHandler != nil {
-		myClient.ReliabilityLayerHandler(layers)
+	if layers.Error != nil {
+		println("reliabilitylayer error: ", layers.Error.Error())
 	}
 }
 func (myClient *CustomClient) defaultSimpleHandler(packetType byte, layers *PacketLayers) {
-	if myClient.SimpleHandler != nil {
-		myClient.SimpleHandler(packetType, layers)
+	if layers.Error == nil {
+		myClient.handlers.Fire(packetType, layers)
+	} else {
+		println("simple error: ", layers.Error.Error())
 	}
-	myClient.handlers.Fire(packetType, layers)
 }
 func (myClient *CustomClient) defaultReliableHandler(packetType byte, layers *PacketLayers) {
-	if myClient.ReliableHandler != nil {
-		myClient.ReliableHandler(packetType, layers)
+	// nop
+	if layers.Error != nil {
+		println("reliable error: ", layers.Error.Error())
 	}
 }
 func (myClient *CustomClient) defaultFullReliableHandler(packetType byte, layers *PacketLayers) {
-	if myClient.FullReliableHandler != nil {
-		myClient.FullReliableHandler(packetType, layers)
-	}
-	if layers.Main != nil {
+	if layers.Error == nil {
 		myClient.handlers.Fire(packetType, layers)
+	} else {
+		println("simple error: ", layers.Error.Error())
 	}
 }
 
@@ -490,8 +492,12 @@ func (myClient *CustomClient) mainReadLoop() error {
 }
 
 func (myClient *CustomClient) disconnectInternal() error {
-	myClient.ackTicker.Stop()
-	myClient.dataPingTicker.Stop()
+	if myClient.ackTicker != nil {
+		myClient.ackTicker.Stop()
+	}
+	if myClient.dataPingTicker != nil {
+		myClient.dataPingTicker.Stop()
+	}
 	return myClient.Connection.Close()
 }
 

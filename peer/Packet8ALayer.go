@@ -42,15 +42,16 @@ func hashClientTicket(ticket string) uint32 {
 	initHash = bits.RotateLeft32(initHash, -7)
 	initHash -= 0x557BB5D7
 	initHash *= 0x443921D5
-	initHash = bits.RotateLeft32(initHash, 0xD)
-	ecxHash = 0x443921D5 - initHash
-	ecxHash ^= 0x557BB5D7
-	ecxHash = bits.RotateLeft32(ecxHash, -0x11)
-	ecxHash += 0x11429402
-	ecxHash = bits.RotateLeft32(ecxHash, 0x17)
-	initHash = 0x99B4D7AC - ecxHash
-	initHash = bits.RotateLeft32(initHash, -0x1D)
+	initHash = bits.RotateLeft32(initHash, -0xD)
+	ecxHash = 0x557BB5D7 - initHash
+	ecxHash ^= 0x443921D5
+	ecxHash = bits.RotateLeft32(ecxHash, 0x11)
+	ecxHash += 0x664B2854
+	ecxHash = bits.RotateLeft32(ecxHash, -0x17)
+	initHash = ecxHash - 0x664B2854
+	initHash = bits.RotateLeft32(initHash, 0x1D)
 	initHash ^= 0x557BB5D7
+	initHash = -initHash
 
 	return initHash
 }
