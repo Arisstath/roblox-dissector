@@ -1,5 +1,6 @@
 package packets
 
+import "github.com/gskartwii/roblox-dissector/util"
 // ID_PING_BACK
 type DataPingBack struct {
 	// Always true
@@ -14,7 +15,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeDataPingBack(reader util.Packe
 	var err error
 	inner := &DataPingBack{}
 
-	inner.IsPingBack, err = thisBitstream.readBoolByte()
+	inner.IsPingBack, err = thisBitstream.ReadBoolByte()
 	if err != nil {
 		return inner, err
 	}
@@ -23,11 +24,11 @@ func (thisBitstream *PacketReaderBitstream) DecodeDataPingBack(reader util.Packe
 	if err != nil {
 		return inner, err
 	}
-	inner.SendStats, err = thisBitstream.readUint32BE()
+	inner.SendStats, err = thisBitstream.ReadUint32BE()
 	if err != nil {
 		return inner, err
 	}
-	inner.ExtraStats, err = thisBitstream.readUint32BE()
+	inner.ExtraStats, err = thisBitstream.ReadUint32BE()
 	if err != nil {
 		return inner, err
 	}
@@ -40,7 +41,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeDataPingBack(reader util.Packe
 
 func (layer *DataPingBack) Serialize(writer util.PacketWriter, stream *PacketWriterBitstream) error {
 	var err error
-	err = stream.writeBoolByte(layer.IsPingBack)
+	err = stream.WriteBoolByte(layer.IsPingBack)
 	if err != nil {
 		return err
 	}
@@ -48,7 +49,7 @@ func (layer *DataPingBack) Serialize(writer util.PacketWriter, stream *PacketWri
 	if err != nil {
 		return err
 	}
-	err = stream.writeUint32BE(layer.SendStats)
+	err = stream.WriteUint32BE(layer.SendStats)
 	if err != nil {
 		return err
 	}
@@ -56,7 +57,7 @@ func (layer *DataPingBack) Serialize(writer util.PacketWriter, stream *PacketWri
 		layer.ExtraStats ^= 0xFFFFFFFF
 	}
 
-	err = stream.writeUint32BE(layer.ExtraStats)
+	err = stream.WriteUint32BE(layer.ExtraStats)
 	return err
 }
 

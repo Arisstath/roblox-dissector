@@ -9,6 +9,7 @@ import (
 	"log"
 	"net"
 	"strings"
+	"github.com/gskartwii/roblox-dissector/util"
 )
 
 // DEBUG decides whether debug mode should be on or not.
@@ -20,7 +21,7 @@ type RakNetPacket interface {
 }
 
 type RootLayer struct {
-	logBuffer   *strings.Builder
+	LogBuffer   *strings.Builder
 	Logger      *log.Logger
 	Source      *net.UDPAddr
 	Destination *net.UDPAddr
@@ -29,7 +30,7 @@ type RootLayer struct {
 }
 
 func (layer *RootLayer) GetLog() string {
-	return layer.logBuffer.String()
+	return layer.LogBuffer.String()
 }
 
 // PacketLayers contains the different layers a packet can have.
@@ -60,7 +61,7 @@ type ACKRange struct {
 // RakNetLayer is the outermost layer of all packets. It contains basic information
 // about every packet.
 type RakNetLayer struct {
-	payload *PacketReaderBitstream
+	Payload *PacketReaderBitstream
 	// Is the packet a simple pre-connection packet?
 	IsSimple bool
 	// If IsSimple is true, this is the packet type.
@@ -126,29 +127,29 @@ func (bitstream *PacketReaderBitstream) DecodeRakNetLayer(reader util.PacketRead
 		return layer, nil
 	}
 
-	layer.IsValid, err = bitstream.readBool()
+	layer.IsValid, err = bitstream.ReadBool()
 	if !layer.IsValid {
 		return layer, nil
 	}
 	if err != nil {
 		return layer, err
 	}
-	layer.IsACK, err = bitstream.readBool()
+	layer.IsACK, err = bitstream.ReadBool()
 	if err != nil {
 		return layer, err
 	}
 	if !layer.IsACK {
-		layer.IsNAK, err = bitstream.readBool()
+		layer.IsNAK, err = bitstream.ReadBool()
 		if err != nil {
 			return layer, err
 		}
 	}
 
 	if layer.IsACK || layer.IsNAK {
-		layer.HasBAndAS, err = bitstream.readBool()
+		layer.HasBAndAS, err = bitstream.ReadBool()
 		bitstream.Align()
 
-		ackCount, err := bitstream.readUint16BE()
+		ackCount, err := bitstream.ReadUint16BE()
 		if err != nil {
 			return layer, err
 		}
@@ -156,39 +157,39 @@ func (bitstream *PacketReaderBitstream) DecodeRakNetLayer(reader util.PacketRead
 		for i = 0; i < ackCount; i++ {
 			var min, max uint32
 
-			minEqualToMax, err := bitstream.readBoolByte()
+			minEqualToMax, err := bitstream.ReadBoolByte()
 			if err != nil {
 				return layer, err
 			}
-			min, err = bitstream.readUint24LE()
+			min, err = bitstream.ReadUint24LE()
 			if err != nil {
 				return layer, err
 			}
 			if minEqualToMax {
 				max = min
 			} else {
-				max, err = bitstream.readUint24LE()
+				max, err = bitstream.ReadUint24LE()
 			}
 
 			layer.ACKs = append(layer.ACKs, ACKRange{min, max})
 		}
 		return layer, nil
 	} else {
-		layer.IsPacketPair, err = bitstream.readBool()
+		layer.IsPacketPair, err = bitstream.ReadBool()
 		if err != nil {
 			return layer, err
 		}
-		layer.IsContinuousSend, err = bitstream.readBool()
+		layer.IsContinuousSend, err = bitstream.ReadBool()
 		if err != nil {
 			return layer, err
 		}
-		layer.NeedsBAndAS, err = bitstream.readBool()
+		layer.NeedsBAndAS, err = bitstream.ReadBool()
 		if err != nil {
 			return layer, err
 		}
 		bitstream.Align()
 
-		layer.DatagramNumber, err = bitstream.readUint24LE()
+		layer.DatagramNumber, err = bitstream.ReadUint24LE()
 		if err != nil {
 			return layer, err
 		}
@@ -200,23 +201,23 @@ func (bitstream *PacketReaderBitstream) DecodeRakNetLayer(reader util.PacketRead
 
 func (layer *RakNetLayer) Serialize(writer util.PacketWriter, outStream *PacketWriterBitstream) error {
 	var err error
-	err = outStream.writeBool(layer.IsValid)
+	err = outstream.WriteBool(layer.IsValid)
 	if err != nil {
 		return err
 	}
-	err = outStream.writeBool(layer.IsACK)
+	err = outstream.WriteBool(layer.IsACK)
 	if err != nil {
 		return err
 	}
 	if !layer.IsACK {
-		err = outStream.writeBool(layer.IsNAK)
+		err = outstream.WriteBool(layer.IsNAK)
 		if err != nil {
 			return err
 		}
 	}
 
 	if layer.IsACK || layer.IsNAK {
-		err = outStream.writeBool(layer.HasBAndAS)
+		err = outstream.WriteBool(layer.HasBAndAS)
 		if err != nil {
 			return err
 		}
@@ -225,46 +226,46 @@ func (layer *RakNetLayer) Serialize(writer util.PacketWriter, outStream *PacketW
 			return err
 		}
 
-		err = outStream.writeUint16BE(uint16(len(layer.ACKs)))
+		err = outstream.WriteUint16BE(uint16(len(layer.ACKs)))
 		if err != nil {
 			return err
 		}
 
 		for _, ack := range layer.ACKs {
 			if ack.Min == ack.Max {
-				err = outStream.writeBoolByte(true)
+				err = outstream.WriteBoolByte(true)
 				if err != nil {
 					return err
 				}
-				err = outStream.writeUint24LE(ack.Min)
+				err = outstream.WriteUint24LE(ack.Min)
 				if err != nil {
 					return err
 				}
 			} else {
-				err = outStream.writeBoolByte(false)
+				err = outstream.WriteBoolByte(false)
 				if err != nil {
 					return err
 				}
-				err = outStream.writeUint24LE(ack.Min)
+				err = outstream.WriteUint24LE(ack.Min)
 				if err != nil {
 					return err
 				}
-				err = outStream.writeUint24LE(ack.Max)
+				err = outstream.WriteUint24LE(ack.Max)
 				if err != nil {
 					return err
 				}
 			}
 		}
 	} else {
-		err = outStream.writeBool(layer.IsPacketPair)
+		err = outstream.WriteBool(layer.IsPacketPair)
 		if err != nil {
 			return err
 		}
-		err = outStream.writeBool(layer.IsContinuousSend)
+		err = outstream.WriteBool(layer.IsContinuousSend)
 		if err != nil {
 			return err
 		}
-		err = outStream.writeBool(layer.NeedsBAndAS)
+		err = outstream.WriteBool(layer.NeedsBAndAS)
 		if err != nil {
 			return err
 		}
@@ -273,7 +274,7 @@ func (layer *RakNetLayer) Serialize(writer util.PacketWriter, outStream *PacketW
 			return err
 		}
 
-		err = outStream.writeUint24LE(layer.DatagramNumber)
+		err = outstream.WriteUint24LE(layer.DatagramNumber)
 		if err != nil {
 			return err
 		}

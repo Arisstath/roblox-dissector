@@ -5,6 +5,7 @@ import (
 	"io"
 
 	"github.com/gskartwii/rbxfile"
+	"github.com/gskartwii/roblox-dissector/util"
 )
 
 type Cell struct {
@@ -33,7 +34,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeClusterPacket(reader util.Pack
 
 	context := reader.Context()
 
-	referent, err := thisBitstream.readObject(reader.Caches())
+	referent, err := thisBitstream.ReadObject(reader.Caches())
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +52,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeClusterPacket(reader util.Pack
 		return layer, err
 	}
 
-	header, err := zstdStream.readUint8()
+	header, err := zstdstream.ReadUint8()
 	for err == nil {
 		subpacket := Chunk{}
 		subpacket.Header = header & 0xF
@@ -59,15 +60,15 @@ func (thisBitstream *PacketReaderBitstream) DecodeClusterPacket(reader util.Pack
 		sizeception := header & 0x60
 		if sizeception != 0 {
 			if sizeception == 0x20 {
-				x, err := zstdStream.readUint16BE()
+				x, err := zstdstream.ReadUint16BE()
 				if err != nil {
 					return layer, err
 				}
-				y, err := zstdStream.readUint16BE()
+				y, err := zstdstream.ReadUint16BE()
 				if err != nil {
 					return layer, err
 				}
-				z, err := zstdStream.readUint16BE()
+				z, err := zstdstream.ReadUint16BE()
 				if err != nil {
 					return layer, err
 				}
@@ -77,15 +78,15 @@ func (thisBitstream *PacketReaderBitstream) DecodeClusterPacket(reader util.Pack
 					float32(int16(z)),
 				}
 			} else if sizeception == 0x40 {
-				x, err := zstdStream.readUint32BE()
+				x, err := zstdstream.ReadUint32BE()
 				if err != nil {
 					return layer, err
 				}
-				y, err := zstdStream.readUint32BE()
+				y, err := zstdstream.ReadUint32BE()
 				if err != nil {
 					return layer, err
 				}
-				z, err := zstdStream.readUint32BE()
+				z, err := zstdstream.ReadUint32BE()
 				if err != nil {
 					return layer, err
 				}
@@ -98,15 +99,15 @@ func (thisBitstream *PacketReaderBitstream) DecodeClusterPacket(reader util.Pack
 				return layer, errors.New("invalid chunk header")
 			}
 		} else {
-			x, err := zstdStream.readUint8()
+			x, err := zstdstream.ReadUint8()
 			if err != nil {
 				return layer, err
 			}
-			y, err := zstdStream.readUint8()
+			y, err := zstdstream.ReadUint8()
 			if err != nil {
 				return layer, err
 			}
-			z, err := zstdStream.readUint8()
+			z, err := zstdstream.ReadUint8()
 			if err != nil {
 				return layer, err
 			}
@@ -117,7 +118,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeClusterPacket(reader util.Pack
 			}
 		}
 
-		validCheck, err := zstdStream.readUint8()
+		validCheck, err := zstdstream.ReadUint8()
 		if err != nil {
 			return layer, err
 		}
@@ -134,7 +135,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeClusterPacket(reader util.Pack
 		subpacket.Contents = make([]Cell, 0)
 
 		for remainingCount := cubeSize; remainingCount > 0; {
-			cellHeader, err := zstdStream.readUint8()
+			cellHeader, err := zstdstream.ReadUint8()
 			if err != nil {
 				return layer, err
 			}
@@ -142,7 +143,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeClusterPacket(reader util.Pack
 			var occupancy uint8
 			var count int
 			if cellHeader&0x40 != 0 {
-				occupancy, err = zstdStream.readUint8()
+				occupancy, err = zstdstream.ReadUint8()
 				if err != nil {
 					return layer, err
 				}
@@ -151,7 +152,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeClusterPacket(reader util.Pack
 			}
 
 			if cellHeader&0x80 != 0 {
-				myCount, err := zstdStream.readUint8()
+				myCount, err := zstdstream.ReadUint8()
 				if err != nil {
 					return layer, err
 				}
@@ -170,7 +171,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeClusterPacket(reader util.Pack
 			})
 			layers.Root.Logger.Printf("Read cell with head:%d, material:%d, occ:%d, count:%d\n", cellHeader, thisMaterial, occupancy, count)
 		}
-		header, err = zstdStream.readUint8()
+		header, err = zstdstream.ReadUint8()
 		layer.Chunks = append(layer.Chunks, subpacket)
 	}
 	if err == io.EOF { // eof is normal, marks end of packet here

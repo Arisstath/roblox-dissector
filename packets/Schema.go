@@ -8,6 +8,7 @@ import (
 	"github.com/gskartwii/go-bitstream"
     "github.com/gskartwii/roblox-dissector/schema"
 )
+import "github.com/gskartwii/roblox-dissector/util"
 // ID_NEW_SCHEMA - server -> client
 // Negotiates a network schema with the client
 type SchemaPacket struct {
@@ -27,7 +28,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeSchemaPacket(reader util.Packe
 		return layer, err
 	}
 
-	enumArrayLen, err := stream.readUintUTF8()
+	enumArrayLen, err := stream.ReadUintUTF8()
 	if err != nil {
 		return layer, err
 	}
@@ -37,30 +38,30 @@ func (thisBitstream *PacketReaderBitstream) DecodeSchemaPacket(reader util.Packe
 	layer.Schema.Enums = make([]schema.StaticEnumSchema, enumArrayLen)
 	layer.Schema.EnumsByName = make(map[string]int, enumArrayLen)
 	for i := 0; i < int(enumArrayLen); i++ {
-		stringLen, err := stream.readUintUTF8()
+		stringLen, err := stream.ReadUintUTF8()
 		if err != nil {
 			return layer, err
 		}
-		layer.Schema.Enums[i].Name, err = stream.readASCII(int(stringLen))
+		layer.Schema.Enums[i].Name, err = stream.ReadASCII(int(stringLen))
 		if err != nil {
 			return layer, err
 		}
-		layer.Schema.Enums[i].BitSize, err = stream.readUint8()
+		layer.Schema.Enums[i].BitSize, err = stream.ReadUint8()
 		if err != nil {
 			return layer, err
 		}
 		layer.Schema.EnumsByName[layer.Schema.Enums[i].Name] = i
 	}
 
-	classArrayLen, err := stream.readUintUTF8()
+	classArrayLen, err := stream.ReadUintUTF8()
 	if err != nil {
 		return layer, err
 	}
-	propertyArrayLen, err := stream.readUintUTF8()
+	propertyArrayLen, err := stream.ReadUintUTF8()
 	if err != nil {
 		return layer, err
 	}
-	eventArrayLen, err := stream.readUintUTF8()
+	eventArrayLen, err := stream.ReadUintUTF8()
 	if err != nil {
 		return layer, err
 	}
@@ -83,18 +84,18 @@ func (thisBitstream *PacketReaderBitstream) DecodeSchemaPacket(reader util.Packe
 	classGlobalIndex := 0
 	eventGlobalIndex := 0
 	for i := 0; i < int(classArrayLen); i++ {
-		classNameLen, err := stream.readUintUTF8()
+		classNameLen, err := stream.ReadUintUTF8()
 		if err != nil {
 			return layer, err
 		}
 		thisInstance := layer.Schema.Instances[i]
-		thisInstance.Name, err = stream.readASCII(int(classNameLen))
+		thisInstance.Name, err = stream.ReadASCII(int(classNameLen))
 		if err != nil {
 			return layer, err
 		}
 		layer.Schema.ClassesByName[thisInstance.Name] = i
 
-		propertyCount, err := stream.readUintUTF8()
+		propertyCount, err := stream.ReadUintUTF8()
 		if err != nil {
 			return layer, err
 		}
@@ -105,11 +106,11 @@ func (thisBitstream *PacketReaderBitstream) DecodeSchemaPacket(reader util.Packe
 
 		for j := 0; j < int(propertyCount); j++ {
 			thisProperty := thisInstance.Properties[j]
-			propNameLen, err := stream.readUintUTF8()
+			propNameLen, err := stream.ReadUintUTF8()
 			if err != nil {
 				return layer, err
 			}
-			thisProperty.Name, err = stream.readASCII(int(propNameLen))
+			thisProperty.Name, err = stream.ReadASCII(int(propNameLen))
 			if err != nil {
 				return layer, err
 			}
@@ -119,14 +120,14 @@ func (thisBitstream *PacketReaderBitstream) DecodeSchemaPacket(reader util.Packe
 			copy(propertyGlobalName[classNameLen+1:], thisProperty.Name)
 			layer.Schema.PropertiesByName[string(propertyGlobalName)] = propertyGlobalIndex
 
-			thisProperty.Type, err = stream.readUint8()
+			thisProperty.Type, err = stream.ReadUint8()
 			if err != nil {
 				return layer, err
 			}
 			thisProperty.TypeString = TypeNames[thisProperty.Type]
 
 			if thisProperty.Type == 7 {
-				thisProperty.EnumID, err = stream.readUint16BE()
+				thisProperty.EnumID, err = stream.ReadUint16BE()
 				if err != nil {
 					return layer, err
 				}
@@ -142,7 +143,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeSchemaPacket(reader util.Packe
 			propertyGlobalIndex++
 		}
 
-		thisInstance.Unknown, err = stream.readUint16BE()
+		thisInstance.Unknown, err = stream.ReadUint16BE()
 		if err != nil {
 			return layer, err
 		}
@@ -150,7 +151,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeSchemaPacket(reader util.Packe
 			return layer, errors.New("class global index too high")
 		}
 
-		eventCount, err := stream.readUintUTF8()
+		eventCount, err := stream.ReadUintUTF8()
 		if err != nil {
 			return layer, err
 		}
@@ -161,11 +162,11 @@ func (thisBitstream *PacketReaderBitstream) DecodeSchemaPacket(reader util.Packe
 
 		for j := 0; j < int(eventCount); j++ {
 			thisEvent := thisInstance.Events[j]
-			eventNameLen, err := stream.readUintUTF8()
+			eventNameLen, err := stream.ReadUintUTF8()
 			if err != nil {
 				return layer, err
 			}
-			thisEvent.Name, err = stream.readASCII(int(eventNameLen))
+			thisEvent.Name, err = stream.ReadASCII(int(eventNameLen))
 			if err != nil {
 				return layer, err
 			}
@@ -175,7 +176,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeSchemaPacket(reader util.Packe
 			copy(eventGlobalName[classNameLen+1:], thisEvent.Name)
 			layer.Schema.EventsByName[string(eventGlobalName)] = eventGlobalIndex
 
-			countArguments, err := stream.readUintUTF8()
+			countArguments, err := stream.ReadUintUTF8()
 			if err != nil {
 				return layer, err
 			}
@@ -186,12 +187,12 @@ func (thisBitstream *PacketReaderBitstream) DecodeSchemaPacket(reader util.Packe
 
 			for k := 0; k < int(countArguments); k++ {
 				thisArgument := thisEvent.Arguments[k]
-				thisArgument.Type, err = stream.readUint8()
+				thisArgument.Type, err = stream.ReadUint8()
 				if err != nil {
 					return layer, err
 				}
 				thisArgument.TypeString = TypeNames[thisArgument.Type]
-				thisArgument.EnumID, err = stream.readUint16BE()
+				thisArgument.EnumID, err = stream.ReadUint16BE()
 				if err != nil {
 					return layer, err
 				}
@@ -223,91 +224,91 @@ func (layer *SchemaPacket) Serialize(writer util.PacketWriter, stream *PacketWri
 	gzipStream := &PacketWriterBitstream{bitstream.NewWriter(middleStream)}
 
 	schema := layer.Schema
-	err = gzipStream.writeUintUTF8(uint32(len(schema.Enums)))
+	err = gzipstream.WriteUintUTF8(uint32(len(schema.Enums)))
 	if err != nil {
 		return err
 	}
 	for _, enum := range schema.Enums {
-		err = gzipStream.writeUintUTF8(uint32(len(enum.Name)))
-		err = gzipStream.writeASCII(enum.Name)
-		err = gzipStream.WriteByte(enum.BitSize)
+		err = gzipstream.WriteUintUTF8(uint32(len(enum.Name)))
+		err = gzipstream.WriteASCII(enum.Name)
+		err = gzipstream.WriteByte(enum.BitSize)
 	}
 
-	err = gzipStream.writeUintUTF8(uint32(len(schema.Instances)))
+	err = gzipstream.WriteUintUTF8(uint32(len(schema.Instances)))
 	if err != nil {
 		return err
 	}
-	err = gzipStream.writeUintUTF8(uint32(len(schema.Properties)))
+	err = gzipstream.WriteUintUTF8(uint32(len(schema.Properties)))
 	if err != nil {
 		return err
 	}
-	err = gzipStream.writeUintUTF8(uint32(len(schema.Events)))
+	err = gzipstream.WriteUintUTF8(uint32(len(schema.Events)))
 	if err != nil {
 		return err
 	}
 	for _, instance := range schema.Instances {
-		err = gzipStream.writeUintUTF8(uint32(len(instance.Name)))
+		err = gzipstream.WriteUintUTF8(uint32(len(instance.Name)))
 		if err != nil {
 			return err
 		}
-		err = gzipStream.writeASCII(instance.Name)
+		err = gzipstream.WriteASCII(instance.Name)
 		if err != nil {
 			return err
 		}
-		err = gzipStream.writeUintUTF8(uint32(len(instance.Properties)))
+		err = gzipstream.WriteUintUTF8(uint32(len(instance.Properties)))
 		if err != nil {
 			return err
 		}
 
 		for _, property := range instance.Properties {
-			err = gzipStream.writeUintUTF8(uint32(len(property.Name)))
+			err = gzipstream.WriteUintUTF8(uint32(len(property.Name)))
 			if err != nil {
 				return err
 			}
-			err = gzipStream.writeASCII(property.Name)
+			err = gzipstream.WriteASCII(property.Name)
 			if err != nil {
 				return err
 			}
-			err = gzipStream.WriteByte(property.Type)
+			err = gzipstream.WriteByte(property.Type)
 			if err != nil {
 				return err
 			}
 			if property.Type == 7 {
-				err = gzipStream.writeUint16BE(property.EnumID)
+				err = gzipstream.WriteUint16BE(property.EnumID)
 				if err != nil {
 					return err
 				}
 			}
 		}
 
-		err = gzipStream.writeUint16BE(instance.Unknown)
+		err = gzipstream.WriteUint16BE(instance.Unknown)
 		if err != nil {
 			return err
 		}
-		err = gzipStream.writeUintUTF8(uint32(len(instance.Events)))
+		err = gzipstream.WriteUintUTF8(uint32(len(instance.Events)))
 		if err != nil {
 			return err
 		}
 		for _, event := range instance.Events {
-			err = gzipStream.writeUintUTF8(uint32(len(event.Name)))
+			err = gzipstream.WriteUintUTF8(uint32(len(event.Name)))
 			if err != nil {
 				return err
 			}
-			err = gzipStream.writeASCII(event.Name)
+			err = gzipstream.WriteASCII(event.Name)
 			if err != nil {
 				return err
 			}
 
-			err = gzipStream.writeUintUTF8(uint32(len(event.Arguments)))
+			err = gzipstream.WriteUintUTF8(uint32(len(event.Arguments)))
 			if err != nil {
 				return err
 			}
 			for _, argument := range event.Arguments {
-				err = gzipStream.WriteByte(argument.Type)
+				err = gzipstream.WriteByte(argument.Type)
 				if err != nil {
 					return err
 				}
-				err = gzipStream.writeUint16BE(argument.EnumID)
+				err = gzipstream.WriteUint16BE(argument.EnumID)
 				if err != nil {
 					return err
 				}
@@ -327,7 +328,7 @@ func (layer *SchemaPacket) Serialize(writer util.PacketWriter, stream *PacketWri
 	if err != nil {
 		return err
 	}
-	err = stream.writeUint32BE(uint32(gzipBuf.Len()))
+	err = stream.WriteUint32BE(uint32(gzipBuf.Len()))
 	if err != nil {
 		return err
 	}

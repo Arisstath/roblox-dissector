@@ -2,6 +2,7 @@ package packets
 
 import (
 	"net"
+    "github.com/gskartwii/roblox-dissector/util"
 )
 
 // ID_OPEN_CONNECTION_REQUEST_1 - client -> server
@@ -106,7 +107,7 @@ var voidOfflineMessage []byte = make([]byte, 0x10)
 func (thisBitstream *PacketReaderBitstream) DecodeConnectionRequest1(reader util.PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	var err error
 	layer := NewConnectionRequest1()
-	layer.ProtocolVersion, err = thisBitstream.readUint8() // !! RakNetLayer will have read the offline message !!
+	layer.ProtocolVersion, err = thisBitstream.ReadUint8() // !! RakNetLayer will have read the offline message !!
 	return layer, err
 }
 
@@ -136,15 +137,15 @@ func (thisBitstream *PacketReaderBitstream) DecodeConnectionReply1(reader util.P
 	if err != nil {
 		return layer, err
 	}
-	layer.GUID, err = thisBitstream.readUint64BE()
+	layer.GUID, err = thisBitstream.ReadUint64BE()
 	if err != nil {
 		return layer, err
 	}
-	layer.UseSecurity, err = thisBitstream.readBoolByte()
+	layer.UseSecurity, err = thisBitstream.ReadBoolByte()
 	if err != nil {
 		return layer, err
 	}
-	layer.MTU, err = thisBitstream.readUint16BE()
+	layer.MTU, err = thisBitstream.ReadUint16BE()
 	return layer, err
 }
 
@@ -158,15 +159,15 @@ func (layer *ConnectionReply1) Serialize(writer util.PacketWriter, stream *Packe
 	if err != nil {
 		return err
 	}
-	err = stream.writeUint64BE(layer.GUID)
+	err = stream.WriteUint64BE(layer.GUID)
 	if err != nil {
 		return err
 	}
-	err = stream.writeBoolByte(layer.UseSecurity)
+	err = stream.WriteBoolByte(layer.UseSecurity)
 	if err != nil {
 		return err
 	}
-	err = stream.writeUint16BE(layer.MTU)
+	err = stream.WriteUint16BE(layer.MTU)
 	return err
 }
 
@@ -178,15 +179,15 @@ func (thisBitstream *PacketReaderBitstream) DecodeConnectionRequest2(reader util
 	if err != nil {
 		return layer, err
 	}
-	layer.IPAddress, err = thisBitstream.readAddress()
+	layer.IPAddress, err = thisBitstream.ReadAddress()
 	if err != nil {
 		return layer, err
 	}
-	layer.MTU, err = thisBitstream.readUint16BE()
+	layer.MTU, err = thisBitstream.ReadUint16BE()
 	if err != nil {
 		return layer, err
 	}
-	layer.GUID, err = thisBitstream.readUint64BE()
+	layer.GUID, err = thisBitstream.ReadUint64BE()
 	return layer, err
 }
 
@@ -200,15 +201,15 @@ func (layer *ConnectionRequest2) Serialize(writer util.PacketWriter, stream *Pac
 	if err != nil {
 		return err
 	}
-	err = stream.writeAddress(layer.IPAddress)
+	err = stream.WriteAddress(layer.IPAddress)
 	if err != nil {
 		return err
 	}
-	err = stream.writeUint16BE(layer.MTU)
+	err = stream.WriteUint16BE(layer.MTU)
 	if err != nil {
 		return err
 	}
-	err = stream.writeUint64BE(layer.GUID)
+	err = stream.WriteUint64BE(layer.GUID)
 	return err
 }
 
@@ -221,19 +222,19 @@ func (thisBitstream *PacketReaderBitstream) DecodeConnectionReply2(reader util.P
 	if err != nil {
 		return layer, err
 	}
-	layer.GUID, err = thisBitstream.readUint64BE()
+	layer.GUID, err = thisBitstream.ReadUint64BE()
 	if err != nil {
 		return layer, err
 	}
-	layer.IPAddress, err = thisBitstream.readAddress()
+	layer.IPAddress, err = thisBitstream.ReadAddress()
 	if err != nil {
 		return layer, err
 	}
-	layer.MTU, err = thisBitstream.readUint16BE()
+	layer.MTU, err = thisBitstream.ReadUint16BE()
 	if err != nil {
 		return layer, err
 	}
-	layer.UseSecurity, err = thisBitstream.readBoolByte()
+	layer.UseSecurity, err = thisBitstream.ReadBoolByte()
 	return layer, err
 }
 
@@ -247,19 +248,19 @@ func (layer *ConnectionReply2) Serialize(writer util.PacketWriter, stream *Packe
 	if err != nil {
 		return err
 	}
-	err = stream.writeUint64BE(layer.GUID)
+	err = stream.WriteUint64BE(layer.GUID)
 	if err != nil {
 		return err
 	}
-	err = stream.writeAddress(layer.IPAddress)
+	err = stream.WriteAddress(layer.IPAddress)
 	if err != nil {
 		return err
 	}
-	err = stream.writeUint16BE(layer.MTU)
+	err = stream.WriteUint16BE(layer.MTU)
 	if err != nil {
 		return err
 	}
-	err = stream.writeBoolByte(layer.UseSecurity)
+	err = stream.WriteBoolByte(layer.UseSecurity)
 	return err
 }
 
@@ -268,19 +269,19 @@ func (thisBitstream *PacketReaderBitstream) DecodePacket09Layer(reader util.Pack
 	
 
 	var err error
-	layer.GUID, err = thisBitstream.readUint64BE()
+	layer.GUID, err = thisBitstream.ReadUint64BE()
 	if err != nil {
 		return layer, err
 	}
-	layer.Timestamp, err = thisBitstream.readUint64BE()
+	layer.Timestamp, err = thisBitstream.ReadUint64BE()
 	if err != nil {
 		return layer, err
 	}
-	layer.UseSecurity, err = thisBitstream.readBoolByte()
+	layer.UseSecurity, err = thisBitstream.ReadBoolByte()
 	if err != nil {
 		return layer, err
 	}
-	layer.Password, err = thisBitstream.readString(2)
+	layer.Password, err = thisBitstream.ReadString(2)
 	if layer.Password[0] == 0x5E && layer.Password[1] == 0x11 {
 		reader.Context().IsStudio = true
 	}
@@ -292,15 +293,15 @@ func (layer *Packet09Layer) Serialize(writer util.PacketWriter, stream *PacketWr
 	if err != nil {
 		return err
 	}
-	err = stream.writeUint64BE(layer.GUID)
+	err = stream.WriteUint64BE(layer.GUID)
 	if err != nil {
 		return err
 	}
-	err = stream.writeUint64BE(layer.Timestamp)
+	err = stream.WriteUint64BE(layer.Timestamp)
 	if err != nil {
 		return err
 	}
-	err = stream.writeBoolByte(layer.UseSecurity)
+	err = stream.WriteBoolByte(layer.UseSecurity)
 	if err != nil {
 		return err
 	}
@@ -312,25 +313,25 @@ func (thisBitstream *PacketReaderBitstream) DecodePacket10Layer(reader util.Pack
 	
 
 	var err error
-	layer.IPAddress, err = thisBitstream.readAddress()
+	layer.IPAddress, err = thisBitstream.ReadAddress()
 	if err != nil {
 		return layer, err
 	}
-	layer.SystemIndex, err = thisBitstream.readUint16BE()
+	layer.SystemIndex, err = thisBitstream.ReadUint16BE()
 	if err != nil {
 		return layer, err
 	}
 	for i := 0; i < 10; i++ {
-		layer.Addresses[i], err = thisBitstream.readAddress()
+		layer.Addresses[i], err = thisBitstream.ReadAddress()
 		if err != nil {
 			return layer, err
 		}
 	}
-	layer.SendPingTime, err = thisBitstream.readUint64BE()
+	layer.SendPingTime, err = thisBitstream.ReadUint64BE()
 	if err != nil {
 		return layer, err
 	}
-	layer.SendPongTime, err = thisBitstream.readUint64BE()
+	layer.SendPongTime, err = thisBitstream.ReadUint64BE()
 	return layer, err
 }
 func (layer *Packet10Layer) Serialize(writer util.PacketWriter, stream *PacketWriterBitstream) error {
@@ -340,25 +341,25 @@ func (layer *Packet10Layer) Serialize(writer util.PacketWriter, stream *PacketWr
 		return err
 	}
 
-	err = stream.writeAddress(layer.IPAddress)
+	err = stream.WriteAddress(layer.IPAddress)
 	if err != nil {
 		return err
 	}
-	err = stream.writeUint16BE(layer.SystemIndex)
+	err = stream.WriteUint16BE(layer.SystemIndex)
 	if err != nil {
 		return err
 	}
 	for i := 0; i < 10; i++ {
-		err = stream.writeAddress(layer.Addresses[i])
+		err = stream.WriteAddress(layer.Addresses[i])
 		if err != nil {
 			return err
 		}
 	}
-	err = stream.writeUint64BE(layer.SendPingTime)
+	err = stream.WriteUint64BE(layer.SendPingTime)
 	if err != nil {
 		return err
 	}
-	err = stream.writeUint64BE(layer.SendPongTime)
+	err = stream.WriteUint64BE(layer.SendPongTime)
 	if err != nil {
 		return err
 	}
@@ -370,21 +371,21 @@ func (thisBitstream *PacketReaderBitstream) DecodePacket13Layer(reader util.Pack
 	
 
 	var err error
-	layer.IPAddress, err = thisBitstream.readAddress()
+	layer.IPAddress, err = thisBitstream.ReadAddress()
 	if err != nil {
 		return layer, err
 	}
 	for i := 0; i < 10; i++ {
-		layer.Addresses[i], err = thisBitstream.readAddress()
+		layer.Addresses[i], err = thisBitstream.ReadAddress()
 		if err != nil {
 			return layer, err
 		}
 	}
-	layer.SendPingTime, err = thisBitstream.readUint64BE()
+	layer.SendPingTime, err = thisBitstream.ReadUint64BE()
 	if err != nil {
 		return layer, err
 	}
-	layer.SendPongTime, err = thisBitstream.readUint64BE()
+	layer.SendPongTime, err = thisBitstream.ReadUint64BE()
 	return layer, err
 }
 func (layer *Packet13Layer) Serialize(writer util.PacketWriter, stream *PacketWriterBitstream) error {
@@ -394,21 +395,21 @@ func (layer *Packet13Layer) Serialize(writer util.PacketWriter, stream *PacketWr
 		return err
 	}
 
-	err = stream.writeAddress(layer.IPAddress)
+	err = stream.WriteAddress(layer.IPAddress)
 	if err != nil {
 		return err
 	}
 	for i := 0; i < 10; i++ {
-		err = stream.writeAddress(layer.Addresses[i])
+		err = stream.WriteAddress(layer.Addresses[i])
 		if err != nil {
 			return err
 		}
 	}
-	err = stream.writeUint64BE(layer.SendPingTime)
+	err = stream.WriteUint64BE(layer.SendPingTime)
 	if err != nil {
 		return err
 	}
-	err = stream.writeUint64BE(layer.SendPongTime)
+	err = stream.WriteUint64BE(layer.SendPongTime)
 	if err != nil {
 		return err
 	}

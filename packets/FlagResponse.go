@@ -1,6 +1,7 @@
 package packets
 
 import "fmt"
+import "github.com/gskartwii/roblox-dissector/util"
 
 // ID_DICTIONARY_FORMAT - server -> client
 // Response to ID_PROTOCOL_SYNC (FlagRequest)
@@ -20,37 +21,37 @@ func (thisBitstream *PacketReaderBitstream) DecodeFlagResponse(reader util.Packe
 	layer := NewFlagResponse()
 
 	var err error
-	layer.ProtocolSchemaSync, err = thisBitstream.readBool()
+	layer.ProtocolSchemaSync, err = thisBitstream.ReadBool()
 	if err != nil {
 		return layer, err
 	}
-	layer.ApiDictionaryCompression, err = thisBitstream.readBool()
+	layer.ApiDictionaryCompression, err = thisBitstream.ReadBool()
 	if err != nil {
 		return layer, err
 	}
 	thisBitstream.Align()
 
-	numParams, err := thisBitstream.readUint16BE()
+	numParams, err := thisBitstream.ReadUint16BE()
 	if err != nil {
 		return layer, err
 	}
 
 	var i uint16
 	for i = 0; i < numParams; i++ {
-		nameLen, err := thisBitstream.readUint16BE()
+		nameLen, err := thisBitstream.ReadUint16BE()
 		if err != nil {
 			return layer, err
 		}
-		name, err := thisBitstream.readString(int(nameLen))
+		name, err := thisBitstream.ReadString(int(nameLen))
 		if err != nil {
 			return layer, err
 		}
 
-		valueLen, err := thisBitstream.readUint16BE()
+		valueLen, err := thisBitstream.ReadUint16BE()
 		if err != nil {
 			return layer, err
 		}
-		value, err := thisBitstream.readString(int(valueLen))
+		value, err := thisBitstream.ReadString(int(valueLen))
 		if err != nil {
 			return layer, err
 		}
@@ -67,11 +68,11 @@ func (layer *FlagResponse) Serialize(writer util.PacketWriter, stream *PacketWri
 		return err
 	}
 
-	err = stream.writeBool(layer.ProtocolSchemaSync)
+	err = stream.WriteBool(layer.ProtocolSchemaSync)
 	if err != nil {
 		return err
 	}
-	err = stream.writeBool(layer.ApiDictionaryCompression)
+	err = stream.WriteBool(layer.ApiDictionaryCompression)
 	if err != nil {
 		return err
 	}
@@ -79,26 +80,26 @@ func (layer *FlagResponse) Serialize(writer util.PacketWriter, stream *PacketWri
 	if err != nil {
 		return err
 	}
-	err = stream.writeUint16BE(uint16(len(layer.Params)))
+	err = stream.WriteUint16BE(uint16(len(layer.Params)))
 	if err != nil {
 		return err
 	}
 
 	for name, value := range layer.Params {
-		err = stream.writeUint16BE(uint16(len(name)))
+		err = stream.WriteUint16BE(uint16(len(name)))
 		if err != nil {
 			return err
 		}
-		err = stream.writeASCII(name)
+		err = stream.WriteASCII(name)
 		if err != nil {
 			return err
 		}
 		encodedValue := fmt.Sprintf("%v", value)
-		err = stream.writeUint16BE(uint16(len(encodedValue)))
+		err = stream.WriteUint16BE(uint16(len(encodedValue)))
 		if err != nil {
 			return err
 		}
-		err = stream.writeASCII(encodedValue)
+		err = stream.WriteASCII(encodedValue)
 		if err != nil {
 			return err
 		}

@@ -6,6 +6,8 @@ import (
 
 	"github.com/gskartwii/rbxfile"
 )
+import "github.com/gskartwii/roblox-dissector/util"
+import "github.com/gskartwii/roblox-dissector/bitstreams"
 
 // ID_EVENT
 type ReplicateEvent struct {
@@ -14,14 +16,14 @@ type ReplicateEvent struct {
 	// Name of the event
 	EventName string
 	// Description about the invocation
-	Event *ReplicationEvent
+	Event *bitstreams.ReplicationEvent
 }
 
 func (thisBitstream *PacketReaderBitstream) DecodeReplicateEvent(reader util.PacketReader, layers *PacketLayers) (ReplicationSubpacket, error) {
 	var err error
 	layer := &ReplicateEvent{}
 
-	referent, err := thisBitstream.readObject(reader.Caches())
+	referent, err := thisBitstream.ReadObject(reader.Caches())
 	if err != nil {
 		return layer, err
 	}
@@ -34,7 +36,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeReplicateEvent(reader util.Pac
 	}
 	layer.Instance = instance
 
-	eventIDx, err := thisBitstream.readUint16BE()
+	eventIDx, err := thisBitstream.ReadUint16BE()
 	if err != nil {
 		return layer, err
 	}
@@ -58,7 +60,7 @@ func (layer *ReplicateEvent) Serialize(writer util.PacketWriter, stream *PacketW
 	if layer.Instance == nil {
 		return errors.New("self is nil in serialize repl inst")
 	}
-	err := stream.writeObject(layer.Instance, writer.Caches())
+	err := stream.WriteObject(layer.Instance, writer.Caches())
 	if err != nil {
 		return err
 	}
@@ -68,7 +70,7 @@ func (layer *ReplicateEvent) Serialize(writer util.PacketWriter, stream *PacketW
 	if !ok {
 		return errors.New("Invalid event: " + layer.Instance.ClassName + "." + layer.EventName)
 	}
-	err = stream.writeUint16BE(uint16(eventSchemaID))
+	err = stream.WriteUint16BE(uint16(eventSchemaID))
 	if err != nil {
 		return err
 	}

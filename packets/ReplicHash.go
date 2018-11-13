@@ -1,6 +1,7 @@
 package packets
 
 import "fmt"
+import "github.com/gskartwii/roblox-dissector/util"
 
 // ID_HASH
 type ReplicateHash struct {
@@ -44,7 +45,7 @@ func getRbxNonce(base uint32, query uint32) uint32 {
 func (stream *PacketReaderBitstream) DecodeReplicateHash(reader util.PacketReader, layers *PacketLayers) (ReplicationSubpacket, error) {
 	var err error
 	inner := &ReplicateHash{}
-	numItems, err := stream.readUint8()
+	numItems, err := stream.ReadUint8()
 	if err != nil {
 		return inner, err
 	}
@@ -55,19 +56,19 @@ func (stream *PacketReaderBitstream) DecodeReplicateHash(reader util.PacketReade
 		println("noextranumitem")
 		hasExtra = true
 	} else {
-		numItems, err = stream.readUint8()
+		numItems, err = stream.ReadUint8()
 		if err != nil {
 			return inner, err
 		}
 	}
 
-	nonce, err := stream.readUint32BE()
+	nonce, err := stream.ReadUint32BE()
 	if err != nil {
 		return inner, err
 	}
 	hashList := make([]uint32, numItems)
 	for i := 0; i < int(numItems); i++ {
-		hashList[i], err = stream.readUint32BE()
+		hashList[i], err = stream.ReadUint32BE()
 		if err != nil {
 			return inner, err
 		}
@@ -76,7 +77,7 @@ func (stream *PacketReaderBitstream) DecodeReplicateHash(reader util.PacketReade
 	if hasExtra {
 		var tokens [3]uint64
 		for i := 0; i < 3; i++ {
-			tokens[i], err = stream.readUint64BE()
+			tokens[i], err = stream.ReadUint64BE()
 			if err != nil {
 				return inner, err
 			}

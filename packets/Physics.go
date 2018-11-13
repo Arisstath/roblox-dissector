@@ -1,6 +1,8 @@
 package packets
 
 import (
+    "github.com/gskartwii/roblox-dissector/util"
+    "github.com/gskartwii/roblox-dissector/bitstreams"
 	"github.com/gskartwii/rbxfile"
 )
 
@@ -21,7 +23,7 @@ type PhysicsData struct {
 	CFrame             rbxfile.ValueCFrame
 	LinearVelocity     rbxfile.ValueVector3
 	RotationalVelocity rbxfile.ValueVector3
-	Motors             []PhysicsMotor
+	Motors             []bitstreams.PhysicsMotor
 	Interval           float32
 	PlatformChild      *rbxfile.Instance
 }
@@ -76,7 +78,7 @@ func (thisBitstream *PacketReaderBitstream) DecodePhysicsPacket(reader util.Pack
 	context := reader.Context()
 	layer := NewPhysicsPacket()
 	for {
-		referent, err := thisBitstream.readObject(reader.Caches())
+		referent, err := thisBitstream.ReadObject(reader.Caches())
 		// unordered packets may have problems with caches
 		if err != nil && err != CacheReadOOB {
 			return layer, err
@@ -94,23 +96,23 @@ func (thisBitstream *PacketReaderBitstream) DecodePhysicsPacket(reader util.Pack
 			})
 		}
 
-		myFlags, err := thisBitstream.readUint8()
+		myFlags, err := thisBitstream.ReadUint8()
 		if err != nil {
 			return layer, err
 		}
 		subpacket.NetworkHumanoidState = myFlags & 0x1F
 
 		if reader.IsClient() {
-			err = thisBitstream.readPhysicsData(&subpacket.Data, true, reader)
+			err = thisBitstream.ReadPhysicsData(&subpacket.Data, true, reader)
 			if err != nil {
 				return layer, err
 			}
 		} else {
-			subpacket.Data.Motors, err = thisBitstream.readMotors()
+			subpacket.Data.Motors, err = thisBitstream.ReadMotors()
 			if err != nil {
 				return layer, err
 			}
-			numEntries, err := thisBitstream.readUint8()
+			numEntries, err := thisBitstream.ReadUint8()
 			if err != nil {
 				return layer, err
 			}
@@ -118,11 +120,11 @@ func (thisBitstream *PacketReaderBitstream) DecodePhysicsPacket(reader util.Pack
 			subpacket.History = make([]*PhysicsData, numEntries)
 			for i := 0; i < int(numEntries); i++ {
 				subpacket.History[i] = new(PhysicsData)
-				subpacket.History[i].Interval, err = thisBitstream.readFloat32BE()
+				subpacket.History[i].Interval, err = thisBitstream.ReadFloat32BE()
 				if err != nil {
 					return layer, err
 				}
-				thisBitstream.readPhysicsData(subpacket.History[i], false, reader)
+				thisBitstream.ReadPhysicsData(subpacket.History[i], false, reader)
 				if err != nil {
 					return layer, err
 				}
@@ -131,7 +133,7 @@ func (thisBitstream *PacketReaderBitstream) DecodePhysicsPacket(reader util.Pack
 
 		if (myFlags>>5)&1 == 0 { // has children
 			var object Referent
-			for object, err = thisBitstream.readObject(reader.Caches()); (err == nil || err == CacheReadOOB) && !object.IsNull(); object, err = thisBitstream.readObject(reader.Caches()) {
+			for object, err = thisBitstream.ReadObject(reader.Caches()); (err == nil || err == CacheReadOOB) && !object.IsNull(); object, err = thisBitstream.ReadObject(reader.Caches()) {
 				layers.Root.Logger.Println("reading physics child for ref", object.String())
 				child := new(PhysicsData)
 				if err != CacheReadOOB { // TODO: hack! unordered packets may have problems with caches
@@ -140,7 +142,7 @@ func (thisBitstream *PacketReaderBitstream) DecodePhysicsPacket(reader util.Pack
 					})
 				}
 
-				err = thisBitstream.readPhysicsData(child, true, reader)
+				err = thisBitstream.ReadPhysicsData(child, true, reader)
 				if err != nil {
 					return layer, err
 				}
@@ -201,7 +203,7 @@ func (layer *PhysicsPacket) Serialize(writer util.PacketWriter, stream *PacketWr
 			println("WARNING: skipping 0x85 serialize because instance doesn't exist yet")
 			continue
 		}
-		err = stream.writeObject(subpacket.Data.Instance, writer.Caches())
+		err = stream.WriteObject(subpacket.Data.Instance, writer.Caches())
 		if err != nil {
 			return err
 		}
@@ -216,12 +218,12 @@ func (layer *PhysicsPacket) Serialize(writer util.PacketWriter, stream *PacketWr
 		}
 
 		if writer.ToClient() {
-			err = stream.writePhysicsData(&subpacket.Data, true, writer)
+			err = stream.WritePhysicsData(&subpacket.Data, true, writer)
 			if err != nil {
 				return err
 			}
 		} else {
-			err = stream.writeMotors(subpacket.Data.Motors)
+			err = stream.WriteMotors(subpacket.Data.Motors)
 			if err != nil {
 				return err
 			}
@@ -230,11 +232,11 @@ func (layer *PhysicsPacket) Serialize(writer util.PacketWriter, stream *PacketWr
 				return err
 			}
 			for i := 0; i < int(len(subpacket.History)); i++ {
-				err = stream.writeFloat32BE(subpacket.History[i].Interval)
+				err = stream.WriteFloat32BE(subpacket.History[i].Interval)
 				if err != nil {
 					return err
 				}
-				err = stream.writePhysicsData(subpacket.History[i], false, writer)
+				err = stream.WritePhysicsData(subpacket.History[i], false, writer)
 				if err != nil {
 					return err
 				}
@@ -247,17 +249,17 @@ func (layer *PhysicsPacket) Serialize(writer util.PacketWriter, stream *PacketWr
 				println("WARNING: 0x85 skipping serialize because child doesn't exist yet!")
 				continue
 			}
-			err = stream.writeObject(child.Instance, writer.Caches())
+			err = stream.WriteObject(child.Instance, writer.Caches())
 			if err != nil {
 				return err
 			}
 
-			err = stream.writePhysicsData(child, true, writer)
+			err = stream.WritePhysicsData(child, true, writer)
 			if err != nil {
 				return err
 			}
 		}
-		err = stream.writeObject(nil, writer.Caches()) // Terminator for children
+		err = stream.WriteObject(nil, writer.Caches()) // Terminator for children
 		if err != nil {
 			return err
 		}

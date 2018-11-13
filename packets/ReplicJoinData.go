@@ -5,6 +5,7 @@ import "github.com/gskartwii/rbxfile"
 import "bytes"
 import "github.com/gskartwii/go-bitstream"
 import "github.com/DataDog/zstd"
+import "github.com/gskartwii/roblox-dissector/util"
 
 // ID_JOINDATA
 type ReplicateJoinData struct {
@@ -20,7 +21,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeReplicateJoinData(reader util.
 	layer := NewReplicateJoinDataLayer()
 
 	thisBitstream.Align()
-	arrayLen, err := thisBitstream.readUint32BE()
+	arrayLen, err := thisBitstream.ReadUint32BE()
 	if err != nil {
 		return layer, err
 	}
@@ -58,11 +59,11 @@ func (layer *ReplicateJoinData) Serialize(writer util.PacketWriter, stream *Pack
 		return err
 	}
 	if layer.Instances == nil || len(layer.Instances) == 0 { // bail
-		err = stream.writeUint32BE(0)
+		err = stream.WriteUint32BE(0)
 		return err
 	}
 
-	err = stream.writeUint32BE(uint32(len(layer.Instances)))
+	err = stream.WriteUint32BE(uint32(len(layer.Instances)))
 	uncompressedBuf := bytes.NewBuffer([]byte{})
 	zstdBuf := bytes.NewBuffer([]byte{})
 	middleStream := zstd.NewWriter(zstdBuf)
@@ -84,7 +85,7 @@ func (layer *ReplicateJoinData) Serialize(writer util.PacketWriter, stream *Pack
 	if err != nil {
 		return err
 	}
-	_, err = middleStream.Write(uncompressedBuf.Bytes())
+	_, err = middlestream.Write(uncompressedBuf.Bytes())
 	if err != nil {
 		return err
 	}
@@ -93,11 +94,11 @@ func (layer *ReplicateJoinData) Serialize(writer util.PacketWriter, stream *Pack
 		return err
 	}
 
-	err = stream.writeUint32BE(uint32(zstdBuf.Len()))
+	err = stream.WriteUint32BE(uint32(zstdBuf.Len()))
 	if err != nil {
 		return err
 	}
-	err = stream.writeUint32BE(uint32(uncompressedBuf.Len()))
+	err = stream.WriteUint32BE(uint32(uncompressedBuf.Len()))
 	if err != nil {
 		return err
 	}

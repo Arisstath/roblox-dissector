@@ -10,6 +10,8 @@ import (
 
 	"github.com/gskartwii/go-bitstream"
 	"github.com/pierrec/xxHash/xxHash32"
+    "github.com/gskartwii/roblox-dissector/util"
+    "github.com/gskartwii/roblox-dissector/bitstreams"
 )
 
 func shuffleSlice(src []byte) []byte {
@@ -76,8 +78,8 @@ func NewAuthPacket() *AuthPacket {
 func (stream *PacketReaderBitstream) DecodeAuthPacket(reader util.PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewAuthPacket()
 
-	lenBytes := bitsToBytes(uint(layers.Reliability.LengthInBits)) - 1 // -1 for packet id
-	data, err := stream.readString(int(lenBytes))
+	lenBytes := (uint(layers.Reliability.LengthInBits) + 7) >> 3 - 1 // -1 for packet id
+	data, err := stream.ReadString(int(lenBytes))
 	if err != nil {
 		return layer, err
 	}
@@ -99,8 +101,8 @@ func (stream *PacketReaderBitstream) DecodeAuthPacket(reader util.PacketReader, 
 	dest = shuffleSlice(dest)
 
 	checkSum := calculateChecksum(dest[4:])
-	thisBitstream := PacketReaderBitstream{bitstream.NewReader(bytes.NewReader(dest))}
-	storedChecksum, err := thisBitstream.readUint32LE()
+	thisBitstream := PacketReaderBitstream{&bitstreams.BitstreamReader{bitstream.NewReader(bytes.NewReader(dest))}}
+	storedChecksum, err := thisBitstream.ReadUint32LE()
 	if err != nil {
 		return layer, err
 	}
@@ -120,43 +122,43 @@ func (stream *PacketReaderBitstream) DecodeAuthPacket(reader util.PacketReader, 
 	PaddingSize := paddingSizeByte & 0xF
 
 	void := make([]byte, PaddingSize)
-	err = thisBitstream.bytes(void, int(PaddingSize))
+	err = thisBitstream.Read(void)
 	if err != nil {
 		return layer, err
 	}
 
-	playerId, err := thisBitstream.readVarsint64()
+	playerId, err := thisBitstream.ReadVarsint64()
 	if err != nil {
 		return layer, err
 	}
 	layer.PlayerId = playerId
-	layer.ClientTicket, err = thisBitstream.readVarLengthString()
+	layer.ClientTicket, err = thisBitstream.ReadVarLengthString()
 	if err != nil {
 		return layer, err
 	}
-	layer.DataModelHash, err = thisBitstream.readVarLengthString()
+	layer.DataModelHash, err = thisBitstream.ReadVarLengthString()
 	if err != nil {
 		return layer, err
 	}
-	layer.ProtocolVersion, err = thisBitstream.readUint32BE()
+	layer.ProtocolVersion, err = thisBitstream.ReadUint32BE()
 	if err != nil {
 		return layer, err
 	}
-	layer.SecurityKey, err = thisBitstream.readVarLengthString()
+	layer.SecurityKey, err = thisBitstream.ReadVarLengthString()
 	if err != nil {
 		return layer, err
 	}
-	layer.Platform, err = thisBitstream.readVarLengthString()
+	layer.Platform, err = thisBitstream.ReadVarLengthString()
 	if err != nil {
 		return layer, err
 	}
-	layer.RobloxProductName, err = thisBitstream.readVarLengthString()
+	layer.RobloxProductName, err = thisBitstream.ReadVarLengthString()
 	if err == io.EOF {
 		return layer, nil
 	} else if err != nil {
 		return layer, err
 	}
-	hash, err := thisBitstream.readUintUTF8()
+	hash, err := thisBitstream.ReadUintUTF8()
 	if err != nil {
 		return layer, err
 	}
@@ -167,11 +169,11 @@ func (stream *PacketReaderBitstream) DecodeAuthPacket(reader util.PacketReader, 
 		layers.Root.Logger.Printf("hash ok: %8X\n", hash)
 	}
 
-	layer.SessionId, err = thisBitstream.readVarLengthString()
+	layer.SessionId, err = thisBitstream.ReadVarLengthString()
 	if err != nil {
 		return layer, err
 	}
-	layer.GoldenHash, err = thisBitstream.readUint32BE() // 0xc001cafe on android - cool cafe!
+	layer.GoldenHash, err = thisBitstream.ReadUint32BE() // 0xc001cafe on android - cool cafe!
 	if err != nil {
 		return layer, err
 	}
@@ -181,50 +183,50 @@ func (stream *PacketReaderBitstream) DecodeAuthPacket(reader util.PacketReader, 
 
 func (layer *AuthPacket) Serialize(writer util.PacketWriter, stream *PacketWriterBitstream) error {
 	rawBuffer := new(bytes.Buffer)
-	rawStream := &PacketWriterBitstream{bitstream.NewWriter(rawBuffer)}
+	rawStream := &PacketWriterBitstream{&bitstreams.BitstreamWriter{bitstream.NewWriter(rawBuffer)}}
 	var err error
 
 	err = stream.WriteByte(0x8A)
 	if err != nil {
 		return err
 	}
-	err = rawStream.writeVarsint64(layer.PlayerId)
+	err = rawStream.WriteVarsint64(layer.PlayerId)
 	if err != nil {
 		return err
 	}
-	err = rawStream.writeVarLengthString(layer.ClientTicket)
+	err = rawStream.WriteVarLengthString(layer.ClientTicket)
 	if err != nil {
 		return err
 	}
-	err = rawStream.writeVarLengthString(layer.DataModelHash)
+	err = rawStream.WriteVarLengthString(layer.DataModelHash)
 	if err != nil {
 		return err
 	}
-	err = rawStream.writeUint32BE(layer.ProtocolVersion)
+	err = rawStream.WriteUint32BE(layer.ProtocolVersion)
 	if err != nil {
 		return err
 	}
-	err = rawStream.writeVarLengthString(layer.SecurityKey)
+	err = rawStream.WriteVarLengthString(layer.SecurityKey)
 	if err != nil {
 		return err
 	}
-	err = rawStream.writeVarLengthString(layer.Platform)
+	err = rawStream.WriteVarLengthString(layer.Platform)
 	if err != nil {
 		return err
 	}
-	err = rawStream.writeVarLengthString(layer.RobloxProductName)
+	err = rawStream.WriteVarLengthString(layer.RobloxProductName)
 	if err != nil {
 		return err
 	}
-	err = rawStream.writeVarint64(uint64(hashClientTicket(layer.ClientTicket)))
+	err = rawStream.WriteVarint64(uint64(hashClientTicket(layer.ClientTicket)))
 	if err != nil {
 		return err
 	}
-	err = rawStream.writeVarLengthString(layer.SessionId)
+	err = rawStream.WriteVarLengthString(layer.SessionId)
 	if err != nil {
 		return err
 	}
-	err = rawStream.writeUint32BE(layer.GoldenHash)
+	err = rawStream.WriteUint32BE(layer.GoldenHash)
 	if err != nil {
 		return err
 	}
@@ -254,5 +256,5 @@ func (layer *AuthPacket) Serialize(writer util.PacketWriter, stream *PacketWrite
 	c.CryptBlocks(dest, shuffledEncryptable)
 	dest = shuffleSlice(dest) // shuffle back to correct order
 
-	return stream.allBytes(dest)
+	return stream.WriteAll(dest)
 }

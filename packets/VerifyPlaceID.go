@@ -1,5 +1,6 @@
 package packets
 
+import "github.com/gskartwii/roblox-dissector/util"
 // ID_PLACEID_VERIFICATION - client -> server
 type VerifyPlaceId struct {
 	PlaceId int64
@@ -13,7 +14,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeVerifyPlaceId(reader util.Pack
 	layer := NewVerifyPlaceId()
 
 	var err error
-	layer.PlaceId, err = thisBitstream.readVarsint64()
+	layer.PlaceId, err = thisBitstream.ReadVarsint64()
 	return layer, err
 }
 
@@ -22,5 +23,5 @@ func (layer *VerifyPlaceId) Serialize(writer util.PacketWriter, stream *PacketWr
 	if err != nil {
 		return err
 	}
-	return stream.writeVarsint64(layer.PlaceId)
+	return stream.WriteVarsint64(layer.PlaceId)
 }

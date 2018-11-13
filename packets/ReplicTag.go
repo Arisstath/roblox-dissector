@@ -1,5 +1,6 @@
 package packets
 
+import "github.com/gskartwii/roblox-dissector/util"
 // ID_TAG
 type ReplicationTag struct {
 	// 12 or 13
@@ -10,7 +11,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeReplicationTag(reader util.Pac
 	var err error
 	inner := &ReplicationTag{}
 
-	inner.TagId, err = thisBitstream.readUint32BE()
+	inner.TagId, err = thisBitstream.ReadUint32BE()
 	if err != nil {
 		return inner, err
 	}
@@ -19,7 +20,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeReplicationTag(reader util.Pac
 }
 
 func (layer *ReplicationTag) Serialize(writer util.PacketWriter, stream *PacketWriterBitstream) error {
-	return stream.writeUint32BE(layer.TagId)
+	return stream.WriteUint32BE(layer.TagId)
 }
 
 func (ReplicationTag) Type() uint8 {

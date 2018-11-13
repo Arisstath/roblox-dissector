@@ -5,6 +5,7 @@ import (
 
 	"github.com/gskartwii/rbxfile"
 )
+import "github.com/gskartwii/roblox-dissector/util"
 
 // ID_DELETE_INSTANCE
 type DeleteInstance struct {
@@ -17,7 +18,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeDeleteInstance(reader util.Pac
 	inner := &DeleteInstance{}
 
 	// NULL deletion is actually legal. Who would have known?
-	referent, err := thisBitstream.readObject(reader.Caches())
+	referent, err := thisBitstream.ReadObject(reader.Caches())
 	inner.Instance, err = reader.Context().InstancesByReferent.TryGetInstance(referent)
 	if err != nil {
 		return inner, err
@@ -32,7 +33,7 @@ func (layer *DeleteInstance) Serialize(writer util.PacketWriter, stream *PacketW
 	if layer.Instance == nil {
 		return errors.New("Instance to delete can't be nil!")
 	}
-	return stream.writeObject(layer.Instance, writer.Caches())
+	return stream.WriteObject(layer.Instance, writer.Caches())
 }
 
 func (DeleteInstance) Type() uint8 {

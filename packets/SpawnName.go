@@ -1,5 +1,6 @@
 package packets
 
+import "github.com/gskartwii/roblox-dissector/util"
 // ID_PREFERRED_SPAWN_NAME - client -> server
 type SpawnNamePacket struct {
 	SpawnName string
@@ -13,7 +14,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeSpawnNamePacket(reader util.Pa
 	layer := NewSpawnNamePacket()
 
 	var err error
-	spawnName, err := thisBitstream.readVarLengthString()
+	spawnName, err := thisBitstream.ReadVarLengthString()
 	layer.SpawnName = string(spawnName)
 	return layer, err
 }
@@ -23,5 +24,5 @@ func (layer *SpawnNamePacket) Serialize(writer util.PacketWriter, stream *Packet
 	if err != nil {
 		return err
 	}
-	return stream.writeVarLengthString(layer.SpawnName)
+	return stream.WriteVarLengthString(layer.SpawnName)
 }

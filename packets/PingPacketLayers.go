@@ -1,5 +1,7 @@
 package packets
 
+import "github.com/gskartwii/roblox-dissector/util"
+
 // ID_CONNECTED_PING - client <-> server
 type RakPing struct {
 	// Timestamp (seconds)
@@ -14,7 +16,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeRakPing(reader util.PacketRead
 	layer := NewRakPing()
 
 	var err error
-	layer.SendPingTime, err = thisBitstream.readUint64BE()
+	layer.SendPingTime, err = thisBitstream.ReadUint64BE()
 
 	return layer, err
 }
@@ -24,7 +26,7 @@ func (layer *RakPing) Serialize(writer util.PacketWriter, stream *PacketWriterBi
 	if err != nil {
 		return err
 	}
-	err = stream.writeUint64BE(layer.SendPingTime)
+	err = stream.WriteUint64BE(layer.SendPingTime)
 	return err
 }
 
@@ -44,11 +46,11 @@ func (thisBitstream *PacketReaderBitstream) DecodeRakPong(reader util.PacketRead
 	layer := NewRakPong()
 
 	var err error
-	layer.SendPingTime, err = thisBitstream.readUint64BE()
+	layer.SendPingTime, err = thisBitstream.ReadUint64BE()
 	if err != nil {
 		return layer, err
 	}
-	layer.SendPongTime, err = thisBitstream.readUint64BE()
+	layer.SendPongTime, err = thisBitstream.ReadUint64BE()
 
 	return layer, err
 }
@@ -59,10 +61,10 @@ func (layer *RakPong) Serialize(writer util.PacketWriter, stream *PacketWriterBi
 	if err != nil {
 		return err
 	}
-	err = stream.writeUint64BE(layer.SendPingTime)
+	err = stream.WriteUint64BE(layer.SendPingTime)
 	if err != nil {
 		return err
 	}
-	err = stream.writeUint64BE(layer.SendPongTime)
+	err = stream.WriteUint64BE(layer.SendPongTime)
 	return err
 }

@@ -5,6 +5,7 @@ import (
 
 	"github.com/gskartwii/rbxfile"
 )
+import "github.com/gskartwii/roblox-dissector/util"
 
 // Touch replication for a single touch
 type TouchSubpacket struct {
@@ -30,7 +31,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeTouch(reader util.PacketReader
 	context := reader.Context()
 	for {
 		subpacket := &TouchSubpacket{}
-		referent, err := thisBitstream.readObject(reader.Caches())
+		referent, err := thisBitstream.ReadObject(reader.Caches())
 		// hopefully we don't need to check for CacheReadOOB here
 		if err != nil {
 			return layer, err
@@ -42,7 +43,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeTouch(reader util.PacketReader
 			subpacket.Instance1 = inst
 		})
 
-		referent, err = thisBitstream.readObject(reader.Caches())
+		referent, err = thisBitstream.ReadObject(reader.Caches())
 		if err != nil {
 			return layer, err
 		}
@@ -53,7 +54,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeTouch(reader util.PacketReader
 			subpacket.Instance2 = inst
 		})
 
-		subpacket.IsTouch, err = thisBitstream.readBoolByte()
+		subpacket.IsTouch, err = thisBitstream.ReadBoolByte()
 		if err != nil {
 			return layer, err
 		}
@@ -74,15 +75,15 @@ func (layer *Touch) Serialize(writer util.PacketWriter, stream *PacketWriterBits
 			println("WARNING: 0x86 skipping serialize because instances don't exist yet!")
 			continue
 		}
-		err = stream.writeObject(subpacket.Instance1, writer.Caches())
+		err = stream.WriteObject(subpacket.Instance1, writer.Caches())
 		if err != nil {
 			return err
 		}
-		err = stream.writeObject(subpacket.Instance2, writer.Caches())
+		err = stream.WriteObject(subpacket.Instance2, writer.Caches())
 		if err != nil {
 			return err
 		}
-		err = stream.writeBoolByte(subpacket.IsTouch)
+		err = stream.WriteBoolByte(subpacket.IsTouch)
 		if err != nil {
 			return err
 		}

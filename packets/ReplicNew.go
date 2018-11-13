@@ -1,6 +1,7 @@
 package packets
 
 import "github.com/gskartwii/rbxfile"
+import "github.com/gskartwii/roblox-dissector/util"
 
 // ID_CREATE_INSTANCE
 type NewInstance struct {

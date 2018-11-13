@@ -1,4 +1,5 @@
 package packets
+import "github.com/gskartwii/roblox-dissector/util"
 
 // Disconnection reasons
 const (
@@ -55,7 +56,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeDisconnectionPacket(reader uti
 	layer := NewDisconnectionPacket()
 
 	var err error
-	layer.Reason, err = thisBitstream.readUint32BE()
+	layer.Reason, err = thisBitstream.ReadUint32BE()
 	return layer, err
 }
 
@@ -64,5 +65,5 @@ func (layer *DisconnectionPacket) Serialize(writer util.PacketWriter, stream *Pa
 	if err != nil {
 		return err
 	}
-	return stream.writeUint32BE(layer.Reason)
+	return stream.WriteUint32BE(layer.Reason)
 }

@@ -2,6 +2,7 @@ package packets
 
 import "io"
 import "errors"
+import "github.com/gskartwii/roblox-dissector/util"
 
 const (
 	UNRELIABLE              = iota
@@ -80,13 +81,13 @@ func (thisBitstream *PacketReaderBitstream) DecodeReliabilityLayer(reader util.P
 		reliablePacket.RakNetLayer = layers.RakNet
 
 		reliablePacket.Reliability = uint32(reliability)
-		reliablePacket.HasSplitPacket, err = thisBitstream.readBool()
+		reliablePacket.HasSplitPacket, err = thisBitstream.ReadBool()
 		if err != nil {
 			return layer, err
 		}
 		thisBitstream.Align()
 
-		reliablePacket.LengthInBits, err = thisBitstream.readUint16BE()
+		reliablePacket.LengthInBits, err = thisBitstream.ReadUint16BE()
 		if err != nil {
 			return layer, err
 		}
@@ -95,42 +96,42 @@ func (thisBitstream *PacketReaderBitstream) DecodeReliabilityLayer(reader util.P
 		}
 
 		if reliablePacket.IsReliable() {
-			reliablePacket.ReliableMessageNumber, err = thisBitstream.readUint24LE()
+			reliablePacket.ReliableMessageNumber, err = thisBitstream.ReadUint24LE()
 			if err != nil {
 				return layer, err
 			}
 		}
 		if reliablePacket.IsSequenced() {
-			reliablePacket.SequencingIndex, err = thisBitstream.readUint24LE()
+			reliablePacket.SequencingIndex, err = thisBitstream.ReadUint24LE()
 			if err != nil {
 				return layer, err
 			}
 		}
 		if reliablePacket.IsOrdered() {
-			reliablePacket.OrderingIndex, err = thisBitstream.readUint24LE()
+			reliablePacket.OrderingIndex, err = thisBitstream.ReadUint24LE()
 			if err != nil {
 				return layer, err
 			}
-			reliablePacket.OrderingChannel, err = thisBitstream.readUint8()
+			reliablePacket.OrderingChannel, err = thisBitstream.ReadUint8()
 			if err != nil {
 				return layer, err
 			}
 		}
 		if reliablePacket.HasSplitPacket {
-			reliablePacket.SplitPacketCount, err = thisBitstream.readUint32BE()
+			reliablePacket.SplitPacketCount, err = thisBitstream.ReadUint32BE()
 			if err != nil {
 				return layer, err
 			}
-			reliablePacket.SplitPacketID, err = thisBitstream.readUint16BE()
+			reliablePacket.SplitPacketID, err = thisBitstream.ReadUint16BE()
 			if err != nil {
 				return layer, err
 			}
-			reliablePacket.SplitPacketIndex, err = thisBitstream.readUint32BE()
+			reliablePacket.SplitPacketIndex, err = thisBitstream.ReadUint32BE()
 			if err != nil {
 				return layer, err
 			}
 		}
-		reliablePacket.SelfData, err = thisBitstream.readString(int((reliablePacket.LengthInBits + 7) / 8))
+		reliablePacket.SelfData, err = thisBitstream.ReadString(int((reliablePacket.LengthInBits + 7) / 8))
 		if err != nil {
 			return layer, err
 		}
@@ -154,7 +155,7 @@ func (layer *ReliabilityLayer) Serialize(writer util.PacketWriter, outputStream 
 		if err != nil {
 			return err
 		}
-		err = outputStream.writeBool(packet.HasSplitPacket)
+		err = outputstream.WriteBool(packet.HasSplitPacket)
 		if err != nil {
 			return err
 		}
@@ -163,42 +164,42 @@ func (layer *ReliabilityLayer) Serialize(writer util.PacketWriter, outputStream 
 			return err
 		}
 		packet.LengthInBits = uint16(len(packet.SelfData) * 8)
-		err = outputStream.writeUint16BE(packet.LengthInBits)
+		err = outputstream.WriteUint16BE(packet.LengthInBits)
 		if err != nil {
 			return err
 		}
 		if reliability >= 2 && reliability <= 4 {
-			err = outputStream.writeUint24LE(packet.ReliableMessageNumber)
+			err = outputstream.WriteUint24LE(packet.ReliableMessageNumber)
 			if err != nil {
 				return err
 			}
 		}
 		if reliability == 1 || reliability == 4 {
-			err = outputStream.writeUint24LE(packet.SequencingIndex)
+			err = outputstream.WriteUint24LE(packet.SequencingIndex)
 			if err != nil {
 				return err
 			}
 		}
 		if reliability == 1 || reliability == 4 || reliability == 3 || reliability == 7 {
-			err = outputStream.writeUint24LE(packet.OrderingIndex)
+			err = outputstream.WriteUint24LE(packet.OrderingIndex)
 			if err != nil {
 				return err
 			}
-			err = outputStream.WriteByte(byte(packet.OrderingChannel))
+			err = outputstream.WriteByte(byte(packet.OrderingChannel))
 			if err != nil {
 				return err
 			}
 		}
 		if packet.HasSplitPacket {
-			err = outputStream.writeUint32BE(packet.SplitPacketCount)
+			err = outputstream.WriteUint32BE(packet.SplitPacketCount)
 			if err != nil {
 				return err
 			}
-			err = outputStream.writeUint16BE(packet.SplitPacketID)
+			err = outputstream.WriteUint16BE(packet.SplitPacketID)
 			if err != nil {
 				return err
 			}
-			err = outputStream.writeUint32BE(packet.SplitPacketIndex)
+			err = outputstream.WriteUint32BE(packet.SplitPacketIndex)
 			if err != nil {
 				return err
 			}

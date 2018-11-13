@@ -6,6 +6,7 @@ import (
 
 	"github.com/gskartwii/rbxfile"
 )
+import "github.com/gskartwii/roblox-dissector/util"
 
 // ChangeProperty describes an ID_CHANGE_PROPERTY data subpacket.
 type ChangeProperty struct {
@@ -24,7 +25,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeChangeProperty(reader util.Pac
 	var err error
 	layer := &ChangeProperty{}
 
-	referent, err := thisBitstream.readObject(reader.Caches())
+	referent, err := thisBitstream.ReadObject(reader.Caches())
 	if err != nil {
 		return layer, err
 	}
@@ -38,17 +39,17 @@ func (thisBitstream *PacketReaderBitstream) DecodeChangeProperty(reader util.Pac
 	layer.Instance = instance
 	instance.Properties[layer.PropertyName] = layer.Value
 
-	propertyIDx, err := thisBitstream.readUint16BE()
+	propertyIDx, err := thisBitstream.ReadUint16BE()
 	if err != nil {
 		return layer, err
 	}
 
-	layer.Bool1, err = thisBitstream.readBoolByte()
+	layer.Bool1, err = thisBitstream.ReadBoolByte()
 	if err != nil {
 		return layer, err
 	}
 	if layer.Bool1 && reader.IsClient() {
-		layer.Int1, err = thisBitstream.readSintUTF8()
+		layer.Int1, err = thisBitstream.ReadSintUTF8()
 		if err != nil {
 			return layer, err
 		}
@@ -57,7 +58,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeChangeProperty(reader util.Pac
 	context := reader.Context()
 	if int(propertyIDx) == int(len(context.StaticSchema.Properties)) { // explicit Parent property system
 		var referent Referent
-		referent, err = thisBitstream.readObject(reader.Caches())
+		referent, err = thisBitstream.ReadObject(reader.Caches())
 		parent, err := context.InstancesByReferent.TryGetInstance(referent)
 		if err != nil {
 			return layer, errors.New("parent doesn't exist in repl property")
@@ -89,42 +90,42 @@ func (layer *ChangeProperty) Serialize(writer util.PacketWriter, stream *PacketW
 		return errors.New("self is nil in serialize repl prop")
 	}
 
-	err := stream.writeObject(layer.Instance, writer.Caches())
+	err := stream.WriteObject(layer.Instance, writer.Caches())
 	if err != nil {
 		return err
 	}
 
 	context := writer.Context()
 	if layer.PropertyName == "Parent" { // explicit system for this
-		err = stream.writeUint16BE(uint16(len(context.StaticSchema.Properties)))
+		err = stream.WriteUint16BE(uint16(len(context.StaticSchema.Properties)))
 		if err != nil {
 			return err
 		}
-		err = stream.writeBoolByte(layer.Bool1)
+		err = stream.WriteBoolByte(layer.Bool1)
 		if err != nil {
 			return err
 		}
 		if writer.ToClient() {
-			err = stream.writeSintUTF8(layer.Int1)
+			err = stream.WriteSintUTF8(layer.Int1)
 			if err != nil {
 				return err
 			}
 		}
 
-		return stream.writeObject(layer.Value.(rbxfile.ValueReference).Instance, writer.Caches())
+		return stream.WriteObject(layer.Value.(rbxfile.ValueReference).Instance, writer.Caches())
 	}
 
-	err = stream.writeUint16BE(uint16(context.StaticSchema.PropertiesByName[layer.Instance.ClassName+"."+layer.PropertyName]))
+	err = stream.WriteUint16BE(uint16(context.StaticSchema.PropertiesByName[layer.Instance.ClassName+"."+layer.PropertyName]))
 	if err != nil {
 		return err
 	}
 
-	err = stream.writeBoolByte(layer.Bool1)
+	err = stream.WriteBoolByte(layer.Bool1)
 	if err != nil {
 		return err
 	}
 	if writer.ToClient() { // TODO: Serializers should be able to access PacketWriter
-		err = stream.writeSintUTF8(layer.Int1)
+		err = stream.WriteSintUTF8(layer.Int1)
 		if err != nil {
 			return err
 		}

@@ -6,6 +6,7 @@ import (
 
 	"github.com/gskartwii/rbxfile"
 )
+import "github.com/gskartwii/roblox-dissector/util"
 
 // AckProperty describes a ID_PROP_ACK packet.
 type AckProperty struct {
@@ -19,7 +20,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeAckProperty(reader util.Packet
 	var err error
 	layer := &AckProperty{}
 
-	referent, err := thisBitstream.readObject(reader.Caches())
+	referent, err := thisBitstream.ReadObject(reader.Caches())
 	if err != nil {
 		return layer, err
 	}
@@ -33,7 +34,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeAckProperty(reader util.Packet
 		return layer, err
 	}
 
-	propertyIDx, err := thisBitstream.readUint16BE()
+	propertyIDx, err := thisBitstream.ReadUint16BE()
 	if err != nil {
 		return layer, err
 	}
@@ -45,13 +46,13 @@ func (thisBitstream *PacketReaderBitstream) DecodeAckProperty(reader util.Packet
 
 	// HACK: I don't know how the ACK system works
 	// and I don't care enough to find out
-	countVersions, err := thisBitstream.readUint8()
+	countVersions, err := thisBitstream.ReadUint8()
 	if err != nil {
 		return layer, err
 	}
 	layer.Versions = make([]uint32, countVersions)
 	for i := 0; i < int(countVersions); i++ {
-		layer.Versions[i], err = thisBitstream.readUintUTF8()
+		layer.Versions[i], err = thisBitstream.ReadUintUTF8()
 		if err != nil {
 			return layer, err
 		}
@@ -61,14 +62,14 @@ func (thisBitstream *PacketReaderBitstream) DecodeAckProperty(reader util.Packet
 }
 
 func (layer *AckProperty) Serialize(writer util.PacketWriter, stream *PacketWriterBitstream) error {
-	err := stream.writeObject(layer.Instance, writer.Caches())
+	err := stream.WriteObject(layer.Instance, writer.Caches())
 	if err != nil {
 		return err
 	}
 
 	context := writer.Context()
 
-	err = stream.writeUint16BE(uint16(context.StaticSchema.PropertiesByName[layer.Instance.ClassName+"."+layer.PropertyName]))
+	err = stream.WriteUint16BE(uint16(context.StaticSchema.PropertiesByName[layer.Instance.ClassName+"."+layer.PropertyName]))
 	if err != nil {
 		return err
 	}
@@ -77,7 +78,7 @@ func (layer *AckProperty) Serialize(writer util.PacketWriter, stream *PacketWrit
 		return err
 	}
 	for i := 0; i < len(layer.Versions); i++ {
-		err = stream.writeUintUTF8(layer.Versions[i])
+		err = stream.WriteUintUTF8(layer.Versions[i])
 		if err != nil {
 			return err
 		}

@@ -1,6 +1,7 @@
 package packets
 
 import "errors"
+import "github.com/gskartwii/roblox-dissector/util"
 
 type ReplicRockySubpacket interface{}
 
@@ -36,7 +37,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeReplicRocky(reader util.Packet
 	var err error
 	inner := &ReplicRocky{}
 
-	inner.SubpacketType, err = thisBitstream.readUint8()
+	inner.SubpacketType, err = thisBitstream.ReadUint8()
 	if err != nil {
 		return inner, err
 	}
@@ -45,7 +46,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeReplicRocky(reader util.Packet
 	case 0: // Rocky
 		thisSubpacket := &ReplicRocky_00{}
 		for i := 0; i < 5; i++ {
-			thisSubpacket.Values[i], err = thisBitstream.readUint32BE()
+			thisSubpacket.Values[i], err = thisBitstream.ReadUint32BE()
 			if err != nil {
 				return inner, err
 			}
@@ -53,23 +54,23 @@ func (thisBitstream *PacketReaderBitstream) DecodeReplicRocky(reader util.Packet
 		subpacket = thisSubpacket
 	case 1:
 		thisSubpacket := &ReplicRocky_01{}
-		thisSubpacket.Int1, err = thisBitstream.readUint8()
+		thisSubpacket.Int1, err = thisBitstream.ReadUint8()
 		if err != nil {
 			return inner, err
 		}
-		thisSubpacket.Int2, err = thisBitstream.readUint32BE()
+		thisSubpacket.Int2, err = thisBitstream.ReadUint32BE()
 		if err != nil {
 			return inner, err
 		}
-		thisSubpacket.Int3, err = thisBitstream.readUint32BE()
+		thisSubpacket.Int3, err = thisBitstream.ReadUint32BE()
 		if err != nil {
 			return inner, err
 		}
-		thisSubpacket.Int4, err = thisBitstream.readUint32BE()
+		thisSubpacket.Int4, err = thisBitstream.ReadUint32BE()
 		if err != nil {
 			return inner, err
 		}
-		thisSubpacket.Int5, err = thisBitstream.readUint64BE()
+		thisSubpacket.Int5, err = thisBitstream.ReadUint64BE()
 		if err != nil {
 			return inner, err
 		}
@@ -78,18 +79,18 @@ func (thisBitstream *PacketReaderBitstream) DecodeReplicRocky(reader util.Packet
 
 	case 5:
 		thisSubpacket := &ReplicRocky_05{}
-		thisSubpacket.Int, err = thisBitstream.readUint32BE()
+		thisSubpacket.Int, err = thisBitstream.ReadUint32BE()
 		if err != nil {
 			return inner, err
 		}
 		subpacket = thisSubpacket
 	case 6: // id response
 		thisSubpacket := &ReplicRocky_06{}
-		thisSubpacket.Int1, err = thisBitstream.readUint32BE()
+		thisSubpacket.Int1, err = thisBitstream.ReadUint32BE()
 		if err != nil {
 			return inner, err
 		}
-		thisSubpacket.Int2, err = thisBitstream.readUint32BE()
+		thisSubpacket.Int2, err = thisBitstream.ReadUint32BE()
 		if err != nil {
 			return inner, err
 		}
@@ -115,11 +116,11 @@ func (layer *ReplicRocky) Serialize(writer util.PacketWriter, stream *PacketWrit
 	switch layer.SubpacketType {
 	case 6:
 		subpacket := layer.Subpacket.(*ReplicRocky_06)
-		err = stream.writeUint32BE(subpacket.Int1)
+		err = stream.WriteUint32BE(subpacket.Int1)
 		if err != nil {
 			return err
 		}
-		err = stream.writeUint32BE(subpacket.Int2)
+		err = stream.WriteUint32BE(subpacket.Int2)
 		break
 	default:
 		println("Tried to write rocky packet", layer.Type)

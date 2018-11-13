@@ -1,5 +1,7 @@
 package packets
 
+import "github.com/gskartwii/roblox-dissector/util"
+
 // ID_TIMESTAMP - client <-> server
 type Timestamp struct {
 	// Timestamp of when this packet was sent

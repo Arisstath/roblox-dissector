@@ -5,6 +5,7 @@ import (
 	"io"
 	"strconv"
 )
+import "github.com/gskartwii/roblox-dissector/util"
 
 // List of string names for all 0x83 subpackets
 var ReplicationSubpackets map[uint8]string = map[uint8]string{
@@ -30,7 +31,7 @@ var ReplicationSubpackets map[uint8]string = map[uint8]string{
 	0x12: "ID_REPLIC_HASH",
 }
 
-var ReplicationDecoders = map[uint8](func(*PacketReaderBitstream, PacketReader, *PacketLayers) (ReplicationSubpacket, error)){
+var ReplicationDecoders = map[uint8](func(*PacketReaderBitstream, util.PacketReader, *PacketLayers) (ReplicationSubpacket, error)){
 	0x01: (*PacketReaderBitstream).DecodeDeleteInstance,
 	0x02: (*PacketReaderBitstream).DecodeNewInstance,
 	0x03: (*PacketReaderBitstream).DecodeChangeProperty,
@@ -65,7 +66,7 @@ func NewReplicatorPacket() *ReplicatorPacket {
 func (thisBitstream *PacketReaderBitstream) DecodeReplicatorPacket(reader util.PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewReplicatorPacket()
 
-	packetType, err := thisBitstream.readUint8()
+	packetType, err := thisBitstream.ReadUint8()
 	if err != nil {
 		return layer, err
 	}
@@ -84,7 +85,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeReplicatorPacket(reader util.P
 
 		layer.SubPackets = append(layer.SubPackets, inner)
 
-		packetType, err = thisBitstream.readUint8()
+		packetType, err = thisBitstream.ReadUint8()
 		if err == io.EOF {
 			println("DEPRECATED_WARNING: ignoring packettype read past end")
 			return layer, nil

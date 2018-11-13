@@ -6,6 +6,7 @@ import (
 
 	"github.com/gskartwii/rbxfile"
 )
+import "github.com/gskartwii/roblox-dissector/util"
 
 // Describes a global service from ID_SET_GLOBALS (TopReplication)
 type TopReplicationItem struct {
@@ -41,37 +42,37 @@ func (thisBitstream *PacketReaderBitstream) DecodeTopReplication(reader util.Pac
 	
 	var err error
 
-	layer.StreamJob, err = thisBitstream.readBoolByte()
+	layer.StreamJob, err = thisBitstream.ReadBoolByte()
 	if err != nil {
 		return layer, err
 	}
-	layer.FilteringEnabled, err = thisBitstream.readBoolByte()
+	layer.FilteringEnabled, err = thisBitstream.ReadBoolByte()
 	if err != nil {
 		return layer, err
 	}
-	layer.AllowThirdPartySales, err = thisBitstream.readBoolByte()
+	layer.AllowThirdPartySales, err = thisBitstream.ReadBoolByte()
 	if err != nil {
 		return layer, err
 	}
-	layer.CharacterAutoSpawn, err = thisBitstream.readBoolByte()
+	layer.CharacterAutoSpawn, err = thisBitstream.ReadBoolByte()
 	if err != nil {
 		return layer, err
 	}
-	stringLen, err := thisBitstream.readUint32BE()
+	stringLen, err := thisBitstream.ReadUint32BE()
 	if err != nil {
 		return layer, err
 	}
-	layer.ReferentString, err = thisBitstream.readASCII(int(stringLen))
+	layer.ReferentString, err = thisBitstream.ReadASCII(int(stringLen))
 	if err != nil {
 		return layer, err
 	}
 	reader.Context().InstanceTopScope = layer.ReferentString
 	if !reader.Context().IsStudio {
-		layer.Int1, err = thisBitstream.readUint32BE()
+		layer.Int1, err = thisBitstream.ReadUint32BE()
 		if err != nil {
 			return layer, err
 		}
-		layer.Int2, err = thisBitstream.readUint32BE()
+		layer.Int2, err = thisBitstream.ReadUint32BE()
 		if err != nil {
 			return layer, err
 		}
@@ -80,7 +81,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeTopReplication(reader util.Pac
 		reader.Context().Int2 = layer.Int2
 	}
 
-	arrayLen, err := thisBitstream.readUintUTF8()
+	arrayLen, err := thisBitstream.ReadUintUTF8()
 	if err != nil {
 		return layer, err
 	}
@@ -94,12 +95,12 @@ func (thisBitstream *PacketReaderBitstream) DecodeTopReplication(reader util.Pac
 	layer.Items = make([]*TopReplicationItem, arrayLen)
 	for i := 0; i < int(arrayLen); i++ {
 		thisItem := &TopReplicationItem{}
-		referent, err := thisBitstream.readJoinObject(context)
+		referent, err := thisBitstream.ReadJoinObject(context)
 		if err != nil {
 			return layer, err
 		}
 
-		thisItem.ClassID, err = thisBitstream.readUint16BE()
+		thisItem.ClassID, err = thisBitstream.ReadUint16BE()
 		if err != nil {
 			return layer, err
 		}
@@ -119,11 +120,11 @@ func (thisBitstream *PacketReaderBitstream) DecodeTopReplication(reader util.Pac
 		context.InstancesByReferent.AddInstance(referent, thisService)
 		thisItem.Instance = thisService
 
-		thisItem.Bool1, err = thisBitstream.readBoolByte()
+		thisItem.Bool1, err = thisBitstream.ReadBoolByte()
 		if err != nil {
 			return layer, err
 		}
-		thisItem.Bool2, err = thisBitstream.readBoolByte()
+		thisItem.Bool2, err = thisBitstream.ReadBoolByte()
 		if err != nil {
 			return layer, err
 		}
@@ -139,49 +140,49 @@ func (layer *TopReplication) Serialize(writer util.PacketWriter, stream *PacketW
 		return err
 	}
 
-	err = stream.writeBool(layer.StreamJob)
+	err = stream.WriteBool(layer.StreamJob)
 	if err != nil {
 		return err
 	}
-	err = stream.writeBool(layer.FilteringEnabled)
+	err = stream.WriteBool(layer.FilteringEnabled)
 	if err != nil {
 		return err
 	}
-	err = stream.writeBool(layer.AllowThirdPartySales)
+	err = stream.WriteBool(layer.AllowThirdPartySales)
 	if err != nil {
 		return err
 	}
-	err = stream.writeBool(layer.CharacterAutoSpawn)
+	err = stream.WriteBool(layer.CharacterAutoSpawn)
 	if err != nil {
 		return err
 	}
 
-	err = stream.writeUint32BE(uint32(len(layer.ReferentString)))
+	err = stream.WriteUint32BE(uint32(len(layer.ReferentString)))
 	if err != nil {
 		return err
 	}
-	err = stream.writeASCII(layer.ReferentString)
+	err = stream.WriteASCII(layer.ReferentString)
 	if err != nil {
 		return err
 	}
 
 	// FIXME: assumes Studio
 
-	err = stream.writeUintUTF8(uint32(len(layer.Items)))
+	err = stream.WriteUintUTF8(uint32(len(layer.Items)))
 	for _, item := range layer.Items {
-		err = stream.writeJoinObject(item.Instance, writer.Context())
+		err = stream.WriteJoinObject(item.Instance, writer.Context())
 		if err != nil {
 			return err
 		}
-		err = stream.writeUint16BE(item.ClassID)
+		err = stream.WriteUint16BE(item.ClassID)
 		if err != nil {
 			return err
 		}
-		err = stream.writeBool(item.Bool1)
+		err = stream.WriteBool(item.Bool1)
 		if err != nil {
 			return err
 		}
-		err = stream.writeBool(item.Bool2)
+		err = stream.WriteBool(item.Bool2)
 		if err != nil {
 			return err
 		}

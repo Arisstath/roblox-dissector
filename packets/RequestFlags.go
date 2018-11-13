@@ -1,4 +1,5 @@
 package packets
+import "github.com/gskartwii/roblox-dissector/util"
 
 // ID_PROTOCOL_SYNC - client -> server
 type FlagRequest struct {
@@ -14,20 +15,20 @@ func (thisBitstream *PacketReaderBitstream) DecodeFlagRequest(reader util.Packet
 	layer := NewFlagRequest()
 
 	var err error
-	layer.SchemaVersion, err = thisBitstream.readUint32BE()
+	layer.SchemaVersion, err = thisBitstream.ReadUint32BE()
 
-	flagsLen, err := thisBitstream.readUint16BE()
+	flagsLen, err := thisBitstream.ReadUint16BE()
 	if err != nil {
 		return layer, err
 	}
 
 	layer.RequestedFlags = make([]string, flagsLen)
 	for i := 0; i < int(flagsLen); i++ {
-		flagLen, err := thisBitstream.readUint8()
+		flagLen, err := thisBitstream.ReadUint8()
 		if err != nil {
 			return layer, err
 		}
-		layer.RequestedFlags[i], err = thisBitstream.readASCII(int(flagLen))
+		layer.RequestedFlags[i], err = thisBitstream.ReadASCII(int(flagLen))
 		if err != nil {
 			return layer, err
 		}
@@ -40,11 +41,11 @@ func (layer *FlagRequest) Serialize(writer util.PacketWriter, stream *PacketWrit
 	if err != nil {
 		return err
 	}
-	err = stream.writeUint32BE(layer.SchemaVersion)
+	err = stream.WriteUint32BE(layer.SchemaVersion)
 	if err != nil {
 		return err
 	}
-	err = stream.writeUint16BE(uint16(len(layer.RequestedFlags)))
+	err = stream.WriteUint16BE(uint16(len(layer.RequestedFlags)))
 	if err != nil {
 		return err
 	}
@@ -53,7 +54,7 @@ func (layer *FlagRequest) Serialize(writer util.PacketWriter, stream *PacketWrit
 		if err != nil {
 			return err
 		}
-		err = stream.writeASCII(layer.RequestedFlags[i])
+		err = stream.WriteASCII(layer.RequestedFlags[i])
 		if err != nil {
 			return err
 		}

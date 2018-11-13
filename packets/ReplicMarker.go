@@ -1,5 +1,7 @@
 package packets
 
+import "github.com/gskartwii/roblox-dissector/util"
+
 // ID_MARKER
 type ReplicationMarker struct {
 	MarkerId uint32
@@ -9,7 +11,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeReplicationMarker(reader util.
 	var err error
 	inner := &ReplicationMarker{}
 
-	inner.MarkerId, err = thisBitstream.readUint32LE()
+	inner.MarkerId, err = thisBitstream.ReadUint32LE()
 	if err != nil {
 		return inner, err
 	}
@@ -18,7 +20,7 @@ func (thisBitstream *PacketReaderBitstream) DecodeReplicationMarker(reader util.
 }
 
 func (layer *ReplicationMarker) Serialize(writer util.PacketWriter, stream *PacketWriterBitstream) error {
-	return stream.writeUint32LE(layer.MarkerId)
+	return stream.WriteUint32LE(layer.MarkerId)
 }
 
 func (ReplicationMarker) Type() uint8 {
