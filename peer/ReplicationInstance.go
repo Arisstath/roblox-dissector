@@ -68,7 +68,8 @@ func decodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader
 		return thisInstance, parent.AddChild(thisInstance)
 	}
 	if err != nil && !thisInstance.IsService {
-		return thisInstance, errors.New("not service yet parent doesn't exist") // the parents of services don't exist
+		println("couldn't find parent for", thisInstance.Reference, referent)
+		return thisInstance, err // the parents of services don't exist
 	}
 
 	return thisInstance, nil

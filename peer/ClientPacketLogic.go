@@ -277,6 +277,7 @@ func (myClient *CustomClient) handlePlayersService(players *rbxfile.Instance) {
 	}
 	players.AddChild(myPlayer)
 	myClient.instanceIndex++
+	myClient.Context.InstancesByReferent.AddInstance(Referent(myPlayer.Reference), myPlayer)
 
 	myClient.WriteDataPackets(
 		&Packet83_05{
@@ -325,6 +326,8 @@ func (myClient *CustomClient) InvokeRemote(instance *rbxfile.Instance, arguments
 	index := myClient.remoteIndices[instance]
 	myClient.remoteLock.Unlock()
 
+	// TODO: Instead of creating new event chans every time, have a global channel for each instance
+	// This way the event won't be eaten in case the Arguments[0] == index check doesn't pass
 	unbind1, succChan := myClient.MakeEventChan(instance, "RemoteOnInvokeSuccess")
 	unbind2, errChan := myClient.MakeEventChan(instance, "RemoteOnInvokeError")
 	// it should be ok to leave the chans open
