@@ -2,68 +2,77 @@ package peer
 
 import "errors"
 import "fmt"
-import "github.com/gskartwii/roblox-dissector/packets"
+
 import "strings"
 import "log"
 
-type decoderFunc func(*packets.PacketReaderBitstream, PacketReader, *PacketLayers) (RakNetPacket, error)
+type decoderFunc func(*extendedReader, PacketReader, *PacketLayers) (RakNetPacket, error)
 
 var packetDecoders = map[byte]decoderFunc{
-	0x05: (*packets.PacketReaderBitstream).DecodeConnectionRequest1,
-	0x06: (*packets.PacketReaderBitstream).DecodeConnectionReply1,
-	0x07: (*packets.PacketReaderBitstream).DecodeConnectionRequest2,
-	0x08: (*packets.PacketReaderBitstream).DecodeConnectionReply2,
-	0x00: (*packets.PacketReaderBitstream).DecodeRakPing,
-	0x03: (*packets.PacketReaderBitstream).DecodeRakPong,
-	0x09: (*packets.PacketReaderBitstream).DecodePacket09Layer,
-	0x10: (*packets.PacketReaderBitstream).DecodePacket10Layer,
-	0x13: (*packets.PacketReaderBitstream).DecodePacket13Layer,
-	0x15: (*packets.PacketReaderBitstream).DecodeDisconnectionPacket,
-	0x1B: (*packets.PacketReaderBitstream).DecodeTimestamp,
+	0x05: (*extendedReader).DecodePacket05Layer,
+	0x06: (*extendedReader).DecodePacket06Layer,
+	0x07: (*extendedReader).DecodePacket07Layer,
+	0x08: (*extendedReader).DecodePacket08Layer,
+	0x00: (*extendedReader).DecodePacket00Layer,
+	0x03: (*extendedReader).DecodePacket03Layer,
+	0x09: (*extendedReader).DecodePacket09Layer,
+	0x10: (*extendedReader).DecodePacket10Layer,
+	0x13: (*extendedReader).DecodePacket13Layer,
+	0x15: (*extendedReader).DecodePacket15Layer,
+	0x1B: (*extendedReader).DecodePacket1BLayer,
 
-	0x81: (*packets.PacketReaderBitstream).DecodeTopReplication,
-	0x83: (*packets.PacketReaderBitstream).DecodeReplicatorPacket,
-	0x85: (*packets.PacketReaderBitstream).DecodePhysicsPacket,
-	0x86: (*packets.PacketReaderBitstream).DecodeTouch,
-	0x8A: (*packets.PacketReaderBitstream).DecodeAuthPacket,
-	0x8D: (*packets.PacketReaderBitstream).DecodeClusterPacket,
-	0x8F: (*packets.PacketReaderBitstream).DecodeSpawnNamePacket,
-	0x90: (*packets.PacketReaderBitstream).DecodeFlagRequest,
-	0x92: (*packets.PacketReaderBitstream).DecodeVerifyPlaceId,
-	0x93: (*packets.PacketReaderBitstream).DecodeFlagResponse,
-	0x97: (*packets.PacketReaderBitstream).DecodeSchemaPacket,
+	0x81: (*extendedReader).DecodePacket81Layer,
+	//0x82: DecodePacket82Layer,
+	0x83: (*extendedReader).DecodePacket83Layer,
+	0x85: (*extendedReader).DecodePacket85Layer,
+	0x86: (*extendedReader).DecodePacket86Layer,
+	0x8A: (*extendedReader).DecodePacket8ALayer,
+	0x8D: (*extendedReader).DecodePacket8DLayer,
+	0x8F: (*extendedReader).DecodePacket8FLayer,
+	0x90: (*extendedReader).DecodePacket90Layer,
+	0x92: (*extendedReader).DecodePacket92Layer,
+	0x93: (*extendedReader).DecodePacket93Layer,
+	0x97: (*extendedReader).DecodePacket97Layer,
 }
 
 type ReceiveHandler func(byte, *PacketLayers)
 
-type defaultContextualHandler struct {
-    *util.CommunicationContext
+type ContextualHandler interface {
+    SetContext(*CommunicationContext)
+	Context() *CommunicationContext
+    SetCaches(*Caches)
+	Caches() *Caches
+}
+
+// PacketReader is an interface that can be passed to packet decoders
+type PacketReader interface {
+    ContextualHandler
+    SetIsClient(bool)
+	IsClient() bool
+}
+
+type contextualHandler struct {
+	context  *CommunicationContext
 	caches   *Caches
 }
-func (handler *defaultContextualHandler) Caches() *Caches {
+func (handler *contextualHandler) Context() *CommunicationContext {
+	return handler.context
+}
+func (handler *contextualHandler) Caches() *Caches {
 	return handler.caches
 }
-func (handler *defaultContextualHandler) SetCaches(val *Caches) {
+func (handler *contextualHandler) SetCaches(val *Caches) {
 	handler.caches = val
 }
-func (handler *defaultContextualHandler) Context() *util.CommunicationContext {
-	return handler.CommunicationContext
-}
-func (handler *defaultContextualHandler) SetContext(val *util.CommunicationContext) {
-	handler.CommunicationContext = val
-}
-func (handler *defaultContextualHandler) Schema() *schema.StaticSchema {
-    return handler.CommunicationContext.StaticSchema
-}
-func (handler *defaultContextualHandler) SetSchema(val *schema.StaticSchema) {
-	handler.CommunicationContext.StaticSchema = val
+func (handler *contextualHandler) SetContext(val *CommunicationContext) {
+	handler.context = val
 }
 
 // PacketReader is a struct that can be used to read packets from a source
 // Pass packets in using ReadPacket() and bind to the given callbacks
 // to receive the results
 type DefaultPacketReader struct {
-    defaultContextualHandler
+    contextualHandler
 	// Callback for "simple" packets (pre-connection offline packets).
 	SimpleHandler ReceiveHandler
 	// Callback for ReliabilityLayer subpackets. This callback is invoked for every
@@ -104,7 +113,7 @@ func NewPacketReader() *DefaultPacketReader {
 	}
 }
 
-func (reader *DefaultPacketReader) readSimple(stream *packets.PacketReaderBitstream, packetType uint8, layers *PacketLayers) {
+func (reader *DefaultPacketReader) readSimple(stream *extendedReader, packetType uint8, layers *PacketLayers) {
 	var err error
 	layers.Root.logBuffer = new(strings.Builder)
 	layers.Root.Logger = log.New(layers.Root.logBuffer, "", log.Lmicroseconds|log.Ltime)
@@ -120,7 +129,7 @@ func (reader *DefaultPacketReader) readSimple(stream *packets.PacketReaderBitstr
 	reader.SimpleHandler(packetType, layers)
 }
 
-func (reader *DefaultPacketReader) readGeneric(stream *packets.PacketReaderBitstream, packetType uint8, layers *PacketLayers) {
+func (reader *DefaultPacketReader) readGeneric(stream *extendedReader, packetType uint8, layers *PacketLayers) {
 	var err error
 	if packetType == 0x1B { // ID_TIMESTAMP
 		tsLayer, err := packetDecoders[0x1B](stream, reader, layers)
@@ -130,7 +139,7 @@ func (reader *DefaultPacketReader) readGeneric(stream *packets.PacketReaderBitst
 			layers.Error = fmt.Errorf("Failed to decode timestamped packet: %s", err.Error())
 			return
 		}
-		layers.Timestamp = tsLayer.(*Timestamp)
+		layers.Timestamp = tsLayer.(*Packet1BLayer)
 		packetType, err = stream.ReadByte()
 		if err != nil {
 			println("timestamp type fail")

@@ -101,7 +101,7 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 		}
 		println("client simple", packetType)
 		if packetType == 5 {
-			println("recv 5, protocol type", layers.Main.(*ConnectionRequest1).ProtocolVersion)
+			println("recv 5, protocol type", layers.Main.(*Packet05Layer).ProtocolVersion)
 		}
 		serverHalf.WriteSimple(layers.Main.(RakNetPacket))
 	}
@@ -158,40 +158,40 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 		}
 		switch packetType {
 		case 0x83:
-			mainLayer := layers.Main.(*ReplicatorPacket)
+			mainLayer := layers.Main.(*Packet83Layer)
 			modifiedSubpackets := mainLayer.SubPackets[:0] // in case packets need to be dropped
 			for _, subpacket := range mainLayer.SubPackets {
 				switch subpacket.(type) {
-				case *NewInstance:
-					instPacket := subpacket.(*NewInstance)
+				case *Packet83_02:
+					instPacket := subpacket.(*Packet83_02)
 					println("patching osplatform", instPacket.Child.Name())
 					if instPacket.Child.ClassName == "Player" {
 						// patch OsPlatform!
 						instPacket.Child.Properties["OsPlatform"] = rbxfile.ValueString(writer.SecuritySettings.OsPlatform)
 					}
 					modifiedSubpackets = append(modifiedSubpackets, subpacket)
-				case *ReplicRocky:
+				case *Packet83_09:
 					// patch id response
 					println("patching id resp")
-					pmcPacket := subpacket.(*ReplicRocky)
+					pmcPacket := subpacket.(*Packet83_09)
 					if pmcPacket.SubpacketType == 6 {
-						pmcSubpacket := pmcPacket.Subpacket.(*ReplicRocky_06)
+						pmcSubpacket := pmcPacket.Subpacket.(*Packet83_09_06)
 						pmcSubpacket.Int2 = writer.SecuritySettings.IdChallengeResponse - pmcSubpacket.Int1
 						modifiedSubpackets = append(modifiedSubpackets, subpacket)
 					} // if not type 6, drop it!
-				case *ReplicateHash:
+				case *Packet83_12:
 					println("permanently dropping hash packet")
 					// IMPORTANT! We don't drop the entire hash packet 0x83 containers!
 					// Under heavy stress, the Roblox client may pack everything inside the container,
 					// including hash packets.
 					// It used to seem that this was not the case, but I was proven wrong.
-				case *DataPing:
-					pingPacket := subpacket.(*DataPing)
+				case *Packet83_05:
+					pingPacket := subpacket.(*Packet83_05)
 					pingPacket.SendStats = 0
 					pingPacket.ExtraStats = 0
 					modifiedSubpackets = append(modifiedSubpackets, subpacket)
-				case *DataPingBack:
-					pingPacket := subpacket.(*DataPingBack)
+				case *Packet83_06:
+					pingPacket := subpacket.(*Packet83_06)
 					pingPacket.SendStats = 0
 					pingPacket.ExtraStats = 0
 					modifiedSubpackets = append(modifiedSubpackets, subpacket)
@@ -203,7 +203,7 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 
 			_, err = serverHalf.WritePacket(mainLayer)
 		case 0x8A:
-			mainLayer := layers.Main.(*AuthPacket)
+			mainLayer := layers.Main.(*Packet8ALayer)
 			mainLayer.DataModelHash = writer.SecuritySettings.DataModelHash
 			mainLayer.SecurityKey = writer.SecuritySettings.SecurityKey
 			mainLayer.Platform = writer.SecuritySettings.OsPlatform
@@ -211,13 +211,13 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 
 			_, err = serverHalf.WritePacket(mainLayer)
 		case 0x85:
-			mainLayer := layers.Main.(*PhysicsPacket)
+			mainLayer := layers.Main.(*Packet85Layer)
 			_, err = serverHalf.WritePhysics(layers.Timestamp, mainLayer)
 		case 0x86:
-			mainLayer := layers.Main.(*Touch)
+			mainLayer := layers.Main.(*Packet86Layer)
 			_, err = serverHalf.WritePacket(mainLayer)
 		case 0x87:
-			mainLayer := layers.Main.(*OldChatPacket)
+			mainLayer := layers.Main.(*Packet87Layer)
 			_, err = serverHalf.WritePacket(mainLayer)
 		}
 		if err != nil {

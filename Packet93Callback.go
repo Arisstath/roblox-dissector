@@ -4,7 +4,7 @@ import "github.com/therecipe/qt/gui"
 import "github.com/Gskartwii/roblox-dissector/peer"
 
 func ShowPacket93(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) {
-	MainLayer := layers.Main.(*peer.FlagResponse)
+	MainLayer := layers.Main.(*peer.Packet93Layer)
 
 	layerLayout := NewBasicPacketViewer(packetType, context, layers)
 

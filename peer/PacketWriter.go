@@ -1,8 +1,6 @@
 package peer
 
 import "github.com/gskartwii/go-bitstream"
-import "github.com/gskartwii/roblox-dissector/packets"
-import "github.com/gskartwii/roblox-dissector/bitstreams"
 import "bytes"
 
 func min(x, y uint) uint {
@@ -12,13 +10,22 @@ func min(x, y uint) uint {
 	return y
 }
 
-// TODO: Make an interface "Writable" that is implemented by Layers, RakNetPacket, ReplicationSubpacket?
+type PacketWriter interface {
+    SetContext(*CommunicationContext)
+	Context() *CommunicationContext
+    SetToClient(bool)
+	ToClient() bool
+    SetCaches(*Caches)
+	Caches() *Caches
+}
+
+// TODO: Make an interface "Writable" that is implemented by Layers, RakNetPacket, Packet83Subpacket?
 
 // PacketWriter is a struct used to write packets to a peer
 // Pass packets in using WriteSimple/WriteGeneric/etc.
 // and bind to the given callbacks
 type DefaultPacketWriter struct {
-    defaultContextualHandler
+    contextualHandler
 	// OutputHandler sends the data for all packets to be written.
 	OutputHandler   func([]byte)
 	orderingIndex   uint32
@@ -29,6 +36,7 @@ type DefaultPacketWriter struct {
 	// Set this to true if the packets produced by this writer are sent to a client.
     toClient bool
     caches   *Caches
+	context  *CommunicationContext
 }
 
 func NewPacketWriter() *DefaultPacketWriter {
@@ -46,7 +54,7 @@ func (writer *DefaultPacketWriter) SetToClient(val bool) {
 func (writer *DefaultPacketWriter) WriteSimple(packet RakNetPacket) error {
 	output := make([]byte, 0, 1492)
 	buffer := bytes.NewBuffer(output)
-	stream := &packets.PacketWriterBitstream{&bitstreams.BitstreamReader{bitstream.NewWriter(buffer)}}
+	stream := &extendedWriter{bitstream.NewWriter(buffer)}
 	err := packet.Serialize(writer, stream)
 	if err != nil {
 		return err
@@ -62,7 +70,7 @@ func (writer *DefaultPacketWriter) WriteSimple(packet RakNetPacket) error {
 func (writer *DefaultPacketWriter) WriteRakNet(packet *RakNetLayer) error {
 	output := make([]byte, 0, 1492)
 	buffer := bytes.NewBuffer(output)
-	stream := &packets.PacketWriterBitstream{&bitstreams.BitstreamReader{bitstream.NewWriter(buffer)}}
+	stream := &extendedWriter{bitstream.NewWriter(buffer)}
 	err := packet.Serialize(writer, stream)
 	if err != nil {
 		return err
@@ -75,7 +83,7 @@ func (writer *DefaultPacketWriter) WriteRakNet(packet *RakNetLayer) error {
 func (writer *DefaultPacketWriter) writeReliable(packet *ReliabilityLayer) error {
 	output := make([]byte, 0, 1492)
 	buffer := bytes.NewBuffer(output)
-	stream := &packets.PacketWriterBitstream{&bitstreams.BitstreamReader{bitstream.NewWriter(buffer)}}
+	stream := &extendedWriter{bitstream.NewWriter(buffer)}
 	err := packet.Serialize(writer, stream)
 	if err != nil {
 		return err
@@ -97,7 +105,7 @@ func (writer *DefaultPacketWriter) writeReliable(packet *ReliabilityLayer) error
 func (writer *DefaultPacketWriter) writeReliableWithDN(packet *ReliabilityLayer, dn uint32) error {
 	output := make([]byte, 0, 1492)
 	buffer := bytes.NewBuffer(output)
-	stream := &packets.PacketWriterBitstream{&bitstreams.BitstreamReader{bitstream.NewWriter(buffer)}}
+	stream := &extendedWriter{bitstream.NewWriter(buffer)}
 	err := packet.Serialize(writer, stream)
 	if err != nil {
 		return err
@@ -182,10 +190,10 @@ func (writer *DefaultPacketWriter) WriteReliablePacket(data []byte, packet *Reli
 	return nil
 }
 
-func (writer *DefaultPacketWriter) WriteTimestamped(timestamp *Timestamp, generic RakNetPacket, reliability uint32) ([]byte, error) {
+func (writer *DefaultPacketWriter) WriteTimestamped(timestamp *Packet1BLayer, generic RakNetPacket, reliability uint32) ([]byte, error) {
 	output := make([]byte, 0, 1492)
 	buffer := bytes.NewBuffer(output) // Will allocate more if needed
-	stream := &packets.PacketWriterBitstream{&bitstreams.BitstreamReader{bitstream.NewWriter(buffer)}}
+	stream := &extendedWriter{bitstream.NewWriter(buffer)}
 	err := timestamp.Serialize(writer, stream)
 	if err != nil {
 		return nil, err
@@ -212,7 +220,7 @@ func (writer *DefaultPacketWriter) WriteTimestamped(timestamp *Timestamp, generi
 func (writer *DefaultPacketWriter) WriteGeneric(generic RakNetPacket, reliability uint32) ([]byte, error) {
 	output := make([]byte, 0, 1492)
 	buffer := bytes.NewBuffer(output) // Will allocate more if needed
-	stream := &packets.PacketWriterBitstream{&bitstreams.BitstreamReader{bitstream.NewWriter(buffer)}}
+	stream := &extendedWriter{bitstream.NewWriter(buffer)}
 	err := generic.Serialize(writer, stream)
 	if err != nil {
 		return nil, err
@@ -233,6 +241,6 @@ func (writer *DefaultPacketWriter) WriteGeneric(generic RakNetPacket, reliabilit
 func (writer *DefaultPacketWriter) WritePacket(generic RakNetPacket) ([]byte, error) {
     return writer.WriteGeneric(generic, RELIABLE_ORD)
 }
-func (writer *DefaultPacketWriter) WritePhysics(timestamp *Timestamp, generic RakNetPacket) ([]byte, error) {
+func (writer *DefaultPacketWriter) WritePhysics(timestamp *Packet1BLayer, generic RakNetPacket) ([]byte, error) {
     return writer.WriteTimestamped(timestamp, generic, UNRELIABLE)
 }

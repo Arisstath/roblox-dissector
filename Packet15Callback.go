@@ -22,7 +22,7 @@ var disconnectionReasons = [...]string{
 }
 
 func ShowPacket15(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) {
-	MainLayer := layers.Main.(*peer.DisconnectionPacket)
+	MainLayer := layers.Main.(*peer.Packet15Layer)
 
 	var reason string
 	if MainLayer.Reason == 0xFFFFFFFF {

@@ -234,7 +234,7 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 	packetReader := &PacketReader{
 		SimpleHandler: func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
 			if packetType == 0x5 {
-				response := &ConnectionReply1{
+				response := &Packet06Layer{
 					GUID:        server.GUID,
 					UseSecurity: false,
 					MTU:         1492,
@@ -242,7 +242,7 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 
 				myClient.writer.WriteSimple(6, response, addr)
 			} else if packetType == 0x7 {
-				response := &ConnectionReply2{
+				response := &Packet08Layer{
 					MTU:         1492,
 					UseSecurity: false,
 					IPAddress:   addr,
@@ -257,15 +257,15 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 		},
 		FullReliableHandler: func(packetType byte, packet *UDPPacket, layers *PacketLayers) {
 			if packetType == 0x0 {
-				mainLayer := layers.Main.(RakPing)
-				response := &RakPong{
+				mainLayer := layers.Main.(Packet00Layer)
+				response := &Packet03Layer{
 					SendPingTime: mainLayer.SendPingTime,
 					SendPongTime: mainLayer.SendPingTime + 10,
 				}
 
 				myClient.writer.WriteGeneric(context, 3, response, 2, addr)
 
-				response2 := &RakPing{
+				response2 := &Packet00Layer{
 					SendPingTime: mainLayer.SendPingTime + 10,
 				}
 				myClient.writer.WriteGeneric(context, 0, response2, 2, addr)
@@ -296,7 +296,7 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 
 				myClient.writer.WriteGeneric(context, 0x10, response, 2, addr)
 			} else if packetType == 0x90 {
-				response := &FlagResponse{
+				response := &Packet93Layer{
 					ProtocolSchemaSync:       true,
 					ApiDictionaryCompression: true,
 					Params: map[string]bool{
@@ -312,7 +312,7 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 
 				myClient.writer.WriteGeneric(context, 0x93, response, 3, addr)
 			} else if packetType == 0x82 { // TODO: What packet should the server react to when communication with Studio?
-				response2 := &SchemaPacket{*server.Schema}
+				response2 := &Packet97Layer{*server.Schema}
 				context.StaticSchema = server.Schema
 
 				myClient.writer.WriteGeneric(context, 0x97, response2, 3, addr)
@@ -323,8 +323,8 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 				var workspace *rbxfile.Instance
 				var replicatedStorage *rbxfile.Instance
 
-				initInstances := &TopReplication{
-					Items: make([]*TopReplicationItem, len(services)),
+				initInstances := &Packet81Layer{
+					Items: make([]*Packet81LayerItem, len(services)),
 					DistributedPhysicsEnabled: true,
 					StreamJob:                 false,
 					FilteringEnabled:          false,
@@ -344,7 +344,7 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 					}
 					myClient.instanceID++
 
-					item := &TopReplicationItem{
+					item := &Packet81LayerItem{
 						ClassID:  uint16(classID),
 						Instance: instance,
 						Bool1:    false,
@@ -361,20 +361,20 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 
 				myClient.writer.WriteGeneric(context, 0x81, initInstances, 3, addr)
 
-				joinData := &ReplicateJoinData{make([]*rbxfile.Instance, 0, len(services)+1)}
-				replicationResponse := &ReplicatorPacket{
-					SubPackets: []ReplicationSubpacket{
-						&ReplicationTag{
+				joinData := &Packet83_0B{make([]*rbxfile.Instance, 0, len(services)+1)}
+				replicationResponse := &Packet83Layer{
+					SubPackets: []Packet83Subpacket{
+						&Packet83_10{
 							TagId: 12,
 						},
 						joinData,
-						&DataPing{
+						&Packet83_05{
 							false,
 							294470000,
 							0,
 							0,
 						},
-						&ReplicationTag{
+						&Packet83_10{
 							TagId: 13,
 						},
 					},
@@ -390,7 +390,7 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 
 				myClient.writer.WriteGeneric(context, 0x83, replicationResponse, 3, addr)
 
-				onlyWorkspaceJoinData := &ReplicateJoinData{make([]*rbxfile.Instance, 0)}
+				onlyWorkspaceJoinData := &Packet83_0B{make([]*rbxfile.Instance, 0)}
 				InputObject := &rbxfile.Instance{
 					ClassName:  "InputObject",
 					Reference:  strconv.Itoa(int(myClient.instanceID)),
@@ -451,11 +451,11 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 				onlyWorkspaceJoinData.Instances = append(onlyWorkspaceJoinData.Instances, PlayerGui)
 				workspace.AddChild(PlayerGui)
 
-				myClient.writer.WriteGeneric(context, 0x83, &ReplicatorPacket{
-					[]ReplicationSubpacket{onlyWorkspaceJoinData},
+				myClient.writer.WriteGeneric(context, 0x83, &Packet83Layer{
+					[]Packet83Subpacket{onlyWorkspaceJoinData},
 				}, 3, addr)
 
-				allDefaultsJoinData := &ReplicateJoinData{make([]*rbxfile.Instance, 0, len(context.StaticSchema.Instances))}
+				allDefaultsJoinData := &Packet83_0B{make([]*rbxfile.Instance, 0, len(context.StaticSchema.Instances))}
 
 				humanoid := &rbxfile.Instance{
 					ClassName:  "Humanoid",
@@ -516,8 +516,8 @@ func newClient(addr *net.UDPAddr, server *ServerPeer) *client {
 					replicatedStorage.AddChild(instance)
 				}
 
-				myClient.writer.WriteGeneric(context, 0x83, &ReplicatorPacket{
-					[]ReplicationSubpacket{allDefaultsJoinData},
+				myClient.writer.WriteGeneric(context, 0x83, &Packet83Layer{
+					[]Packet83Subpacket{allDefaultsJoinData},
 				}, 3, addr)
 			}
 		},

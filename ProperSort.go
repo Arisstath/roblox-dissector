@@ -47,24 +47,24 @@ func (filter *BasicPacketTypeFilter) String() string {
 	return fmt.Sprintf("PacketType %s", PacketNames[filter.PacketType])
 }
 
-type ReplicationTypeFilter struct {
+type Packet83TypeFilter struct {
 	PacketType uint8
 }
 
-func (filter *ReplicationTypeFilter) Matches(packetType uint8, packet *peer.UDPPacket, layers *peer.PacketLayers, context *peer.CommunicationContext) bool {
+func (filter *Packet83TypeFilter) Matches(packetType uint8, packet *peer.UDPPacket, layers *peer.PacketLayers, context *peer.CommunicationContext) bool {
 	if packetType != 0x83 {
 		return false
 	}
-	mainLayer := layers.Main.(*ReplicatorPacket)
+	mainLayer := layers.Main.(*Packet83Layer)
 	for _, packet := range mainLayer.SubPackets {
-		if peer.ReplicationToType(packet) == filter.PacketType {
+		if peer.Packet83ToType(packet) == filter.PacketType {
 			return true
 		}
 	}
 	return false
 }
-func (filter *ReplicationTypeFilter) String() string {
-	return fmt.Sprintf("Data packet %s", peer.ReplicationToTypeString(filter.PacketType))
+func (filter *Packet83TypeFilter) String() string {
+	return fmt.Sprintf("Data packet %s", peer.Packet83ToTypeString(filter.PacketType))
 }
 
 type DirectionFilter struct {

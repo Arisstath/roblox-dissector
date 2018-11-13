@@ -11,7 +11,6 @@ import "encoding/hex"
 import "log"
 import "github.com/gskartwii/rbxfile"
 import "sync"
-import "github.com/gskartwii/roblox-dissector/packets"
 
 var LauncherStatuses = [...]string{
 	"Wait",
@@ -431,7 +430,7 @@ func (myClient *CustomClient) createWriter() {
 }
 
 func (myClient *CustomClient) dial() {
-	connreqpacket := &ConnectionRequest1{ProtocolVersion: 5, maxLength: 1492}
+	connreqpacket := &Packet05Layer{ProtocolVersion: 5, maxLength: 1492}
 	go func() {
 		for i := 0; i < 5; i++ {
 			if myClient.Connected {
@@ -465,8 +464,8 @@ func (myClient *CustomClient) startDataPing() {
 		for {
 			<-myClient.dataPingTicker.C
 
-			myClient.WritePacket(&ReplicatorPacket{
-				[]ReplicationSubpacket{&DataPing{
+			myClient.WritePacket(&Packet83Layer{
+				[]Packet83Subpacket{&Packet83_05{
 					SendStats:  8,
 					Timestamp:  uint64(time.Now().Unix()),
 					IsPingBack: false,
@@ -497,7 +496,7 @@ func (myClient *CustomClient) disconnectInternal() error {
 }
 
 func (myClient *CustomClient) Disconnect() {
-	myClient.WritePacket(&DisconnectionPacket{
+	myClient.WritePacket(&Packet15Layer{
 		Reason: 0xFFFFFFFF,
 	})
 

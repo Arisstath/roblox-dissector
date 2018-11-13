@@ -70,7 +70,7 @@ func (myClient *CustomClient) bindDefaultHandlers() {
 }
 
 func (myClient *CustomClient) sendResponse7() {
-	myClient.WriteSimple(&ConnectionRequest2{
+	myClient.WriteSimple(&Packet07Layer{
 		GUID:      myClient.GUID,
 		MTU:       1492,
 		IPAddress: &myClient.ServerAddress,
@@ -96,7 +96,7 @@ func (myClient *CustomClient) simple8Handler(packetType byte, layers *PacketLaye
 }
 
 func (myClient *CustomClient) sendPong(pingTime uint64) {
-	response := &RakPong{
+	response := &Packet03Layer{
 		SendPingTime: pingTime,
 		SendPongTime: uint64(time.Now().Unix()),
 	}
@@ -104,7 +104,7 @@ func (myClient *CustomClient) sendPong(pingTime uint64) {
 	myClient.WritePacket(response)
 }
 func (myClient *CustomClient) pingHandler(packetType byte, layers *PacketLayers) {
-	mainLayer := layers.Main.(*RakPing)
+	mainLayer := layers.Main.(*Packet00Layer)
 
 	myClient.sendPong(mainLayer.SendPingTime)
 }
@@ -133,7 +133,7 @@ func (myClient *CustomClient) sendResponse13(pingTime uint64) {
 	myClient.WritePacket(response)
 }
 func (myClient *CustomClient) sendProtocolSync() {
-	response90 := &FlagRequest{
+	response90 := &Packet90Layer{
 		SchemaVersion: 36,
 		RequestedFlags: []string{
 			"AllowMoreAngles",
@@ -155,13 +155,13 @@ func (myClient *CustomClient) sendProtocolSync() {
 	myClient.WritePacket(response90)
 }
 func (myClient *CustomClient) sendPlaceIdVerification(placeId int64) {
-	response92 := &VerifyPlaceId{
+	response92 := &Packet92Layer{
 		PlaceId: placeId,
 	}
 	myClient.WritePacket(response92)
 }
 func (myClient *CustomClient) submitTicket() {
-	response8A := &AuthPacket{
+	response8A := &Packet8ALayer{
 		PlayerId:          myClient.PlayerId,
 		ClientTicket:      myClient.clientTicket,
 		DataModelHash:     myClient.SecuritySettings.DataModelHash,
@@ -175,7 +175,7 @@ func (myClient *CustomClient) submitTicket() {
 	myClient.WritePacket(response8A)
 }
 func (myClient *CustomClient) sendSpawnName() {
-	response8F := &SpawnNamePacket{
+	response8F := &Packet8FLayer{
 		SpawnName: "",
 	}
 	myClient.WritePacket(response8F)
@@ -191,7 +191,7 @@ func (myClient *CustomClient) packet10Handler(packetType uint8, layers *PacketLa
 }
 
 func (myClient *CustomClient) topReplicationHandler(packetType uint8, layers *PacketLayers) {
-	mainLayer := layers.Main.(*TopReplication)
+	mainLayer := layers.Main.(*Packet81Layer)
 	for _, inst := range mainLayer.Items { // this may result in instances being announced twice!
 		// be careful.
 		myClient.instanceHandlers.Fire(inst.Instance)
@@ -201,20 +201,20 @@ func (myClient *CustomClient) topReplicationHandler(packetType uint8, layers *Pa
 }
 
 func (myClient *CustomClient) dataHandler(packetType uint8, layers *PacketLayers) {
-	mainLayer := layers.Main.(*ReplicatorPacket)
+	mainLayer := layers.Main.(*Packet83Layer)
 	for _, item := range mainLayer.SubPackets {
 		myClient.dataHandlers.Fire(item.Type(), layers, item)
 	}
 }
 
-func (myClient *CustomClient) WriteDataPackets(packets ...ReplicationSubpacket) {
-	myClient.WritePacket(&ReplicatorPacket{
+func (myClient *CustomClient) WriteDataPackets(packets ...Packet83Subpacket) {
+	myClient.WritePacket(&Packet83Layer{
 		SubPackets: packets,
 	})
 }
 
 func (myClient *CustomClient) sendDataPingBack() {
-	response := &DataPingBack{
+	response := &Packet83_06{
 		SendStats:  8,
 		Timestamp:  uint64(time.Now().Unix()),
 		IsPingBack: true,
@@ -222,29 +222,29 @@ func (myClient *CustomClient) sendDataPingBack() {
 
 	myClient.WriteDataPackets(response)
 }
-func (myClient *CustomClient) dataPingHandler(packetType uint8, layers *PacketLayers, item ReplicationSubpacket) {
+func (myClient *CustomClient) dataPingHandler(packetType uint8, layers *PacketLayers, item Packet83Subpacket) {
 	myClient.sendDataPingBack()
 }
 
 func (myClient *CustomClient) sendDataIdResponse(challengeInt uint32) {
-	myClient.WriteDataPackets(&ReplicRocky{
+	myClient.WriteDataPackets(&Packet83_09{
 		SubpacketType: 6,
-		Subpacket: &ReplicRocky_06{
+		Subpacket: &Packet83_09_06{
 			Int1: challengeInt,
 			Int2: myClient.SecuritySettings.IdChallengeResponse - challengeInt,
 		},
 	})
 }
-func (myClient *CustomClient) idChallengeHandler(packetType uint8, layers *PacketLayers, item ReplicationSubpacket) {
-	mainPacket := item.(*ReplicRocky)
+func (myClient *CustomClient) idChallengeHandler(packetType uint8, layers *PacketLayers, item Packet83Subpacket) {
+	mainPacket := item.(*Packet83_09)
 	if mainPacket.SubpacketType == 5 {
 		myClient.Logger.Println("recv id challenge!")
-		myClient.sendDataIdResponse(mainPacket.Subpacket.(*ReplicRocky_05).Int)
+		myClient.sendDataIdResponse(mainPacket.Subpacket.(*Packet83_09_05).Int)
 	}
 }
 
-func (myClient *CustomClient) eventHandler(packetType uint8, layers *PacketLayers, item ReplicationSubpacket) {
-	mainPacket := item.(*ReplicateEvent)
+func (myClient *CustomClient) eventHandler(packetType uint8, layers *PacketLayers, item Packet83Subpacket) {
+	mainPacket := item.(*Packet83_07)
 
 	myClient.eventHandlers.Fire(mainPacket.Instance, mainPacket.EventName, mainPacket.Event)
 }
@@ -279,26 +279,26 @@ func (myClient *CustomClient) handlePlayersService(players *rbxfile.Instance) {
 	myClient.instanceIndex++
 
 	myClient.WriteDataPackets(
-		&DataPing{
+		&Packet83_05{
 			SendStats:  8,
 			Timestamp:  uint64(time.Now().Unix()),
 			IsPingBack: false,
 		},
-		&ReplicateJoinData{},
-		&NewInstance{myPlayer},
+		&Packet83_0B{},
+		&Packet83_02{myPlayer},
 	)
 	myClient.LocalPlayer = myPlayer
 	myClient.instanceHandlers.Fire(myPlayer)
 }
 
-func (myClient *CustomClient) newInstanceHandler(packetType uint8, layers *PacketLayers, subpacket ReplicationSubpacket) {
-	mainpacket := subpacket.(*NewInstance)
+func (myClient *CustomClient) newInstanceHandler(packetType uint8, layers *PacketLayers, subpacket Packet83Subpacket) {
+	mainpacket := subpacket.(*Packet83_02)
 
 	myClient.instanceHandlers.Fire(mainpacket.Child)
 }
 
-func (myClient *CustomClient) joinDataHandler(packetType uint8, layers *PacketLayers, subpacket ReplicationSubpacket) {
-	mainpacket := subpacket.(*ReplicateJoinData)
+func (myClient *CustomClient) joinDataHandler(packetType uint8, layers *PacketLayers, subpacket Packet83Subpacket) {
+	mainpacket := subpacket.(*Packet83_0B)
 
 	for _, inst := range mainpacket.Instances {
 		myClient.instanceHandlers.Fire(inst)
@@ -307,7 +307,7 @@ func (myClient *CustomClient) joinDataHandler(packetType uint8, layers *PacketLa
 
 func (myClient *CustomClient) SendEvent(instance *rbxfile.Instance, name string, arguments ...rbxfile.Value) {
 	myClient.WriteDataPackets(
-		&ReplicateEvent{
+		&Packet83_07{
 			Instance:  instance,
 			EventName: name,
 			Event:     &ReplicationEvent{arguments},
@@ -370,7 +370,7 @@ func (myClient *CustomClient) FireRemote(instance *rbxfile.Instance, arguments .
 }
 
 func (myClient *CustomClient) disconnectHandler(packetType uint8, layers *PacketLayers) {
-	mainLayer := layers.Main.(*DisconnectionPacket)
+	mainLayer := layers.Main.(*Packet15Layer)
 	myClient.Logger.Printf("Disconnected because of reason %d\n", mainLayer.Reason)
 
 	myClient.disconnectInternal()
@@ -395,8 +395,8 @@ func (myClient *CustomClient) MakeChildChan(instance *rbxfile.Instance) chan *rb
 	return newChan
 }
 
-func (myClient *CustomClient) deleteHandler(packetType uint8, layers *PacketLayers, subpacket ReplicationSubpacket) {
-	mainpacket := subpacket.(*DeleteInstance)
+func (myClient *CustomClient) deleteHandler(packetType uint8, layers *PacketLayers, subpacket Packet83Subpacket) {
+	mainpacket := subpacket.(*Packet83_01)
 
 	myClient.deleteHandlers.Fire(mainpacket.Instance)
 }
@@ -427,8 +427,8 @@ func (myClient *CustomClient) MakeGroupDeleteChan(instances []*rbxfile.Instance)
 		channel.referents[i] = Referent(inst.Reference)
 	}
 
-	channel.binding = myClient.dataHandlers.Bind(1, func(packetType uint8, layers *PacketLayers, subpacket ReplicationSubpacket) {
-		mainpacket := subpacket.(*DeleteInstance)
+	channel.binding = myClient.dataHandlers.Bind(1, func(packetType uint8, layers *PacketLayers, subpacket Packet83Subpacket) {
+		mainpacket := subpacket.(*Packet83_01)
 		for _, inst := range channel.referents {
 			if string(inst) == mainpacket.Instance.Reference {
 				channel.C <- mainpacket.Instance

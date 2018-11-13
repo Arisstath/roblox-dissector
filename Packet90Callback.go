@@ -4,7 +4,7 @@ import "github.com/therecipe/qt/gui"
 import "github.com/Gskartwii/roblox-dissector/peer"
 
 func ShowPacket90(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) {
-	MainLayer := layers.Main.(*peer.FlagRequest)
+	MainLayer := layers.Main.(*peer.Packet90Layer)
 
 	layerLayout := NewBasicPacketViewer(packetType, context, layers)
 	layerLayout.AddWidget(NewQLabelF("Schema version: %d", MainLayer.SchemaVersion), 0, 0)

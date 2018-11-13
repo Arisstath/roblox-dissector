@@ -48,7 +48,7 @@ type DataPacketHandlerMap struct {
 	m map[uint8][]DataReceiveHandler
 }
 
-type DataReceiveHandler func(uint8, *PacketLayers, ReplicationSubpacket)
+type DataReceiveHandler func(uint8, *PacketLayers, Packet83Subpacket)
 
 func (m *DataPacketHandlerMap) Bind(packetType uint8, handler DataReceiveHandler) int {
 	m.m[packetType] = append(m.m[packetType], handler)
@@ -57,7 +57,7 @@ func (m *DataPacketHandlerMap) Bind(packetType uint8, handler DataReceiveHandler
 func (m *DataPacketHandlerMap) Unbind(packetType uint8, index int) {
 	m.m[packetType] = append(m.m[packetType][:index], m.m[packetType][index+1:]...)
 }
-func (m *DataPacketHandlerMap) Fire(packetType uint8, layers *PacketLayers, subpacket ReplicationSubpacket) {
+func (m *DataPacketHandlerMap) Fire(packetType uint8, layers *PacketLayers, subpacket Packet83Subpacket) {
 	for _, handler := range m.m[packetType] {
 		handler(packetType, layers, subpacket)
 	}

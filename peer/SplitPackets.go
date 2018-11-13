@@ -1,25 +1,90 @@
 package peer
-import "github.com/gskartwii/roblox-dissector/packets"
 
-func (reader *DefaultPacketReader) addSplitPacket(layers *packets.PacketLayers) *packets.SplitPacketBuffer {
+import "bytes"
+import "github.com/gskartwii/go-bitstream"
+import "log"
+import "strings"
+
+// SplitPacketBuffer represents a structure that accumulates every
+// layer that is used to transmit the split packet.
+type SplitPacketBuffer struct {
+	// All ReliabilityLayer packets for this packet received so far
+	ReliablePackets []*ReliablePacket
+	// All RakNet layers for this packet received so far
+	// IN RECEIVE ORDER, NOT SPLIT ORDER!!
+	// Use ReliablePackets[i].RakNetLayer to access them in that order.
+	RakNetPackets []*RakNetLayer
+	// Next expected index
+	NextExpectedPacket uint32
+	// Number of _ordered_ splits we have received so far
+	NumReceivedSplits uint32
+	// Has received packet type yet? Set to true when the first split of this packet
+	// is received
+	HasPacketType bool
+	PacketType    byte
+
+	dataReader *extendedReader
+	data       []byte
+
+	// Have all splits been received?
+	IsFinal bool
+	// Unique ID given to each packet. Splits of the same packet have the same ID.
+	UniqueID uint32
+	// Total length received so far, in bytes
+	RealLength uint32
+
+	logBuffer *strings.Builder // must be a pointer because it may be copied!
+	Logger    *log.Logger
+}
+type splitPacketList map[uint16](*SplitPacketBuffer)
+
+func newSplitPacketBuffer(packet *ReliablePacket, context *CommunicationContext) *SplitPacketBuffer {
+	reliables := make([]*ReliablePacket, int(packet.SplitPacketCount))
+	raknets := make([]*RakNetLayer, 0, int(packet.SplitPacketCount))
+
+	list := &SplitPacketBuffer{
+		ReliablePackets: reliables,
+		RakNetPackets:   raknets,
+	}
+	list.data = make([]byte, 0, uint32(packet.LengthInBits)*packet.SplitPacketCount*8)
+	list.PacketType = 0xFF
+	list.UniqueID = context.UniqueID
+	context.UniqueID++
+	list.logBuffer = new(strings.Builder)
+	list.Logger = log.New(list.logBuffer, "", log.Lmicroseconds|log.Ltime)
+
+	return list
+}
+
+func (list *SplitPacketBuffer) addPacket(packet *ReliablePacket, rakNetPacket *RakNetLayer, index uint32) {
+	// Packets may be duplicated. At least I think so. Thanks UDP
+	list.ReliablePackets[index] = packet
+	list.RakNetPackets = append(list.RakNetPackets, rakNetPacket)
+}
+
+func (list splitPacketList) delete(layers *PacketLayers) {
+	delete(list, layers.Reliability.SplitPacketID)
+}
+
+func (reader *DefaultPacketReader) addSplitPacket(layers *PacketLayers) *SplitPacketBuffer {
 	packet := layers.Reliability
 	splitPacketId := packet.SplitPacketID
 	splitPacketIndex := packet.SplitPacketIndex
 
 	if !packet.HasSplitPacket {
-		buffer := packets.NewSplitPacketBuffer(packet, reader.context)
-		buffer.AddPacket(packet, layers.RakNet, 0)
+		buffer := newSplitPacketBuffer(packet, reader.context)
+		buffer.addPacket(packet, layers.RakNet, 0)
 
 		return buffer
 	}
 
 	var buffer *SplitPacketBuffer
 	if reader.splitPackets == nil {
-		buffer = packets.NewSplitPacketBuffer(packet, reader.context)
+		buffer = newSplitPacketBuffer(packet, reader.context)
 
-		reader.splitPackets = map[uint16]*packets.SplitPacketBuffer{splitPacketId: buffer}
+		reader.splitPackets = map[uint16]*SplitPacketBuffer{splitPacketId: buffer}
 	} else if reader.splitPackets[splitPacketId] == nil {
-		buffer = packets.NewSplitPacketBuffer(packet, reader.context)
+		buffer = newSplitPacketBuffer(packet, reader.context)
 
 		reader.splitPackets[splitPacketId] = buffer
 	} else {
@@ -31,7 +96,7 @@ func (reader *DefaultPacketReader) addSplitPacket(layers *packets.PacketLayers) 
 	return buffer
 }
 
-func (reader *DefaultPacketReader) handleSplitPacket(layers *packets.PacketLayers) (*SplitPacketBuffer, error) {
+func (reader *DefaultPacketReader) handleSplitPacket(layers *PacketLayers) (*SplitPacketBuffer, error) {
 	reliablePacket := layers.Reliability
 	packetBuffer := reader.addSplitPacket(layers)
 	expectedPacket := packetBuffer.NextExpectedPacket
@@ -40,7 +105,7 @@ func (reader *DefaultPacketReader) handleSplitPacket(layers *packets.PacketLayer
 
 	var shouldClose bool
 	for len(packetBuffer.ReliablePackets) > int(expectedPacket) && packetBuffer.ReliablePackets[expectedPacket] != nil {
-		packetBuffer.Data = append(packetBuffer.Data, packetBuffer.ReliablePackets[expectedPacket].SelfData...)
+		packetBuffer.data = append(packetBuffer.data, packetBuffer.ReliablePackets[expectedPacket].SelfData...)
 
 		expectedPacket++
 		shouldClose = len(packetBuffer.ReliablePackets) == int(expectedPacket)
@@ -48,10 +113,10 @@ func (reader *DefaultPacketReader) handleSplitPacket(layers *packets.PacketLayer
 	}
 	if shouldClose {
 		packetBuffer.IsFinal = true
-		packetBuffer.DataReader = &packets.PacketReaderBitstream{&packets.BitstreamReader{bitstream.NewReader(bytes.NewReader(packetBuffer.Data))}}
+		packetBuffer.dataReader = &extendedReader{bitstream.NewReader(bytes.NewReader(packetBuffer.data))}
 		if reliablePacket.HasSplitPacket {
 			// TODO: Use a linked list
-			reader.splitPackets.Delete(layers)
+			reader.splitPackets.delete(layers)
 		}
 	}
 	packetBuffer.NumReceivedSplits = expectedPacket
@@ -62,7 +127,7 @@ func (reader *DefaultPacketReader) handleSplitPacket(layers *packets.PacketLayer
 	}
 
 	layers.Root.Logger = packetBuffer.Logger
-	layers.Root.LogBuffer = packetBuffer.LogBuffer
+	layers.Root.logBuffer = packetBuffer.logBuffer
 
 	return packetBuffer, nil
 }
