@@ -56,8 +56,15 @@ func (b *extendedReader) ReadSerializedValue(reader PacketReader, valueType uint
 			return nil, err
 		}
 		// Note: NULL is a valid referent!
-		instance, _ := reader.Context().InstancesByReferent.TryGetInstance(referent)
-		result = rbxfile.ValueReference{instance}
+		if referent.IsNull() {
+			result = rbxfile.ValueReference{nil}
+		} else {
+			instance, err := reader.Context().InstancesByReferent.CreateInstance(referent)
+			if err != nil {
+				return nil, err
+			}
+			result = rbxfile.ValueReference{instance}
+		}
 	case PROP_TYPE_CONTENT:
 		result, err = b.readNewContent(reader.Caches())
 	case PROP_TYPE_SYSTEMADDRESS:
