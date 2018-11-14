@@ -96,11 +96,14 @@ type CustomClient struct {
 	instanceHandlers *NewInstanceHandlerMap
 	deleteHandlers   *DeleteInstanceHandlerMap
 	eventHandlers    *EventHandlerMap
+	propHandlers     *PropertyHandlerMap
 
 	remoteIndices map[*rbxfile.Instance]uint32
 	remoteLock    *sync.Mutex
 
 	LocalPlayer *rbxfile.Instance
+
+	timestamp2Index uint64
 }
 
 func (myClient *CustomClient) RegisterPacketHandler(packetType uint8, handler ReceiveHandler) {
@@ -147,6 +150,7 @@ func NewCustomClient() *CustomClient {
 		instanceHandlers: NewNewInstanceHandlerMap(),
 		deleteHandlers:   NewDeleteInstanceHandlerMap(),
 		eventHandlers:    NewEventHandlerMap(),
+		propHandlers:     NewPropertyHandlerMap(),
 
 		remoteIndices: make(map[*rbxfile.Instance]uint32),
 		remoteLock:    &sync.Mutex{},
@@ -155,6 +159,11 @@ func NewCustomClient() *CustomClient {
 
 func (myClient *CustomClient) GetLocalPlayer() *rbxfile.Instance { // may yield! do not call from main thread
 	return <-myClient.WaitForInstance("Players", myClient.UserName)
+}
+
+// call this asynchronously! it will wait a lot
+func (myClient *CustomClient) setupStalk() {
+	myClient.StalkPlayer("gskw")
 }
 
 // call this asynchronously! it will wait a lot
@@ -469,7 +478,7 @@ func (myClient *CustomClient) startDataPing() {
 			myClient.WritePacket(&Packet83Layer{
 				[]Packet83Subpacket{&Packet83_05{
 					SendStats:  8,
-					Timestamp:  uint64(time.Now().Unix()),
+					Timestamp:  uint64(time.Now().UnixNano() / int64(time.Millisecond)),
 					IsPingBack: false,
 				}},
 			})
@@ -527,6 +536,7 @@ func (myClient *CustomClient) rakConnect() error {
 	myClient.startAcker()
 
 	go myClient.setupChat() // needs to run async; does a lot of waiting for instances
+	go myClient.setupStalk()
 
 	return myClient.mainReadLoop()
 }

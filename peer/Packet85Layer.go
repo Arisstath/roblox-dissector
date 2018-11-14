@@ -206,7 +206,7 @@ func (layer *Packet85Layer) Serialize(writer PacketWriter, stream *extendedWrite
 		}
 		var header uint8
 		header = subpacket.NetworkHumanoidState
-		if len(subpacket.Children) != 0 {
+		if len(subpacket.Children) == 0 { // if bit is OFF, then children are ON -- what kind of logic is this?
 			header |= 1 << 5
 		}
 		err = stream.WriteByte(header)
@@ -214,7 +214,7 @@ func (layer *Packet85Layer) Serialize(writer PacketWriter, stream *extendedWrite
 			return err
 		}
 
-		if writer.ToClient() {
+		if !writer.ToClient() { // Writing to server, don't include history
 			err = stream.writePhysicsData(&subpacket.Data, true, writer)
 			if err != nil {
 				return err

@@ -62,6 +62,7 @@ func (thisBitstream *extendedReader) DecodePacket83_03(reader PacketReader, laye
 		if err != nil {
 			return layer, errors.New("parent doesn't exist in repl property")
 		}
+		layers.Root.Logger.Printf("Parent: %s -> %s\n", referent, parent.GetFullName())
 		result := rbxfile.ValueReference{parent}
 		layer.Value = result
 		layer.PropertyName = "Parent"

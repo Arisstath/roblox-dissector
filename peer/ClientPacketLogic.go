@@ -1,10 +1,15 @@
 package peer
 
-import "github.com/gskartwii/rbxfile"
-import "time"
-import "net"
-import "strconv"
-import "errors"
+import (
+	"errors"
+	"fmt"
+	"math"
+	"net"
+	"strconv"
+	"time"
+
+	"github.com/gskartwii/rbxfile"
+)
 
 func (myClient *CustomClient) FindService(name string) *rbxfile.Instance {
 	if myClient.Context == nil || myClient.Context.DataModel == nil {
@@ -18,26 +23,56 @@ func (myClient *CustomClient) FindService(name string) *rbxfile.Instance {
 	return nil
 }
 
-func (myClient *CustomClient) WaitForInstance(path ...string) <-chan *rbxfile.Instance { // returned channels are output only
-	// chan needs to be buffered if we need to immediately write to it
+func (myClient *CustomClient) WaitForChild(instance *rbxfile.Instance, path ...string) <-chan *rbxfile.Instance {
 	retChannel := make(chan *rbxfile.Instance, 1)
-	currInstance := myClient.FindService(path[0])
+	currInstance := instance
+	lastInstance := instance
+	currPath := path
 	if currInstance != nil {
-		for i := 1; i < len(path); i++ {
+		for i := 0; i < len(path); i++ {
 			currInstance = currInstance.FindFirstChild(path[i], false)
 			if currInstance == nil {
+				currPath = path[i:]
 				break
 			}
+			lastInstance = currInstance
 		}
 	}
 	if currInstance == nil {
-		myClient.instanceHandlers.Bind(&InstancePath{path}, func(inst *rbxfile.Instance) {
-			retChannel <- inst
+		fmt.Printf("Must create instancepath %s %v\n", lastInstance.GetFullName(), currPath)
+		myClient.instanceHandlers.Bind(&InstancePath{currPath, lastInstance}, func(instance *rbxfile.Instance) bool {
+			fmt.Printf("Received %s %v %s\n", lastInstance.GetFullName(), currPath, instance.GetFullName())
+			retChannel <- instance
+			return true
 		})
-	} else { // immediately write if it exists
+	} else {
 		retChannel <- currInstance
 	}
 	return retChannel
+}
+
+func (myClient *CustomClient) WaitForRefProp(instance *rbxfile.Instance, name string) <-chan *rbxfile.Instance {
+	retChannel := make(chan *rbxfile.Instance, 1)
+	if instance.Properties[name] != nil && instance.Properties[name].(rbxfile.ValueReference).Instance != nil {
+		retChannel <- instance.Properties[name].(rbxfile.ValueReference).Instance
+	} else {
+		myClient.propHandlers.Bind(instance, name, func(value rbxfile.Value) bool {
+			if value.(rbxfile.ValueReference).Instance != nil {
+				retChannel <- value.(rbxfile.ValueReference).Instance
+				return true
+			}
+			return false
+		})
+	}
+	return retChannel
+}
+
+func (myClient *CustomClient) WaitForInstance(path ...string) <-chan *rbxfile.Instance { // returned channels are output only
+	service := myClient.FindService(path[0])
+	if service == nil {
+		return myClient.WaitForChild(nil, path...)
+	}
+	return myClient.WaitForChild(service, path[1:]...)
 }
 
 func (myClient *CustomClient) MakeEventChan(instance *rbxfile.Instance, name string) (int, chan *ReplicationEvent) {
@@ -60,13 +95,14 @@ func (myClient *CustomClient) bindDefaultHandlers() {
 	dataHandlers := myClient.dataHandlers
 	dataHandlers.Bind(1, myClient.deleteHandler)
 	dataHandlers.Bind(2, myClient.newInstanceHandler)
+	dataHandlers.Bind(3, myClient.propHandler)
 	dataHandlers.Bind(5, myClient.dataPingHandler)
 	dataHandlers.Bind(7, myClient.eventHandler)
 	dataHandlers.Bind(9, myClient.idChallengeHandler)
 	dataHandlers.Bind(0xB, myClient.joinDataHandler)
 
 	instHandlers := myClient.instanceHandlers
-	instHandlers.Bind(&InstancePath{[]string{"Players"}}, myClient.handlePlayersService)
+	instHandlers.Bind(&InstancePath{[]string{"Players"}, nil}, myClient.handlePlayersService)
 }
 
 func (myClient *CustomClient) sendResponse7() {
@@ -81,15 +117,18 @@ func (myClient *CustomClient) simple6Handler(packetType byte, layers *PacketLaye
 	myClient.sendResponse7()
 }
 
-// transition to teal RakNet communication, no more offline messaging
+// transition to real RakNet communication, no more offline messaging
 func (myClient *CustomClient) sendResponse9() {
 	response := &Packet09Layer{
 		GUID:        myClient.GUID,
-		Timestamp:   uint64(time.Now().Unix()),
+		Timestamp:   uint64(time.Now().UnixNano() / int64(time.Millisecond)),
 		UseSecurity: false,
 		Password:    []byte{0x37, 0x4F, 0x5E, 0x11, 0x6C, 0x45},
 	}
-	myClient.WritePacket(response)
+	_, err := myClient.WritePacket(response)
+	if err != nil {
+		println("Failed to write response9: ", err.Error())
+	}
 }
 func (myClient *CustomClient) simple8Handler(packetType byte, layers *PacketLayers) {
 	myClient.sendResponse9()
@@ -98,10 +137,13 @@ func (myClient *CustomClient) simple8Handler(packetType byte, layers *PacketLaye
 func (myClient *CustomClient) sendPong(pingTime uint64) {
 	response := &Packet03Layer{
 		SendPingTime: pingTime,
-		SendPongTime: uint64(time.Now().Unix()),
+		SendPongTime: uint64(time.Now().UnixNano() / int64(time.Millisecond)),
 	}
 
-	myClient.WritePacket(response)
+	_, err := myClient.WritePacket(response)
+	if err != nil {
+		println("Failed to write pong: ", err.Error())
+	}
 }
 func (myClient *CustomClient) pingHandler(packetType byte, layers *PacketLayers) {
 	mainLayer := layers.Main.(*Packet00Layer)
@@ -127,10 +169,13 @@ func (myClient *CustomClient) sendResponse13(pingTime uint64) {
 			nullIP,
 		},
 		SendPingTime: pingTime,
-		SendPongTime: uint64(time.Now().Unix()),
+		SendPongTime: uint64(time.Now().UnixNano() / int64(time.Millisecond)),
 	}
 
-	myClient.WritePacket(response)
+	_, err := myClient.WritePacket(response)
+	if err != nil {
+		println("Failed to write response13: ", err.Error())
+	}
 }
 func (myClient *CustomClient) sendProtocolSync() {
 	response90 := &Packet90Layer{
@@ -152,13 +197,19 @@ func (myClient *CustomClient) sendProtocolSync() {
 			"UseNewProtocolForStreaming",
 		},
 	}
-	myClient.WritePacket(response90)
+	_, err := myClient.WritePacket(response90)
+	if err != nil {
+		println("Failed to write response90: ", err.Error())
+	}
 }
 func (myClient *CustomClient) sendPlaceIdVerification(placeId int64) {
 	response92 := &Packet92Layer{
 		PlaceId: placeId,
 	}
-	myClient.WritePacket(response92)
+	_, err := myClient.WritePacket(response92)
+	if err != nil {
+		println("Failed to write response92: ", err.Error())
+	}
 }
 func (myClient *CustomClient) submitTicket() {
 	response8A := &Packet8ALayer{
@@ -172,13 +223,19 @@ func (myClient *CustomClient) submitTicket() {
 		SessionId:         myClient.sessionId,
 		GoldenHash:        myClient.SecuritySettings.GoldenHash,
 	}
-	myClient.WritePacket(response8A)
+	_, err := myClient.WritePacket(response8A)
+	if err != nil {
+		println("Failed to write response8A: ", err.Error())
+	}
 }
 func (myClient *CustomClient) sendSpawnName() {
 	response8F := &Packet8FLayer{
 		SpawnName: "",
 	}
-	myClient.WritePacket(response8F)
+	_, err := myClient.WritePacket(response8F)
+	if err != nil {
+		println("Failed to write response8F: ", err.Error())
+	}
 }
 func (myClient *CustomClient) packet10Handler(packetType uint8, layers *PacketLayers) {
 	mainLayer := layers.Main.(*Packet10Layer)
@@ -207,33 +264,40 @@ func (myClient *CustomClient) dataHandler(packetType uint8, layers *PacketLayers
 	}
 }
 
-func (myClient *CustomClient) WriteDataPackets(packets ...Packet83Subpacket) {
-	myClient.WritePacket(&Packet83Layer{
+func (myClient *CustomClient) WriteDataPackets(packets ...Packet83Subpacket) error {
+	_, err := myClient.WritePacket(&Packet83Layer{
 		SubPackets: packets,
 	})
+	return err
 }
 
 func (myClient *CustomClient) sendDataPingBack() {
 	response := &Packet83_06{
 		SendStats:  8,
-		Timestamp:  uint64(time.Now().Unix()),
+		Timestamp:  uint64(time.Now().UnixNano() / int64(time.Millisecond)),
 		IsPingBack: true,
 	}
 
-	myClient.WriteDataPackets(response)
+	err := myClient.WriteDataPackets(response)
+	if err != nil {
+		println("Failed to send datapingback:", err.Error())
+	}
 }
 func (myClient *CustomClient) dataPingHandler(packetType uint8, layers *PacketLayers, item Packet83Subpacket) {
 	myClient.sendDataPingBack()
 }
 
 func (myClient *CustomClient) sendDataIdResponse(challengeInt uint32) {
-	myClient.WriteDataPackets(&Packet83_09{
+	err := myClient.WriteDataPackets(&Packet83_09{
 		SubpacketType: 6,
 		Subpacket: &Packet83_09_06{
 			Int1: challengeInt,
 			Int2: myClient.SecuritySettings.IdChallengeResponse - challengeInt,
 		},
 	})
+	if err != nil {
+		println("Failed to send dataidresponse:", err.Error())
+	}
 }
 func (myClient *CustomClient) idChallengeHandler(packetType uint8, layers *PacketLayers, item Packet83Subpacket) {
 	mainPacket := item.(*Packet83_09)
@@ -243,16 +307,21 @@ func (myClient *CustomClient) idChallengeHandler(packetType uint8, layers *Packe
 	}
 }
 
+func (myClient *CustomClient) propHandler(packetType uint8, layers *PacketLayers, item Packet83Subpacket) {
+	mainPacket := item.(*Packet83_03)
+
+	myClient.propHandlers.Fire(mainPacket.Instance, mainPacket.PropertyName, mainPacket.Value)
+}
 func (myClient *CustomClient) eventHandler(packetType uint8, layers *PacketLayers, item Packet83Subpacket) {
 	mainPacket := item.(*Packet83_07)
 
 	myClient.eventHandlers.Fire(mainPacket.Instance, mainPacket.EventName, mainPacket.Event)
 }
 
-func (myClient *CustomClient) handlePlayersService(players *rbxfile.Instance) {
+func (myClient *CustomClient) handlePlayersService(players *rbxfile.Instance) bool {
 	// this function will be called twice if both top repl and data repl contain Players
 	if myClient.LocalPlayer != nil { // do not send localplayer twice!
-		return
+		return true
 	}
 
 	myPlayer := &rbxfile.Instance{
@@ -279,17 +348,21 @@ func (myClient *CustomClient) handlePlayersService(players *rbxfile.Instance) {
 	myClient.instanceIndex++
 	myClient.Context.InstancesByReferent.AddInstance(Referent(myPlayer.Reference), myPlayer)
 
-	myClient.WriteDataPackets(
+	err := myClient.WriteDataPackets(
 		&Packet83_05{
 			SendStats:  8,
-			Timestamp:  uint64(time.Now().Unix()),
+			Timestamp:  uint64(time.Now().UnixNano() / int64(time.Millisecond)),
 			IsPingBack: false,
 		},
 		&Packet83_0B{},
 		&Packet83_02{myPlayer},
 	)
+	if err != nil {
+		println("Failed to send localplayer:", err.Error())
+	}
 	myClient.LocalPlayer = myPlayer
-	myClient.instanceHandlers.Fire(myPlayer)
+	go myClient.instanceHandlers.Fire(myPlayer) // prevent deadlock
+	return true
 }
 
 func (myClient *CustomClient) newInstanceHandler(packetType uint8, layers *PacketLayers, subpacket Packet83Subpacket) {
@@ -306,8 +379,8 @@ func (myClient *CustomClient) joinDataHandler(packetType uint8, layers *PacketLa
 	}
 }
 
-func (myClient *CustomClient) SendEvent(instance *rbxfile.Instance, name string, arguments ...rbxfile.Value) {
-	myClient.WriteDataPackets(
+func (myClient *CustomClient) SendEvent(instance *rbxfile.Instance, name string, arguments ...rbxfile.Value) error {
+	return myClient.WriteDataPackets(
 		&Packet83_07{
 			Instance:  instance,
 			EventName: name,
@@ -333,11 +406,14 @@ func (myClient *CustomClient) InvokeRemote(instance *rbxfile.Instance, arguments
 	// it should be ok to leave the chans open
 	// they will be gc'd anyway
 
-	myClient.SendEvent(instance, "RemoteOnInvokeServer",
+	err := myClient.SendEvent(instance, "RemoteOnInvokeServer",
 		rbxfile.ValueInt(index),
 		rbxfile.ValueReference{Instance: myClient.LocalPlayer},
 		rbxfile.ValueTuple(arguments),
 	)
+	if err != nil {
+		println("Failed to invoke remote:", err.Error())
+	}
 
 	for true {
 		select {
@@ -391,8 +467,9 @@ func (myClient *CustomClient) MakeChildChan(instance *rbxfile.Instance) chan *rb
 	path := NewInstancePath(instance)
 	path.p = append(path.p, "*") // wildcard
 
-	myClient.instanceHandlers.Bind(path, func(inst *rbxfile.Instance) {
+	myClient.instanceHandlers.Bind(path, func(inst *rbxfile.Instance) bool {
 		newChan <- inst
+		return false // don't unbind me!
 	})
 
 	return newChan
@@ -441,4 +518,157 @@ func (myClient *CustomClient) MakeGroupDeleteChan(instances []*rbxfile.Instance)
 	})
 
 	return channel
+}
+
+func addVector(vec1, vec2 rbxfile.ValueVector3) rbxfile.ValueVector3 {
+	return rbxfile.ValueVector3{
+		X: vec1.X + vec2.X,
+		Y: vec1.Y + vec2.Y,
+		Z: vec1.Z + vec2.Z,
+	}
+}
+func subtractVector(vec1, vec2 rbxfile.ValueVector3) rbxfile.ValueVector3 {
+	return rbxfile.ValueVector3{
+		X: vec1.X - vec2.X,
+		Y: vec1.Y - vec2.Y,
+		Z: vec1.Z - vec2.Z,
+	}
+}
+func scaleVector(vec rbxfile.ValueVector3, scalar float32) rbxfile.ValueVector3 {
+	return rbxfile.ValueVector3{
+		X: vec.X * scalar,
+		Y: vec.Y * scalar,
+		Z: vec.Z * scalar,
+	}
+}
+func dotProduct(vec1, vec2 rbxfile.ValueVector3) float32 {
+	return vec1.X*vec2.X + vec1.Y*vec2.Y + vec1.Z*vec2.Z
+}
+func vectorLength(vec rbxfile.ValueVector3) float32 {
+	return float32(math.Sqrt(float64(dotProduct(vec, vec))))
+}
+func unitVector(vec rbxfile.ValueVector3) rbxfile.ValueVector3 {
+	length := vectorLength(vec)
+	if length == 0 {
+		return vec
+	}
+	return scaleVector(vec, 1/length)
+}
+func scaleDelta(vec1, vec2 rbxfile.ValueVector3, scale float32) rbxfile.ValueVector3 {
+	delta := subtractVector(vec2, vec1)
+	deltaUnit := unitVector(delta)
+	scaledDelta := scaleVector(deltaUnit, scale)
+	if vectorLength(scaledDelta) > vectorLength(delta) {
+		return delta
+	}
+
+	return scaledDelta
+}
+func interpolateVector(vec1, vec2 rbxfile.ValueVector3, maxStep float32) rbxfile.ValueVector3 {
+	return addVector(vec1, scaleDelta(vec1, vec2, maxStep))
+}
+
+func (myClient *CustomClient) StalkPlayer(name string) {
+	println("starting stalk procedure")
+	myCharacter := <-myClient.WaitForRefProp(myClient.GetLocalPlayer(), "Character")
+	println("got local char", myCharacter.GetFullName())
+	myRootPart := <-myClient.WaitForChild(myCharacter, "HumanoidRootPart")
+	println("got my root part", myRootPart.GetFullName())
+	myAnimator := <-myClient.WaitForChild(myCharacter, "Humanoid", "Animator")
+	println("got my animator")
+	targetPlayer := <-myClient.WaitForInstance("Players", name)
+	println("got target")
+	targetCharacter := <-myClient.WaitForRefProp(targetPlayer, "Character")
+	targetRootPart := <-myClient.WaitForChild(targetCharacter, "HumanoidRootPart")
+	targetAnimator := <-myClient.WaitForChild(targetCharacter, "Humanoid", "Animator")
+	println("got target root part")
+
+	var targetPosition rbxfile.ValueCFrame
+	currentPosition := myRootPart.Properties["CFrame"].(rbxfile.ValueCFrame).Position
+
+	myClient.RegisterPacketHandler(0x85, func(packetType uint8, layers *PacketLayers) {
+		mainLayer := layers.Main.(*Packet85Layer)
+		println("got physics")
+		for _, packet := range mainLayer.SubPackets {
+			if packet.Data.Instance == targetRootPart {
+				println("received the part we're stalking, history: ", len(packet.History))
+				if len(packet.History) > 0 {
+					latestPhysicsData := packet.History[len(packet.History)-1]
+
+					targetPosition = latestPhysicsData.CFrame
+				}
+			}
+		}
+	})
+
+	stalkTicker := time.NewTicker(time.Second / 30)
+
+	_, localCharacterAdded := myClient.MakeEventChan(myClient.GetLocalPlayer(), "CharacterAdded")
+	_, targetCharacterAdded := myClient.MakeEventChan(targetPlayer, "CharacterAdded")
+	unbindAnim, animationChan := myClient.MakeEventChan(targetAnimator, "OnPlay")
+	for {
+		select {
+		case event := <-localCharacterAdded:
+			println("localca, updating")
+			myCharacter = event.Arguments[0].(rbxfile.ValueReference).Instance
+			myRootPart = <-myClient.WaitForChild(myCharacter, "HumanoidRootPart")
+			myAnimator = <-myClient.WaitForChild(myCharacter, "Humanoid", "Animator")
+			currentPosition = myRootPart.Properties["CFrame"].(rbxfile.ValueCFrame).Position
+		case event := <-targetCharacterAdded:
+			println("targetca, updating")
+			targetCharacter = event.Arguments[0].(rbxfile.ValueReference).Instance
+			targetRootPart = <-myClient.WaitForChild(targetCharacter, "HumanoidRootPart")
+			targetAnimator = <-myClient.WaitForChild(targetCharacter, "Humanoid", "Animator")
+			myClient.eventHandlers.Unbind(unbindAnim)
+			unbindAnim, animationChan = myClient.MakeEventChan(targetAnimator, "OnPlay")
+		case <-stalkTicker.C:
+			currentPosition = interpolateVector(currentPosition, targetPosition.Position, 16.0/10.0)
+			currentVelocity := scaleVector(scaleDelta(currentPosition, targetPosition.Position, 16.0), 30.0)
+
+			myClient.stalkPart(myRootPart, rbxfile.ValueCFrame{Position: currentPosition, Rotation: targetPosition.Rotation}, currentVelocity, rbxfile.ValueVector3{})
+		case event := <-animationChan:
+			err := myClient.SendEvent(myAnimator, "OnPlay", event.Arguments...)
+			if err != nil {
+				println("Failed to send onplay event: ", err.Error())
+			}
+		}
+	}
+}
+
+func (myClient *CustomClient) NewTimestamp() *Packet1BLayer {
+	timestamp := &Packet1BLayer{Timestamp: uint64(time.Now().UnixNano() / int64(time.Millisecond)), Timestamp2: myClient.timestamp2Index}
+	myClient.timestamp2Index++
+	return timestamp
+}
+
+func (myClient *CustomClient) stalkPart(movePart *rbxfile.Instance, cframe rbxfile.ValueCFrame, linearVel rbxfile.ValueVector3, rotationVel rbxfile.ValueVector3) {
+	myCframe := rbxfile.ValueCFrame{
+		Rotation: cframe.Rotation,
+		Position: rbxfile.ValueVector3{
+			cframe.Position.X,
+			cframe.Position.Y + 10.0,
+			cframe.Position.Z,
+		},
+	}
+
+	println("Updating CFrame to", myCframe.String(), linearVel.String())
+
+	physicsPacket := &Packet85Layer{
+		SubPackets: []*Packet85LayerSubpacket{
+			&Packet85LayerSubpacket{
+				Data: PhysicsData{
+					Instance:           movePart,
+					CFrame:             myCframe,
+					LinearVelocity:     linearVel,
+					RotationalVelocity: rotationVel,
+				},
+				NetworkHumanoidState: 8, // Running
+			},
+		},
+	}
+
+	_, err := myClient.WritePhysics(myClient.NewTimestamp(), physicsPacket)
+	if err != nil {
+		println("Failed to send stalking packet:", err.Error())
+	}
 }
