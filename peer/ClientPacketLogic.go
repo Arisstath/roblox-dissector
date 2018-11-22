@@ -393,7 +393,7 @@ func (myClient *CustomClient) SendEvent(instance *rbxfile.Instance, name string,
 	)
 }
 
-func (myClient *CustomClient) InvokeRemote(instance *rbxfile.Instance, arguments []rbxfile.Value) (rbxfile.ValueTuple, string) {
+func (myClient *CustomClient) InvokeRemote(instance *rbxfile.Instance, arguments []rbxfile.Value) (rbxfile.ValueTuple, error) {
 	if myClient.LocalPlayer == nil {
 		panic(errors.New("local player is nil!"))
 	}
@@ -427,19 +427,20 @@ func (myClient *CustomClient) InvokeRemote(instance *rbxfile.Instance, arguments
 				conn1.Disconnect()
 				conn2.Disconnect()
 
-				return succ.Arguments[1].(rbxfile.ValueTuple), "" // return any values
+				return succ.Arguments[1].(rbxfile.ValueTuple), nil // return any values
 			}
 		case err := <-errChan:
 			if uint32(err.Arguments[0].(rbxfile.ValueInt)) == index {
 				conn1.Disconnect()
 				conn2.Disconnect()
 
-				return nil, string(err.Arguments[1].(rbxfile.ValueString))
+				return nil, errors.New(string(err.Arguments[1].(rbxfile.ValueString)))
 			}
 		}
 	}
 
-	return nil, ""
+	// Never reached, but we must use return here for syntactic reasons
+	return nil, nil
 }
 
 func (myClient *CustomClient) FireRemote(instance *rbxfile.Instance, arguments ...rbxfile.Value) {

@@ -175,8 +175,8 @@ func (myClient *CustomClient) setupChat() error {
 	println("got req")
 
 	_, err := myClient.InvokeRemote(getInitDataRequest, []rbxfile.Value{})
-	if err != "" {
-		return errors.New(err)
+	if err != nil {
+		return err
 	}
 	// unimportant
 	//myClient.Logger.Printf("chat init data 0: %s\n", initData.String())
