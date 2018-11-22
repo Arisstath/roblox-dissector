@@ -1,159 +1,158 @@
 package peer
 
 import (
-	"fmt"
+	"container/list"
 	"strings"
 	"sync"
 
 	"github.com/gskartwii/rbxfile"
 )
 
-type RawPacketHandlerMap struct {
-	*sync.Mutex
-	m        map[uint8](map[int]ReceiveHandler)
-	uniqueId int
+type PacketHandlerConnection struct {
+	Callback interface{}
+	Data     interface{}
+	Once     bool
+	element  *list.Element
+	parent   interface {
+		Disconnect(*PacketHandlerConnection)
+	}
 }
 
-func (m *RawPacketHandlerMap) Bind(packetType uint8, handler ReceiveHandler) int {
-	m.Lock()
-	if m.m[packetType] == nil {
-		m.m[packetType] = make(map[int]ReceiveHandler)
+func (conn *PacketHandlerConnection) Disconnect() {
+	if conn == nil {
+		println("WARNING: Ignoring nil disconnection")
+		return
 	}
-	m.m[packetType][m.uniqueId] = handler
-	m.uniqueId++
-	m.Unlock()
-	return m.uniqueId - 1
+	conn.parent.Disconnect(conn)
 }
-func (m *RawPacketHandlerMap) Unbind(packetType uint8, index int) {
+
+type PacketHandlerMap struct {
+	*sync.Mutex
+	m *list.List
+}
+
+func (m *PacketHandlerMap) Disconnect(conn *PacketHandlerConnection) {
 	m.Lock()
-	delete(m.m[packetType], index)
+	m.m.Remove(conn.element)
 	m.Unlock()
+}
+func NewPacketHandlerMap() *PacketHandlerMap {
+	return &PacketHandlerMap{m: list.New(), Mutex: &sync.Mutex{}}
+}
+
+type RawPacketHandlerMap struct {
+	*PacketHandlerMap
+}
+
+func (m *RawPacketHandlerMap) Bind(packetType uint8, handler ReceiveHandler) *PacketHandlerConnection {
+	m.Lock()
+	conn := &PacketHandlerConnection{Callback: handler, parent: m, Data: packetType}
+	conn.element = m.m.PushBack(conn)
+	m.Unlock()
+	return conn
 }
 func (m *RawPacketHandlerMap) Fire(packetType uint8, layers *PacketLayers) {
 	m.Lock()
-	for _, handler := range m.m[packetType] {
-		handler(packetType, layers)
+	for e := m.m.Front(); e != nil; e = e.Next() {
+		conn := e.Value.(*PacketHandlerConnection)
+		if conn.Data.(uint8) == packetType {
+			go conn.Callback.(ReceiveHandler)(packetType, layers)
+		}
 	}
 	m.Unlock()
 }
 func NewRawPacketHandlerMap() *RawPacketHandlerMap {
-	return &RawPacketHandlerMap{m: map[uint8](map[int]ReceiveHandler){}, Mutex: &sync.Mutex{}}
+	return &RawPacketHandlerMap{NewPacketHandlerMap()}
 }
 
 type DeleteInstanceHandler func(*rbxfile.Instance)
 type DeleteInstanceHandlerMap struct {
-	*sync.Mutex
-	m        map[Referent](map[int]DeleteInstanceHandler)
-	uniqueId int
+	*PacketHandlerMap
 }
 
-func (m *DeleteInstanceHandlerMap) Bind(packetType Referent, handler DeleteInstanceHandler) int {
+func (m *DeleteInstanceHandlerMap) Bind(packetType Referent, handler DeleteInstanceHandler) *PacketHandlerConnection {
 	m.Lock()
-	if m.m[packetType] == nil {
-		m.m[packetType] = make(map[int]DeleteInstanceHandler)
-	}
-	m.m[packetType][m.uniqueId] = handler
-	m.uniqueId++
+	conn := &PacketHandlerConnection{parent: m, Callback: handler, Data: packetType}
+	conn.element = m.m.PushBack(conn)
 	m.Unlock()
-	return m.uniqueId - 1
-}
-func (m *DeleteInstanceHandlerMap) Unbind(packetType Referent, index int) {
-	m.Lock()
-	delete(m.m[packetType], index)
-	m.Unlock()
+	return conn
 }
 func (m *DeleteInstanceHandlerMap) Fire(packetType *rbxfile.Instance) {
 	m.Lock()
-	for _, handler := range m.m[Referent(packetType.Reference)] {
-		handler(packetType)
+	for e := m.m.Front(); e != nil; e = e.Next() {
+		conn := e.Value.(*PacketHandlerConnection)
+		if packetType.Reference == string(conn.Data.(Referent)) {
+			go conn.Callback.(DeleteInstanceHandler)(packetType)
+		}
 	}
 	m.Unlock()
 }
 func NewDeleteInstanceHandlerMap() *DeleteInstanceHandlerMap {
-	return &DeleteInstanceHandlerMap{m: map[Referent](map[int]DeleteInstanceHandler){}, Mutex: &sync.Mutex{}}
+	return &DeleteInstanceHandlerMap{NewPacketHandlerMap()}
 }
 
 type DataPacketHandlerMap struct {
-	*sync.Mutex
-	m        map[uint8]map[int]DataReceiveHandler
-	uniqueId int
+	*PacketHandlerMap
 }
-
 type DataReceiveHandler func(uint8, *PacketLayers, Packet83Subpacket)
 
-func (m *DataPacketHandlerMap) Bind(packetType uint8, handler DataReceiveHandler) int {
+func (m *DataPacketHandlerMap) Bind(packetType uint8, handler DataReceiveHandler) *PacketHandlerConnection {
 	m.Lock()
-	if m.m[packetType] == nil {
-		m.m[packetType] = make(map[int]DataReceiveHandler)
-	}
-	m.m[packetType][m.uniqueId] = handler
-	m.uniqueId++
+	conn := &PacketHandlerConnection{parent: m, Callback: handler, Data: packetType}
+	conn.element = m.m.PushBack(conn)
 	m.Unlock()
-	return m.uniqueId - 1
-}
-func (m *DataPacketHandlerMap) Unbind(packetType uint8, index int) {
-	m.Lock()
-	delete(m.m[packetType], index)
-	m.Unlock()
+	return conn
 }
 func (m *DataPacketHandlerMap) Fire(packetType uint8, layers *PacketLayers, subpacket Packet83Subpacket) {
 	m.Lock()
-	for _, handler := range m.m[packetType] {
-		handler(packetType, layers, subpacket)
+	for e := m.m.Front(); e != nil; e = e.Next() {
+		conn := e.Value.(*PacketHandlerConnection)
+		if conn.Data.(uint8) == packetType {
+			go conn.Callback.(DataReceiveHandler)(packetType, layers, subpacket)
+		}
 	}
 	m.Unlock()
 }
 func NewDataHandlerMap() *DataPacketHandlerMap {
-	return &DataPacketHandlerMap{m: map[uint8](map[int]DataReceiveHandler){}, Mutex: &sync.Mutex{}}
+	return &DataPacketHandlerMap{NewPacketHandlerMap()}
 }
 
-type NewInstanceHandler func(*rbxfile.Instance) bool
-type newInstanceHandlerMapKey struct {
-	key     *InstancePath
-	handler NewInstanceHandler
-}
-
+type NewInstanceHandler func(*rbxfile.Instance)
 type NewInstanceHandlerMap struct {
-	*sync.Mutex
-	handlers map[int]newInstanceHandlerMapKey
-	uniqueId int
+	*PacketHandlerMap
 }
 
-func (m *NewInstanceHandlerMap) Bind(packetType *InstancePath, handler NewInstanceHandler) int {
-	m.Lock()
-	m.handlers[m.uniqueId] = newInstanceHandlerMapKey{
-		key:     packetType,
-		handler: handler,
+// Bind assumes that you hold the lock yourself
+func (m *NewInstanceHandlerMap) Bind(packetType *InstancePath, handler NewInstanceHandler) *PacketHandlerConnection {
+	conn := &PacketHandlerConnection{
+		parent:   m,
+		Callback: handler,
+		Data:     packetType,
 	}
+	conn.element = m.m.PushBack(conn)
 
-	m.uniqueId++
-	m.Unlock()
-	return m.uniqueId - 1
-}
-func (m *NewInstanceHandlerMap) Unbind(index int) {
-	m.Lock()
-	delete(m.handlers, index)
-	m.Unlock()
+	return conn
 }
 func (m *NewInstanceHandlerMap) Fire(instance *rbxfile.Instance) {
-	//println("fire", NewInstancePath(instance).String())
 	m.Lock()
-	unbindUs := []int{}
-	for index, handler := range m.handlers {
-		if handler.key.Matches(instance) {
-			if handler.handler(instance) {
-				unbindUs = append(unbindUs, index)
+	unbindMe := make([]*PacketHandlerConnection, 0)
+	for e := m.m.Front(); e != nil; e = e.Next() {
+		conn := e.Value.(*PacketHandlerConnection)
+		if conn.Data.(*InstancePath).Matches(instance) {
+			go conn.Callback.(NewInstanceHandler)(instance)
+			if conn.Once {
+				unbindMe = append(unbindMe, conn)
 			}
 		}
 	}
-	for _, index := range unbindUs {
-		println("unbinding key", m.handlers[index].key.String())
-		delete(m.handlers, index)
+	// Must do this after the loop
+	for _, val := range unbindMe {
+		m.m.Remove(val.element)
 	}
 	m.Unlock()
 }
 func NewNewInstanceHandlerMap() *NewInstanceHandlerMap {
-	return &NewInstanceHandlerMap{handlers: map[int]newInstanceHandlerMapKey{}, Mutex: &sync.Mutex{}}
+	return &NewInstanceHandlerMap{NewPacketHandlerMap()}
 }
 
 // InstancePath describes a single instance's path
@@ -184,14 +183,11 @@ func (path *InstancePath) String() string {
 
 // Checks if the path is the same as an Instance's
 func (path *InstancePath) Matches(instance *rbxfile.Instance) bool {
-	fmt.Printf("matches called %s %s %v\n", path.root.GetFullName(), instance.GetFullName(), path.p)
 	if len(path.p) == 0 {
-		fmt.Printf("zero length %s %s %v\n", path.root.GetFullName(), instance.GetFullName(), path.p)
 		return path.root == instance
 	}
 	index := len(path.p) - 1
 	if instance.Name() != path.p[index] && path.p[index] != "*" {
-		fmt.Printf("first failed %s %s %v\n", path.root.GetFullName(), instance.GetFullName(), path.p)
 		return false
 	}
 
@@ -203,127 +199,101 @@ func (path *InstancePath) Matches(instance *rbxfile.Instance) bool {
 		index--
 		if index < 0 {
 			if instance == path.root { // path index -1 is oob for the path, so we look at root which is parent to the path
-				fmt.Printf("@0, instance equal %s %s %v\n", path.root.GetFullName(), instance.GetFullName(), path.p)
 				return true
 			}
-			fmt.Printf("below zero %s %s %v\n", path.root.GetFullName(), instance.GetFullName(), path.p)
 			return false
 		}
 		if !instance.IsService {
 			if instance.Name() != path.p[index] && path.p[index] != "*" { // wildcard handling
-				fmt.Printf("not service, didn't match %s %s %v\n", path.root.GetFullName(), instance.GetFullName(), path.p)
 				return false
 			}
 		} else {
 			if instance.ClassName != path.p[index] && path.p[index] != "*" {
 				// HACK: use classname detection for services
 				// this is to circumvent the anti-hack system found in Jailbreak
-				fmt.Printf("service didn't match %s %s %v\n", path.root.GetFullName(), instance.GetFullName(), path.p)
 				return false
 			}
 		}
 	}
 	if index != 0 || (path.root != nil && path.root != instance) {
-		fmt.Printf("last thing didn't match %s %s %v\n", path.root.GetFullName(), instance.GetFullName(), path.p)
 		return false
 	}
-	fmt.Printf("resolved %s %s %v\n", path.root.GetFullName(), instance.GetFullName(), path.p)
 	return true
 }
 
-type PropertyHandler func(value rbxfile.Value) bool
-type propertyHandlerMapKey struct {
+type PropertyHandler func(value rbxfile.Value)
+type propertyHandlerData struct {
 	instKey *rbxfile.Instance
 	propKey string
-	handler PropertyHandler
 }
 
 type PropertyHandlerMap struct {
-	*sync.Mutex
-	handlers map[int]propertyHandlerMapKey
-	uniqueId int
+	*PacketHandlerMap
 }
 
-func (m *PropertyHandlerMap) Bind(instance *rbxfile.Instance, property string, handler PropertyHandler) int {
+func (m *PropertyHandlerMap) Bind(instance *rbxfile.Instance, property string, handler PropertyHandler) *PacketHandlerConnection {
 	m.Lock()
-	m.handlers[m.uniqueId] = propertyHandlerMapKey{
-		instKey: instance,
-		propKey: property,
-		handler: handler,
+	conn := &PacketHandlerConnection{
+		parent:   m,
+		Callback: handler,
+		Data:     propertyHandlerData{instance, property},
 	}
+	conn.element = m.m.PushBack(conn)
 
-	m.uniqueId++
 	m.Unlock()
-	return m.uniqueId
-}
-func (m *PropertyHandlerMap) Unbind(index int) {
-	m.Lock()
-	delete(m.handlers, index)
-	m.Unlock()
+	return conn
 }
 func (m *PropertyHandlerMap) Fire(instance *rbxfile.Instance, name string, value rbxfile.Value) {
 	m.Lock()
-	unbindUs := []int{}
-	for index, handler := range m.handlers {
-		if handler.instKey == instance && handler.propKey == name {
-			if handler.handler(value) {
-				unbindUs = append(unbindUs, index)
-			}
+	for e := m.m.Front(); e != nil; e = e.Next() {
+		conn := e.Value.(*PacketHandlerConnection)
+		data := conn.Data.(propertyHandlerData)
+		if data.instKey == instance && data.propKey == name {
+			go conn.Callback.(PropertyHandler)(value)
 		}
-	}
-	for _, index := range unbindUs {
-		println("unbinding key", m.handlers[index].propKey)
-		delete(m.handlers, index)
 	}
 	m.Unlock()
 }
 func NewPropertyHandlerMap() *PropertyHandlerMap {
-	return &PropertyHandlerMap{handlers: map[int]propertyHandlerMapKey{}, Mutex: &sync.Mutex{}}
+	return &PropertyHandlerMap{NewPacketHandlerMap()}
 }
 
 // Handler that receives events
 type EventHandler func(event *ReplicationEvent)
-type eventHandlerMapKey struct {
+type eventHandlerData struct {
 	instKey  *rbxfile.Instance
 	eventKey string
-	handler  EventHandler
 }
 
 type EventHandlerMap struct {
-	*sync.Mutex
-	handlers map[int]eventHandlerMapKey
-	uniqueId int
+	*PacketHandlerMap
 }
 
-func (m *EventHandlerMap) Bind(packetType *rbxfile.Instance, event string, handler EventHandler) int {
+func (m *EventHandlerMap) Bind(packetType *rbxfile.Instance, event string, handler EventHandler) *PacketHandlerConnection {
 	m.Lock()
-	m.handlers[m.uniqueId] = eventHandlerMapKey{
-		instKey:  packetType,
-		eventKey: event,
-		handler:  handler,
+	conn := &PacketHandlerConnection{
+		parent:   m,
+		Callback: handler,
+		Data: eventHandlerData{
+			instKey:  packetType,
+			eventKey: event,
+		},
 	}
-
-	m.uniqueId++
+	conn.element = m.m.PushBack(conn)
 	m.Unlock()
-	return m.uniqueId - 1
-}
-func (m *EventHandlerMap) Unbind(index int) {
-	m.Lock()
-	delete(m.handlers, index)
-	m.Unlock()
+	return conn
 }
 func (m *EventHandlerMap) Fire(instance *rbxfile.Instance, name string, event *ReplicationEvent) {
 	m.Lock()
-	for _, handler := range m.handlers {
-		if name == "RemoteOnInvokeSuccess" || name == "RemoteOnInvokeError" {
-			println("receiving important remote!", name, NewInstancePath(instance).String())
-		}
-		if handler.eventKey == name && handler.instKey == instance {
-			handler.handler(event)
+	for e := m.m.Front(); e != nil; e = e.Next() {
+		conn := e.Value.(*PacketHandlerConnection)
+		data := conn.Data.(eventHandlerData)
+		if data.eventKey == name && data.instKey == instance {
+			go conn.Callback.(EventHandler)(event)
 		}
 	}
 	m.Unlock()
 }
 func NewEventHandlerMap() *EventHandlerMap {
-	return &EventHandlerMap{handlers: map[int]eventHandlerMapKey{}, Mutex: &sync.Mutex{}}
+	return &EventHandlerMap{NewPacketHandlerMap()}
 }

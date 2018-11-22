@@ -1,7 +1,11 @@
 package peer
 
-import "github.com/gskartwii/rbxfile"
-import "errors"
+import (
+	"errors"
+	"sync"
+
+	"github.com/gskartwii/rbxfile"
+)
 
 type InstanceList struct {
 	Instances    map[string]*rbxfile.Instance
@@ -14,7 +18,7 @@ func (l *InstanceList) CreateInstance(ref Referent) (*rbxfile.Instance, error) {
 	}
 	instance := l.Instances[string(ref)]
 	if instance == nil {
-		instance = &rbxfile.Instance{Reference: string(ref), Properties: make(map[string]rbxfile.Value)}
+		instance = &rbxfile.Instance{Reference: string(ref), Properties: make(map[string]rbxfile.Value), PropertiesMutex: &sync.RWMutex{}}
 		l.AddInstance(ref, instance)
 		return instance, nil
 	}

@@ -36,7 +36,9 @@ func (thisBitstream *extendedReader) DecodePacket83_03(reader PacketReader, laye
 		return layer, err
 	}
 	layer.Instance = instance
+	instance.PropertiesMutex.Lock()
 	instance.Properties[layer.PropertyName] = layer.Value
+	instance.PropertiesMutex.Unlock()
 
 	propertyIDx, err := thisBitstream.readUint16BE()
 	if err != nil {

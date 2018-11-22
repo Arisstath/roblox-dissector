@@ -42,6 +42,7 @@ func showReplicationInstance(this *rbxfile.Instance) []*gui.QStandardItem {
 	}
 	pathItem := NewQStandardItemF("%s", this.GetFullName())
 
+	this.PropertiesMutex.RLock()
 	if len(this.Properties) > 0 {
 		propertyRootItem := NewQStandardItemF("%d properties", len(this.Properties))
 		for name, property := range this.Properties {
@@ -76,6 +77,7 @@ func showReplicationInstance(this *rbxfile.Instance) []*gui.QStandardItem {
 		}
 		rootNameItem.AppendRow([]*gui.QStandardItem{propertyRootItem, nil, nil, nil, nil, nil})
 	}
+	this.PropertiesMutex.RUnlock()
 	return []*gui.QStandardItem{
 		rootNameItem,
 		typeItem,

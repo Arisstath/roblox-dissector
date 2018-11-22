@@ -23,6 +23,7 @@ func showChildren(rootNode *gui.QStandardItem, children []*rbxfile.Instance) {
 
 func dumpScripts(instances []*rbxfile.Instance, i int) int {
 	for _, instance := range instances {
+		instance.PropertiesMutex.Lock()
 		for name, property := range instance.Properties {
 			if property == nil {
 				delete(instance.Properties, name)
@@ -49,6 +50,7 @@ func dumpScripts(instances []*rbxfile.Instance, i int) int {
 				}
 			}
 		}
+		instance.PropertiesMutex.Unlock()
 		i = dumpScripts(instance.Children, i)
 	}
 	return i
@@ -56,6 +58,7 @@ func dumpScripts(instances []*rbxfile.Instance, i int) int {
 
 func stripInvalidTypes(instances []*rbxfile.Instance, defaultValues DefaultValues, i int) int {
 	for _, instance := range instances {
+		instance.PropertiesMutex.Lock()
 		color, ok := instance.Properties["Color3uint8"]
 		if ok {
 			if _, ok = color.(rbxfile.ValueDefault); !ok {
@@ -110,6 +113,7 @@ func stripInvalidTypes(instances []*rbxfile.Instance, defaultValues DefaultValue
 				}
 			}
 		}
+		instance.PropertiesMutex.Unlock()
 		i = stripInvalidTypes(instance.Children, defaultValues, i)
 	}
 	return i

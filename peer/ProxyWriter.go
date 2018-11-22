@@ -15,10 +15,10 @@ type ProxyHalf struct {
 }
 
 func NewProxyHalf(context *CommunicationContext) *ProxyHalf {
-    return &ProxyHalf{
-        ConnectedPeer: NewConnectedPeer(context),
-        fakePackets: nil,
-    }
+	return &ProxyHalf{
+		ConnectedPeer: NewConnectedPeer(context),
+		fakePackets:   nil,
+	}
 }
 
 func (w *ProxyHalf) rotateDN(old uint32) uint32 {
@@ -167,7 +167,9 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 					println("patching osplatform", instPacket.Child.Name())
 					if instPacket.Child.ClassName == "Player" {
 						// patch OsPlatform!
+						instPacket.Child.PropertiesMutex.Lock()
 						instPacket.Child.Properties["OsPlatform"] = rbxfile.ValueString(writer.SecuritySettings.OsPlatform)
+						instPacket.Child.PropertiesMutex.Unlock()
 					}
 					modifiedSubpackets = append(modifiedSubpackets, subpacket)
 				case *Packet83_09:
@@ -271,7 +273,7 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 
 	clientHalf.DefaultPacketWriter.SetToClient(true) // writes TO client!
 	clientHalf.DefaultPacketReader.SetIsClient(true) // reads FROM client!
-    // Caches will have been assigned by NewConnectedPeer()
+	// Caches will have been assigned by NewConnectedPeer()
 
 	writer.ClientHalf = clientHalf
 	writer.ServerHalf = serverHalf

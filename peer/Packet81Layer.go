@@ -3,6 +3,7 @@ package peer
 import (
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/gskartwii/rbxfile"
 )
@@ -38,7 +39,7 @@ func NewPacket81Layer() *Packet81Layer {
 
 func (thisBitstream *extendedReader) DecodePacket81Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket81Layer()
-	
+
 	var err error
 
 	layer.StreamJob, err = thisBitstream.readBoolByte()
@@ -110,10 +111,11 @@ func (thisBitstream *extendedReader) DecodePacket81Layer(reader PacketReader, la
 
 		className := context.StaticSchema.Instances[thisItem.ClassID].Name
 		thisService := &rbxfile.Instance{
-			ClassName:  className,
-			Reference:  string(referent),
-			Properties: make(map[string]rbxfile.Value, 0),
-			IsService:  true,
+			ClassName:       className,
+			Reference:       string(referent),
+			Properties:      make(map[string]rbxfile.Value, 0),
+			PropertiesMutex: &sync.RWMutex{},
+			IsService:       true,
 		}
 		context.DataModel.Instances[i] = thisService
 		context.InstancesByReferent.AddInstance(referent, thisService)

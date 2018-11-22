@@ -112,8 +112,11 @@ func (myClient *CustomClient) RegisterPacketHandler(packetType uint8, handler Re
 func (myClient *CustomClient) RegisterDataHandler(packetType uint8, handler DataReceiveHandler) {
 	myClient.dataHandlers.Bind(packetType, handler)
 }
-func (myClient *CustomClient) RegisterInstanceHandler(path *InstancePath, handler NewInstanceHandler) {
-	myClient.instanceHandlers.Bind(path, handler)
+func (myClient *CustomClient) RegisterInstanceHandler(path *InstancePath, handler NewInstanceHandler) *PacketHandlerConnection {
+	myClient.instanceHandlers.Lock()
+	conn := myClient.instanceHandlers.Bind(path, handler)
+	myClient.instanceHandlers.Unlock()
+	return conn
 }
 
 func (myClient *CustomClient) ReadPacket(buf []byte) {
@@ -237,6 +240,7 @@ func (myClient *CustomClient) joinWithJoinScript(url string, cookies []*http.Coo
 		return err
 	}
 	body := resp.Body
+	defer body.Close()
 
 	// Discard rbxsig by reading until newline
 	char := make([]byte, 1)
@@ -293,6 +297,7 @@ func (myClient *CustomClient) joinWithPlaceLauncher(url string, cookies []*http.
 		if err != nil {
 			return err
 		}
+		defer resp.Body.Close()
 		err = json.NewDecoder(resp.Body).Decode(&plResp)
 		if err != nil {
 			return err
@@ -341,6 +346,7 @@ func (myClient *CustomClient) ConnectWithAuthTicket(placeId uint32, ticket strin
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode == 403 { // token verification failed
 		negotiationRequest.Header.Set("X-Csrf-Token", resp.Header.Get("X-Csrf-Token"))
 		myClient.Logger.Println("Set csrftoken:", resp.Header.Get("X-Csrf-Token"))
@@ -402,7 +408,7 @@ func (myClient *CustomClient) defaultReliabilityLayerHandler(layers *PacketLayer
 }
 func (myClient *CustomClient) defaultSimpleHandler(packetType byte, layers *PacketLayers) {
 	if layers.Error == nil {
-		myClient.handlers.Fire(packetType, layers)
+		go myClient.handlers.Fire(packetType, layers) // Let the reader continue its job while the packet is processed
 	} else {
 		println("simple error: ", layers.Error.Error())
 	}
@@ -415,7 +421,7 @@ func (myClient *CustomClient) defaultReliableHandler(packetType byte, layers *Pa
 }
 func (myClient *CustomClient) defaultFullReliableHandler(packetType byte, layers *PacketLayers) {
 	if layers.Error == nil {
-		myClient.handlers.Fire(packetType, layers)
+		go myClient.handlers.Fire(packetType, layers)
 	} else {
 		println("simple error: ", layers.Error.Error())
 	}

@@ -42,9 +42,11 @@ func decodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader
 		return thisInstance, err
 	}
 	layers.Root.Logger.Println("unkbool:", unkBool)
+	thisInstance.PropertiesMutex.Lock()
 	thisInstance.Properties = make(map[string]rbxfile.Value, len(schema.Properties))
 
 	err = thisBitstream.ReadProperties(schema.Properties, thisInstance.Properties, reader)
+	thisInstance.PropertiesMutex.Unlock()
 	if err != nil {
 		return thisInstance, err
 	}
@@ -97,7 +99,9 @@ func serializeReplicationInstance(instance *rbxfile.Instance, writer PacketWrite
 	}
 
 	schema := context.StaticSchema.Instances[schemaIdx]
+	instance.PropertiesMutex.RLock()
 	err = stream.WriteProperties(schema.Properties, instance.Properties, writer)
+	instance.PropertiesMutex.RUnlock()
 	if err != nil {
 		return err
 	}

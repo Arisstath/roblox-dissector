@@ -6,6 +6,7 @@ import (
 	"math"
 	"net"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/gskartwii/rbxfile"
@@ -24,6 +25,7 @@ func (myClient *CustomClient) FindService(name string) *rbxfile.Instance {
 }
 
 func (myClient *CustomClient) WaitForChild(instance *rbxfile.Instance, path ...string) <-chan *rbxfile.Instance {
+	myClient.instanceHandlers.Lock()
 	retChannel := make(chan *rbxfile.Instance, 1)
 	currInstance := instance
 	lastInstance := instance
@@ -40,30 +42,32 @@ func (myClient *CustomClient) WaitForChild(instance *rbxfile.Instance, path ...s
 	}
 	if currInstance == nil {
 		fmt.Printf("Must create instancepath %s %v\n", lastInstance.GetFullName(), currPath)
-		myClient.instanceHandlers.Bind(&InstancePath{currPath, lastInstance}, func(instance *rbxfile.Instance) bool {
+		myClient.instanceHandlers.Bind(&InstancePath{currPath, lastInstance}, func(instance *rbxfile.Instance) {
 			fmt.Printf("Received %s %v %s\n", lastInstance.GetFullName(), currPath, instance.GetFullName())
 			retChannel <- instance
-			return true
-		})
+		}).Once = true
 	} else {
 		retChannel <- currInstance
 	}
+	myClient.instanceHandlers.Unlock()
 	return retChannel
 }
 
 func (myClient *CustomClient) WaitForRefProp(instance *rbxfile.Instance, name string) <-chan *rbxfile.Instance {
 	retChannel := make(chan *rbxfile.Instance, 1)
+	instance.PropertiesMutex.RLock()
 	if instance.Properties[name] != nil && instance.Properties[name].(rbxfile.ValueReference).Instance != nil {
 		retChannel <- instance.Properties[name].(rbxfile.ValueReference).Instance
 	} else {
-		myClient.propHandlers.Bind(instance, name, func(value rbxfile.Value) bool {
+		var connection *PacketHandlerConnection
+		connection = myClient.propHandlers.Bind(instance, name, func(value rbxfile.Value) {
 			if value.(rbxfile.ValueReference).Instance != nil {
 				retChannel <- value.(rbxfile.ValueReference).Instance
-				return true
+				connection.Disconnect()
 			}
-			return false
 		})
 	}
+	instance.PropertiesMutex.RUnlock()
 	return retChannel
 }
 
@@ -75,12 +79,12 @@ func (myClient *CustomClient) WaitForInstance(path ...string) <-chan *rbxfile.In
 	return myClient.WaitForChild(service, path[1:]...)
 }
 
-func (myClient *CustomClient) MakeEventChan(instance *rbxfile.Instance, name string) (int, chan *ReplicationEvent) {
+func (myClient *CustomClient) MakeEventChan(instance *rbxfile.Instance, name string) (*PacketHandlerConnection, chan *ReplicationEvent) {
 	newChan := make(chan *ReplicationEvent)
-	unbind := myClient.eventHandlers.Bind(instance, name, func(evt *ReplicationEvent) {
+	connection := myClient.eventHandlers.Bind(instance, name, func(evt *ReplicationEvent) {
 		newChan <- evt
 	})
-	return unbind, newChan
+	return connection, newChan
 }
 
 func (myClient *CustomClient) bindDefaultHandlers() {
@@ -101,8 +105,7 @@ func (myClient *CustomClient) bindDefaultHandlers() {
 	dataHandlers.Bind(9, myClient.idChallengeHandler)
 	dataHandlers.Bind(0xB, myClient.joinDataHandler)
 
-	instHandlers := myClient.instanceHandlers
-	instHandlers.Bind(&InstancePath{[]string{"Players"}, nil}, myClient.handlePlayersService)
+	myClient.RegisterInstanceHandler(&InstancePath{[]string{"Players"}, nil}, myClient.handlePlayersService).Once = true
 }
 
 func (myClient *CustomClient) sendResponse7() {
@@ -318,10 +321,10 @@ func (myClient *CustomClient) eventHandler(packetType uint8, layers *PacketLayer
 	myClient.eventHandlers.Fire(mainPacket.Instance, mainPacket.EventName, mainPacket.Event)
 }
 
-func (myClient *CustomClient) handlePlayersService(players *rbxfile.Instance) bool {
+func (myClient *CustomClient) handlePlayersService(players *rbxfile.Instance) {
 	// this function will be called twice if both top repl and data repl contain Players
 	if myClient.LocalPlayer != nil { // do not send localplayer twice!
-		return true
+		return
 	}
 
 	myPlayer := &rbxfile.Instance{
@@ -343,6 +346,7 @@ func (myClient *CustomClient) handlePlayersService(players *rbxfile.Instance) bo
 			"UserId":              rbxfile.ValueInt64(myClient.PlayerId),
 			"ReplicatedLocaleId":  rbxfile.ValueString("en-us"),
 		},
+		PropertiesMutex: &sync.RWMutex{},
 	}
 	players.AddChild(myPlayer)
 	myClient.instanceIndex++
@@ -362,7 +366,7 @@ func (myClient *CustomClient) handlePlayersService(players *rbxfile.Instance) bo
 	}
 	myClient.LocalPlayer = myPlayer
 	go myClient.instanceHandlers.Fire(myPlayer) // prevent deadlock
-	return true
+	return
 }
 
 func (myClient *CustomClient) newInstanceHandler(packetType uint8, layers *PacketLayers, subpacket Packet83Subpacket) {
@@ -401,8 +405,8 @@ func (myClient *CustomClient) InvokeRemote(instance *rbxfile.Instance, arguments
 
 	// TODO: Instead of creating new event chans every time, have a global channel for each instance
 	// This way the event won't be eaten in case the Arguments[0] == index check doesn't pass
-	unbind1, succChan := myClient.MakeEventChan(instance, "RemoteOnInvokeSuccess")
-	unbind2, errChan := myClient.MakeEventChan(instance, "RemoteOnInvokeError")
+	conn1, succChan := myClient.MakeEventChan(instance, "RemoteOnInvokeSuccess")
+	conn2, errChan := myClient.MakeEventChan(instance, "RemoteOnInvokeError")
 	// it should be ok to leave the chans open
 	// they will be gc'd anyway
 
@@ -412,7 +416,7 @@ func (myClient *CustomClient) InvokeRemote(instance *rbxfile.Instance, arguments
 		rbxfile.ValueTuple(arguments),
 	)
 	if err != nil {
-		println("Failed to invoke remote:", err.Error())
+		return nil, err
 	}
 
 	for true {
@@ -420,15 +424,15 @@ func (myClient *CustomClient) InvokeRemote(instance *rbxfile.Instance, arguments
 		case succ := <-succChan:
 			// check that this packet was sent for us specifically
 			if uint32(succ.Arguments[0].(rbxfile.ValueInt)) == index {
-				myClient.eventHandlers.Unbind(unbind1)
-				myClient.eventHandlers.Unbind(unbind2)
+				conn1.Disconnect()
+				conn2.Disconnect()
 
 				return succ.Arguments[1].(rbxfile.ValueTuple), "" // return any values
 			}
 		case err := <-errChan:
 			if uint32(err.Arguments[0].(rbxfile.ValueInt)) == index {
-				myClient.eventHandlers.Unbind(unbind1)
-				myClient.eventHandlers.Unbind(unbind2)
+				conn1.Disconnect()
+				conn2.Disconnect()
 
 				return nil, string(err.Arguments[1].(rbxfile.ValueString))
 			}
@@ -467,9 +471,8 @@ func (myClient *CustomClient) MakeChildChan(instance *rbxfile.Instance) chan *rb
 	path := NewInstancePath(instance)
 	path.p = append(path.p, "*") // wildcard
 
-	myClient.instanceHandlers.Bind(path, func(inst *rbxfile.Instance) bool {
+	myClient.instanceHandlers.Bind(path, func(inst *rbxfile.Instance) {
 		newChan <- inst
-		return false // don't unbind me!
 	})
 
 	return newChan
@@ -483,7 +486,7 @@ func (myClient *CustomClient) deleteHandler(packetType uint8, layers *PacketLaye
 
 type GroupDeleteChan struct {
 	C         chan *rbxfile.Instance
-	binding   int
+	binding   *PacketHandlerConnection
 	client    *CustomClient
 	referents []Referent
 }
@@ -494,7 +497,7 @@ func (channel *GroupDeleteChan) AddInstances(instances ...*rbxfile.Instance) {
 	}
 }
 func (channel *GroupDeleteChan) Destroy() {
-	channel.client.dataHandlers.Unbind(1, channel.binding)
+	channel.binding.Disconnect()
 }
 func (myClient *CustomClient) MakeGroupDeleteChan(instances []*rbxfile.Instance) *GroupDeleteChan {
 	channel := &GroupDeleteChan{
@@ -569,29 +572,25 @@ func interpolateVector(vec1, vec2 rbxfile.ValueVector3, maxStep float32) rbxfile
 }
 
 func (myClient *CustomClient) StalkPlayer(name string) {
-	println("starting stalk procedure")
 	myCharacter := <-myClient.WaitForRefProp(myClient.GetLocalPlayer(), "Character")
-	println("got local char", myCharacter.GetFullName())
 	myRootPart := <-myClient.WaitForChild(myCharacter, "HumanoidRootPart")
-	println("got my root part", myRootPart.GetFullName())
 	myAnimator := <-myClient.WaitForChild(myCharacter, "Humanoid", "Animator")
-	println("got my animator")
 	targetPlayer := <-myClient.WaitForInstance("Players", name)
-	println("got target")
 	targetCharacter := <-myClient.WaitForRefProp(targetPlayer, "Character")
 	targetRootPart := <-myClient.WaitForChild(targetCharacter, "HumanoidRootPart")
 	targetAnimator := <-myClient.WaitForChild(targetCharacter, "Humanoid", "Animator")
 	println("got target root part")
 
 	var targetPosition rbxfile.ValueCFrame
+	myRootPart.PropertiesMutex.RLock()
 	currentPosition := myRootPart.Properties["CFrame"].(rbxfile.ValueCFrame).Position
+	myRootPart.PropertiesMutex.RUnlock()
+	currentHumanoidState := uint8(8)
 
 	myClient.RegisterPacketHandler(0x85, func(packetType uint8, layers *PacketLayers) {
 		mainLayer := layers.Main.(*Packet85Layer)
-		println("got physics")
 		for _, packet := range mainLayer.SubPackets {
 			if packet.Data.Instance == targetRootPart {
-				println("received the part we're stalking, history: ", len(packet.History))
 				if len(packet.History) > 0 {
 					latestPhysicsData := packet.History[len(packet.History)-1]
 
@@ -603,30 +602,42 @@ func (myClient *CustomClient) StalkPlayer(name string) {
 
 	stalkTicker := time.NewTicker(time.Second / 30)
 
-	_, localCharacterAdded := myClient.MakeEventChan(myClient.GetLocalPlayer(), "CharacterAdded")
-	_, targetCharacterAdded := myClient.MakeEventChan(targetPlayer, "CharacterAdded")
-	unbindAnim, animationChan := myClient.MakeEventChan(targetAnimator, "OnPlay")
+	reactToHealthUpdate := func(value rbxfile.Value) {
+		if value.(rbxfile.ValueFloat) <= 0.0 {
+			currentHumanoidState = 15
+		}
+	}
+	var healthConnection *PacketHandlerConnection
+	animConnection, animationChan := myClient.MakeEventChan(targetAnimator, "OnPlay")
+	myClient.propHandlers.Bind(myClient.GetLocalPlayer(), "Character", func(value rbxfile.Value) {
+		healthConnection.Disconnect()
+		println("localca, updating")
+		myCharacter = value.(rbxfile.ValueReference).Instance
+		myRootPart = <-myClient.WaitForChild(myCharacter, "HumanoidRootPart")
+		myAnimator = <-myClient.WaitForChild(myCharacter, "Humanoid", "Animator")
+		myRootPart.PropertiesMutex.RLock()
+		currentPosition = myRootPart.Properties["CFrame"].(rbxfile.ValueCFrame).Position
+		myRootPart.PropertiesMutex.RUnlock()
+		healthConnection = myClient.propHandlers.Bind(myCharacter.FindFirstChild("Humanoid", false), "Health_XML", reactToHealthUpdate)
+		currentHumanoidState = 8
+	})
+	myClient.propHandlers.Bind(myCharacter.FindFirstChild("Humanoid", false), "Health_XML", reactToHealthUpdate)
+	myClient.propHandlers.Bind(targetPlayer, "Character", func(value rbxfile.Value) {
+		println("targetca, updating")
+		targetCharacter = value.(rbxfile.ValueReference).Instance
+		targetRootPart = <-myClient.WaitForChild(targetCharacter, "HumanoidRootPart")
+		targetAnimator = <-myClient.WaitForChild(targetCharacter, "Humanoid", "Animator")
+		animConnection.Disconnect()
+		animConnection, animationChan = myClient.MakeEventChan(targetAnimator, "OnPlay")
+	})
 	for {
 		select {
-		case event := <-localCharacterAdded:
-			println("localca, updating")
-			myCharacter = event.Arguments[0].(rbxfile.ValueReference).Instance
-			myRootPart = <-myClient.WaitForChild(myCharacter, "HumanoidRootPart")
-			myAnimator = <-myClient.WaitForChild(myCharacter, "Humanoid", "Animator")
-			currentPosition = myRootPart.Properties["CFrame"].(rbxfile.ValueCFrame).Position
-		case event := <-targetCharacterAdded:
-			println("targetca, updating")
-			targetCharacter = event.Arguments[0].(rbxfile.ValueReference).Instance
-			targetRootPart = <-myClient.WaitForChild(targetCharacter, "HumanoidRootPart")
-			targetAnimator = <-myClient.WaitForChild(targetCharacter, "Humanoid", "Animator")
-			myClient.eventHandlers.Unbind(unbindAnim)
-			unbindAnim, animationChan = myClient.MakeEventChan(targetAnimator, "OnPlay")
 		case <-stalkTicker.C:
 			currentPosition = interpolateVector(currentPosition, targetPosition.Position, 16.0/10.0)
 			currentVelocity := scaleVector(scaleDelta(currentPosition, targetPosition.Position, 16.0), 30.0)
 
-			myClient.stalkPart(myRootPart, rbxfile.ValueCFrame{Position: currentPosition, Rotation: targetPosition.Rotation}, currentVelocity, rbxfile.ValueVector3{})
-		case event := <-animationChan:
+			myClient.stalkPart(myRootPart, rbxfile.ValueCFrame{Position: currentPosition, Rotation: targetPosition.Rotation}, currentVelocity, rbxfile.ValueVector3{}, currentHumanoidState)
+		case event := <-animationChan: // Thankfully, this should receive from the updated animationChan
 			err := myClient.SendEvent(myAnimator, "OnPlay", event.Arguments...)
 			if err != nil {
 				println("Failed to send onplay event: ", err.Error())
@@ -641,7 +652,7 @@ func (myClient *CustomClient) NewTimestamp() *Packet1BLayer {
 	return timestamp
 }
 
-func (myClient *CustomClient) stalkPart(movePart *rbxfile.Instance, cframe rbxfile.ValueCFrame, linearVel rbxfile.ValueVector3, rotationVel rbxfile.ValueVector3) {
+func (myClient *CustomClient) stalkPart(movePart *rbxfile.Instance, cframe rbxfile.ValueCFrame, linearVel rbxfile.ValueVector3, rotationVel rbxfile.ValueVector3, humState uint8) {
 	myCframe := rbxfile.ValueCFrame{
 		Rotation: cframe.Rotation,
 		Position: rbxfile.ValueVector3{
@@ -650,8 +661,6 @@ func (myClient *CustomClient) stalkPart(movePart *rbxfile.Instance, cframe rbxfi
 			cframe.Position.Z,
 		},
 	}
-
-	println("Updating CFrame to", myCframe.String(), linearVel.String())
 
 	physicsPacket := &Packet85Layer{
 		SubPackets: []*Packet85LayerSubpacket{
@@ -662,7 +671,7 @@ func (myClient *CustomClient) stalkPart(movePart *rbxfile.Instance, cframe rbxfi
 					LinearVelocity:     linearVel,
 					RotationalVelocity: rotationVel,
 				},
-				NetworkHumanoidState: 8, // Running
+				NetworkHumanoidState: humState,
 			},
 		},
 	}

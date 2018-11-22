@@ -61,12 +61,12 @@ type PlayerProxySettings struct {
 type SelectionHandlerList map[uint64](func())
 type MyPacketListView struct {
 	*widgets.QTreeView
-	packetRowsByUniqueID    PacketList
+	packetRowsByUniqueID PacketList
 
-	SelectionHandlers   SelectionHandlerList
-	RootNode            *gui.QStandardItem
-	PacketIndex         uint64
-	StandardModel       *gui.QStandardItemModel
+	SelectionHandlers SelectionHandlerList
+	RootNode          *gui.QStandardItem
+	PacketIndex       uint64
+	StandardModel     *gui.QStandardItemModel
 
 	MSelectionHandlers *sync.Mutex
 	MGUI               *sync.Mutex
@@ -93,8 +93,8 @@ type MyPacketListView struct {
 func NewMyPacketListView(parent widgets.QWidget_ITF) *MyPacketListView {
 	captureContext, captureCancel := context.WithCancel(context.Background())
 	new := &MyPacketListView{
-		QTreeView:               widgets.NewQTreeView(parent),
-		packetRowsByUniqueID:    make(PacketList),
+		QTreeView:            widgets.NewQTreeView(parent),
+		packetRowsByUniqueID: make(PacketList),
 
 		SelectionHandlers: make(SelectionHandlerList),
 
@@ -152,7 +152,6 @@ func NewBasicPacketViewer(packetType byte, context *peer.CommunicationContext, l
 	return layerLayout
 }
 
-
 func paintItems(row []*gui.QStandardItem, color *gui.QColor) {
 	for i := 0; i < len(row); i++ {
 		row[i].SetBackground(gui.NewQBrush3(color, core.Qt__SolidPattern))
@@ -160,11 +159,11 @@ func paintItems(row []*gui.QStandardItem, color *gui.QColor) {
 }
 
 func (m *MyPacketListView) registerSplitPacketRow(row []*gui.QStandardItem, context *peer.CommunicationContext, layers *peer.PacketLayers) {
-    m.packetRowsByUniqueID[layers.Reliability.SplitBuffer.UniqueID] = row
+	m.packetRowsByUniqueID[layers.Reliability.SplitBuffer.UniqueID] = row
 }
 
 func (m *MyPacketListView) AddSplitPacket(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) {
-    if _, ok := m.packetRowsByUniqueID[layers.Reliability.SplitBuffer.UniqueID]; !ok {
+	if _, ok := m.packetRowsByUniqueID[layers.Reliability.SplitBuffer.UniqueID]; !ok {
 		m.AddFullPacket(packetType, context, layers, nil)
 		m.BindDefaultCallback(packetType, context, layers)
 	} else {
@@ -173,7 +172,7 @@ func (m *MyPacketListView) AddSplitPacket(packetType byte, context *peer.Communi
 }
 
 func (m *MyPacketListView) BindCallback(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers, activationCallback ActivationCallback) {
-    row := m.packetRowsByUniqueID[layers.Reliability.SplitBuffer.UniqueID]
+	row := m.packetRowsByUniqueID[layers.Reliability.SplitBuffer.UniqueID]
 	index, _ := strconv.Atoi(row[0].Data(0).ToString())
 
 	m.MSelectionHandlers.Lock()
@@ -320,7 +319,7 @@ func NewDefaultPacketViewer(packetType byte, context *peer.CommunicationContext,
 }
 
 func (m *MyPacketListView) BindDefaultCallback(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) {
-    row := m.packetRowsByUniqueID[layers.Reliability.SplitBuffer.UniqueID]
+	row := m.packetRowsByUniqueID[layers.Reliability.SplitBuffer.UniqueID]
 	index, _ := strconv.Atoi(row[0].Data(0).ToString())
 
 	m.MSelectionHandlers.Lock()
@@ -331,7 +330,7 @@ func (m *MyPacketListView) BindDefaultCallback(packetType byte, context *peer.Co
 }
 
 func (m *MyPacketListView) handleSplitPacket(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) {
-    row := m.packetRowsByUniqueID[layers.Reliability.SplitBuffer.UniqueID]
+	row := m.packetRowsByUniqueID[layers.Reliability.SplitBuffer.UniqueID]
 	m.registerSplitPacketRow(row, context, layers)
 
 	reliablePacket := layers.Reliability
@@ -646,7 +645,6 @@ func GUIMain() {
 				packetViewer.StudioSettings.Location = potentialLocation
 			}
 		}
-		resp.Body.Close()
 	}
 
 	resp, err = http.Get("http://setup.roblox.com/version")
