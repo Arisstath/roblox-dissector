@@ -11,6 +11,8 @@ import "encoding/hex"
 import "log"
 import "github.com/gskartwii/rbxfile"
 import "sync"
+import "math/bits"
+import "github.com/pierrec/xxHash/xxHash32"
 
 var LauncherStatuses = [...]string{
 	"Wait",
@@ -49,14 +51,26 @@ type JoinAshxResponse struct {
 	AccountAge            int
 }
 
+type SecurityHandler interface {
+	GenerateIdResponse(challenge uint32) uint32
+	PatchTicketPacket(*Packet8ALayer)
+	GenerateTicketHash(ticket string) uint32
+	OsPlatform() string
+	UserAgent() string
+}
 type SecuritySettings struct {
-	RakPassword         []byte
-	GoldenHash          uint32
-	SecurityKey         string
-	DataModelHash       string
-	OsPlatform          string
-	IdChallengeResponse uint32
-	UserAgent           string
+	rakPassword         []byte
+	goldenHash          uint32
+	securityKey         string
+	dataModelHash       string
+	osPlatform          string
+	userAgent           string
+}
+type Windows10SecuritySettings struct {
+	SecuritySettings
+}
+type AndroidSecuritySettings struct {
+	SecuritySettings
 }
 
 type CustomClient struct {
@@ -80,7 +94,7 @@ type CustomClient struct {
 	IsPartyLeader         bool
 	AccountAge            int
 
-	SecuritySettings SecuritySettings
+	SecuritySettings SecurityHandler
 
 	instanceIndex uint32
 	scope         string
@@ -288,7 +302,7 @@ func (myClient *CustomClient) joinWithPlaceLauncher(url string, cookies []*http.
 		if err != nil {
 			return err
 		}
-		placeLauncherRequest.Header.Set("User-Agent", myClient.SecuritySettings.UserAgent)
+		placeLauncherRequest.Header.Set("User-Agent", myClient.SecuritySettings.UserAgent())
 		for _, cookie := range cookies {
 			placeLauncherRequest.AddCookie(cookie)
 		}
@@ -336,7 +350,7 @@ func (myClient *CustomClient) ConnectWithAuthTicket(placeId uint32, ticket strin
 
 	negotiationRequest.Header.Set("Playercount", "0")
 	negotiationRequest.Header.Set("Requester", "Client")
-	negotiationRequest.Header.Set("User-Agent", myClient.SecuritySettings.UserAgent)
+	negotiationRequest.Header.Set("User-Agent", myClient.SecuritySettings.UserAgent())
 	negotiationRequest.Header.Set("Content-Length", "0")
 	negotiationRequest.Header.Set("X-Csrf-Token", "")
 	negotiationRequest.Header.Set("Rbxauthenticationnegotiation", "www.roblox.com")
@@ -364,25 +378,72 @@ func (myClient *CustomClient) ConnectWithAuthTicket(placeId uint32, ticket strin
 	return myClient.joinWithPlaceLauncher(fmt.Sprintf("https://www.roblox.com/game/PlaceLauncher.ashx?request=RequestGame&browserTrackerId=%d&placeId=%d&isPartyLeader=false&genderId=%d", myClient.BrowserTrackerId, myClient.PlaceId, myClient.GenderId), cookies)
 }
 
+func (settings *SecuritySettings) UserAgent() string {
+	return settings.userAgent
+}
+func (settings *SecuritySettings) OsPlatform() string {
+	return settings.osPlatform
+}
+
 // Automatically fills in any needed hashes/key for Windows 10 clients
-func (settings *SecuritySettings) InitWin10() {
-	settings.SecurityKey = "2e427f51c4dab762fe9e3471c6cfa1650841723b!0876ee92795a4a0705e8948cc3d7f209\002"
-	settings.OsPlatform = "Windows_Universal"
-	settings.GoldenHash = 0xC001CAFE
-	settings.DataModelHash = "ios,ios"
-	settings.UserAgent = "Roblox/WinINet"
-	settings.IdChallengeResponse = 0x906CB6E4
+func Win10Settings() (*Windows10SecuritySettings) {
+	settings := &Windows10SecuritySettings{}
+	settings.userAgent = "Roblox/WinINet"
+	settings.osPlatform = "Windows_Universal"
+	return settings
+}
+func (settings *Windows10SecuritySettings) GenerateIdResponse(challenge uint32) uint32 {
+	return 0xFFFFFFFF ^ (challenge + 0x664B2854) - 0xEB6A490
+}
+func (settings *Windows10SecuritySettings) GenerateTicketHash(ticket string) uint32 {
+	var ecxHash uint32
+	initHash := xxHash32.Checksum([]byte(ticket), 1)
+	initHash += 0x557BB5D7
+	initHash = bits.RotateLeft32(initHash, -7)
+	initHash -= 0x557BB5D7
+	initHash *= 0x557BB5D7
+	initHash = bits.RotateLeft32(initHash, 0xD)
+	ecxHash = 0x443921D5 - initHash
+	ecxHash ^= 0x443921D5
+	ecxHash = bits.RotateLeft32(ecxHash, -0x11)
+	ecxHash += 0x11429402
+	ecxHash = bits.RotateLeft32(ecxHash, -0x17)
+	initHash = ecxHash + 0x11429402
+	initHash = bits.RotateLeft32(initHash, -0x1D)
+	initHash ^= 0x443921D5
+	initHash = -initHash
+
+	return initHash
+}
+func (settings *Windows10SecuritySettings) PatchTicketPacket(packet *Packet8ALayer) {
+	packet.SecurityKey = "2e427f51c4dab762fe9e3471c6cfa1650841723b!0876ee92795a4a0705e8948cc3d7f209\002"
+	packet.GoldenHash = 0xC001CAFE
+	packet.DataModelHash = "ios,ios"
+	packet.Platform = settings.osPlatform
+	packet.TicketHash = settings.GenerateTicketHash(packet.ClientTicket)
+}
+
+func (settings *AndroidSecuritySettings) PatchTicketPacket(packet *Packet8ALayer) {
+	packet.SecurityKey = "2e427f51c4dab762fe9e3471c6cfa1650841723b!10ddf3176164dab2c7b4ba9c0e986001"
+	packet.Platform = settings.osPlatform
+	packet.GoldenHash = 0xC001CAFE
+	packet.DataModelHash = "ios,ios"
 }
 
 // Automatically fills in any needed hashes/key for Android clients
-func (settings *SecuritySettings) InitAndroid() {
-	// good job on your security :-p
-	settings.SecurityKey = "2e427f51c4dab762fe9e3471c6cfa1650841723b!10ddf3176164dab2c7b4ba9c0e986001"
-	settings.OsPlatform = "Android"
-	settings.GoldenHash = 0xC001CAFE
-	settings.DataModelHash = "ios,ios"
-	settings.UserAgent = "Mozilla/5.0 (512MB; 576x480; 300x300; 300x300; Samsung Galaxy S8; 6.0.1 Marshmallow) AppleWebKit/537.36 (KHTML, like Gecko) Roblox Android App 0.334.0.195932 Phone Hybrid()"
-	settings.IdChallengeResponse = 0xBA4CE5C4
+func AndroidSettings() (*AndroidSecuritySettings) {
+	settings := &AndroidSecuritySettings{}
+	settings.osPlatform = "Android"
+	settings.userAgent = "Mozilla/5.0 (512MB; 576x480; 300x300; 300x300; Samsung Galaxy S8; 6.0.1 Marshmallow) AppleWebKit/537.36 (KHTML, like Gecko) Roblox Android App 0.334.0.195932 Phone Hybrid()"
+	return settings
+}
+func (settings *AndroidSecuritySettings) GenerateIdResponse(challenge uint32) uint32 {
+	// TODO
+	return 0
+}
+func (settings *AndroidSecuritySettings) GenerateTicketHash(ticket string) uint32 {
+	// TODO
+	return 0
 }
 
 // genderId 1 ==> default genderless

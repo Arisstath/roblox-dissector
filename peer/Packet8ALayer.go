@@ -6,10 +6,8 @@ import (
 	"crypto/cipher"
 	"errors"
 	"io"
-	"math/bits"
 
 	"github.com/gskartwii/go-bitstream"
-	"github.com/pierrec/xxHash/xxHash32"
 )
 
 func shuffleSlice(src []byte) []byte {
@@ -35,31 +33,11 @@ func calculateChecksum(data []byte) uint32 {
 	return sum
 }
 
-func hashClientTicket(ticket string) uint32 {
-	var ecxHash uint32
-	initHash := xxHash32.Checksum([]byte(ticket), 1)
-	initHash += 0x557BB5D7
-	initHash = bits.RotateLeft32(initHash, -7)
-	initHash -= 0x557BB5D7
-	initHash *= 0x443921D5
-	initHash = bits.RotateLeft32(initHash, -0xD)
-	ecxHash = 0x557BB5D7 - initHash
-	ecxHash ^= 0x443921D5
-	ecxHash = bits.RotateLeft32(ecxHash, 0x11)
-	ecxHash += 0x664B2854
-	ecxHash = bits.RotateLeft32(ecxHash, -0x17)
-	initHash = ecxHash - 0x664B2854
-	initHash = bits.RotateLeft32(initHash, 0x1D)
-	initHash ^= 0x557BB5D7
-	initHash = -initHash
-
-	return initHash
-}
-
 // ID_SUBMIT_TICKET - client -> server
 type Packet8ALayer struct {
 	PlayerId      int64
 	ClientTicket  string
+	TicketHash uint32
 	DataModelHash string
 	// Always 36?
 	ProtocolVersion   uint32
@@ -161,12 +139,7 @@ func (stream *extendedReader) DecodePacket8ALayer(reader PacketReader, layers *P
 	if err != nil {
 		return layer, err
 	}
-	clientTicketHash := hashClientTicket(layer.ClientTicket)
-	if hash != clientTicketHash {
-		layers.Root.Logger.Printf("hash mismatch: read %8X != generated %8X\n", hash, clientTicketHash)
-	} else {
-		layers.Root.Logger.Printf("hash ok: %8X\n", hash)
-	}
+	layer.TicketHash = hash
 
 	layer.SessionId, err = thisBitstream.readVarLengthString()
 	if err != nil {
@@ -217,7 +190,7 @@ func (layer *Packet8ALayer) Serialize(writer PacketWriter, stream *extendedWrite
 	if err != nil {
 		return err
 	}
-	err = rawStream.writeVarint64(uint64(hashClientTicket(layer.ClientTicket)))
+	err = rawStream.writeVarint64(uint64(layer.TicketHash))
 	if err != nil {
 		return err
 	}

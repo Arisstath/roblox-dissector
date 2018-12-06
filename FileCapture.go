@@ -15,6 +15,7 @@ import (
 
 // TODO: Can this use ConnectedPeer?
 func captureJob(handle *pcap.Handle, useIPv4 bool, captureJobContext context.Context, packetViewer *MyPacketListView, context *peer.CommunicationContext) {
+	settings := peer.Win10Settings()
 	handle.SetBPFFilter("udp")
 	var packetSource *gopacket.PacketSource
 	if useIPv4 {
@@ -38,6 +39,10 @@ func captureJob(handle *pcap.Handle, useIPv4 bool, captureJobContext context.Con
 		packetViewer.AddSplitPacket(packetType, context, layers)
 	}
 	clientPacketReader.FullReliableHandler = func(packetType byte, layers *peer.PacketLayers) {
+		if packetType == 0x8A && layers.Error == nil {
+			layer := layers.Main.(*peer.Packet8ALayer)
+			layers.Root.Logger.Printf("hash = %8X, computed = %8X\n", settings.GenerateTicketHash(layer.ClientTicket), layer.TicketHash)
+		}
 		packetViewer.BindCallback(packetType, context, layers, ActivationCallbacks[packetType])
 	}
 	clientPacketReader.ReliabilityLayerHandler = func(layers *peer.PacketLayers) {

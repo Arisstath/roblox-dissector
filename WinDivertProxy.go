@@ -45,7 +45,7 @@ func captureFromWinDivertProxy(realServerAddr string, captureJobContext context.
 	commContext.Server = dstAddr
 	proxyWriter := peer.NewProxyWriter(commContext)
 	proxyWriter.ServerAddr = dstAddr
-	proxyWriter.SecuritySettings.InitWin10()
+	proxyWriter.SecuritySettings = peer.Win10Settings()
 	proxyWriter.RuntimeContext, proxyWriter.CancelFunc = context.WithCancel(captureJobContext)
 
 	proxyWriter.ClientHalf.OutputHandler = func(p []byte) { // writes TO client

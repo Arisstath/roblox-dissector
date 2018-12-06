@@ -65,7 +65,7 @@ type ProxyWriter struct {
 	ClientAddr *net.UDPAddr
 	ServerAddr *net.UDPAddr
 
-	SecuritySettings SecuritySettings
+	SecuritySettings SecurityHandler
 	RuntimeContext   context.Context
 	CancelFunc       context.CancelFunc
 
@@ -168,7 +168,7 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 					if instPacket.Child.ClassName == "Player" {
 						// patch OsPlatform!
 						instPacket.Child.PropertiesMutex.Lock()
-						instPacket.Child.Properties["OsPlatform"] = rbxfile.ValueString(writer.SecuritySettings.OsPlatform)
+						instPacket.Child.Properties["OsPlatform"] = rbxfile.ValueString(writer.SecuritySettings.OsPlatform())
 						instPacket.Child.PropertiesMutex.Unlock()
 					}
 					modifiedSubpackets = append(modifiedSubpackets, subpacket)
@@ -178,7 +178,7 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 					pmcPacket := subpacket.(*Packet83_09)
 					if pmcPacket.SubpacketType == 6 {
 						pmcSubpacket := pmcPacket.Subpacket.(*Packet83_09_06)
-						pmcSubpacket.Int2 = writer.SecuritySettings.IdChallengeResponse - pmcSubpacket.Int1
+						pmcSubpacket.Int2 = writer.SecuritySettings.GenerateIdResponse(pmcSubpacket.Int1)
 						modifiedSubpackets = append(modifiedSubpackets, subpacket)
 					} // if not type 6, drop it!
 				case *Packet83_12:
@@ -206,10 +206,7 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 			_, err = serverHalf.WritePacket(mainLayer)
 		case 0x8A:
 			mainLayer := layers.Main.(*Packet8ALayer)
-			mainLayer.DataModelHash = writer.SecuritySettings.DataModelHash
-			mainLayer.SecurityKey = writer.SecuritySettings.SecurityKey
-			mainLayer.Platform = writer.SecuritySettings.OsPlatform
-			mainLayer.GoldenHash = writer.SecuritySettings.GoldenHash
+			writer.SecuritySettings.PatchTicketPacket(mainLayer)
 
 			_, err = serverHalf.WritePacket(mainLayer)
 		case 0x85:

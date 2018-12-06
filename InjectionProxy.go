@@ -41,7 +41,7 @@ func captureFromInjectionProxy(src string, dst string, captureJobContext context
 	commContext.Server = dstAddr
 	proxyWriter := peer.NewProxyWriter(commContext)
 	proxyWriter.ServerAddr = dstAddr
-	proxyWriter.SecuritySettings.InitWin10()
+	proxyWriter.SecuritySettings = peer.Win10Settings()
 	proxyWriter.RuntimeContext, proxyWriter.CancelFunc = context.WithCancel(captureJobContext)
 
 	proxyWriter.ClientHalf.OutputHandler = func(p []byte) {

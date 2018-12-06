@@ -857,7 +857,7 @@ func GUIMain() {
 		customClient := peer.NewCustomClient()
 		NewClientStartWidget(window, customClient, func(placeId uint32, isGuest bool, ticket string) {
 			NewClientConsole(window, customClient)
-			customClient.SecuritySettings.InitWin10()
+			customClient.SecuritySettings = peer.Win10Settings()
 			if isGuest {
 				go customClient.ConnectGuest(placeId, 2)
 			} else {

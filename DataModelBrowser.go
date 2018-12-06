@@ -31,10 +31,10 @@ func dumpScripts(instances []*rbxfile.Instance, i int) int {
 			}
 			thisType := property.Type()
 			if thisType == rbxfile.TypeProtectedString {
-				instance.PropertiesMutex.Unlock()
 				println("dumping protectedstring", instance.ClassName, name, thisType.String())
-				instance.PropertiesMutex.Lock()
+				instance.PropertiesMutex.Unlock()
 				file, err := os.Create(fmt.Sprintf("dumps/%s.%d", instance.GetFullName(), i))
+				instance.PropertiesMutex.Lock()
 				if err != nil {
 					println(err.Error())
 					continue
@@ -97,7 +97,9 @@ func stripInvalidTypes(instances []*rbxfile.Instance, defaultValues DefaultValue
 				continue
 			} else if thisType == rbxfile.TypeProtectedString {
 				println("dumping protectedstring", instance.ClassName, name, thisType.String())
+				instance.PropertiesMutex.Unlock()
 				file, err := os.Create(fmt.Sprintf("dumps/%s.%d", instance.GetFullName(), i))
+				instance.PropertiesMutex.Lock()
 				if err != nil {
 					println(err.Error())
 					continue

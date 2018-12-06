@@ -218,14 +218,11 @@ func (myClient *CustomClient) submitTicket() {
 	response8A := &Packet8ALayer{
 		PlayerId:          myClient.PlayerId,
 		ClientTicket:      myClient.clientTicket,
-		DataModelHash:     myClient.SecuritySettings.DataModelHash,
 		ProtocolVersion:   36,
-		SecurityKey:       myClient.SecuritySettings.SecurityKey,
-		Platform:          myClient.SecuritySettings.OsPlatform,
 		RobloxProductName: "?",
 		SessionId:         myClient.sessionId,
-		GoldenHash:        myClient.SecuritySettings.GoldenHash,
 	}
+	myClient.SecuritySettings.PatchTicketPacket(response8A)
 	_, err := myClient.WritePacket(response8A)
 	if err != nil {
 		println("Failed to write response8A: ", err.Error())
@@ -295,7 +292,7 @@ func (myClient *CustomClient) sendDataIdResponse(challengeInt uint32) {
 		SubpacketType: 6,
 		Subpacket: &Packet83_09_06{
 			Int1: challengeInt,
-			Int2: myClient.SecuritySettings.IdChallengeResponse - challengeInt,
+			Int2: myClient.SecuritySettings.GenerateIdResponse(challengeInt),
 		},
 	})
 	if err != nil {
@@ -341,7 +338,7 @@ func (myClient *CustomClient) handlePlayersService(players *rbxfile.Instance) {
 				Name:  "ChatPrivacyMode",
 			},
 			"AccountAgeReplicate": rbxfile.ValueInt(myClient.AccountAge),
-			"OsPlatform":          rbxfile.ValueString(myClient.SecuritySettings.OsPlatform),
+			"OsPlatform":          rbxfile.ValueString(myClient.SecuritySettings.OsPlatform()),
 			"userId":              rbxfile.ValueInt64(myClient.PlayerId),
 			"UserId":              rbxfile.ValueInt64(myClient.PlayerId),
 			"ReplicatedLocaleId":  rbxfile.ValueString("en-us"),
