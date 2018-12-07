@@ -273,7 +273,6 @@ func (myClient *CustomClient) WriteDataPackets(packets ...Packet83Subpacket) err
 
 func (myClient *CustomClient) sendDataPingBack() {
 	response := &Packet83_06{
-		SendStats:  8,
 		Timestamp:  uint64(time.Now().UnixNano() / int64(time.Millisecond)),
 		IsPingBack: true,
 	}

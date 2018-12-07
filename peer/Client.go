@@ -393,7 +393,7 @@ func Win10Settings() (*Windows10SecuritySettings) {
 	return settings
 }
 func (settings *Windows10SecuritySettings) GenerateIdResponse(challenge uint32) uint32 {
-	return 0xFFFFFFFF ^ (challenge + 0x664B2854) - 0xEB6A490
+	return (0xFFFFFFFF ^ (challenge + 0x664B2854)) - 0xEB6A590
 }
 func (settings *Windows10SecuritySettings) GenerateTicketHash(ticket string) uint32 {
 	var ecxHash uint32
@@ -416,7 +416,7 @@ func (settings *Windows10SecuritySettings) GenerateTicketHash(ticket string) uin
 	return initHash
 }
 func (settings *Windows10SecuritySettings) PatchTicketPacket(packet *Packet8ALayer) {
-	packet.SecurityKey = "2e427f51c4dab762fe9e3471c6cfa1650841723b!0876ee92795a4a0705e8948cc3d7f209\002"
+	packet.SecurityKey = "2e427f51c4dab762fe9e3471c6cfa1650841723b!786242b97d8d812cadd7da1388731730\x0E"
 	packet.GoldenHash = 0xC001CAFE
 	packet.DataModelHash = "ios,ios"
 	packet.Platform = settings.osPlatform
@@ -544,7 +544,6 @@ func (myClient *CustomClient) startDataPing() {
 
 			myClient.WritePacket(&Packet83Layer{
 				[]Packet83Subpacket{&Packet83_05{
-					SendStats:  8,
 					Timestamp:  uint64(time.Now().UnixNano() / int64(time.Millisecond)),
 					IsPingBack: false,
 				}},
