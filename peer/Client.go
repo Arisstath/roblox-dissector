@@ -10,7 +10,6 @@ import "errors"
 import "encoding/hex"
 import "log"
 import "github.com/gskartwii/rbxfile"
-import "sync"
 import "math/bits"
 import "github.com/pierrec/xxHash/xxHash32"
 
@@ -74,8 +73,7 @@ type AndroidSecuritySettings struct {
 }
 
 type CustomClient struct {
-	*ConnectedPeer
-	Context               *CommunicationContext
+	PacketLogicHandler
 	Address               net.UDPAddr
 	ServerAddress         net.UDPAddr
 	Connected             bool
@@ -85,7 +83,6 @@ type CustomClient struct {
 	UserName              string
 	characterAppearance   string
 	characterAppearanceId int64
-	pingInterval          int
 	PlaceId               uint32
 	httpClient            *http.Client
 	GUID                  uint64
@@ -99,38 +96,11 @@ type CustomClient struct {
 	instanceIndex uint32
 	scope         string
 
-	ackTicker      *time.Ticker
-	dataPingTicker *time.Ticker
-
-	Connection *net.UDPConn
 	Logger     *log.Logger
-
-	handlers         *RawPacketHandlerMap
-	dataHandlers     *DataPacketHandlerMap
-	instanceHandlers *NewInstanceHandlerMap
-	deleteHandlers   *DeleteInstanceHandlerMap
-	eventHandlers    *EventHandlerMap
-	propHandlers     *PropertyHandlerMap
-
-	remoteIndices map[*rbxfile.Instance]uint32
-	remoteLock    *sync.Mutex
 
 	LocalPlayer *rbxfile.Instance
 
 	timestamp2Index uint64
-}
-
-func (myClient *CustomClient) RegisterPacketHandler(packetType uint8, handler ReceiveHandler) {
-	myClient.handlers.Bind(packetType, handler)
-}
-func (myClient *CustomClient) RegisterDataHandler(packetType uint8, handler DataReceiveHandler) {
-	myClient.dataHandlers.Bind(packetType, handler)
-}
-func (myClient *CustomClient) RegisterInstanceHandler(path *InstancePath, handler NewInstanceHandler) *PacketHandlerConnection {
-	myClient.instanceHandlers.Lock()
-	conn := myClient.instanceHandlers.Bind(path, handler)
-	myClient.instanceHandlers.Unlock()
-	return conn
 }
 
 func (myClient *CustomClient) ReadPacket(buf []byte) {
@@ -155,22 +125,12 @@ func NewCustomClient() *CustomClient {
 	}
 
 	return &CustomClient{
-		ConnectedPeer: NewConnectedPeer(context),
 		httpClient:    &http.Client{},
-		Context:       context,
 		GUID:          rand.Uint64(),
 		instanceIndex: 1000,
 		scope:         "RBX" + hex.EncodeToString(scope),
 
-		handlers:         NewRawPacketHandlerMap(),
-		dataHandlers:     NewDataHandlerMap(),
-		instanceHandlers: NewNewInstanceHandlerMap(),
-		deleteHandlers:   NewDeleteInstanceHandlerMap(),
-		eventHandlers:    NewEventHandlerMap(),
-		propHandlers:     NewPropertyHandlerMap(),
-
-		remoteIndices: make(map[*rbxfile.Instance]uint32),
-		remoteLock:    &sync.Mutex{},
+		PacketLogicHandler: newPacketLogicHandler(context),
 	}
 }
 
@@ -455,58 +415,6 @@ func (myClient *CustomClient) ConnectGuest(placeId uint32, genderId uint8) error
 	return myClient.joinWithPlaceLauncher(fmt.Sprintf("https://assetgame.roblox.com/game/PlaceLauncher.ashx?request=RequestGame&browserTrackerId=%d&placeId=%d&isPartyLeader=false&genderId=%d", myClient.BrowserTrackerId, myClient.PlaceId, myClient.GenderId), []*http.Cookie{})
 }
 
-func (myClient *CustomClient) defaultAckHandler(layers *PacketLayers) {
-	// nop
-	if layers.Error != nil {
-		println("ack error: ", layers.Error.Error())
-	}
-}
-func (myClient *CustomClient) defaultReliabilityLayerHandler(layers *PacketLayers) {
-	myClient.mustACK = append(myClient.mustACK, int(layers.RakNet.DatagramNumber))
-	if layers.Error != nil {
-		println("reliabilitylayer error: ", layers.Error.Error())
-	}
-}
-func (myClient *CustomClient) defaultSimpleHandler(packetType byte, layers *PacketLayers) {
-	if layers.Error == nil {
-		go myClient.handlers.Fire(packetType, layers) // Let the reader continue its job while the packet is processed
-	} else {
-		println("simple error: ", layers.Error.Error())
-	}
-}
-func (myClient *CustomClient) defaultReliableHandler(packetType byte, layers *PacketLayers) {
-	// nop
-	if layers.Error != nil {
-		println("reliable error: ", layers.Error.Error())
-	}
-}
-func (myClient *CustomClient) defaultFullReliableHandler(packetType byte, layers *PacketLayers) {
-	if layers.Error == nil {
-		go myClient.handlers.Fire(packetType, layers)
-	} else {
-		println("simple error: ", layers.Error.Error())
-	}
-}
-
-func (myClient *CustomClient) createReader() {
-	myClient.ACKHandler = myClient.defaultAckHandler
-	myClient.ReliabilityLayerHandler = myClient.defaultReliabilityLayerHandler
-	myClient.SimpleHandler = myClient.defaultSimpleHandler
-	myClient.ReliableHandler = myClient.defaultReliableHandler
-	myClient.FullReliableHandler = myClient.defaultFullReliableHandler
-
-	myClient.DefaultPacketReader.SetContext(myClient.Context)
-}
-
-func (myClient *CustomClient) createWriter() {
-	myClient.OutputHandler = func(payload []byte) {
-		num, err := myClient.Connection.Write(payload)
-		if err != nil {
-			fmt.Printf("Wrote %d bytes, err: %s\n", num, err.Error())
-		}
-	}
-}
-
 func (myClient *CustomClient) dial() {
 	connreqpacket := &Packet05Layer{ProtocolVersion: 5, maxLength: 1492}
 	go func() {
@@ -523,65 +431,6 @@ func (myClient *CustomClient) dial() {
 		}
 		myClient.Logger.Println("dial failed after 5 attempts")
 	}()
-}
-
-func (myClient *CustomClient) startAcker() {
-	myClient.ackTicker = time.NewTicker(500 * time.Millisecond)
-	go func() {
-		for {
-			<-myClient.ackTicker.C
-			myClient.sendACKs()
-		}
-	}()
-
-}
-func (myClient *CustomClient) startDataPing() {
-	// boot up dataping
-	myClient.dataPingTicker = time.NewTicker(time.Duration(myClient.pingInterval) * time.Millisecond)
-	go func() {
-		for {
-			<-myClient.dataPingTicker.C
-
-			myClient.WritePacket(&Packet83Layer{
-				[]Packet83Subpacket{&Packet83_05{
-					Timestamp:  uint64(time.Now().UnixNano() / int64(time.Millisecond)),
-					IsPingBack: false,
-				}},
-			})
-		}
-	}()
-}
-
-func (myClient *CustomClient) mainReadLoop() error {
-	buf := make([]byte, 1492)
-	for {
-		n, _, err := myClient.Connection.ReadFromUDP(buf)
-		if err != nil {
-			myClient.Logger.Println("fatal read err:", err.Error(), "read", n, "bytes")
-			return err // a read error may be a sign that the connection was closed
-			// hence we can't run this loop anymore; we would get infinitely many errors
-		}
-
-		myClient.ReadPacket(buf[:n])
-	}
-}
-
-func (myClient *CustomClient) disconnectInternal() error {
-	if myClient.ackTicker != nil {
-		myClient.ackTicker.Stop()
-	}
-	if myClient.dataPingTicker != nil {
-		myClient.dataPingTicker.Stop()
-	}
-	return myClient.Connection.Close()
-}
-
-func (myClient *CustomClient) Disconnect() {
-	myClient.WritePacket(&Packet15Layer{
-		Reason: 0xFFFFFFFF,
-	})
-
-	myClient.disconnectInternal()
 }
 
 func (myClient *CustomClient) rakConnect() error {

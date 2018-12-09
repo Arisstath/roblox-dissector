@@ -2,7 +2,6 @@ package peer
 
 import (
 	"errors"
-	"fmt"
 	"math"
 	"net"
 	"strconv"
@@ -12,98 +11,17 @@ import (
 	"github.com/gskartwii/rbxfile"
 )
 
-func (myClient *CustomClient) FindService(name string) *rbxfile.Instance {
-	if myClient.Context == nil || myClient.Context.DataModel == nil {
-		return nil
-	}
-	for _, service := range myClient.Context.DataModel.Instances {
-		if service.ClassName == name {
-			return service
-		}
-	}
-	return nil
-}
-
-func (myClient *CustomClient) WaitForChild(instance *rbxfile.Instance, path ...string) <-chan *rbxfile.Instance {
-	myClient.instanceHandlers.Lock()
-	retChannel := make(chan *rbxfile.Instance, 1)
-	currInstance := instance
-	lastInstance := instance
-	currPath := path
-	if currInstance != nil {
-		for i := 0; i < len(path); i++ {
-			currInstance = currInstance.FindFirstChild(path[i], false)
-			if currInstance == nil {
-				currPath = path[i:]
-				break
-			}
-			lastInstance = currInstance
-		}
-	}
-	if currInstance == nil {
-		fmt.Printf("Must create instancepath %s %v\n", lastInstance.GetFullName(), currPath)
-		myClient.instanceHandlers.Bind(&InstancePath{currPath, lastInstance}, func(instance *rbxfile.Instance) {
-			fmt.Printf("Received %s %v %s\n", lastInstance.GetFullName(), currPath, instance.GetFullName())
-			retChannel <- instance
-		}).Once = true
-	} else {
-		retChannel <- currInstance
-	}
-	myClient.instanceHandlers.Unlock()
-	return retChannel
-}
-
-func (myClient *CustomClient) WaitForRefProp(instance *rbxfile.Instance, name string) <-chan *rbxfile.Instance {
-	retChannel := make(chan *rbxfile.Instance, 1)
-	instance.PropertiesMutex.RLock()
-	if instance.Properties[name] != nil && instance.Properties[name].(rbxfile.ValueReference).Instance != nil {
-		retChannel <- instance.Properties[name].(rbxfile.ValueReference).Instance
-	} else {
-		var connection *PacketHandlerConnection
-		connection = myClient.propHandlers.Bind(instance, name, func(value rbxfile.Value) {
-			if value.(rbxfile.ValueReference).Instance != nil {
-				retChannel <- value.(rbxfile.ValueReference).Instance
-				connection.Disconnect()
-			}
-		})
-	}
-	instance.PropertiesMutex.RUnlock()
-	return retChannel
-}
-
-func (myClient *CustomClient) WaitForInstance(path ...string) <-chan *rbxfile.Instance { // returned channels are output only
-	service := myClient.FindService(path[0])
-	if service == nil {
-		return myClient.WaitForChild(nil, path...)
-	}
-	return myClient.WaitForChild(service, path[1:]...)
-}
-
-func (myClient *CustomClient) MakeEventChan(instance *rbxfile.Instance, name string) (*PacketHandlerConnection, chan *ReplicationEvent) {
-	newChan := make(chan *ReplicationEvent)
-	connection := myClient.eventHandlers.Bind(instance, name, func(evt *ReplicationEvent) {
-		newChan <- evt
-	})
-	return connection, newChan
-}
-
 func (myClient *CustomClient) bindDefaultHandlers() {
+	myClient.PacketLogicHandler.bindDefaultHandlers()
+
 	basicHandlers := myClient.handlers
 	basicHandlers.Bind(6, myClient.simple6Handler)
 	basicHandlers.Bind(8, myClient.simple8Handler)
 	basicHandlers.Bind(0x10, myClient.packet10Handler)
-	basicHandlers.Bind(0x15, myClient.disconnectHandler)
 	basicHandlers.Bind(0x81, myClient.topReplicationHandler)
-	basicHandlers.Bind(0x83, myClient.dataHandler)
 
 	dataHandlers := myClient.dataHandlers
-	dataHandlers.Bind(1, myClient.deleteHandler)
-	dataHandlers.Bind(2, myClient.newInstanceHandler)
-	dataHandlers.Bind(3, myClient.propHandler)
-	dataHandlers.Bind(5, myClient.dataPingHandler)
-	dataHandlers.Bind(7, myClient.eventHandler)
 	dataHandlers.Bind(9, myClient.idChallengeHandler)
-	dataHandlers.Bind(0xB, myClient.joinDataHandler)
 
 	myClient.RegisterInstanceHandler(&InstancePath{[]string{"Players"}, nil}, myClient.handlePlayersService).Once = true
 }
@@ -135,23 +53,6 @@ func (myClient *CustomClient) sendResponse9() {
 }
 func (myClient *CustomClient) simple8Handler(packetType byte, layers *PacketLayers) {
 	myClient.sendResponse9()
-}
-
-func (myClient *CustomClient) sendPong(pingTime uint64) {
-	response := &Packet03Layer{
-		SendPingTime: pingTime,
-		SendPongTime: uint64(time.Now().UnixNano() / int64(time.Millisecond)),
-	}
-
-	_, err := myClient.WritePacket(response)
-	if err != nil {
-		println("Failed to write pong: ", err.Error())
-	}
-}
-func (myClient *CustomClient) pingHandler(packetType byte, layers *PacketLayers) {
-	mainLayer := layers.Main.(*Packet00Layer)
-
-	myClient.sendPong(mainLayer.SendPingTime)
 }
 
 func (myClient *CustomClient) sendResponse13(pingTime uint64) {
@@ -257,35 +158,6 @@ func (myClient *CustomClient) topReplicationHandler(packetType uint8, layers *Pa
 	myClient.startDataPing()
 }
 
-func (myClient *CustomClient) dataHandler(packetType uint8, layers *PacketLayers) {
-	mainLayer := layers.Main.(*Packet83Layer)
-	for _, item := range mainLayer.SubPackets {
-		myClient.dataHandlers.Fire(item.Type(), layers, item)
-	}
-}
-
-func (myClient *CustomClient) WriteDataPackets(packets ...Packet83Subpacket) error {
-	_, err := myClient.WritePacket(&Packet83Layer{
-		SubPackets: packets,
-	})
-	return err
-}
-
-func (myClient *CustomClient) sendDataPingBack() {
-	response := &Packet83_06{
-		Timestamp:  uint64(time.Now().UnixNano() / int64(time.Millisecond)),
-		IsPingBack: true,
-	}
-
-	err := myClient.WriteDataPackets(response)
-	if err != nil {
-		println("Failed to send datapingback:", err.Error())
-	}
-}
-func (myClient *CustomClient) dataPingHandler(packetType uint8, layers *PacketLayers, item Packet83Subpacket) {
-	myClient.sendDataPingBack()
-}
-
 func (myClient *CustomClient) sendDataIdResponse(challengeInt uint32) {
 	err := myClient.WriteDataPackets(&Packet83_09{
 		SubpacketType: 6,
@@ -304,17 +176,6 @@ func (myClient *CustomClient) idChallengeHandler(packetType uint8, layers *Packe
 		myClient.Logger.Println("recv id challenge!")
 		myClient.sendDataIdResponse(mainPacket.Subpacket.(*Packet83_09_05).Int)
 	}
-}
-
-func (myClient *CustomClient) propHandler(packetType uint8, layers *PacketLayers, item Packet83Subpacket) {
-	mainPacket := item.(*Packet83_03)
-
-	myClient.propHandlers.Fire(mainPacket.Instance, mainPacket.PropertyName, mainPacket.Value)
-}
-func (myClient *CustomClient) eventHandler(packetType uint8, layers *PacketLayers, item Packet83Subpacket) {
-	mainPacket := item.(*Packet83_07)
-
-	myClient.eventHandlers.Fire(mainPacket.Instance, mainPacket.EventName, mainPacket.Event)
 }
 
 func (myClient *CustomClient) handlePlayersService(players *rbxfile.Instance) {
@@ -350,7 +211,6 @@ func (myClient *CustomClient) handlePlayersService(players *rbxfile.Instance) {
 
 	err := myClient.WriteDataPackets(
 		&Packet83_05{
-			SendStats:  8,
 			Timestamp:  uint64(time.Now().UnixNano() / int64(time.Millisecond)),
 			IsPingBack: false,
 		},
@@ -363,30 +223,6 @@ func (myClient *CustomClient) handlePlayersService(players *rbxfile.Instance) {
 	myClient.LocalPlayer = myPlayer
 	go myClient.instanceHandlers.Fire(myPlayer) // prevent deadlock
 	return
-}
-
-func (myClient *CustomClient) newInstanceHandler(packetType uint8, layers *PacketLayers, subpacket Packet83Subpacket) {
-	mainpacket := subpacket.(*Packet83_02)
-
-	myClient.instanceHandlers.Fire(mainpacket.Child)
-}
-
-func (myClient *CustomClient) joinDataHandler(packetType uint8, layers *PacketLayers, subpacket Packet83Subpacket) {
-	mainpacket := subpacket.(*Packet83_0B)
-
-	for _, inst := range mainpacket.Instances {
-		myClient.instanceHandlers.Fire(inst)
-	}
-}
-
-func (myClient *CustomClient) SendEvent(instance *rbxfile.Instance, name string, arguments ...rbxfile.Value) error {
-	return myClient.WriteDataPackets(
-		&Packet83_07{
-			Instance:  instance,
-			EventName: name,
-			Event:     &ReplicationEvent{arguments},
-		},
-	)
 }
 
 func (myClient *CustomClient) InvokeRemote(instance *rbxfile.Instance, arguments []rbxfile.Value) (rbxfile.ValueTuple, error) {
@@ -415,7 +251,7 @@ func (myClient *CustomClient) InvokeRemote(instance *rbxfile.Instance, arguments
 		return nil, err
 	}
 
-	for true {
+	for {
 		select {
 		case succ := <-succChan:
 			// check that this packet was sent for us specifically
@@ -434,9 +270,6 @@ func (myClient *CustomClient) InvokeRemote(instance *rbxfile.Instance, arguments
 			}
 		}
 	}
-
-	// Never reached, but we must use return here for syntactic reasons
-	return nil, nil
 }
 
 func (myClient *CustomClient) FireRemote(instance *rbxfile.Instance, arguments ...rbxfile.Value) {
@@ -447,77 +280,6 @@ func (myClient *CustomClient) FireRemote(instance *rbxfile.Instance, arguments .
 		rbxfile.ValueReference{Instance: myClient.LocalPlayer},
 		rbxfile.ValueTuple(arguments),
 	)
-}
-
-func (myClient *CustomClient) disconnectHandler(packetType uint8, layers *PacketLayers) {
-	mainLayer := layers.Main.(*Packet15Layer)
-	myClient.Logger.Printf("Disconnected because of reason %d\n", mainLayer.Reason)
-
-	myClient.disconnectInternal()
-}
-
-func (myClient *CustomClient) MakeChildChan(instance *rbxfile.Instance) chan *rbxfile.Instance {
-	newChan := make(chan *rbxfile.Instance)
-
-	go func() { // we don't want this to block
-		for _, child := range instance.Children {
-			newChan <- child
-		}
-	}()
-
-	path := NewInstancePath(instance)
-	path.p = append(path.p, "*") // wildcard
-
-	myClient.instanceHandlers.Bind(path, func(inst *rbxfile.Instance) {
-		newChan <- inst
-	})
-
-	return newChan
-}
-
-func (myClient *CustomClient) deleteHandler(packetType uint8, layers *PacketLayers, subpacket Packet83Subpacket) {
-	mainpacket := subpacket.(*Packet83_01)
-
-	myClient.deleteHandlers.Fire(mainpacket.Instance)
-}
-
-type GroupDeleteChan struct {
-	C         chan *rbxfile.Instance
-	binding   *PacketHandlerConnection
-	client    *CustomClient
-	referents []Referent
-}
-
-func (channel *GroupDeleteChan) AddInstances(instances ...*rbxfile.Instance) {
-	for _, inst := range instances {
-		channel.referents = append(channel.referents, Referent(inst.Reference))
-	}
-}
-func (channel *GroupDeleteChan) Destroy() {
-	channel.binding.Disconnect()
-}
-func (myClient *CustomClient) MakeGroupDeleteChan(instances []*rbxfile.Instance) *GroupDeleteChan {
-	channel := &GroupDeleteChan{
-		C:         make(chan *rbxfile.Instance),
-		referents: make([]Referent, len(instances)),
-		client:    myClient,
-	}
-
-	for i, inst := range instances {
-		channel.referents[i] = Referent(inst.Reference)
-	}
-
-	channel.binding = myClient.dataHandlers.Bind(1, func(packetType uint8, layers *PacketLayers, subpacket Packet83Subpacket) {
-		mainpacket := subpacket.(*Packet83_01)
-		for _, inst := range channel.referents {
-			if string(inst) == mainpacket.Instance.Reference {
-				channel.C <- mainpacket.Instance
-				break
-			}
-		}
-	})
-
-	return channel
 }
 
 func addVector(vec1, vec2 rbxfile.ValueVector3) rbxfile.ValueVector3 {

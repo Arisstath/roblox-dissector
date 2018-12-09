@@ -1,5 +1,10 @@
 package peer
 
+import "net"
+import "fmt"
+import "math/rand"
+import "time"
+import "encoding/hex"
 // Outdated!!
 /*
 import "net"
@@ -595,3 +600,100 @@ func StartServer(port uint16 /*dictionaries *Packet82Layer,, schema *StaticSchem
 	}
 }
 */
+
+type ServerClient struct {
+	*ConnectedPeer
+	PacketLogicHandler
+	Server *CustomServer
+	Address *net.UDPAddr
+}
+
+type CustomServer struct {
+	Context *CommunicationContext
+	Connection *net.UDPConn
+	Clients map[string]*ServerClient
+	Address *net.UDPAddr
+	GUID uint64
+	Schema *StaticSchema
+	Scope string
+}
+
+func (client *ServerClient) ReadPacket(buf []byte) {
+	layers := &PacketLayers{
+		Root: RootLayer{
+			Source: client.Address,
+			Destination: client.Server.Address,
+			FromServer: false,
+		},
+	}
+	client.ConnectedPeer.ReadPacket(buf, layers)
+}
+
+func NewServerClient(clientAddr *net.UDPAddr, server *CustomServer, context *CommunicationContext) *ServerClient {
+	newContext := &CommunicationContext{
+		InstancesByReferent: context.InstancesByReferent,
+		DataModel: context.DataModel,
+		Server: server.Address,
+		Client: clientAddr,
+		StaticSchema: context.StaticSchema,
+	}
+
+	newClient := &ServerClient{
+		ConnectedPeer: NewConnectedPeer(newContext),
+		PacketLogicHandler: newPacketLogicHandler(newContext),
+		Server: server,
+		Address: clientAddr,
+	}
+
+	return newClient
+}
+
+func (myServer *CustomServer) Start() error {
+	conn, err := net.ListenUDP("udp", myServer.Address)
+	defer conn.Close()
+	if err != nil {
+		return err
+	}
+
+	buf := make([]byte, 1492)
+
+	for {
+		n, client, err := conn.ReadFromUDP(buf)
+		if err != nil {
+			println("Err:", err.Error())
+			continue
+		}
+
+		thisClient, ok := myServer.Clients[client.String()]
+		if !ok {
+			thisClient = NewServerClient(client, myServer, myServer.Context)
+			myServer.Clients[client.String()] = thisClient
+		}
+		thisClient.ReadPacket(buf[:n])
+	}
+}
+
+func NewCustomServer(port uint16, schema *StaticSchema) (*CustomServer, error) {
+	server := &CustomServer{Clients: make(map[string]*ServerClient)}
+
+	var err error
+	server.Address, err = net.ResolveUDPAddr("udp", fmt.Sprintf(":%d", port))
+	if err != nil {
+		return server, err
+	}
+
+	rand.Seed(time.Now().UnixNano())
+	server.GUID = rand.Uint64()
+	server.Schema = schema
+	server.Context = NewCommunicationContext()
+
+	scope := make([]byte, 0x10)
+	n, err := rand.Read(scope)
+	if n < 0x10 && err != nil {
+		panic(err)
+	}
+
+	server.Scope = "RBX" + hex.EncodeToString(scope)
+
+	return server, nil
+}
