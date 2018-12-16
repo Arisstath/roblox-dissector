@@ -90,7 +90,7 @@ func (thisBitstream *extendedReader) DecodePacket81Layer(reader PacketReader, la
 	}
 
 	context := reader.Context()
-	context.DataModel = &rbxfile.Root{make([]*rbxfile.Instance, arrayLen)}
+	context.DataModel = &rbxfile.Root{Instances: make([]*rbxfile.Instance, arrayLen)}
 
 	layer.Items = make([]*Packet81LayerItem, arrayLen)
 	for i := 0; i < int(arrayLen); i++ {
