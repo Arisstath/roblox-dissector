@@ -1,14 +1,20 @@
 package main
-import "github.com/therecipe/qt/widgets"
-import "github.com/therecipe/qt/gui"
-import "github.com/Gskartwii/roblox-dissector/peer"
-import "time"
-import "strings"
-import "log"
+
+import (
+	"log"
+	"os"
+	"strings"
+	"time"
+
+	"github.com/Gskartwii/roblox-dissector/peer"
+	"github.com/gskartwii/rbxfile/bin"
+	"github.com/therecipe/qt/gui"
+	"github.com/therecipe/qt/widgets"
+)
 
 func NewClientConsole(parent widgets.QWidget_ITF, client *peer.CustomClient) {
 	var logBuffer strings.Builder
-	client.Logger = log.New(&logBuffer, "", log.Ltime | log.Lmicroseconds)
+	client.Logger = log.New(&logBuffer, "", log.Ltime|log.Lmicroseconds)
 
 	window := widgets.NewQWidget(parent, 1)
 	window.SetWindowTitle("Client watch console")
@@ -23,7 +29,7 @@ func NewClientConsole(parent widgets.QWidget_ITF, client *peer.CustomClient) {
 	ticker := time.NewTicker(500 * time.Millisecond)
 	go func() {
 		for true {
-			<- ticker.C
+			<-ticker.C
 			log.Clear()
 			log.InsertPlainText(logBuffer.String())
 		}
@@ -47,6 +53,44 @@ func NewClientConsole(parent widgets.QWidget_ITF, client *peer.CustomClient) {
 		client.SendChat(message.Text(), toPlayer.Text(), channel.Text())
 	})
 	layout.AddWidget(sendMessage, 0, 0)
+
+	dumpSchema := widgets.NewQPushButton2("Dump schema...", window)
+	dumpSchema.ConnectPressed(func() {
+		location := widgets.QFileDialog_GetSaveFileName(window, "Save schema...", "", "Text files (*.txt)", "", 0)
+		writer, err := os.OpenFile(location, os.O_RDWR|os.O_CREATE, 0666)
+		if err != nil {
+			println("while opening file:", err.Error())
+			return
+		}
+		location2 := widgets.QFileDialog_GetSaveFileName(window, "Save enums...", "", "Text files (*.txt)", "", 0)
+		writer2, err := os.OpenFile(location2, os.O_RDWR|os.O_CREATE, 0666)
+		if err != nil {
+			println("while opening file:", err.Error())
+			return
+		}
+		client.Context.StaticSchema.Dump(writer, writer2)
+	})
+
+	dumpRbxl := widgets.NewQPushButton2("Dump DataModel...", window)
+	dumpRbxl.ConnectPressed(func() {
+		location := widgets.QFileDialog_GetSaveFileName(window, "Save as RBXL...", "", "Roblox place files (*.rbxl)", "", 0)
+		writer, err := os.OpenFile(location, os.O_RDWR|os.O_CREATE, 0666)
+		if err != nil {
+			println("while opening file:", err.Error())
+			return
+		}
+
+		writableClone := client.Context.DataModel.Copy()
+		stripInvalidTypes(writableClone.Instances, nil, 0)
+
+		err = bin.SerializePlace(writer, nil, client.Context.DataModel)
+		if err != nil {
+			println("while serializing place:", err.Error())
+			return
+		}
+	})
+	layout.AddWidget(dumpSchema, 0, 0)
+	layout.AddWidget(dumpRbxl, 0, 0)
 
 	window.SetLayout(layout)
 	window.Show()

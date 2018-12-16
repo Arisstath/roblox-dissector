@@ -63,13 +63,11 @@ func stripInvalidTypes(instances []*rbxfile.Instance, defaultValues DefaultValue
 		instance.PropertiesMutex.Lock()
 		color, ok := instance.Properties["Color3uint8"]
 		if ok {
-			if _, ok = color.(rbxfile.ValueDefault); !ok {
-				col := color.(rbxfile.ValueColor3uint8)
-				instance.Properties["Color"] = rbxfile.ValueColor3{
-					R: float32(col.R) / 255,
-					G: float32(col.R) / 255,
-					B: float32(col.B) / 255,
-				}
+			col := color.(rbxfile.ValueColor3uint8)
+			instance.Properties["Color"] = rbxfile.ValueColor3{
+				R: float32(col.R) / 255,
+				G: float32(col.R) / 255,
+				B: float32(col.B) / 255,
 			}
 		}
 
@@ -79,20 +77,8 @@ func stripInvalidTypes(instances []*rbxfile.Instance, defaultValues DefaultValue
 				continue
 			}
 			thisType := property.Type()
-			if thisType == rbxfile.TypeDefault {
-				class, ok := defaultValues[instance.ClassName]
-				if !ok {
-					delete(instance.Properties, name)
-					continue
-				}
-				value, ok := class[name]
-				if !ok {
-					delete(instance.Properties, name)
-					continue
-				}
-				instance.Properties[name] = value
-			} else if thisType >= rbxfile.TypeNumberSequenceKeypoint ||
-				thisType == rbxfile.TypeVector2int16 {
+			if (thisType >= rbxfile.TypeNumberSequenceKeypoint ||
+				thisType == rbxfile.TypeVector2int16) && thisType != rbxfile.TypeInt64 {
 				delete(instance.Properties, name)
 				continue
 			} else if thisType == rbxfile.TypeProtectedString {
