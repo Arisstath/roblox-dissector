@@ -1,10 +1,15 @@
 package peer
 
-import "net"
-import "fmt"
-import "math/rand"
-import "time"
-import "encoding/hex"
+import (
+	"encoding/hex"
+	"fmt"
+	"math/rand"
+	"net"
+	"time"
+
+	"github.com/gskartwii/rbxfile"
+)
+
 // Outdated!!
 /*
 import "net"
@@ -601,48 +606,66 @@ func StartServer(port uint16 /*dictionaries *Packet82Layer,, schema *StaticSchem
 }
 */
 
+// TODO: Perhaps have a multiplexer for datamodel-related handlers?
+// TODO: Filtering?
 type ServerClient struct {
-	*ConnectedPeer
 	PacketLogicHandler
-	Server *CustomServer
+	Server  *CustomServer
 	Address *net.UDPAddr
 }
 
 type CustomServer struct {
-	Context *CommunicationContext
+	Context    *CommunicationContext
 	Connection *net.UDPConn
-	Clients map[string]*ServerClient
-	Address *net.UDPAddr
-	GUID uint64
-	Schema *StaticSchema
-	Scope string
+	Clients    map[string]*ServerClient
+	Address    *net.UDPAddr
+	GUID       uint64
+	Schema     *StaticSchema
+	Scope      string
 }
 
 func (client *ServerClient) ReadPacket(buf []byte) {
 	layers := &PacketLayers{
 		Root: RootLayer{
-			Source: client.Address,
+			Source:      client.Address,
 			Destination: client.Server.Address,
-			FromServer: false,
+			FromServer:  false,
 		},
 	}
 	client.ConnectedPeer.ReadPacket(buf, layers)
 }
 
+func (client *ServerClient) createWriter() {
+	client.OutputHandler = func(payload []byte) {
+		num, err := client.Connection.WriteToUDP(payload, client.Address)
+		if err != nil {
+			fmt.Printf("Wrote %d bytes, err: %s\n", num, err.Error())
+		}
+	}
+}
+
+func (client *ServerClient) Init() {
+	client.createReader()
+	client.bindDefaultHandlers()
+	// Write to server's connection
+	client.Connection = client.Server.Connection
+	client.createWriter()
+
+	client.startAcker()
+}
 func NewServerClient(clientAddr *net.UDPAddr, server *CustomServer, context *CommunicationContext) *ServerClient {
 	newContext := &CommunicationContext{
 		InstancesByReferent: context.InstancesByReferent,
-		DataModel: context.DataModel,
-		Server: server.Address,
-		Client: clientAddr,
-		StaticSchema: context.StaticSchema,
+		DataModel:           context.DataModel,
+		Server:              server.Address,
+		Client:              clientAddr,
+		StaticSchema:        context.StaticSchema,
 	}
 
 	newClient := &ServerClient{
-		ConnectedPeer: NewConnectedPeer(newContext),
 		PacketLogicHandler: newPacketLogicHandler(newContext),
-		Server: server,
-		Address: clientAddr,
+		Server:             server,
+		Address:            clientAddr,
 	}
 
 	return newClient
@@ -654,6 +677,7 @@ func (myServer *CustomServer) Start() error {
 	if err != nil {
 		return err
 	}
+	myServer.Connection = conn
 
 	buf := make([]byte, 1492)
 
@@ -668,12 +692,13 @@ func (myServer *CustomServer) Start() error {
 		if !ok {
 			thisClient = NewServerClient(client, myServer, myServer.Context)
 			myServer.Clients[client.String()] = thisClient
+			thisClient.Init()
 		}
 		thisClient.ReadPacket(buf[:n])
 	}
 }
 
-func NewCustomServer(port uint16, schema *StaticSchema) (*CustomServer, error) {
+func NewCustomServer(port uint16, schema *StaticSchema, dataModel *rbxfile.Root) (*CustomServer, error) {
 	server := &CustomServer{Clients: make(map[string]*ServerClient)}
 
 	var err error
@@ -686,6 +711,7 @@ func NewCustomServer(port uint16, schema *StaticSchema) (*CustomServer, error) {
 	server.GUID = rand.Uint64()
 	server.Schema = schema
 	server.Context = NewCommunicationContext()
+	server.Context.DataModel = dataModel
 
 	scope := make([]byte, 0x10)
 	n, err := rand.Read(scope)

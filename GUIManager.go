@@ -46,7 +46,7 @@ type ServerSettings struct {
 	Port                   string
 	EnumSchemaLocation     string
 	InstanceSchemaLocation string
-	DictionaryLocation     string
+	RBXLLocation           string
 }
 
 type DefaultsSettings struct {
@@ -818,41 +818,46 @@ func GUIMain() {
 	})
 
 	peersBar := window.MenuBar().AddMenu2("&Peers...")
-	//startSelfServer := peersBar.AddAction("Start self &server...")
+	startSelfServer := peersBar.AddAction("Start self &server...")
 	startSelfClient := peersBar.AddAction("Start self &client...")
-	/*startSelfServer.ConnectTriggered(func(checked bool)() {
-	        NewServerStartWidget(window, packetViewer.ServerSettings, func(settings *ServerSettings) {
-	            port, _ := strconv.Atoi(settings.Port)
-	            enums, err := os.Open(settings.EnumSchemaLocation)
-	            if err != nil {
-	                println("while parsing schema:", err.Error())
-	                return
-	            }
-	            instances, err := os.Open(settings.InstanceSchemaLocation)
-	            if err != nil {
-	                println("while parsing schema:", err.Error())
-	                return
-	            }
-	            schema, err := peer.ParseSchema(instances, enums)
-	            if err != nil {
-	                println("while parsing schema:", err.Error())
-	                return
-	            }
-	            dictfile, err := os.Open(settings.DictionaryLocation)
-	            if err != nil {
-	                println("while parsing dict:", err.Error())
-	                return
-	            }
-	            var dictionaries peer.Packet82Layer
-	            err = gob.NewDecoder(dictfile).Decode(&dictionaries)
-	            if err != nil {
-	                println("while parsing dict:", err.Error())
-	                return
-	            }
+	startSelfServer.ConnectTriggered(func(checked bool) {
+		NewServerStartWidget(window, packetViewer.ServerSettings, func(settings *ServerSettings) {
+			port, _ := strconv.Atoi(settings.Port)
+			enums, err := os.Open(settings.EnumSchemaLocation)
+			if err != nil {
+				println("while parsing schema:", err.Error())
+				return
+			}
+			instances, err := os.Open(settings.InstanceSchemaLocation)
+			if err != nil {
+				println("while parsing schema:", err.Error())
+				return
+			}
+			schema, err := peer.ParseSchema(instances, enums)
+			if err != nil {
+				println("while parsing schema:", err.Error())
+				return
+			}
+			dataModelReader, err := os.Open(settings.RBXLLocation)
+			if err != nil {
+				println("while reading instances:", err.Error())
+				return
+			}
+			dataModelRoot, err := bin.DeserializePlace(dataModelReader, nil)
+			if err != nil {
+				println("while reading instances:", err.Error())
+				return
+			}
 
-	            go peer.StartServer(uint16(port), &dictionaries, &schema)
-	        })
-		})*/
+			server, err := peer.NewCustomServer(uint16(port), &schema, dataModelRoot)
+			if err != nil {
+				println("while creating server", err.Error())
+				return
+			}
+
+			go server.Start()
+		})
+	})
 	startSelfClient.ConnectTriggered(func(checked bool) {
 		customClient := peer.NewCustomClient()
 		NewClientStartWidget(window, customClient, func(placeId uint32, username string, password string) {

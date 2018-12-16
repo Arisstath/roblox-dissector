@@ -1,4 +1,5 @@
 package peer
+
 import "github.com/gskartwii/rbxfile"
 import "sync"
 import "net"
@@ -21,13 +22,13 @@ type PacketLogicHandler struct {
 	remoteIndices map[*rbxfile.Instance]uint32
 	remoteLock    *sync.Mutex
 
-	Connection *net.UDPConn
-	pingInterval          int
+	Connection   *net.UDPConn
+	pingInterval int
 }
 
 func newPacketLogicHandler(context *CommunicationContext) PacketLogicHandler {
 	return PacketLogicHandler{
-		ConnectedPeer: NewConnectedPeer(context),
+		ConnectedPeer:    NewConnectedPeer(context),
 		handlers:         NewRawPacketHandlerMap(),
 		dataHandlers:     NewDataHandlerMap(),
 		instanceHandlers: NewNewInstanceHandlerMap(),
@@ -42,45 +43,45 @@ func newPacketLogicHandler(context *CommunicationContext) PacketLogicHandler {
 	}
 }
 
-func (logicHandler PacketLogicHandler) RegisterPacketHandler(packetType uint8, handler ReceiveHandler) {
+func (logicHandler *PacketLogicHandler) RegisterPacketHandler(packetType uint8, handler ReceiveHandler) {
 	logicHandler.handlers.Bind(packetType, handler)
 }
-func (logicHandler PacketLogicHandler) RegisterDataHandler(packetType uint8, handler DataReceiveHandler) {
+func (logicHandler *PacketLogicHandler) RegisterDataHandler(packetType uint8, handler DataReceiveHandler) {
 	logicHandler.dataHandlers.Bind(packetType, handler)
 }
-func (logicHandler PacketLogicHandler) RegisterInstanceHandler(path *InstancePath, handler NewInstanceHandler) *PacketHandlerConnection {
+func (logicHandler *PacketLogicHandler) RegisterInstanceHandler(path *InstancePath, handler NewInstanceHandler) *PacketHandlerConnection {
 	logicHandler.instanceHandlers.Lock()
 	conn := logicHandler.instanceHandlers.Bind(path, handler)
 	logicHandler.instanceHandlers.Unlock()
 	return conn
 }
 
-func (logicHandler PacketLogicHandler) defaultAckHandler(layers *PacketLayers) {
+func (logicHandler *PacketLogicHandler) defaultAckHandler(layers *PacketLayers) {
 	// nop
 	if layers.Error != nil {
 		println("ack error: ", layers.Error.Error())
 	}
 }
-func (logicHandler PacketLogicHandler) defaultReliabilityLayerHandler(layers *PacketLayers) {
+func (logicHandler *PacketLogicHandler) defaultReliabilityLayerHandler(layers *PacketLayers) {
 	logicHandler.mustACK = append(logicHandler.mustACK, int(layers.RakNet.DatagramNumber))
 	if layers.Error != nil {
 		println("reliabilitylayer error: ", layers.Error.Error())
 	}
 }
-func (logicHandler PacketLogicHandler) defaultSimpleHandler(packetType byte, layers *PacketLayers) {
+func (logicHandler *PacketLogicHandler) defaultSimpleHandler(packetType byte, layers *PacketLayers) {
 	if layers.Error == nil {
 		go logicHandler.handlers.Fire(packetType, layers) // Let the reader continue its job while the packet is processed
 	} else {
 		println("simple error: ", layers.Error.Error())
 	}
 }
-func (logicHandler PacketLogicHandler) defaultReliableHandler(packetType byte, layers *PacketLayers) {
+func (logicHandler *PacketLogicHandler) defaultReliableHandler(packetType byte, layers *PacketLayers) {
 	// nop
 	if layers.Error != nil {
 		println("reliable error: ", layers.Error.Error())
 	}
 }
-func (logicHandler PacketLogicHandler) defaultFullReliableHandler(packetType byte, layers *PacketLayers) {
+func (logicHandler *PacketLogicHandler) defaultFullReliableHandler(packetType byte, layers *PacketLayers) {
 	if layers.Error == nil {
 		go logicHandler.handlers.Fire(packetType, layers)
 	} else {
@@ -88,7 +89,7 @@ func (logicHandler PacketLogicHandler) defaultFullReliableHandler(packetType byt
 	}
 }
 
-func (logicHandler PacketLogicHandler) createReader() {
+func (logicHandler *PacketLogicHandler) createReader() {
 	logicHandler.ACKHandler = logicHandler.defaultAckHandler
 	logicHandler.ReliabilityLayerHandler = logicHandler.defaultReliabilityLayerHandler
 	logicHandler.SimpleHandler = logicHandler.defaultSimpleHandler
@@ -96,15 +97,6 @@ func (logicHandler PacketLogicHandler) createReader() {
 	logicHandler.FullReliableHandler = logicHandler.defaultFullReliableHandler
 
 	logicHandler.DefaultPacketReader.SetContext(logicHandler.Context)
-}
-
-func (logicHandler PacketLogicHandler) createWriter() {
-	logicHandler.OutputHandler = func(payload []byte) {
-		num, err := logicHandler.Connection.Write(payload)
-		if err != nil {
-			fmt.Printf("Wrote %d bytes, err: %s\n", num, err.Error())
-		}
-	}
 }
 
 func (logicHandler *PacketLogicHandler) startDataPing() {
@@ -124,7 +116,7 @@ func (logicHandler *PacketLogicHandler) startDataPing() {
 	}()
 }
 
-func (logicHandler PacketLogicHandler) startAcker() {
+func (logicHandler *PacketLogicHandler) startAcker() {
 	logicHandler.ackTicker = time.NewTicker(500 * time.Millisecond)
 	go func() {
 		for {
@@ -134,21 +126,7 @@ func (logicHandler PacketLogicHandler) startAcker() {
 	}()
 }
 
-func (myClient *CustomClient) mainReadLoop() error {
-	buf := make([]byte, 1492)
-	for {
-		n, _, err := myClient.Connection.ReadFromUDP(buf)
-		if err != nil {
-			myClient.Logger.Println("fatal read err:", err.Error(), "read", n, "bytes")
-			return err // a read error may be a sign that the connection was closed
-			// hence we can't run this loop anymore; we would get infinitely many errors
-		}
-
-		myClient.ReadPacket(buf[:n])
-	}
-}
-
-func (logicHandler PacketLogicHandler) disconnectInternal() error {
+func (logicHandler *PacketLogicHandler) disconnectInternal() error {
 	if logicHandler.ackTicker != nil {
 		logicHandler.ackTicker.Stop()
 	}
@@ -158,7 +136,7 @@ func (logicHandler PacketLogicHandler) disconnectInternal() error {
 	return logicHandler.Connection.Close()
 }
 
-func (logicHandler PacketLogicHandler) Disconnect() {
+func (logicHandler *PacketLogicHandler) Disconnect() {
 	logicHandler.WritePacket(&Packet15Layer{
 		Reason: 0xFFFFFFFF,
 	})
@@ -166,35 +144,35 @@ func (logicHandler PacketLogicHandler) Disconnect() {
 	logicHandler.disconnectInternal()
 }
 
-func (logicHandler PacketLogicHandler) deleteHandler(packetType uint8, layers *PacketLayers, subpacket Packet83Subpacket) {
+func (logicHandler *PacketLogicHandler) deleteHandler(packetType uint8, layers *PacketLayers, subpacket Packet83Subpacket) {
 	mainpacket := subpacket.(*Packet83_01)
 
 	logicHandler.deleteHandlers.Fire(mainpacket.Instance)
 }
-func (logicHandler PacketLogicHandler) newInstanceHandler(packetType uint8, layers *PacketLayers, subpacket Packet83Subpacket) {
+func (logicHandler *PacketLogicHandler) newInstanceHandler(packetType uint8, layers *PacketLayers, subpacket Packet83Subpacket) {
 	mainpacket := subpacket.(*Packet83_02)
 
 	logicHandler.instanceHandlers.Fire(mainpacket.Child)
 }
-func (logicHandler PacketLogicHandler) joinDataHandler(packetType uint8, layers *PacketLayers, subpacket Packet83Subpacket) {
+func (logicHandler *PacketLogicHandler) joinDataHandler(packetType uint8, layers *PacketLayers, subpacket Packet83Subpacket) {
 	mainpacket := subpacket.(*Packet83_0B)
 
 	for _, inst := range mainpacket.Instances {
 		logicHandler.instanceHandlers.Fire(inst)
 	}
 }
-func (logicHandler PacketLogicHandler) propHandler(packetType uint8, layers *PacketLayers, item Packet83Subpacket) {
+func (logicHandler *PacketLogicHandler) propHandler(packetType uint8, layers *PacketLayers, item Packet83Subpacket) {
 	mainPacket := item.(*Packet83_03)
 
 	logicHandler.propHandlers.Fire(mainPacket.Instance, mainPacket.PropertyName, mainPacket.Value)
 }
-func (logicHandler PacketLogicHandler) eventHandler(packetType uint8, layers *PacketLayers, item Packet83Subpacket) {
+func (logicHandler *PacketLogicHandler) eventHandler(packetType uint8, layers *PacketLayers, item Packet83Subpacket) {
 	mainPacket := item.(*Packet83_07)
 
 	logicHandler.eventHandlers.Fire(mainPacket.Instance, mainPacket.EventName, mainPacket.Event)
 }
 
-func (logicHandler PacketLogicHandler) sendDataPingBack() {
+func (logicHandler *PacketLogicHandler) sendDataPingBack() {
 	response := &Packet83_06{
 		Timestamp:  uint64(time.Now().UnixNano() / int64(time.Millisecond)),
 		IsPingBack: true,
@@ -205,25 +183,25 @@ func (logicHandler PacketLogicHandler) sendDataPingBack() {
 		println("Failed to send datapingback:", err.Error())
 	}
 }
-func (logicHandler PacketLogicHandler) dataPingHandler(packetType uint8, layers *PacketLayers, item Packet83Subpacket) {
+func (logicHandler *PacketLogicHandler) dataPingHandler(packetType uint8, layers *PacketLayers, item Packet83Subpacket) {
 	logicHandler.sendDataPingBack()
 }
 
-func (logicHandler PacketLogicHandler) dataHandler(packetType uint8, layers *PacketLayers) {
+func (logicHandler *PacketLogicHandler) dataHandler(packetType uint8, layers *PacketLayers) {
 	mainLayer := layers.Main.(*Packet83Layer)
 	for _, item := range mainLayer.SubPackets {
 		logicHandler.dataHandlers.Fire(item.Type(), layers, item)
 	}
 }
 
-func (logicHandler PacketLogicHandler) disconnectHandler(packetType uint8, layers *PacketLayers) {
+func (logicHandler *PacketLogicHandler) disconnectHandler(packetType uint8, layers *PacketLayers) {
 	mainLayer := layers.Main.(*Packet15Layer)
 	fmt.Printf("Received disconnect with reason %d\n", mainLayer.Reason)
 
 	logicHandler.disconnectInternal()
 }
 
-func (logicHandler PacketLogicHandler) sendPong(pingTime uint64) {
+func (logicHandler *PacketLogicHandler) sendPong(pingTime uint64) {
 	response := &Packet03Layer{
 		SendPingTime: pingTime,
 		SendPongTime: uint64(time.Now().UnixNano() / int64(time.Millisecond)),
@@ -234,13 +212,13 @@ func (logicHandler PacketLogicHandler) sendPong(pingTime uint64) {
 		println("Failed to write pong: ", err.Error())
 	}
 }
-func (logicHandler PacketLogicHandler) pingHandler(packetType byte, layers *PacketLayers) {
+func (logicHandler *PacketLogicHandler) pingHandler(packetType byte, layers *PacketLayers) {
 	mainLayer := layers.Main.(*Packet00Layer)
 
 	logicHandler.sendPong(mainLayer.SendPingTime)
 }
 
-func (logicHandler PacketLogicHandler) bindDefaultHandlers() {
+func (logicHandler *PacketLogicHandler) bindDefaultHandlers() {
 	// common to all peers
 	dataHandlers := logicHandler.dataHandlers
 	dataHandlers.Bind(1, logicHandler.deleteHandler)
@@ -255,16 +233,14 @@ func (logicHandler PacketLogicHandler) bindDefaultHandlers() {
 	basicHandlers.Bind(0x83, logicHandler.dataHandler)
 }
 
-func (logicHandler PacketLogicHandler) WriteDataPackets(packets ...Packet83Subpacket) error {
+func (logicHandler *PacketLogicHandler) WriteDataPackets(packets ...Packet83Subpacket) error {
 	_, err := logicHandler.WritePacket(&Packet83Layer{
 		SubPackets: packets,
 	})
 	return err
 }
 
-
-
-func (logicHandler PacketLogicHandler) FindService(name string) *rbxfile.Instance {
+func (logicHandler *PacketLogicHandler) FindService(name string) *rbxfile.Instance {
 	if logicHandler.Context == nil || logicHandler.Context.DataModel == nil {
 		return nil
 	}
@@ -276,7 +252,7 @@ func (logicHandler PacketLogicHandler) FindService(name string) *rbxfile.Instanc
 	return nil
 }
 
-func (logicHandler PacketLogicHandler) WaitForChild(instance *rbxfile.Instance, path ...string) <-chan *rbxfile.Instance {
+func (logicHandler *PacketLogicHandler) WaitForChild(instance *rbxfile.Instance, path ...string) <-chan *rbxfile.Instance {
 	logicHandler.instanceHandlers.Lock()
 	retChannel := make(chan *rbxfile.Instance, 1)
 	currInstance := instance
@@ -305,7 +281,7 @@ func (logicHandler PacketLogicHandler) WaitForChild(instance *rbxfile.Instance, 
 	return retChannel
 }
 
-func (logicHandler PacketLogicHandler) WaitForRefProp(instance *rbxfile.Instance, name string) <-chan *rbxfile.Instance {
+func (logicHandler *PacketLogicHandler) WaitForRefProp(instance *rbxfile.Instance, name string) <-chan *rbxfile.Instance {
 	retChannel := make(chan *rbxfile.Instance, 1)
 	instance.PropertiesMutex.RLock()
 	if instance.Properties[name] != nil && instance.Properties[name].(rbxfile.ValueReference).Instance != nil {
@@ -323,7 +299,7 @@ func (logicHandler PacketLogicHandler) WaitForRefProp(instance *rbxfile.Instance
 	return retChannel
 }
 
-func (logicHandler PacketLogicHandler) WaitForInstance(path ...string) <-chan *rbxfile.Instance { // returned channels are output only
+func (logicHandler *PacketLogicHandler) WaitForInstance(path ...string) <-chan *rbxfile.Instance { // returned channels are output only
 	service := logicHandler.FindService(path[0])
 	if service == nil {
 		return logicHandler.WaitForChild(nil, path...)
@@ -331,7 +307,7 @@ func (logicHandler PacketLogicHandler) WaitForInstance(path ...string) <-chan *r
 	return logicHandler.WaitForChild(service, path[1:]...)
 }
 
-func (logicHandler PacketLogicHandler) MakeEventChan(instance *rbxfile.Instance, name string) (*PacketHandlerConnection, chan *ReplicationEvent) {
+func (logicHandler *PacketLogicHandler) MakeEventChan(instance *rbxfile.Instance, name string) (*PacketHandlerConnection, chan *ReplicationEvent) {
 	newChan := make(chan *ReplicationEvent)
 	connection := logicHandler.eventHandlers.Bind(instance, name, func(evt *ReplicationEvent) {
 		newChan <- evt
@@ -339,7 +315,7 @@ func (logicHandler PacketLogicHandler) MakeEventChan(instance *rbxfile.Instance,
 	return connection, newChan
 }
 
-func (logicHandler PacketLogicHandler) SendEvent(instance *rbxfile.Instance, name string, arguments ...rbxfile.Value) error {
+func (logicHandler *PacketLogicHandler) SendEvent(instance *rbxfile.Instance, name string, arguments ...rbxfile.Value) error {
 	return logicHandler.WriteDataPackets(
 		&Packet83_07{
 			Instance:  instance,
@@ -349,7 +325,7 @@ func (logicHandler PacketLogicHandler) SendEvent(instance *rbxfile.Instance, nam
 	)
 }
 
-func (logicHandler PacketLogicHandler) MakeChildChan(instance *rbxfile.Instance) chan *rbxfile.Instance {
+func (logicHandler *PacketLogicHandler) MakeChildChan(instance *rbxfile.Instance) chan *rbxfile.Instance {
 	newChan := make(chan *rbxfile.Instance)
 
 	go func() { // we don't want this to block
@@ -382,7 +358,7 @@ func (channel *GroupDeleteChan) AddInstances(instances ...*rbxfile.Instance) {
 func (channel *GroupDeleteChan) Destroy() {
 	channel.binding.Disconnect()
 }
-func (logicHandler PacketLogicHandler) MakeGroupDeleteChan(instances []*rbxfile.Instance) *GroupDeleteChan {
+func (logicHandler *PacketLogicHandler) MakeGroupDeleteChan(instances []*rbxfile.Instance) *GroupDeleteChan {
 	channel := &GroupDeleteChan{
 		C:         make(chan *rbxfile.Instance),
 		referents: make([]Referent, len(instances)),

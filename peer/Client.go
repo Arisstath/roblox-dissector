@@ -58,12 +58,12 @@ type SecurityHandler interface {
 	UserAgent() string
 }
 type SecuritySettings struct {
-	rakPassword         []byte
-	goldenHash          uint32
-	securityKey         string
-	dataModelHash       string
-	osPlatform          string
-	userAgent           string
+	rakPassword   []byte
+	goldenHash    uint32
+	securityKey   string
+	dataModelHash string
+	osPlatform    string
+	userAgent     string
 }
 type Windows10SecuritySettings struct {
 	SecuritySettings
@@ -96,7 +96,7 @@ type CustomClient struct {
 	instanceIndex uint32
 	scope         string
 
-	Logger     *log.Logger
+	Logger *log.Logger
 
 	LocalPlayer *rbxfile.Instance
 
@@ -346,7 +346,7 @@ func (settings *SecuritySettings) OsPlatform() string {
 }
 
 // Automatically fills in any needed hashes/key for Windows 10 clients
-func Win10Settings() (*Windows10SecuritySettings) {
+func Win10Settings() *Windows10SecuritySettings {
 	settings := &Windows10SecuritySettings{}
 	settings.userAgent = "Roblox/WinINet"
 	settings.osPlatform = "Windows_Universal"
@@ -391,7 +391,7 @@ func (settings *AndroidSecuritySettings) PatchTicketPacket(packet *Packet8ALayer
 }
 
 // Automatically fills in any needed hashes/key for Android clients
-func AndroidSettings() (*AndroidSecuritySettings) {
+func AndroidSettings() *AndroidSecuritySettings {
 	settings := &AndroidSecuritySettings{}
 	settings.osPlatform = "Android"
 	settings.userAgent = "Mozilla/5.0 (512MB; 576x480; 300x300; 300x300; Samsung Galaxy S8; 6.0.1 Marshmallow) AppleWebKit/537.36 (KHTML, like Gecko) Roblox Android App 0.334.0.195932 Phone Hybrid()"
@@ -431,6 +431,29 @@ func (myClient *CustomClient) dial() {
 		}
 		myClient.Logger.Println("dial failed after 5 attempts")
 	}()
+}
+
+func (myClient *CustomClient) mainReadLoop() error {
+	buf := make([]byte, 1492)
+	for {
+		n, _, err := myClient.Connection.ReadFromUDP(buf)
+		if err != nil {
+			myClient.Logger.Println("fatal read err:", err.Error(), "read", n, "bytes")
+			return err // a read error may be a sign that the connection was closed
+			// hence we can't run this loop anymore; we would get infinitely many errors
+		}
+
+		myClient.ReadPacket(buf[:n])
+	}
+}
+
+func (myClient *CustomClient) createWriter() {
+	myClient.OutputHandler = func(payload []byte) {
+		num, err := myClient.Connection.Write(payload)
+		if err != nil {
+			fmt.Printf("Wrote %d bytes, err: %s\n", num, err.Error())
+		}
+	}
 }
 
 func (myClient *CustomClient) rakConnect() error {
