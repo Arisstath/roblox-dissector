@@ -855,14 +855,18 @@ func GUIMain() {
 		})*/
 	startSelfClient.ConnectTriggered(func(checked bool) {
 		customClient := peer.NewCustomClient()
-		NewClientStartWidget(window, customClient, func(placeId uint32, isGuest bool, ticket string) {
+		NewClientStartWidget(window, customClient, func(placeId uint32, username string, password string) {
 			NewClientConsole(window, customClient)
 			customClient.SecuritySettings = peer.Win10Settings()
-			if isGuest {
-				go customClient.ConnectGuest(placeId, 2)
-			} else {
-				go customClient.ConnectWithAuthTicket(placeId, ticket)
-			}
+			// No more guests! Roblox won't let us connect as one.
+			go func() {
+				ticket, err := GetAuthTicket(username, password)
+				if err != nil {
+					widgets.QMessageBox_Critical(window, "Failed to start client", "While getting authticket: " + err.Error(), widgets.QMessageBox__Ok, widgets.QMessageBox__NoButton)
+				} else {
+					customClient.ConnectWithAuthTicket(placeId, ticket)
+				}
+			}()
 		})
 	})
 
