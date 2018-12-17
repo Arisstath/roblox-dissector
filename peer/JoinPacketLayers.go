@@ -214,7 +214,6 @@ func (layer *Packet07Layer) Serialize(writer PacketWriter, stream *extendedWrite
 
 func (thisBitstream *extendedReader) DecodePacket08Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket08Layer()
-	
 
 	var err error
 	err = thisBitstream.bytes(voidOfflineMessage, 0x10)
@@ -265,7 +264,6 @@ func (layer *Packet08Layer) Serialize(writer PacketWriter, stream *extendedWrite
 
 func (thisBitstream *extendedReader) DecodePacket09Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket09Layer()
-	
 
 	var err error
 	layer.GUID, err = thisBitstream.readUint64BE()
@@ -282,6 +280,7 @@ func (thisBitstream *extendedReader) DecodePacket09Layer(reader PacketReader, la
 	}
 	layer.Password, err = thisBitstream.readString(2)
 	if layer.Password[0] == 0x5E && layer.Password[1] == 0x11 {
+		layers.Root.Logger.Println("Detected Studio!")
 		reader.Context().IsStudio = true
 	}
 	return layer, err
@@ -309,7 +308,6 @@ func (layer *Packet09Layer) Serialize(writer PacketWriter, stream *extendedWrite
 
 func (thisBitstream *extendedReader) DecodePacket10Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket10Layer()
-	
 
 	var err error
 	layer.IPAddress, err = thisBitstream.readAddress()
@@ -367,7 +365,6 @@ func (layer *Packet10Layer) Serialize(writer PacketWriter, stream *extendedWrite
 
 func (thisBitstream *extendedReader) DecodePacket13Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket13Layer()
-	
 
 	var err error
 	layer.IPAddress, err = thisBitstream.readAddress()

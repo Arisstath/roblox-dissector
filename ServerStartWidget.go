@@ -1,6 +1,19 @@
 package main
 
-import "github.com/therecipe/qt/widgets"
+import (
+	"github.com/Gskartwii/roblox-dissector/peer"
+	"github.com/gskartwii/rbxfile"
+	"github.com/therecipe/qt/widgets"
+)
+
+// normalizeReferences changes the references of instances to a normalized form
+// peer expects all instances to be of the form scope_id
+func normalizeReferences(children []*rbxfile.Instance, dictionary *peer.InstanceDictionary) {
+	for _, instance := range children {
+		instance.Reference = dictionary.NewReference()
+		normalizeReferences(instance.Children, dictionary)
+	}
+}
 
 func NewServerStartWidget(parent widgets.QWidget_ITF, settings *ServerSettings, callback func(*ServerSettings)) {
 	window := widgets.NewQWidget(parent, 1)

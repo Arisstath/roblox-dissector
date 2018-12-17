@@ -1,10 +1,13 @@
 package peer
 
-import "errors"
-import "github.com/gskartwii/rbxfile"
-import "bytes"
-import "github.com/gskartwii/go-bitstream"
-import "github.com/DataDog/zstd"
+import (
+	"bytes"
+	"errors"
+
+	"github.com/DataDog/zstd"
+	bitstream "github.com/gskartwii/go-bitstream"
+	"github.com/gskartwii/rbxfile"
+)
 
 // ID_JOINDATA
 type Packet83_0B struct {
@@ -109,5 +112,5 @@ func (Packet83_0B) Type() uint8 {
 	return 0xB
 }
 func (Packet83_0B) TypeString() string {
-	return "ID_REPLIC_JOI_NDATA"
+	return "ID_REPLIC_JOIN_DATA"
 }

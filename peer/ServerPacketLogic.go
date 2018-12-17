@@ -1,7 +1,12 @@
 package peer
 
-import "net"
-import "time"
+import (
+	"net"
+	"sync"
+	"time"
+
+	"github.com/gskartwii/rbxfile"
+)
 
 func (client *ServerClient) simple5Handler(packetType byte, layers *PacketLayers) {
 	println("Received connection!", client.Address.String())
@@ -88,12 +93,24 @@ func (client *ServerClient) authHandler(packetType byte, layers *PacketLayers) {
 		FilteringEnabled:     true,
 		AllowThirdPartySales: false,
 		CharacterAutoSpawn:   true,
-		ReferentString:       client.Server.Scope,
+		ReferentString:       client.Server.InstanceDictionary.Scope,
 		// TODO: VM ints
 		Int1:  1,
 		Int2:  1,
 		Items: topReplicationItems,
 	})
+
+	partTest := &rbxfile.Instance{
+		ClassName: "NumberValue",
+		Properties: map[string]rbxfile.Value{
+			"Value": rbxfile.ValueDouble(3.0),
+		},
+		PropertiesMutex: &sync.RWMutex{},
+		Reference:       client.Server.InstanceDictionary.NewReference(),
+	}
+	client.FindService("Workspace").AddChild(partTest)
+
+	client.WriteDataPackets(&Packet83_02{partTest})
 }
 
 func (client *ServerClient) bindDefaultHandlers() {

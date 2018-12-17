@@ -141,19 +141,19 @@ func (layer *Packet81Layer) Serialize(writer PacketWriter, stream *extendedWrite
 		return err
 	}
 
-	err = stream.writeBool(layer.StreamJob)
+	err = stream.writeBoolByte(layer.StreamJob)
 	if err != nil {
 		return err
 	}
-	err = stream.writeBool(layer.FilteringEnabled)
+	err = stream.writeBoolByte(layer.FilteringEnabled)
 	if err != nil {
 		return err
 	}
-	err = stream.writeBool(layer.AllowThirdPartySales)
+	err = stream.writeBoolByte(layer.AllowThirdPartySales)
 	if err != nil {
 		return err
 	}
-	err = stream.writeBool(layer.CharacterAutoSpawn)
+	err = stream.writeBoolByte(layer.CharacterAutoSpawn)
 	if err != nil {
 		return err
 	}
@@ -167,7 +167,16 @@ func (layer *Packet81Layer) Serialize(writer PacketWriter, stream *extendedWrite
 		return err
 	}
 
-	// FIXME: assumes Studio
+	if !writer.Context().IsStudio {
+		err = stream.writeUint32BE(layer.Int1)
+		if err != nil {
+			return err
+		}
+		err = stream.writeUint32BE(layer.Int2)
+		if err != nil {
+			return err
+		}
+	}
 
 	err = stream.writeUintUTF8(uint32(len(layer.Items)))
 	for _, item := range layer.Items {
@@ -179,11 +188,11 @@ func (layer *Packet81Layer) Serialize(writer PacketWriter, stream *extendedWrite
 		if err != nil {
 			return err
 		}
-		err = stream.writeBool(item.Bool1)
+		err = stream.writeBoolByte(item.Bool1)
 		if err != nil {
 			return err
 		}
-		err = stream.writeBool(item.Bool2)
+		err = stream.writeBoolByte(item.Bool2)
 		if err != nil {
 			return err
 		}

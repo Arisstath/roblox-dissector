@@ -848,12 +848,12 @@ func GUIMain() {
 				println("while reading instances:", err.Error())
 				return
 			}
-
 			server, err := peer.NewCustomServer(uint16(port), &schema, dataModelRoot)
 			if err != nil {
 				println("while creating server", err.Error())
 				return
 			}
+			normalizeReferences(dataModelRoot.Instances, server.InstanceDictionary)
 
 			go server.Start()
 		})
@@ -867,7 +867,7 @@ func GUIMain() {
 			go func() {
 				ticket, err := GetAuthTicket(username, password)
 				if err != nil {
-					widgets.QMessageBox_Critical(window, "Failed to start client", "While getting authticket: " + err.Error(), widgets.QMessageBox__Ok, widgets.QMessageBox__NoButton)
+					widgets.QMessageBox_Critical(window, "Failed to start client", "While getting authticket: "+err.Error(), widgets.QMessageBox__Ok, widgets.QMessageBox__NoButton)
 				} else {
 					customClient.ConnectWithAuthTicket(placeId, ticket)
 				}

@@ -124,6 +124,9 @@ type Caches struct {
 	ProtectedString ByteSliceCache
 }
 
+// TODO: Remove CommunicationContext, or at least
+// make it so that it's only used for PCAP captures
+// where the server and client must be stored somewhere
 type CommunicationContext struct {
 	Server *net.UDPAddr
 	Client *net.UDPAddr

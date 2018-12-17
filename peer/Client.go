@@ -7,7 +7,7 @@ import "net/http"
 import "encoding/json"
 import "math/rand"
 import "errors"
-import "encoding/hex"
+
 import "log"
 import "github.com/gskartwii/rbxfile"
 import "math/bits"
@@ -91,16 +91,11 @@ type CustomClient struct {
 	IsPartyLeader         bool
 	AccountAge            int
 
-	SecuritySettings SecurityHandler
-
-	instanceIndex uint32
-	scope         string
-
-	Logger *log.Logger
-
-	LocalPlayer *rbxfile.Instance
-
-	timestamp2Index uint64
+	SecuritySettings   SecurityHandler
+	Logger             *log.Logger
+	LocalPlayer        *rbxfile.Instance
+	timestamp2Index    uint64
+	InstanceDictionary *InstanceDictionary
 }
 
 func (myClient *CustomClient) ReadPacket(buf []byte) {
@@ -118,20 +113,14 @@ func NewCustomClient() *CustomClient {
 	rand.Seed(time.Now().UnixNano())
 	context := NewCommunicationContext()
 
-	scope := make([]byte, 0x10)
-	n, err := rand.Read(scope)
-	if n < 0x10 && err != nil {
-		panic(err)
-	}
-
-	return &CustomClient{
-		httpClient:    &http.Client{},
-		GUID:          rand.Uint64(),
-		instanceIndex: 1000,
-		scope:         "RBX" + hex.EncodeToString(scope),
+	client := &CustomClient{
+		httpClient: &http.Client{},
+		GUID:       rand.Uint64(),
 
 		PacketLogicHandler: newPacketLogicHandler(context),
+		InstanceDictionary: NewInstanceDictionary(),
 	}
+	return client
 }
 
 func (myClient *CustomClient) GetLocalPlayer() *rbxfile.Instance { // may yield! do not call from main thread

@@ -5,9 +5,8 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"errors"
-	"io"
 
-	"github.com/gskartwii/go-bitstream"
+	bitstream "github.com/gskartwii/go-bitstream"
 )
 
 func shuffleSlice(src []byte) []byte {
@@ -37,7 +36,7 @@ func calculateChecksum(data []byte) uint32 {
 type Packet8ALayer struct {
 	PlayerId      int64
 	ClientTicket  string
-	TicketHash uint32
+	TicketHash    uint32
 	DataModelHash string
 	// Always 36?
 	ProtocolVersion   uint32
@@ -136,23 +135,23 @@ func (stream *extendedReader) DecodePacket8ALayer(reader PacketReader, layers *P
 	}
 	layers.Root.Logger.Println("platform", layer.Platform)
 	layer.RobloxProductName, err = thisBitstream.readVarLengthString()
-	if err == io.EOF {
-		return layer, nil
-	} else if err != nil {
+	if err != nil {
 		return layer, err
 	}
 	layers.Root.Logger.Println("prodname", layer.RobloxProductName)
-	hash, err := thisBitstream.readUintUTF8()
-	if err != nil {
-		return layer, err
+	if !reader.Context().IsStudio {
+		hash, err := thisBitstream.readUintUTF8()
+		if err != nil {
+			return layer, err
+		}
+		layer.TicketHash = hash
+		layers.Root.Logger.Println("hash", layer.TicketHash)
+		hash2, err := thisBitstream.readUintUTF8()
+		if err != nil {
+			return layer, err
+		}
+		layers.Root.Logger.Println("hash2", hash2)
 	}
-	layer.TicketHash = hash
-	layers.Root.Logger.Println("hash", layer.TicketHash)
-	hash2, err := thisBitstream.readUintUTF8()
-	if err != nil {
-		return layer, err
-	}
-	layers.Root.Logger.Println("hash2", hash2)
 
 	layer.SessionId, err = thisBitstream.readVarLengthString()
 	if err != nil {
@@ -205,13 +204,15 @@ func (layer *Packet8ALayer) Serialize(writer PacketWriter, stream *extendedWrite
 	if err != nil {
 		return err
 	}
-	err = rawStream.writeVarint64(uint64(layer.TicketHash))
-	if err != nil {
-		return err
-	}
-	err = rawStream.writeVarint64(uint64(layer.TicketHash-0xbadf00d))
-	if err != nil {
-		return err
+	if !writer.Context().IsStudio {
+		err = rawStream.writeVarint64(uint64(layer.TicketHash))
+		if err != nil {
+			return err
+		}
+		err = rawStream.writeVarint64(uint64(layer.TicketHash - 0xbadf00d))
+		if err != nil {
+			return err
+		}
 	}
 	err = rawStream.writeVarLengthString(layer.SessionId)
 	if err != nil {

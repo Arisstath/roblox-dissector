@@ -2,10 +2,10 @@ package peer
 
 import (
 	"bytes"
-	"compress/gzip"
 	"errors"
 
-	"github.com/gskartwii/go-bitstream"
+	"github.com/DataDog/zstd"
+	bitstream "github.com/gskartwii/go-bitstream"
 )
 
 const (
@@ -175,7 +175,6 @@ func NewPacket97Layer() *Packet97Layer {
 
 func (thisBitstream *extendedReader) DecodePacket97Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket97Layer()
-	
 
 	var err error
 	stream, err := thisBitstream.RegionToZStdStream()
@@ -373,97 +372,99 @@ func (layer *Packet97Layer) Serialize(writer PacketWriter, stream *extendedWrite
 	if err != nil {
 		return err
 	}
-	gzipBuf := bytes.NewBuffer([]byte{})
-	middleStream := gzip.NewWriter(gzipBuf)
+	// TODO: General NewZStdBuf() method?
+	uncompressedBuf := bytes.NewBuffer([]byte{})
+	zstdBuf := bytes.NewBuffer([]byte{})
+	middleStream := zstd.NewWriter(zstdBuf)
 	defer middleStream.Close()
-	gzipStream := &extendedWriter{bitstream.NewWriter(middleStream)}
+	zstdStream := &extendedWriter{bitstream.NewWriter(uncompressedBuf)}
 
 	schema := layer.Schema
-	err = gzipStream.writeUintUTF8(uint32(len(schema.Enums)))
+	err = zstdStream.writeUintUTF8(uint32(len(schema.Enums)))
 	if err != nil {
 		return err
 	}
 	for _, enum := range schema.Enums {
-		err = gzipStream.writeUintUTF8(uint32(len(enum.Name)))
-		err = gzipStream.writeASCII(enum.Name)
-		err = gzipStream.WriteByte(enum.BitSize)
+		err = zstdStream.writeUintUTF8(uint32(len(enum.Name)))
+		err = zstdStream.writeASCII(enum.Name)
+		err = zstdStream.WriteByte(enum.BitSize)
 	}
 
-	err = gzipStream.writeUintUTF8(uint32(len(schema.Instances)))
+	err = zstdStream.writeUintUTF8(uint32(len(schema.Instances)))
 	if err != nil {
 		return err
 	}
-	err = gzipStream.writeUintUTF8(uint32(len(schema.Properties)))
+	err = zstdStream.writeUintUTF8(uint32(len(schema.Properties)))
 	if err != nil {
 		return err
 	}
-	err = gzipStream.writeUintUTF8(uint32(len(schema.Events)))
+	err = zstdStream.writeUintUTF8(uint32(len(schema.Events)))
 	if err != nil {
 		return err
 	}
 	for _, instance := range schema.Instances {
-		err = gzipStream.writeUintUTF8(uint32(len(instance.Name)))
+		err = zstdStream.writeUintUTF8(uint32(len(instance.Name)))
 		if err != nil {
 			return err
 		}
-		err = gzipStream.writeASCII(instance.Name)
+		err = zstdStream.writeASCII(instance.Name)
 		if err != nil {
 			return err
 		}
-		err = gzipStream.writeUintUTF8(uint32(len(instance.Properties)))
+		err = zstdStream.writeUintUTF8(uint32(len(instance.Properties)))
 		if err != nil {
 			return err
 		}
 
 		for _, property := range instance.Properties {
-			err = gzipStream.writeUintUTF8(uint32(len(property.Name)))
+			err = zstdStream.writeUintUTF8(uint32(len(property.Name)))
 			if err != nil {
 				return err
 			}
-			err = gzipStream.writeASCII(property.Name)
+			err = zstdStream.writeASCII(property.Name)
 			if err != nil {
 				return err
 			}
-			err = gzipStream.WriteByte(property.Type)
+			err = zstdStream.WriteByte(property.Type)
 			if err != nil {
 				return err
 			}
 			if property.Type == 7 {
-				err = gzipStream.writeUint16BE(property.EnumID)
+				err = zstdStream.writeUint16BE(property.EnumID)
 				if err != nil {
 					return err
 				}
 			}
 		}
 
-		err = gzipStream.writeUint16BE(instance.Unknown)
+		err = zstdStream.writeUint16BE(instance.Unknown)
 		if err != nil {
 			return err
 		}
-		err = gzipStream.writeUintUTF8(uint32(len(instance.Events)))
+		err = zstdStream.writeUintUTF8(uint32(len(instance.Events)))
 		if err != nil {
 			return err
 		}
 		for _, event := range instance.Events {
-			err = gzipStream.writeUintUTF8(uint32(len(event.Name)))
+			err = zstdStream.writeUintUTF8(uint32(len(event.Name)))
 			if err != nil {
 				return err
 			}
-			err = gzipStream.writeASCII(event.Name)
+			err = zstdStream.writeASCII(event.Name)
 			if err != nil {
 				return err
 			}
 
-			err = gzipStream.writeUintUTF8(uint32(len(event.Arguments)))
+			err = zstdStream.writeUintUTF8(uint32(len(event.Arguments)))
 			if err != nil {
 				return err
 			}
 			for _, argument := range event.Arguments {
-				err = gzipStream.WriteByte(argument.Type)
+				err = zstdStream.WriteByte(argument.Type)
 				if err != nil {
 					return err
 				}
-				err = gzipStream.writeUint16BE(argument.EnumID)
+				err = zstdStream.writeUint16BE(argument.EnumID)
 				if err != nil {
 					return err
 				}
@@ -471,11 +472,11 @@ func (layer *Packet97Layer) Serialize(writer PacketWriter, stream *extendedWrite
 		}
 	}
 
-	err = gzipStream.Flush(bitstream.Zero)
+	err = zstdStream.Flush(bitstream.Zero)
 	if err != nil {
 		return err
 	}
-	err = middleStream.Flush()
+	_, err = middleStream.Write(uncompressedBuf.Bytes())
 	if err != nil {
 		return err
 	}
@@ -483,10 +484,14 @@ func (layer *Packet97Layer) Serialize(writer PacketWriter, stream *extendedWrite
 	if err != nil {
 		return err
 	}
-	err = stream.writeUint32BE(uint32(gzipBuf.Len()))
+	err = stream.writeUint32BE(uint32(zstdBuf.Len()))
 	if err != nil {
 		return err
 	}
-	err = stream.allBytes(gzipBuf.Bytes())
+	err = stream.writeUint32BE(uint32(uncompressedBuf.Len()))
+	if err != nil {
+		return err
+	}
+	err = stream.allBytes(zstdBuf.Bytes())
 	return err
 }

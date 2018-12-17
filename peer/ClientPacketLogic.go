@@ -4,7 +4,6 @@ import (
 	"errors"
 	"math"
 	"net"
-	"strconv"
 	"sync"
 	"time"
 
@@ -186,7 +185,7 @@ func (myClient *CustomClient) handlePlayersService(players *rbxfile.Instance) {
 
 	myPlayer := &rbxfile.Instance{
 		ClassName: "Player",
-		Reference: myClient.scope + "_" + strconv.Itoa(int(myClient.instanceIndex)),
+		Reference: myClient.InstanceDictionary.NewReference(),
 		IsService: false,
 		Properties: map[string]rbxfile.Value{
 			"Name":                  rbxfile.ValueString(myClient.UserName),
@@ -206,7 +205,6 @@ func (myClient *CustomClient) handlePlayersService(players *rbxfile.Instance) {
 		PropertiesMutex: &sync.RWMutex{},
 	}
 	players.AddChild(myPlayer)
-	myClient.instanceIndex++
 	myClient.Context.InstancesByReferent.AddInstance(Referent(myPlayer.Reference), myPlayer)
 
 	err := myClient.WriteDataPackets(

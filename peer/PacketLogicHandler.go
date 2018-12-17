@@ -1,10 +1,13 @@
 package peer
 
-import "github.com/gskartwii/rbxfile"
-import "sync"
-import "net"
-import "fmt"
-import "time"
+import (
+	"fmt"
+	"net"
+	"sync"
+	"time"
+
+	"github.com/gskartwii/rbxfile"
+)
 
 type PacketLogicHandler struct {
 	*ConnectedPeer
