@@ -66,26 +66,29 @@ func (layer *Packet83_0B) Serialize(writer PacketWriter, stream *extendedWriter)
 	uncompressedBuf := bytes.NewBuffer([]byte{})
 	zstdBuf := bytes.NewBuffer([]byte{})
 	middleStream := zstd.NewWriter(zstdBuf)
-	defer middleStream.Close()
 	zstdStream := &extendedWriter{bitstream.NewWriter(uncompressedBuf)}
 
 	for i := 0; i < len(layer.Instances); i++ {
 		err = serializeReplicationInstance(layer.Instances[i], writer, &JoinSerializeWriter{zstdStream})
 		if err != nil {
+			middleStream.Close()
 			return err
 		}
 		err = zstdStream.Align()
 		if err != nil {
+			middleStream.Close()
 			return err
 		}
 	}
 
 	err = zstdStream.Flush(bitstream.Zero)
 	if err != nil {
+		middleStream.Close()
 		return err
 	}
 	_, err = middleStream.Write(uncompressedBuf.Bytes())
 	if err != nil {
+		middleStream.Close()
 		return err
 	}
 	err = middleStream.Close()

@@ -2,10 +2,10 @@ package peer
 
 import (
 	"bytes"
-	"compress/gzip"
 	"errors"
 
-	"github.com/gskartwii/go-bitstream"
+	"github.com/DataDog/zstd"
+	bitstream "github.com/gskartwii/go-bitstream"
 )
 
 const (
@@ -175,7 +175,6 @@ func NewPacket97Layer() *Packet97Layer {
 
 func (thisBitstream *extendedReader) DecodePacket97Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket97Layer()
-	
 
 	var err error
 	stream, err := thisBitstream.RegionToZStdStream()
@@ -373,64 +372,88 @@ func (layer *Packet97Layer) Serialize(writer PacketWriter, stream *extendedWrite
 	if err != nil {
 		return err
 	}
+	// TODO: General NewZStdBuf() method?
+	uncompressedBuf := bytes.NewBuffer([]byte{})
 	gzipBuf := bytes.NewBuffer([]byte{})
-	middleStream := gzip.NewWriter(gzipBuf)
-	defer middleStream.Close()
-	gzipStream := &extendedWriter{bitstream.NewWriter(middleStream)}
+	middleStream := zstd.NewWriter(gzipBuf)
+	gzipStream := &extendedWriter{bitstream.NewWriter(uncompressedBuf)}
 
 	schema := layer.Schema
 	err = gzipStream.writeUintUTF8(uint32(len(schema.Enums)))
 	if err != nil {
+		middleStream.Close()
 		return err
 	}
 	for _, enum := range schema.Enums {
 		err = gzipStream.writeUintUTF8(uint32(len(enum.Name)))
+		if err != nil {
+			middleStream.Close()
+			return err
+		}
 		err = gzipStream.writeASCII(enum.Name)
+		if err != nil {
+			middleStream.Close()
+			return err
+		}
 		err = gzipStream.WriteByte(enum.BitSize)
+		if err != nil {
+			middleStream.Close()
+			return err
+		}
 	}
 
 	err = gzipStream.writeUintUTF8(uint32(len(schema.Instances)))
 	if err != nil {
+		middleStream.Close()
 		return err
 	}
 	err = gzipStream.writeUintUTF8(uint32(len(schema.Properties)))
 	if err != nil {
+		middleStream.Close()
 		return err
 	}
 	err = gzipStream.writeUintUTF8(uint32(len(schema.Events)))
 	if err != nil {
+		middleStream.Close()
 		return err
 	}
 	for _, instance := range schema.Instances {
 		err = gzipStream.writeUintUTF8(uint32(len(instance.Name)))
 		if err != nil {
+			middleStream.Close()
 			return err
 		}
 		err = gzipStream.writeASCII(instance.Name)
 		if err != nil {
+			middleStream.Close()
 			return err
 		}
 		err = gzipStream.writeUintUTF8(uint32(len(instance.Properties)))
 		if err != nil {
+			middleStream.Close()
 			return err
 		}
 
 		for _, property := range instance.Properties {
 			err = gzipStream.writeUintUTF8(uint32(len(property.Name)))
 			if err != nil {
+				middleStream.Close()
 				return err
 			}
 			err = gzipStream.writeASCII(property.Name)
 			if err != nil {
+				middleStream.Close()
 				return err
 			}
 			err = gzipStream.WriteByte(property.Type)
 			if err != nil {
+				middleStream.Close()
 				return err
 			}
 			if property.Type == 7 {
 				err = gzipStream.writeUint16BE(property.EnumID)
 				if err != nil {
+					middleStream.Close()
 					return err
 				}
 			}
@@ -438,33 +461,40 @@ func (layer *Packet97Layer) Serialize(writer PacketWriter, stream *extendedWrite
 
 		err = gzipStream.writeUint16BE(instance.Unknown)
 		if err != nil {
+			middleStream.Close()
 			return err
 		}
 		err = gzipStream.writeUintUTF8(uint32(len(instance.Events)))
 		if err != nil {
+			middleStream.Close()
 			return err
 		}
 		for _, event := range instance.Events {
 			err = gzipStream.writeUintUTF8(uint32(len(event.Name)))
 			if err != nil {
+				middleStream.Close()
 				return err
 			}
 			err = gzipStream.writeASCII(event.Name)
 			if err != nil {
+				middleStream.Close()
 				return err
 			}
 
 			err = gzipStream.writeUintUTF8(uint32(len(event.Arguments)))
 			if err != nil {
+				middleStream.Close()
 				return err
 			}
 			for _, argument := range event.Arguments {
 				err = gzipStream.WriteByte(argument.Type)
 				if err != nil {
+					middleStream.Close()
 					return err
 				}
 				err = gzipStream.writeUint16BE(argument.EnumID)
 				if err != nil {
+					middleStream.Close()
 					return err
 				}
 			}
@@ -473,10 +503,12 @@ func (layer *Packet97Layer) Serialize(writer PacketWriter, stream *extendedWrite
 
 	err = gzipStream.Flush(bitstream.Zero)
 	if err != nil {
+		middleStream.Close()
 		return err
 	}
 	err = middleStream.Flush()
 	if err != nil {
+		middleStream.Close()
 		return err
 	}
 	err = middleStream.Close()
