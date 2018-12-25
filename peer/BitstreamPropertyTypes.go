@@ -274,7 +274,7 @@ func formatBindable(obj rbxfile.ValueReference) string {
 	return obj.String()
 }
 func objectToRef(referent string, referentInt uint32) Referent {
-	if referentInt == 0 {
+	if referent == "NULL" || referent == "null" || referent == "nil" {
 		return "null"
 	}
 	return Referent(fmt.Sprintf("%s_%d", referent, referentInt))
