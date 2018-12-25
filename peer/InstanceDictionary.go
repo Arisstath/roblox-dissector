@@ -19,7 +19,8 @@ func NewInstanceDictionary() *InstanceDictionary {
 	}
 	scopeStr := "RBX" + hex.EncodeToString(scope)
 
-	return &InstanceDictionary{Scope: scopeStr}
+	// We must start at instanceindex 1, because 0 is reserved for NULL
+	return &InstanceDictionary{Scope: scopeStr, InstanceIndex: 1}
 }
 
 func (dictionary *InstanceDictionary) NewReference() string {
