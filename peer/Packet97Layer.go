@@ -506,11 +506,6 @@ func (layer *Packet97Layer) Serialize(writer PacketWriter, stream *extendedWrite
 		middleStream.Close()
 		return err
 	}
-	err = middleStream.Flush()
-	if err != nil {
-		middleStream.Close()
-		return err
-	}
 	err = middleStream.Close()
 	if err != nil {
 		return err
