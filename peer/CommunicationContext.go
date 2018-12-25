@@ -131,10 +131,11 @@ type CommunicationContext struct {
 	Server *net.UDPAddr
 	Client *net.UDPAddr
 
+	// TODO: Move this to reader and writer
 	InstanceTopScope string
 
 	DataModel           *rbxfile.Root
-	InstancesByReferent InstanceList
+	InstancesByReferent *InstanceList
 
 	// TODO: Can we do better?
 	UniqueID uint32
@@ -149,7 +150,7 @@ type CommunicationContext struct {
 
 func NewCommunicationContext() *CommunicationContext {
 	return &CommunicationContext{
-		InstancesByReferent: InstanceList{
+		InstancesByReferent: &InstanceList{
 			Instances: make(map[string]*rbxfile.Instance),
 		},
 		InstanceTopScope: "WARNING_UNASSIGNED_TOP_SCOPE",
