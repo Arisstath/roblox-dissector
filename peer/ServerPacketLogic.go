@@ -8,6 +8,38 @@ import (
 	"github.com/gskartwii/rbxfile"
 )
 
+type JoinDataConfig struct {
+	ClassName           string
+	ReplicateProperties bool
+	ReplicateChildren   bool
+}
+
+var joinDataConfiguration = []JoinDataConfig{
+	JoinDataConfig{"ReplicatedFirst", false, false}, // Replicated separately
+	JoinDataConfig{"Lighting", true, true},
+	JoinDataConfig{"SoundService", true, true},
+	JoinDataConfig{"StarterPack", false, true},
+	JoinDataConfig{"StarterGui", true, true},
+	//JoinDataConfig{"StarterPlayer", true, true},
+	JoinDataConfig{"CSGDictionaryService", false, true},
+	JoinDataConfig{"Workspace", true, true},
+	JoinDataConfig{"JointsService", false, true},
+	JoinDataConfig{"Teams", false, true},
+	JoinDataConfig{"InsertService", true, true},
+	JoinDataConfig{"Chat", true, true},
+	JoinDataConfig{"FriendService", true, true},
+	JoinDataConfig{"MarketplaceService", true, true},
+	JoinDataConfig{"BadgeService", true, false},
+	//JoinDataConfig{"ReplicatedStorage", true, true},
+	JoinDataConfig{"RobloxReplicatedStorage", true, true},
+	JoinDataConfig{"TestService", true, true},
+	JoinDataConfig{"LogService", true, false},
+	JoinDataConfig{"PointsService", true, false},
+	JoinDataConfig{"AdService", true, false},
+	JoinDataConfig{"TeleportService", true, false},
+	JoinDataConfig{"LocalizationService", true, true},
+}
+
 func (client *ServerClient) simple5Handler(packetType byte, layers *PacketLayers) {
 	println("Received connection!", client.Address.String())
 	client.WriteSimple(&Packet06Layer{
@@ -74,9 +106,13 @@ func (client *ServerClient) requestParamsHandler(packetType byte, layers *Packet
 }
 
 func (client *ServerClient) authHandler(packetType byte, layers *PacketLayers) {
-	client.WritePacket(&Packet97Layer{
+	_, err := client.WritePacket(&Packet97Layer{
 		Schema: *client.Context.StaticSchema,
 	})
+	if err != nil {
+		println("schema error: ", err.Error())
+		return
+	}
 
 	topReplicationItems := make([]*Packet81LayerItem, len(client.Context.DataModel.Instances))
 	for i, instance := range client.Context.DataModel.Instances {
@@ -88,7 +124,7 @@ func (client *ServerClient) authHandler(packetType byte, layers *PacketLayers) {
 		}
 	}
 
-	client.WritePacket(&Packet81Layer{
+	_, err = client.WritePacket(&Packet81Layer{
 		StreamJob:            false,
 		FilteringEnabled:     true,
 		AllowThirdPartySales: false,
@@ -99,6 +135,10 @@ func (client *ServerClient) authHandler(packetType byte, layers *PacketLayers) {
 		Int2:  1,
 		Items: topReplicationItems,
 	})
+	if err != nil {
+		println("topreplic error: ", err.Error())
+		return
+	}
 
 	partTest := &rbxfile.Instance{
 		ClassName: "NumberValue",
@@ -110,7 +150,53 @@ func (client *ServerClient) authHandler(packetType byte, layers *PacketLayers) {
 	}
 	client.FindService("Workspace").AddChild(partTest)
 
-	client.WriteDataPackets(&Packet83_02{partTest})
+	err = client.WriteDataPackets(&Packet83_02{partTest})
+	if err != nil {
+		println("parttest error: ", err.Error())
+		return
+	}
+
+	// REPLICATION BEGIN
+	// Do not include ReplicatedFirst itself in replication
+	replicatedFirst := constructInstanceList(nil, client.FindService("ReplicatedFirst"))
+	newInstanceList := make([]Packet83Subpacket, 0, len(replicatedFirst))
+	for _, repFirstInstance := range replicatedFirst {
+		newInstanceList = append(newInstanceList, &Packet83_02{Child: repFirstInstance})
+	}
+	err = client.WriteDataPackets(newInstanceList...)
+	if err != nil {
+		println("replicfirst error: ", err.Error())
+		return
+	}
+	// Tag: ReplicatedFirst finished!
+	err = client.WriteDataPackets(&Packet83_10{
+		TagId: 12,
+	})
+	if err != nil {
+		println("tag error: ", err.Error())
+		return
+	}
+	// For now, we will not limit the size of JoinData
+	// This may become a problem later on with larger places
+	for _, dataConfig := range joinDataConfiguration {
+		service := client.FindService(dataConfig.ClassName)
+		if service != nil {
+			println("Replicating service ", dataConfig.ClassName)
+			err = client.ReplicateJoinData(service, dataConfig.ReplicateProperties, dataConfig.ReplicateChildren)
+			if err != nil {
+				println("replicate join data error: ", err.Error())
+				return
+			}
+		}
+	}
+	err = client.WriteDataPackets(&Packet83_10{
+		TagId: 13,
+	})
+	if err != nil {
+		println("tag error: ", err.Error())
+		return
+	}
+	// REPLICATION END
 }
 
 func (client *ServerClient) bindDefaultHandlers() {

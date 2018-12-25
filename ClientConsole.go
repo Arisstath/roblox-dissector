@@ -37,6 +37,7 @@ func NewClientConsole(parent widgets.QWidget_ITF, client *peer.CustomClient) {
 
 	window.ConnectCloseEvent(func(_ *gui.QCloseEvent) {
 		ticker.Stop()
+		client.Disconnect()
 	})
 
 	labelForChat := NewQLabelF("Message, [to player, channel]:")

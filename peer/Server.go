@@ -63,6 +63,7 @@ func NewServerClient(clientAddr *net.UDPAddr, server *CustomServer, context *Com
 		Server:              server.Address,
 		Client:              clientAddr,
 		StaticSchema:        context.StaticSchema,
+		InstanceTopScope:    context.InstanceTopScope,
 	}
 
 	newClient := &ServerClient{
@@ -87,8 +88,7 @@ func (myServer *CustomServer) Start() error {
 	for {
 		n, client, err := conn.ReadFromUDP(buf)
 		if err != nil {
-			println("Err:", err.Error())
-			continue
+			return err
 		}
 
 		thisClient, ok := myServer.Clients[client.String()]
@@ -99,6 +99,13 @@ func (myServer *CustomServer) Start() error {
 		}
 		thisClient.ReadPacket(buf[:n])
 	}
+}
+
+func (myServer *CustomServer) Stop() {
+	for _, client := range myServer.Clients {
+		client.Disconnect()
+	}
+	myServer.Connection.Close()
 }
 
 func NewCustomServer(port uint16, schema *StaticSchema, dataModel *rbxfile.Root) (*CustomServer, error) {

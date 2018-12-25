@@ -445,6 +445,7 @@ func (myClient *CustomClient) createWriter() {
 	}
 }
 
+// TODO: Implement with contexts
 func (myClient *CustomClient) rakConnect() error {
 	var err error
 	addr := myClient.ServerAddress

@@ -129,22 +129,19 @@ func (logicHandler *PacketLogicHandler) startAcker() {
 	}()
 }
 
-func (logicHandler *PacketLogicHandler) disconnectInternal() error {
+func (logicHandler *PacketLogicHandler) disconnectInternal() {
 	if logicHandler.ackTicker != nil {
 		logicHandler.ackTicker.Stop()
 	}
 	if logicHandler.dataPingTicker != nil {
 		logicHandler.dataPingTicker.Stop()
 	}
-	return logicHandler.Connection.Close()
 }
 
 func (logicHandler *PacketLogicHandler) Disconnect() {
 	logicHandler.WritePacket(&Packet15Layer{
 		Reason: 0xFFFFFFFF,
 	})
-
-	logicHandler.disconnectInternal()
 }
 
 func (logicHandler *PacketLogicHandler) deleteHandler(packetType uint8, layers *PacketLayers, subpacket Packet83Subpacket) {
@@ -382,4 +379,46 @@ func (logicHandler *PacketLogicHandler) MakeGroupDeleteChan(instances []*rbxfile
 	})
 
 	return channel
+}
+
+func constructInstanceList(list []*rbxfile.Instance, instance *rbxfile.Instance) []*rbxfile.Instance {
+	list = append(list, instance.Children...)
+	for _, child := range instance.Children {
+		list = constructInstanceList(list, child)
+	}
+	return list
+}
+
+func (logicHandler *PacketLogicHandler) ReplicateJoinData(rootInstance *rbxfile.Instance, replicateProperties, replicateChildren bool) error {
+	list := []*rbxfile.Instance{}
+	// HACK: Replicating some instances to the client without including properties
+	// may result in an error and a disconnection.
+	// Here's a bad workaround
+	if replicateProperties && len(rootInstance.Properties) != 0 {
+		list = append(list, rootInstance)
+	} else if replicateProperties {
+		switch rootInstance.ClassName {
+		case "AdService",
+			"Workspace",
+			"JointsService",
+			"Players",
+			"StarterGui",
+			"StarterPack":
+			fmt.Printf("Warning: skipping replication of bad instance %s (no properties and no defaults), replicateProperties: %v\n", rootInstance.ClassName, replicateProperties)
+		default:
+			list = append(list, rootInstance)
+		}
+	}
+	var joinDataObject *Packet83_0B
+	if replicateChildren {
+		joinDataObject = &Packet83_0B{
+			Instances: constructInstanceList(list, rootInstance),
+		}
+	} else {
+		joinDataObject = &Packet83_0B{
+			Instances: list,
+		}
+	}
+
+	return logicHandler.WriteDataPackets(joinDataObject)
 }
