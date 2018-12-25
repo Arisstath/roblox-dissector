@@ -229,7 +229,7 @@ func (b *JoinSerializeWriter) writeNewProtectedString(val rbxfile.ValueProtected
 	return b.extendedWriter.writePStringNoCache(rbxfile.ValueString(val))
 }
 func (b *JoinSerializeWriter) writeNewContent(val rbxfile.ValueContent) error {
-	return b.writeUint32AndString(string(val))
+	return b.writeVarLengthString(string(val))
 }
 
 func (b *extendedWriter) writeCFrameSimple(val rbxfile.ValueCFrame) error {
@@ -255,15 +255,7 @@ func (b *extendedWriter) writeCFrame(val rbxfile.ValueCFrame) error {
 		return err
 	}
 
-	quat := rotMatrixToQuaternion(val.Rotation)
-	b.writeFloat16BE(quat[3], -1.0, 1.0)
-	for i := 0; i < 3; i++ {
-		err = b.writeFloat16BE(quat[i], -1.0, 1.0)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	return b.writePhysicsMatrix(val.Rotation)
 }
 
 func (b *extendedWriter) writeSintUTF8(val int32) error {
