@@ -19,13 +19,15 @@ func ShowPacket81(packetType byte, context *peer.CommunicationContext, layers *p
 
 	deletedList := widgets.NewQTreeView(nil)
 	standardModel := NewProperSortModel(nil)
-	standardModel.SetHorizontalHeaderLabels([]string{"Class name", "Referent"})
+	standardModel.SetHorizontalHeaderLabels([]string{"Class name", "Referent", "Replicate properties", "Replicate children"})
 
 	deletedListRootNode := standardModel.InvisibleRootItem()
 	for i := 0; i < len(MainLayer.Items); i++ {
 		classNameItem := NewQStandardItemF("%s", context.StaticSchema.Instances[MainLayer.Items[i].ClassID].Name)
 		referenceItem := NewQStandardItemF("%s", MainLayer.Items[i].Instance.Reference)
-		deletedListRootNode.AppendRow([]*gui.QStandardItem{classNameItem, referenceItem})
+		repPropertiesItem := NewQStandardItemF("%v", MainLayer.Items[i].Bool1)
+		repChildrenItem := NewQStandardItemF("%v", MainLayer.Items[i].Bool2)
+		deletedListRootNode.AppendRow([]*gui.QStandardItem{classNameItem, referenceItem, repPropertiesItem, repChildrenItem})
 	}
 
 	deletedList.SetModel(standardModel)
