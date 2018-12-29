@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/Gskartwii/roblox-dissector/peer"
+	"github.com/gskartwii/roblox-dissector/datamodel"
 	"github.com/robloxapi/rbxfile"
 	"github.com/therecipe/qt/widgets"
 )
@@ -14,13 +15,15 @@ var noLocalDefaults = map[string](map[string]rbxfile.Value){
 		"Name":                  rbxfile.ValueString("StarterGui"),
 		"ResetPlayerGuiOnSpawn": rbxfile.ValueBool(false),
 		"RobloxLocked":          rbxfile.ValueBool(false),
-		"ScreenOrientation":     rbxfile.ValueToken{Value: 0},
-		"ShowDevelopmentGui":    rbxfile.ValueBool(true),
-		"Tags":                  rbxfile.ValueBinaryString(""),
+		// TODO: Set token ID correctly here_
+		"ScreenOrientation":  datamodel.ValueToken{Value: 0},
+		"ShowDevelopmentGui": rbxfile.ValueBool(true),
+		"Tags":               rbxfile.ValueBinaryString(""),
 	},
 	"Workspace": map[string]rbxfile.Value{
-		"Archivable":                 rbxfile.ValueBool(true),
-		"AutoJointsMode":             rbxfile.ValueToken{Value: 0},
+		"Archivable": rbxfile.ValueBool(true),
+		// TODO: Set token ID correctly here_
+		"AutoJointsMode":             datamodel.ValueToken{Value: 0},
 		"CollisionGroups":            rbxfile.ValueString(""),
 		"ExpSolverEnabled_Replicate": rbxfile.ValueBool(true),
 		"ExplicitAutoJoints":         rbxfile.ValueBool(true),
@@ -29,7 +32,7 @@ var noLocalDefaults = map[string](map[string]rbxfile.Value){
 		"Gravity":                    rbxfile.ValueFloat(196.2),
 		"ModelInPrimary":             rbxfile.ValueCFrame{},
 		"Name":                       rbxfile.ValueString("Workspace"),
-		"PrimaryPart":                rbxfile.ValueReference{},
+		"PrimaryPart":                datamodel.ValueReference{Instance: nil, Reference: datamodel.NullReference},
 		"RobloxLocked":               rbxfile.ValueBool(false),
 		"StreamingMinRadius":         rbxfile.ValueInt(0),
 		"StreamingTargetRadius":      rbxfile.ValueInt(0),
@@ -59,26 +62,8 @@ var noLocalDefaults = map[string](map[string]rbxfile.Value){
 	},
 }
 
-// normalizeParents creates a dummy parent object for services
-func normalizeParents(root []*rbxfile.Instance) *rbxfile.Instance {
-	rootInstance := rbxfile.NewInstance("DataModel", nil)
-	for _, instance := range root {
-		rootInstance.AddChild(instance)
-	}
-	return rootInstance
-}
-
-// normalizeReferences changes the references of instances to a normalized form
-// peer expects all instances to be of the form scope_id
-func normalizeReferences(children []*rbxfile.Instance, dictionary *peer.InstanceDictionary) {
-	for _, instance := range children {
-		instance.Reference = dictionary.NewReference()
-		normalizeReferences(instance.Children, dictionary)
-	}
-}
-
 // normalizeTypes changes the types of instances from binary format types to network types
-func normalizeTypes(children []*rbxfile.Instance, schema *peer.StaticSchema) {
+func normalizeTypes(children []*datamodel.Instance, schema *peer.StaticSchema) {
 	for _, instance := range children {
 		defaultValues, ok := noLocalDefaults[instance.ClassName]
 		if ok {
@@ -113,7 +98,7 @@ func normalizeTypes(children []*rbxfile.Instance, schema *peer.StaticSchema) {
 					instance.Properties[name] = rbxfile.ValueContent(prop.(rbxfile.ValueString))
 				}
 			case peer.PROP_TYPE_ENUM:
-				instance.Properties[name] = rbxfile.ValueToken{ID: propSchema.EnumID, Value: prop.(rbxfile.ValueToken).Value}
+				instance.Properties[name] = datamodel.ValueToken{ID: propSchema.EnumID, Value: prop.(rbxfile.ValueToken)}
 			case peer.PROP_TYPE_BINARYSTRING:
 				// This type may be encoded correctly depending on the format
 				if _, ok = prop.(rbxfile.ValueString); ok {

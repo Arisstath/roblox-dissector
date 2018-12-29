@@ -1,6 +1,8 @@
 package datamodel
 
-import "github.com/olebedev/emitter"
+import (
+	"github.com/olebedev/emitter"
+)
 
 type DataModel struct {
 	Instances      []*Instance

@@ -85,3 +85,10 @@ func (l *InstanceList) OnAddInstance(ref Reference, callback func(*Instance)) er
 
 	return nil
 }
+
+func (l *InstanceList) Populate(instances []*Instance) {
+	for _, inst := range instances {
+		l.AddInstance(inst.Ref, inst)
+		l.Populate(inst.Children)
+	}
+}

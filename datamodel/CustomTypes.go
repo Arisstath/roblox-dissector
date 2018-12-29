@@ -14,6 +14,11 @@ type Reference struct {
 	Id     uint32
 }
 
+var NullReference = Reference{
+	IsNull: true,
+	Scope:  "null",
+}
+
 func (ref Reference) String() string {
 	if ref.IsNull {
 		return "null"
