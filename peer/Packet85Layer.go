@@ -1,6 +1,7 @@
 package peer
 
 import (
+	"github.com/gskartwii/roblox-dissector/datamodel"
 	"github.com/robloxapi/rbxfile"
 )
 
@@ -17,13 +18,13 @@ type Packet85LayerSubpacket struct {
 
 // PhysicsData represents generic physics data
 type PhysicsData struct {
-	Instance           *rbxfile.Instance
+	Instance           *datamodel.Instance
 	CFrame             rbxfile.ValueCFrame
 	LinearVelocity     rbxfile.ValueVector3
 	RotationalVelocity rbxfile.ValueVector3
 	Motors             []PhysicsMotor
 	Interval           float32
-	PlatformChild      *rbxfile.Instance
+	PlatformChild      *datamodel.Instance
 }
 
 // Packet85Layer ID_PHYSICS - client <-> server
@@ -63,7 +64,7 @@ func (b *extendedReader) readPhysicsData(data *PhysicsData, motors bool, reader 
 	}
 	referent, err := b.readObject(reader.Caches())
 	if err != CacheReadOOB {
-		reader.Context().InstancesByReferent.OnAddInstance(referent, func(inst *rbxfile.Instance) {
+		reader.Context().InstancesByReferent.OnAddInstance(referent, func(inst *datamodel.Instance) {
 			data.PlatformChild = inst
 		})
 		return nil
@@ -81,14 +82,14 @@ func (thisBitstream *extendedReader) DecodePacket85Layer(reader PacketReader, la
 		if err != nil && err != CacheReadOOB {
 			return layer, err
 		}
-		if referent.IsNull() {
+		if referent.IsNull {
 			break
 		}
 		layers.Root.Logger.Println("reading physics for ref", referent.String())
 		subpacket := &Packet85LayerSubpacket{}
 		// TODO: generic function for this
 		if err != CacheReadOOB {
-			context.InstancesByReferent.OnAddInstance(referent, func(inst *rbxfile.Instance) {
+			context.InstancesByReferent.OnAddInstance(referent, func(inst *datamodel.Instance) {
 				subpacket.Data.Instance = inst
 			})
 		}
@@ -129,12 +130,12 @@ func (thisBitstream *extendedReader) DecodePacket85Layer(reader PacketReader, la
 		}
 
 		if (myFlags>>5)&1 == 0 { // has children
-			var object Referent
-			for object, err = thisBitstream.readObject(reader.Caches()); (err == nil || err == CacheReadOOB) && !object.IsNull(); object, err = thisBitstream.readObject(reader.Caches()) {
+			var object datamodel.Reference
+			for object, err = thisBitstream.readObject(reader.Caches()); (err == nil || err == CacheReadOOB) && !object.IsNull; object, err = thisBitstream.readObject(reader.Caches()) {
 				layers.Root.Logger.Println("reading physics child for ref", object.String())
 				child := new(PhysicsData)
 				if err != CacheReadOOB { // TODO: hack! unordered packets may have problems with caches
-					context.InstancesByReferent.OnAddInstance(object, func(inst *rbxfile.Instance) {
+					context.InstancesByReferent.OnAddInstance(object, func(inst *datamodel.Instance) {
 						child.Instance = inst
 					})
 				}

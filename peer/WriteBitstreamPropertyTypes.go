@@ -1,10 +1,14 @@
 package peer
 
-import "math"
-import "github.com/robloxapi/rbxfile"
-import "errors"
-import "strconv"
-import "net"
+import (
+	"errors"
+	"math"
+	"net"
+	"strconv"
+
+	"github.com/gskartwii/roblox-dissector/datamodel"
+	"github.com/robloxapi/rbxfile"
+)
 
 func (b *extendedWriter) writeUDim(val rbxfile.ValueUDim) error {
 	err := b.writeFloat32BE(val.Scale)
@@ -29,7 +33,7 @@ func (b *extendedWriter) writeRay(val rbxfile.ValueRay) error {
 	return b.writeVector3Simple(val.Direction)
 }
 
-func (b *extendedWriter) writeRegion3(val rbxfile.ValueRegion3) error {
+func (b *extendedWriter) writeRegion3(val datamodel.ValueRegion3) error {
 	err := b.writeVector3Simple(val.Start)
 	if err != nil {
 		return err
@@ -37,7 +41,7 @@ func (b *extendedWriter) writeRegion3(val rbxfile.ValueRegion3) error {
 	return b.writeVector3Simple(val.End)
 }
 
-func (b *extendedWriter) writeRegion3int16(val rbxfile.ValueRegion3int16) error {
+func (b *extendedWriter) writeRegion3int16(val datamodel.ValueRegion3int16) error {
 	err := b.writeVector3int16(val.Start)
 	if err != nil {
 		return err
@@ -290,41 +294,41 @@ func (b *extendedWriter) writeVarsint64(val int64) error {
 }
 
 var typeToNetworkConvTable = map[rbxfile.Type]uint8{
-	rbxfile.TypeString:                 PROP_TYPE_STRING,
-	rbxfile.TypeBinaryString:           PROP_TYPE_BINARYSTRING,
-	rbxfile.TypeProtectedString:        PROP_TYPE_PROTECTEDSTRING_0,
-	rbxfile.TypeContent:                PROP_TYPE_CONTENT,
-	rbxfile.TypeBool:                   PROP_TYPE_PBOOL,
-	rbxfile.TypeInt:                    PROP_TYPE_PSINT,
-	rbxfile.TypeFloat:                  PROP_TYPE_PFLOAT,
-	rbxfile.TypeDouble:                 PROP_TYPE_PDOUBLE,
-	rbxfile.TypeUDim:                   PROP_TYPE_UDIM,
-	rbxfile.TypeUDim2:                  PROP_TYPE_UDIM2,
-	rbxfile.TypeRay:                    PROP_TYPE_RAY,
-	rbxfile.TypeFaces:                  PROP_TYPE_FACES,
-	rbxfile.TypeAxes:                   PROP_TYPE_AXES,
-	rbxfile.TypeBrickColor:             PROP_TYPE_BRICKCOLOR,
-	rbxfile.TypeColor3:                 PROP_TYPE_COLOR3,
-	rbxfile.TypeVector2:                PROP_TYPE_VECTOR2,
-	rbxfile.TypeVector3:                PROP_TYPE_VECTOR3_COMPLICATED,
-	rbxfile.TypeCFrame:                 PROP_TYPE_CFRAME_COMPLICATED,
-	rbxfile.TypeToken:                  PROP_TYPE_ENUM,
-	rbxfile.TypeReference:              PROP_TYPE_INSTANCE,
-	rbxfile.TypeVector3int16:           PROP_TYPE_VECTOR3UINT16,
-	rbxfile.TypeVector2int16:           PROP_TYPE_VECTOR2UINT16,
-	rbxfile.TypeNumberSequence:         PROP_TYPE_NUMBERSEQUENCE,
-	rbxfile.TypeColorSequence:          PROP_TYPE_COLORSEQUENCE,
-	rbxfile.TypeNumberRange:            PROP_TYPE_NUMBERRANGE,
-	rbxfile.TypeRect2D:                 PROP_TYPE_RECT2D,
-	rbxfile.TypePhysicalProperties:     PROP_TYPE_PHYSICALPROPERTIES,
-	rbxfile.TypeColor3uint8:            PROP_TYPE_COLOR3UINT8,
-	rbxfile.TypeNumberSequenceKeypoint: PROP_TYPE_NUMBERSEQUENCEKEYPOINT,
-	rbxfile.TypeColorSequenceKeypoint:  PROP_TYPE_COLORSEQUENCEKEYPOINT,
-	rbxfile.TypeSystemAddress:          PROP_TYPE_SYSTEMADDRESS,
-	rbxfile.TypeMap:                    PROP_TYPE_MAP,
-	rbxfile.TypeDictionary:             PROP_TYPE_DICTIONARY,
-	rbxfile.TypeArray:                  PROP_TYPE_ARRAY,
-	rbxfile.TypeTuple:                  PROP_TYPE_TUPLE,
+	rbxfile.TypeString:                   PROP_TYPE_STRING,
+	rbxfile.TypeBinaryString:             PROP_TYPE_BINARYSTRING,
+	rbxfile.TypeProtectedString:          PROP_TYPE_PROTECTEDSTRING_0,
+	rbxfile.TypeContent:                  PROP_TYPE_CONTENT,
+	rbxfile.TypeBool:                     PROP_TYPE_PBOOL,
+	rbxfile.TypeInt:                      PROP_TYPE_PSINT,
+	rbxfile.TypeFloat:                    PROP_TYPE_PFLOAT,
+	rbxfile.TypeDouble:                   PROP_TYPE_PDOUBLE,
+	rbxfile.TypeUDim:                     PROP_TYPE_UDIM,
+	rbxfile.TypeUDim2:                    PROP_TYPE_UDIM2,
+	rbxfile.TypeRay:                      PROP_TYPE_RAY,
+	rbxfile.TypeFaces:                    PROP_TYPE_FACES,
+	rbxfile.TypeAxes:                     PROP_TYPE_AXES,
+	rbxfile.TypeBrickColor:               PROP_TYPE_BRICKCOLOR,
+	rbxfile.TypeColor3:                   PROP_TYPE_COLOR3,
+	rbxfile.TypeVector2:                  PROP_TYPE_VECTOR2,
+	rbxfile.TypeVector3:                  PROP_TYPE_VECTOR3_COMPLICATED,
+	rbxfile.TypeCFrame:                   PROP_TYPE_CFRAME_COMPLICATED,
+	rbxfile.TypeToken:                    PROP_TYPE_ENUM,
+	rbxfile.TypeReference:                PROP_TYPE_INSTANCE,
+	rbxfile.TypeVector3int16:             PROP_TYPE_VECTOR3UINT16,
+	rbxfile.TypeVector2int16:             PROP_TYPE_VECTOR2UINT16,
+	datamodel.TypeNumberSequence:         PROP_TYPE_NUMBERSEQUENCE,
+	datamodel.TypeColorSequence:          PROP_TYPE_COLORSEQUENCE,
+	rbxfile.TypeNumberRange:              PROP_TYPE_NUMBERRANGE,
+	rbxfile.TypeRect2D:                   PROP_TYPE_RECT2D,
+	rbxfile.TypePhysicalProperties:       PROP_TYPE_PHYSICALPROPERTIES,
+	rbxfile.TypeColor3uint8:              PROP_TYPE_COLOR3UINT8,
+	datamodel.TypeNumberSequenceKeypoint: PROP_TYPE_NUMBERSEQUENCEKEYPOINT,
+	datamodel.TypeColorSequenceKeypoint:  PROP_TYPE_COLORSEQUENCEKEYPOINT,
+	datamodel.TypeSystemAddress:          PROP_TYPE_SYSTEMADDRESS,
+	datamodel.TypeMap:                    PROP_TYPE_MAP,
+	datamodel.TypeDictionary:             PROP_TYPE_DICTIONARY,
+	datamodel.TypeArray:                  PROP_TYPE_ARRAY,
+	datamodel.TypeTuple:                  PROP_TYPE_TUPLE,
 }
 
 func typeToNetwork(val rbxfile.Value) uint8 {
@@ -340,7 +344,7 @@ func (b *extendedWriter) writeSerializedValueGeneric(val rbxfile.Value, valueTyp
 	var err error
 	switch valueType {
 	case PROP_TYPE_ENUM:
-		err = b.writeNewEnumValue(val.(rbxfile.ValueToken))
+		err = b.writeNewEnumValue(val.(datamodel.ValueToken))
 	case PROP_TYPE_BINARYSTRING:
 		err = b.writeNewBinaryString(val.(rbxfile.ValueBinaryString))
 	case PROP_TYPE_PBOOL:
@@ -382,15 +386,15 @@ func (b *extendedWriter) writeSerializedValueGeneric(val rbxfile.Value, valueTyp
 	case PROP_TYPE_CFRAME_COMPLICATED:
 		err = b.writeCFrame(val.(rbxfile.ValueCFrame))
 	case PROP_TYPE_NUMBERSEQUENCE:
-		err = b.writeNumberSequence(val.(rbxfile.ValueNumberSequence))
+		err = b.writeNumberSequence(val.(datamodel.ValueNumberSequence))
 	case PROP_TYPE_NUMBERSEQUENCEKEYPOINT:
-		err = b.writeNumberSequenceKeypoint(val.(rbxfile.ValueNumberSequenceKeypoint))
+		err = b.writeNumberSequenceKeypoint(val.(datamodel.ValueNumberSequenceKeypoint))
 	case PROP_TYPE_NUMBERRANGE:
 		err = b.writeNumberRange(val.(rbxfile.ValueNumberRange))
 	case PROP_TYPE_COLORSEQUENCE:
-		err = b.writeColorSequence(val.(rbxfile.ValueColorSequence))
+		err = b.writeColorSequence(val.(datamodel.ValueColorSequence))
 	case PROP_TYPE_COLORSEQUENCEKEYPOINT:
-		err = b.writeColorSequenceKeypoint(val.(rbxfile.ValueColorSequenceKeypoint))
+		err = b.writeColorSequenceKeypoint(val.(datamodel.ValueColorSequenceKeypoint))
 	case PROP_TYPE_RECT2D:
 		err = b.writeRect2D(val.(rbxfile.ValueRect2D))
 	case PROP_TYPE_PHYSICALPROPERTIES:
@@ -408,10 +412,9 @@ func (b *extendedWriter) writeSerializedValueGeneric(val rbxfile.Value, valueTyp
 func (b *extendedWriter) writeNewTypeAndValue(val rbxfile.Value, writer PacketWriter) error {
 	var err error
 	valueType := typeToNetwork(val)
-	//println("Writing typeandvalue", valueType)
 	err = b.WriteByte(uint8(valueType))
 	if valueType == 7 {
-		err = b.writeUint16BE(val.(rbxfile.ValueToken).ID)
+		err = b.writeUint16BE(val.(datamodel.ValueToken).ID)
 		if err != nil {
 			return err
 		}
@@ -461,7 +464,7 @@ func (b *extendedWriter) writeNewMap(val datamodel.ValueMap, writer PacketWriter
 	return b.writeNewDictionary(datamodel.ValueDictionary(val), writer)
 }
 
-func (b *extendedWriter) writeNumberSequenceKeypoint(val rbxfile.ValueNumberSequenceKeypoint) error {
+func (b *extendedWriter) writeNumberSequenceKeypoint(val datamodel.ValueNumberSequenceKeypoint) error {
 	err := b.writeFloat32BE(val.Time)
 	if err != nil {
 		return err
@@ -473,7 +476,7 @@ func (b *extendedWriter) writeNumberSequenceKeypoint(val rbxfile.ValueNumberSequ
 	err = b.writeFloat32BE(val.Envelope)
 	return err
 }
-func (b *extendedWriter) writeNumberSequence(val rbxfile.ValueNumberSequence) error {
+func (b *extendedWriter) writeNumberSequence(val datamodel.ValueNumberSequence) error {
 	err := b.writeUint32BE(uint32(len(val)))
 	if err != nil {
 		return err
@@ -494,7 +497,7 @@ func (b *extendedWriter) writeNumberRange(val rbxfile.ValueNumberRange) error {
 	return b.writeFloat32BE(val.Max)
 }
 
-func (b *extendedWriter) writeColorSequenceKeypoint(val rbxfile.ValueColorSequenceKeypoint) error {
+func (b *extendedWriter) writeColorSequenceKeypoint(val datamodel.ValueColorSequenceKeypoint) error {
 	err := b.writeFloat32BE(val.Time)
 	if err != nil {
 		return err
@@ -505,7 +508,7 @@ func (b *extendedWriter) writeColorSequenceKeypoint(val rbxfile.ValueColorSequen
 	}
 	return b.writeFloat32BE(val.Envelope)
 }
-func (b *extendedWriter) writeColorSequence(val rbxfile.ValueColorSequence) error {
+func (b *extendedWriter) writeColorSequence(val datamodel.ValueColorSequence) error {
 	err := b.writeUint32BE(uint32(len(val)))
 	if err != nil {
 		return err
@@ -519,12 +522,13 @@ func (b *extendedWriter) writeColorSequence(val rbxfile.ValueColorSequence) erro
 	return nil
 }
 
-func (b *extendedWriter) writeNewEnumValue(val rbxfile.ValueToken) error {
+func (b *extendedWriter) writeNewEnumValue(val datamodel.ValueToken) error {
 	return b.writeUintUTF8(val.Value)
 }
 
-func (b *extendedWriter) writeSystemAddressRaw(val rbxfile.ValueSystemAddress) error {
-	addr, err := net.UDPAddr(val)
+func (b *extendedWriter) writeSystemAddressRaw(val datamodel.ValueSystemAddress) error {
+	var err error
+	addr := net.UDPAddr(val)
 	if err != nil {
 		return err
 	}

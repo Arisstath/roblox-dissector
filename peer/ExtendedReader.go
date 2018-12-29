@@ -1,15 +1,18 @@
 package peer
 
-import "github.com/gskartwii/go-bitstream"
-import "encoding/binary"
-import "errors"
-import "net"
-import "math"
-import "bytes"
-import "compress/gzip"
-import "io"
-import "fmt"
-import "github.com/DataDog/zstd"
+import (
+	"bytes"
+	"compress/gzip"
+	"encoding/binary"
+	"errors"
+	"fmt"
+	"math"
+	"net"
+
+	"github.com/DataDog/zstd"
+	bitstream "github.com/gskartwii/go-bitstream"
+	"github.com/gskartwii/roblox-dissector/datamodel"
+)
 
 var englishTree *huffmanEncodingTree
 
@@ -544,7 +547,7 @@ func (b *extendedReader) RegionToZStdStream() (*extendedReader, error) {
 	return &extendedReader{bitstream.NewReader(zstdStream)}, nil
 }
 
-func (b *extendedReader) readJoinReferent(context *CommunicationContext) (datamodel.Reference, error) {
+func (b *extendedReader) readJoinObject(context *CommunicationContext) (datamodel.Reference, error) {
 	ref := datamodel.Reference{}
 	stringLen, err := b.readUint8()
 	if err != nil {

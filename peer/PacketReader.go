@@ -167,7 +167,7 @@ func (reader *DefaultPacketReader) readOrdered(layers *PacketLayers) {
 		if err != nil {
 			println("ouch, my packetType", err.Error())
 			subPacket.SplitBuffer.Logger.Println("error:", err.Error())
-			layers.Error = fmt.Errorf("Failed to decode reliablePacket type: %s", packetType, err.Error())
+			layers.Error = fmt.Errorf("Failed to decode reliablePacket type %d: %s", packetType, err.Error())
 		} else {
 			reader.readGeneric(buffer.dataReader, packetType, layers)
 		}

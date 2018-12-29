@@ -47,3 +47,16 @@ func (model *DataModel) WaitForService(name string) <-chan *Instance {
 	}()
 	return servChan
 }
+
+func (model *DataModel) WaitForChild(names ...string) <-chan *Instance {
+	retChan := make(chan *Instance, 1)
+	go func() {
+		instance := <-model.WaitForService(names[0])
+		if len(names) > 0 {
+			retChan <- (<-instance.WaitForChild(names[1:]...))
+		} else {
+			retChan <- instance
+		}
+	}()
+	return retChan
+}

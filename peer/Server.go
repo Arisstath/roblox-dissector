@@ -6,7 +6,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/robloxapi/rbxfile"
+	"github.com/gskartwii/roblox-dissector/datamodel"
 )
 
 // TODO: Perhaps have a multiplexer for datamodel-related handlers?
@@ -24,7 +24,7 @@ type CustomServer struct {
 	Address            *net.UDPAddr
 	GUID               uint64
 	Schema             *StaticSchema
-	InstanceDictionary *InstanceDictionary
+	InstanceDictionary *datamodel.InstanceDictionary
 }
 
 func (client *ServerClient) ReadPacket(buf []byte) {
@@ -111,7 +111,7 @@ func (myServer *CustomServer) Stop() {
 	myServer.Connection.Close()
 }
 
-func NewCustomServer(port uint16, schema *StaticSchema, dataModel *rbxfile.Root) (*CustomServer, error) {
+func NewCustomServer(port uint16, schema *StaticSchema, dataModel *datamodel.DataModel) (*CustomServer, error) {
 	server := &CustomServer{Clients: make(map[string]*ServerClient)}
 
 	var err error
@@ -126,7 +126,7 @@ func NewCustomServer(port uint16, schema *StaticSchema, dataModel *rbxfile.Root)
 	server.Context = NewCommunicationContext()
 	server.Context.DataModel = dataModel
 	server.Context.StaticSchema = schema
-	server.InstanceDictionary = NewInstanceDictionary()
+	server.InstanceDictionary = datamodel.NewInstanceDictionary()
 
 	return server, nil
 }

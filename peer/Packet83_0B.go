@@ -6,13 +6,13 @@ import (
 
 	"github.com/DataDog/zstd"
 	bitstream "github.com/gskartwii/go-bitstream"
-	"github.com/robloxapi/rbxfile"
+	"github.com/gskartwii/roblox-dissector/datamodel"
 )
 
 // ID_JOINDATA
 type Packet83_0B struct {
 	// Instances replicated by the server
-	Instances []*rbxfile.Instance
+	Instances []*datamodel.Instance
 }
 
 func NewPacket83_0BLayer() *Packet83_0B {
@@ -32,7 +32,7 @@ func (thisBitstream *extendedReader) DecodePacket83_0B(reader PacketReader, laye
 		return layer, errors.New("sanity check: array len too long")
 	}
 
-	layer.Instances = make([]*rbxfile.Instance, arrayLen)
+	layer.Instances = make([]*datamodel.Instance, arrayLen)
 	if arrayLen == 0 {
 		return layer, nil
 	}

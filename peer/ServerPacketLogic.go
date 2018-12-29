@@ -2,8 +2,9 @@ package peer
 
 import (
 	"net"
-	"sync"
 	"time"
+
+	"github.com/gskartwii/roblox-dissector/datamodel"
 
 	"github.com/robloxapi/rbxfile"
 )
@@ -140,15 +141,10 @@ func (client *ServerClient) authHandler(packetType byte, layers *PacketLayers) {
 		return
 	}
 
-	partTest := &rbxfile.Instance{
-		ClassName: "NumberValue",
-		Properties: map[string]rbxfile.Value{
-			"Value": rbxfile.ValueDouble(3.0),
-		},
-		PropertiesMutex: &sync.RWMutex{},
-		Reference:       client.Server.InstanceDictionary.NewReference(),
-	}
-	client.FindService("Workspace").AddChild(partTest)
+	partTest := datamodel.NewInstance("NumberValue", nil)
+	partTest.Set("Value", rbxfile.ValueDouble(3.0))
+	partTest.Ref = client.Server.InstanceDictionary.NewReference()
+	client.DataModel.FindService("Workspace").AddChild(partTest)
 
 	err = client.WriteDataPackets(&Packet83_02{partTest})
 	if err != nil {
@@ -158,7 +154,7 @@ func (client *ServerClient) authHandler(packetType byte, layers *PacketLayers) {
 
 	// REPLICATION BEGIN
 	// Do not include ReplicatedFirst itself in replication
-	replicatedFirst := constructInstanceList(nil, client.FindService("ReplicatedFirst"))
+	replicatedFirst := constructInstanceList(nil, client.DataModel.FindService("ReplicatedFirst"))
 	newInstanceList := make([]Packet83Subpacket, 0, len(replicatedFirst))
 	for _, repFirstInstance := range replicatedFirst {
 		newInstanceList = append(newInstanceList, &Packet83_02{Child: repFirstInstance})
@@ -179,7 +175,7 @@ func (client *ServerClient) authHandler(packetType byte, layers *PacketLayers) {
 	// For now, we will not limit the size of JoinData
 	// This may become a problem later on with larger places
 	for _, dataConfig := range joinDataConfiguration {
-		service := client.FindService(dataConfig.ClassName)
+		service := client.DataModel.FindService(dataConfig.ClassName)
 		if service != nil {
 			println("Replicating service ", dataConfig.ClassName)
 			err = client.ReplicateJoinData(service, dataConfig.ReplicateProperties, dataConfig.ReplicateChildren)

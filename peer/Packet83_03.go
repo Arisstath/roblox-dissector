@@ -29,7 +29,7 @@ func (thisBitstream *extendedReader) DecodePacket83_03(reader PacketReader, laye
 	if err != nil {
 		return layer, err
 	}
-	if referent.IsNull() {
+	if referent.IsNull {
 		return layer, errors.New("self is null in repl property")
 	}
 	instance, err := reader.Context().InstancesByReferent.TryGetInstance(referent)
@@ -57,21 +57,22 @@ func (thisBitstream *extendedReader) DecodePacket83_03(reader PacketReader, laye
 
 	context := reader.Context()
 	if int(propertyIDx) == int(len(context.StaticSchema.Properties)) { // explicit Parent property system
-		var referent Referent
+		var referent datamodel.Reference
 		referent, err = thisBitstream.readObject(reader.Caches())
 		parent, err := context.InstancesByReferent.TryGetInstance(referent)
 		if err != nil {
 			return layer, errors.New("parent doesn't exist in repl property")
 		}
 		layers.Root.Logger.Printf("Parent: %s -> %s\n", referent, parent.GetFullName())
-		result := rbxfile.ValueReference{parent}
+		result := datamodel.ValueReference{Instance: parent, Reference: referent}
 		layer.Value = result
 		layer.PropertyName = "Parent"
 
-		if referent.IsNull() { // NULL is a valid referent; think about :Remove()!
-			return layer, instance.SetParent(nil)
+		if referent.IsNull { // NULL is a valid referent; think about :Remove()!
+			instance.SetParent(nil)
+			return layer, nil
 		}
-		err = parent.AddChild(instance)
+		parent.AddChild(instance)
 		return layer, err
 	}
 
@@ -113,7 +114,7 @@ func (layer *Packet83_03) Serialize(writer PacketWriter, stream *extendedWriter)
 			}
 		}
 
-		return stream.writeObject(layer.Value.(rbxfile.ValueReference).Instance, writer.Caches())
+		return stream.writeObject(layer.Value.(datamodel.ValueReference).Instance, writer.Caches())
 	}
 
 	err = stream.writeUint16BE(uint16(context.StaticSchema.PropertiesByName[layer.Instance.ClassName+"."+layer.PropertyName]))

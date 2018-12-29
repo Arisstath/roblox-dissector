@@ -3,16 +3,15 @@ package peer
 import (
 	"errors"
 	"fmt"
-	"sync"
 
-	"github.com/robloxapi/rbxfile"
+	"github.com/gskartwii/roblox-dissector/datamodel"
 )
 
 // Describes a global service from ID_SET_GLOBALS (Packet81Layer)
 type Packet81LayerItem struct {
 	// Class ID, according to ID_NEW_SCHEMA (Packet97Layer)
 	ClassID  uint16
-	Instance *rbxfile.Instance
+	Instance *datamodel.Instance
 	Bool1    bool
 	Bool2    bool
 }
@@ -90,7 +89,7 @@ func (thisBitstream *extendedReader) DecodePacket81Layer(reader PacketReader, la
 	}
 
 	context := reader.Context()
-	context.DataModel = &rbxfile.Root{Instances: make([]*rbxfile.Instance, arrayLen)}
+	context.DataModel = datamodel.New()
 
 	layer.Items = make([]*Packet81LayerItem, arrayLen)
 	for i := 0; i < int(arrayLen); i++ {
@@ -110,14 +109,10 @@ func (thisBitstream *extendedReader) DecodePacket81Layer(reader PacketReader, la
 		}
 
 		className := context.StaticSchema.Instances[thisItem.ClassID].Name
-		thisService := &rbxfile.Instance{
-			ClassName:       className,
-			Reference:       string(referent),
-			Properties:      make(map[string]rbxfile.Value, 0),
-			PropertiesMutex: &sync.RWMutex{},
-			IsService:       true,
-		}
-		context.DataModel.Instances[i] = thisService
+		thisService := datamodel.NewInstance(className, nil)
+		thisService.IsService = true
+		thisService.Ref = referent
+		context.DataModel.AddService(thisService)
 		context.InstancesByReferent.AddInstance(referent, thisService)
 		thisItem.Instance = thisService
 

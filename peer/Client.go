@@ -1,17 +1,20 @@
 package peer
 
-import "time"
-import "net"
-import "fmt"
-import "net/http"
-import "encoding/json"
-import "math/rand"
-import "errors"
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log"
+	"math/bits"
+	"math/rand"
+	"net"
+	"net/http"
+	"time"
 
-import "log"
-import "github.com/robloxapi/rbxfile"
-import "math/bits"
-import "github.com/pierrec/xxHash/xxHash32"
+	"github.com/gskartwii/roblox-dissector/datamodel"
+	"github.com/pierrec/xxHash/xxHash32"
+	"github.com/robloxapi/rbxfile"
+)
 
 var LauncherStatuses = [...]string{
 	"Wait",
@@ -93,9 +96,9 @@ type CustomClient struct {
 
 	SecuritySettings   SecurityHandler
 	Logger             *log.Logger
-	LocalPlayer        *rbxfile.Instance
+	LocalPlayer        *datamodel.Instance
 	timestamp2Index    uint64
-	InstanceDictionary *InstanceDictionary
+	InstanceDictionary *datamodel.InstanceDictionary
 }
 
 func (myClient *CustomClient) ReadPacket(buf []byte) {
@@ -118,13 +121,13 @@ func NewCustomClient() *CustomClient {
 		GUID:       rand.Uint64(),
 
 		PacketLogicHandler: newPacketLogicHandler(context, false),
-		InstanceDictionary: NewInstanceDictionary(),
+		InstanceDictionary: datamodel.NewInstanceDictionary(),
 	}
 	return client
 }
 
-func (myClient *CustomClient) GetLocalPlayer() *rbxfile.Instance { // may yield! do not call from main thread
-	return <-myClient.WaitForInstance("Players", myClient.UserName)
+func (myClient *CustomClient) GetLocalPlayer() *datamodel.Instance { // may yield! do not call from main thread
+	return <-myClient.DataModel.WaitForChild("Players", myClient.UserName)
 }
 
 // call this asynchronously! it will wait a lot
@@ -134,7 +137,8 @@ func (myClient *CustomClient) setupStalk() {
 
 // call this asynchronously! it will wait a lot
 func (myClient *CustomClient) setupChat() error {
-	getInitDataRequest := <-myClient.WaitForInstance("ReplicatedStorage", "DefaultChatSystemChatEvents", "GetInitDataRequest")
+	chatEvents := <-myClient.DataModel.WaitForChild("ReplicatedStorage", "DefaultChatSystemChatEvents")
+	getInitDataRequest := <-chatEvents.WaitForChild("GetInitDataRequest")
 	println("got req")
 
 	_, err := myClient.InvokeRemote(getInitDataRequest, []rbxfile.Value{})
@@ -149,23 +153,33 @@ func (myClient *CustomClient) setupChat() error {
 		"OnClientEvent",
 	)*/
 
-	_, newFilteredMessageChan := myClient.MakeEventChan(
-		<-myClient.WaitForInstance("ReplicatedStorage", "DefaultChatSystemChatEvents", "OnMessageDoneFiltering"),
-		"OnClientEvent",
-	)
+	messageFiltered := <-chatEvents.WaitForChild("OnMessageDoneFiltering")
+	_, newFilteredMessageChan := messageFiltered.MakeEventChan("OnClientEvent", false)
 
-	playerJoinChan := myClient.MakeChildChan(myClient.FindService("Players"))
-	playerLeaveChan := myClient.MakeGroupDeleteChan(myClient.FindService("Players").Children)
+	players := myClient.DataModel.FindService("Players")
 
-	for true {
+	playerJoinEmitter := players.ChildEmitter.On("*")
+	playerLeaveChan := make(chan *datamodel.Instance)
+
+	for {
 		select {
 		case message := <-newFilteredMessageChan:
-			dict := message.Arguments[0].(datamodel.ValueTuple)[0].(datamodel.ValueDictionary)
+			dict := message[0].(datamodel.ValueTuple)[0].(datamodel.ValueDictionary)
 			myClient.Logger.Printf("<%s (%s)> %s\n", dict["FromSpeaker"].(rbxfile.ValueString), dict["MessageType"].(rbxfile.ValueString), dict["Message"].(rbxfile.ValueString))
-		case player := <-playerJoinChan:
+		case joinEvent := <-playerJoinEmitter:
+			player := joinEvent.Args[0].(*datamodel.Instance)
 			myClient.Logger.Printf("SYSTEM: %s has joined the game.\n", player.Name())
-			playerLeaveChan.AddInstances(player)
-		case player := <-playerLeaveChan.C:
+			go func(player *datamodel.Instance) {
+				parentEmitter := player.PropertyEmitter.On("Parent")
+				for newParent := range parentEmitter {
+					if newParent.Args[0].(*datamodel.Instance) == nil {
+						playerLeaveChan <- player
+						player.PropertyEmitter.Off("Parent", parentEmitter)
+						return
+					}
+				}
+			}(player)
+		case player := <-playerLeaveChan:
 			myClient.Logger.Printf("SYSTEM: %s has left the game.\n", player.Name())
 		}
 	}
@@ -177,7 +191,7 @@ func (myClient *CustomClient) SendChat(message string, toPlayer string, channel 
 		channel = "All" // assume default channel
 	}
 
-	remote := <-myClient.WaitForInstance("ReplicatedStorage", "DefaultChatSystemChatEvents", "SayMessageRequest")
+	remote := <-myClient.DataModel.WaitForChild("ReplicatedStorage", "DefaultChatSystemChatEvents", "SayMessageRequest")
 	if toPlayer != "" {
 		message = "/w " + toPlayer + " " + message
 	}

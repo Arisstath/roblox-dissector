@@ -1,8 +1,8 @@
 package peer
 
-import "net"
 import "errors"
 import "github.com/robloxapi/rbxfile"
+import "github.com/gskartwii/roblox-dissector/datamodel"
 
 import "math"
 
@@ -59,9 +59,9 @@ func (b *extendedReader) readRay() (rbxfile.ValueRay, error) {
 	return val, err
 }
 
-func (b *extendedReader) readRegion3() (ValueRegion3, error) {
+func (b *extendedReader) readRegion3() (datamodel.ValueRegion3, error) {
 	var err error
-	val := rbxfile.ValueRegion3{}
+	val := datamodel.ValueRegion3{}
 	val.Start, err = b.readVector3Simple()
 	if err != nil {
 		return val, err
@@ -69,9 +69,9 @@ func (b *extendedReader) readRegion3() (ValueRegion3, error) {
 	val.End, err = b.readVector3Simple()
 	return val, err
 }
-func (b *extendedReader) readRegion3int16() (ValueRegion3int16, error) {
+func (b *extendedReader) readRegion3int16() (datamodel.ValueRegion3int16, error) {
 	var err error
-	val := rbxfile.ValueRegion3int16{}
+	val := datamodel.ValueRegion3int16{}
 	val.Start, err = b.readVector3int16()
 	if err != nil {
 		return val, err
@@ -256,10 +256,9 @@ func (b *extendedReader) readBrickColor() (rbxfile.ValueBrickColor, error) {
 }
 
 func (b *extendedReader) readObject(caches *Caches) (datamodel.Reference, error) {
-	var referentInt uint32
 	referent, err := b.readCachedScope(caches)
 	if err != nil && err != CacheReadOOB { // TODO: hack! physics packets may have problems with caches
-		return "", err
+		return datamodel.Reference{}, err
 	}
 	reference := datamodel.Reference{Scope: referent}
 	if referent != "NULL" {
@@ -417,10 +416,10 @@ func (b *extendedReader) readContent(caches *Caches) (rbxfile.ValueContent, erro
 }
 
 // TODO: Make this function uniform with other cache functions
-func (b *extendedReader) readSystemAddress(caches *Caches) (ValueSystemAddress, error) {
+func (b *extendedReader) readSystemAddress(caches *Caches) (datamodel.ValueSystemAddress, error) {
 	cache := &caches.SystemAddress
 
-	thisAddress := ValueSystemAddress("0.0.0.0:0")
+	thisAddress := datamodel.ValueSystemAddress{}
 	var err error
 	var cacheIndex uint8
 	cacheIndex, err = b.readUint8()
@@ -436,27 +435,25 @@ func (b *extendedReader) readSystemAddress(caches *Caches) (ValueSystemAddress, 
 		if !ok {
 			return thisAddress, nil
 		}
-		return result.(ValueSystemAddress), nil
+		return result.(datamodel.ValueSystemAddress), nil
 	}
-	thisAddr := net.UDPAddr{}
-	thisAddr.IP = make([]byte, 4)
-	err = b.bytes(thisAddr.IP, 4)
+	err = b.bytes(thisAddress.IP, 4)
 	if err != nil {
 		return thisAddress, err
 	}
 	for i := 0; i < 4; i++ {
-		thisAddr.IP[i] = thisAddr.IP[i] ^ 0xFF // bitwise NOT
+		thisAddress.IP[i] = thisAddress.IP[i] ^ 0xFF // bitwise NOT
 	}
 
 	port, err := b.readUint16BE()
-	thisAddr.Port = int(port)
+	thisAddress.Port = int(port)
 	if err != nil {
 		return thisAddress, err
 	}
 
 	cache.Put(thisAddress, cacheIndex-0x80)
 
-	return ValueSystemAddress(thisAddr.String()), nil
+	return datamodel.ValueSystemAddress(thisAddress), nil
 }
 
 func (b *JoinSerializeReader) readSystemAddress() (datamodel.ValueSystemAddress, error) {
@@ -552,9 +549,9 @@ func (b *extendedReader) readNewBinaryString() (rbxfile.ValueBinaryString, error
 }
 
 // TODO: Remove context argument dependency
-func (b *extendedReader) readNewEnumValue(enumID uint16, context *CommunicationContext) (rbxfile.ValueToken, error) {
+func (b *extendedReader) readNewEnumValue(enumID uint16, context *CommunicationContext) (datamodel.ValueToken, error) {
 	val, err := b.readUintUTF8()
-	token := rbxfile.ValueToken(val)
+	token := datamodel.ValueToken{Value: val, ID: enumID}
 	return token, err
 }
 
@@ -646,9 +643,9 @@ func (b *extendedReader) readNewMap(reader PacketReader) (datamodel.ValueMap, er
 	return datamodel.ValueMap(thisMap), err
 }
 
-func (b *extendedReader) readNumberSequenceKeypoint() (rbxfile.ValueNumberSequenceKeypoint, error) {
+func (b *extendedReader) readNumberSequenceKeypoint() (datamodel.ValueNumberSequenceKeypoint, error) {
 	var err error
-	thisKeypoint := rbxfile.ValueNumberSequenceKeypoint{}
+	thisKeypoint := datamodel.ValueNumberSequenceKeypoint{}
 	thisKeypoint.Time, err = b.readFloat32BE()
 	if err != nil {
 		return thisKeypoint, err
@@ -661,7 +658,7 @@ func (b *extendedReader) readNumberSequenceKeypoint() (rbxfile.ValueNumberSequen
 	return thisKeypoint, err
 }
 
-func (b *extendedReader) readNumberSequence() (rbxfile.ValueNumberSequence, error) {
+func (b *extendedReader) readNumberSequence() (datamodel.ValueNumberSequence, error) {
 	var err error
 	numKeypoints, err := b.readUint32BE()
 	if err != nil {
@@ -670,7 +667,7 @@ func (b *extendedReader) readNumberSequence() (rbxfile.ValueNumberSequence, erro
 	if numKeypoints > 0x10000 {
 		return nil, errors.New("sanity check: exceeded maximum numberseq len")
 	}
-	thisSequence := make(rbxfile.ValueNumberSequence, numKeypoints)
+	thisSequence := make(datamodel.ValueNumberSequence, numKeypoints)
 
 	for i := 0; i < int(numKeypoints); i++ {
 		thisSequence[i], err = b.readNumberSequenceKeypoint()
@@ -693,9 +690,9 @@ func (b *extendedReader) readNumberRange() (rbxfile.ValueNumberRange, error) {
 	return thisRange, err
 }
 
-func (b *extendedReader) readColorSequenceKeypoint() (rbxfile.ValueColorSequenceKeypoint, error) {
+func (b *extendedReader) readColorSequenceKeypoint() (datamodel.ValueColorSequenceKeypoint, error) {
 	var err error
-	thisKeypoint := rbxfile.ValueColorSequenceKeypoint{}
+	thisKeypoint := datamodel.ValueColorSequenceKeypoint{}
 	thisKeypoint.Time, err = b.readFloat32BE()
 	if err != nil {
 		return thisKeypoint, err
@@ -708,7 +705,7 @@ func (b *extendedReader) readColorSequenceKeypoint() (rbxfile.ValueColorSequence
 	return thisKeypoint, err
 }
 
-func (b *extendedReader) readColorSequence() (rbxfile.ValueColorSequence, error) {
+func (b *extendedReader) readColorSequence() (datamodel.ValueColorSequence, error) {
 	var err error
 	numKeypoints, err := b.readUint32BE()
 	if err != nil {
@@ -717,7 +714,7 @@ func (b *extendedReader) readColorSequence() (rbxfile.ValueColorSequence, error)
 	if numKeypoints > 0x10000 {
 		return nil, errors.New("sanity check: exceeded maximum colorseq len")
 	}
-	thisSequence := make(rbxfile.ValueColorSequence, numKeypoints)
+	thisSequence := make(datamodel.ValueColorSequence, numKeypoints)
 
 	for i := 0; i < int(numKeypoints); i++ {
 		thisSequence[i], err = b.readColorSequenceKeypoint()

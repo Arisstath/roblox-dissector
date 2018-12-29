@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io"
 
+	"github.com/gskartwii/roblox-dissector/datamodel"
 	"github.com/robloxapi/rbxfile"
 )
 
@@ -20,7 +21,7 @@ type Chunk struct {
 
 // ID_ROBLOX_CLUSTER: server -> client
 type Packet8DLayer struct {
-	Instance *rbxfile.Instance
+	Instance *datamodel.Instance
 	Chunks   []Chunk
 }
 
@@ -37,7 +38,7 @@ func (thisBitstream *extendedReader) DecodePacket8DLayer(reader PacketReader, la
 	if err != nil {
 		return nil, err
 	}
-	if referent.IsNull() {
+	if referent.IsNull {
 		return nil, errors.New("cluster instance is null")
 	}
 	layer.Instance, err = context.InstancesByReferent.TryGetInstance(referent)

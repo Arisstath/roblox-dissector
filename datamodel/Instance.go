@@ -13,6 +13,7 @@ type Instance struct {
 	PropertiesMutex *sync.RWMutex
 	Properties      map[string]rbxfile.Value
 	Children        []*Instance
+	IsService       bool
 	Ref             Reference
 	ChildEmitter    *emitter.Emitter
 	PropertyEmitter *emitter.Emitter
@@ -64,7 +65,7 @@ func (instance *Instance) FindFirstChild(name string) *Instance {
 	}
 	return nil
 }
-func (instance *Instance) WaitForChild(name string) <-chan *Instance {
+func (instance *Instance) waitForChild(name string) <-chan *Instance {
 	childChan := make(chan *Instance, 1)
 	if child := instance.FindFirstChild(name); child != nil {
 		childChan <- child
@@ -81,6 +82,18 @@ func (instance *Instance) WaitForChild(name string) <-chan *Instance {
 	}()
 	return childChan
 }
+
+func (instance *Instance) WaitForChild(names ...string) <-chan *Instance {
+	retChan := make(chan *Instance, 1)
+	go func() {
+		for _, name := range names {
+			instance = <-instance.waitForChild(name)
+		}
+		retChan <- instance
+	}()
+	return retChan
+}
+
 func (instance *Instance) WaitForProp(name string) <-chan rbxfile.Value {
 	instance.PropertiesMutex.RLock()
 	propChan := make(chan rbxfile.Value, 1)

@@ -1,9 +1,10 @@
 package peer
 
-import "github.com/gskartwii/go-bitstream"
+import bitstream "github.com/gskartwii/go-bitstream"
+import "github.com/gskartwii/roblox-dissector/datamodel"
 import "encoding/binary"
 import "net"
-import "github.com/robloxapi/rbxfile"
+
 import "math"
 import "bytes"
 
@@ -209,47 +210,44 @@ func (b *extendedWriter) writeCachedSystemAddress(val datamodel.ValueSystemAddre
 	})
 }
 
-func (b *extendedWriter) writeJoinObject(object *rbxfile.Instance, context *CommunicationContext) error {
+func (b *extendedWriter) writeJoinObject(object *datamodel.Instance, context *CommunicationContext) error {
 	var err error
-	if object == nil || Referent(object.Reference).IsNull() {
+	if object == nil || object.Ref.IsNull {
 		err = b.WriteByte(0)
 		return err
 	}
-	referentString, referent := refToObject(Referent(object.Reference))
-	if referentString == context.InstanceTopScope {
+	if object.Ref.Scope == context.InstanceTopScope {
 		err = b.WriteByte(0xFF)
 	} else {
-		err = b.WriteByte(uint8(len(referentString)))
+		err = b.WriteByte(uint8(len(object.Ref.Scope)))
 		if err != nil {
 			return err
 		}
-		err = b.writeASCII(referentString)
+		err = b.writeASCII(object.Ref.Scope)
 	}
 	if err != nil {
 		return err
 	}
 
-	return b.writeUint32LE(referent)
+	return b.writeUint32LE(object.Ref.Id)
 }
 
-// TODO: Remove refToObject, store scope and number separately, as a struct
 // TODO: Implement a similar system for readers, where it simply returns an instance
-func (b *extendedWriter) writeObject(object *rbxfile.Instance, caches *Caches) error {
+func (b *extendedWriter) writeObject(object *datamodel.Instance, caches *Caches) error {
 	var err error
 	if object == nil {
 		return b.WriteByte(0)
 	}
-	if Referent(object.Reference).IsNull() {
+	if object.Ref.IsNull {
 		return b.WriteByte(0x00)
 	}
-	scope, referent := refToObject(Referent(object.Reference))
-	err = b.writeCachedObject(scope, caches)
+	err = b.writeCachedObject(object.Ref.Scope, caches)
 	if err != nil {
 		return err
 	}
-	return b.writeUint32LE(referent)
+	return b.writeUint32LE(object.Ref.Id)
 }
-func (b *extendedWriter) writeAnyObject(object *rbxfile.Instance, writer PacketWriter, isJoinData bool) error {
+func (b *extendedWriter) writeAnyObject(object *datamodel.Instance, writer PacketWriter, isJoinData bool) error {
 	if isJoinData {
 		return b.writeJoinObject(object, writer.Context())
 	}

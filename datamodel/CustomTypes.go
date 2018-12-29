@@ -22,18 +22,25 @@ func (ref Reference) String() string {
 }
 
 const (
-	TypeNumberSequenceKeypoint rbxfile.Type = rbxfile.TypeInt64 + 1
-	TypeColorSequenceKeypoint               = iota
-	TypeSystemAddress
-	TypeMap
-	TypeDictionary
-	TypeArray
-	TypeTuple
-	TypeRegion3
-	TypeRegion3int16
-	TypeReference
+	TypeNumberSequenceKeypoint rbxfile.Type = rbxfile.TypeInt64 + 1 + iota
+	TypeColorSequenceKeypoint               = rbxfile.TypeInt64 + 1 + iota
+	TypeNumberSequence                      = rbxfile.TypeInt64 + 1 + iota
+	TypeColorSequence                       = rbxfile.TypeInt64 + 1 + iota
+	TypeSystemAddress                       = rbxfile.TypeInt64 + 1 + iota
+	TypeMap                                 = rbxfile.TypeInt64 + 1 + iota
+	TypeDictionary                          = rbxfile.TypeInt64 + 1 + iota
+	TypeArray                               = rbxfile.TypeInt64 + 1 + iota
+	TypeTuple                               = rbxfile.TypeInt64 + 1 + iota
+	TypeRegion3                             = rbxfile.TypeInt64 + 1 + iota
+	TypeRegion3int16                        = rbxfile.TypeInt64 + 1 + iota
+	TypeReference                           = rbxfile.TypeInt64 + 1 + iota
+	TypeToken                               = rbxfile.TypeInt64 + 1 + iota
 )
 
+type ValueColorSequenceKeypoint rbxfile.ValueColorSequenceKeypoint
+type ValueNumberSequenceKeypoint rbxfile.ValueNumberSequenceKeypoint
+type ValueColorSequence []ValueColorSequenceKeypoint
+type ValueNumberSequence []ValueNumberSequenceKeypoint
 type ValueTuple []rbxfile.Value
 type ValueArray []rbxfile.Value
 type ValueDictionary map[string]rbxfile.Value
@@ -50,6 +57,11 @@ type ValueSystemAddress net.UDPAddr
 type ValueReference struct {
 	Reference Reference
 	Instance  *Instance
+}
+
+type ValueToken struct {
+	ID    uint16
+	Value uint32
 }
 
 func (x ValueRegion3) String() string {
@@ -163,4 +175,68 @@ func (x ValueReference) Type() rbxfile.Type {
 }
 func (x ValueReference) String() string {
 	return fmt.Sprintf("%s: %s", x.Reference.String(), x.Instance.GetFullName())
+}
+
+func (x ValueColorSequenceKeypoint) Type() rbxfile.Type {
+	return TypeColorSequenceKeypoint
+}
+func (x ValueColorSequenceKeypoint) Copy() rbxfile.Value {
+	return x
+}
+func (x ValueColorSequenceKeypoint) String() string {
+	return x.String()
+}
+
+func (x ValueNumberSequenceKeypoint) Type() rbxfile.Type {
+	return TypeNumberSequenceKeypoint
+}
+func (x ValueNumberSequenceKeypoint) Copy() rbxfile.Value {
+	return x
+}
+func (x ValueNumberSequenceKeypoint) String() string {
+	return x.String()
+}
+
+func (x ValueColorSequence) Type() rbxfile.Type {
+	return TypeColorSequence
+}
+func (x ValueColorSequence) Copy() rbxfile.Value {
+	c := make(ValueColorSequence, len(x))
+	copy(c, x)
+	return c
+}
+func (x ValueColorSequence) String() string {
+	b := make([]byte, 0, 64)
+	for _, v := range x {
+		b = append(b, []byte(v.String())...)
+		b = append(b, ' ')
+	}
+	return string(b)
+}
+
+func (x ValueNumberSequence) Type() rbxfile.Type {
+	return TypeNumberSequence
+}
+func (x ValueNumberSequence) Copy() rbxfile.Value {
+	c := make(ValueNumberSequence, len(x))
+	copy(c, x)
+	return c
+}
+func (x ValueNumberSequence) String() string {
+	b := make([]byte, 0, 64)
+	for _, v := range x {
+		b = append(b, []byte(v.String())...)
+		b = append(b, ' ')
+	}
+	return string(b)
+}
+
+func (x ValueToken) Type() rbxfile.Type {
+	return TypeToken
+}
+func (x ValueToken) Copy() rbxfile.Value {
+	return x
+}
+func (x ValueToken) String() string {
+	return rbxfile.ValueToken(x.Value).String()
 }

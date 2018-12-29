@@ -14,7 +14,7 @@ func is2ndRoundType(typeId uint8) bool {
 
 func decodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader, layers *PacketLayers) (*datamodel.Instance, error) {
 	var err error
-	var referent Referent
+	var referent datamodel.Reference
 	context := reader.Context()
 
 	referent, err = thisBitstream.ReadObject(reader)
@@ -64,7 +64,8 @@ func decodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader
 	context.InstancesByReferent.AddInstance(thisInstance.Ref, thisInstance)
 	parent, err := context.InstancesByReferent.TryGetInstance(referent)
 	if parent != nil {
-		return thisInstance, parent.AddChild(thisInstance)
+		parent.AddChild(thisInstance)
+		return thisInstance, nil
 	}
 	if err != nil && !thisInstance.IsService {
 		println("couldn't find parent for", thisInstance.Ref.String(), referent.String())

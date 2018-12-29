@@ -3,13 +3,13 @@ package peer
 import (
 	"errors"
 
-	"github.com/robloxapi/rbxfile"
+	"github.com/gskartwii/roblox-dissector/datamodel"
 )
 
 // ID_DELETE_INSTANCE
 type Packet83_01 struct {
 	// Instance to be deleted
-	Instance *rbxfile.Instance
+	Instance *datamodel.Instance
 }
 
 func (thisBitstream *extendedReader) DecodePacket83_01(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
