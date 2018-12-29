@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/Gskartwii/roblox-dissector/peer"
-	"github.com/gskartwii/rbxfile/bin"
+	"github.com/robloxapi/rbxfile/bin"
 	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/widgets"
 )

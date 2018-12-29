@@ -29,9 +29,9 @@ type PacketLogicHandler struct {
 	pingInterval int
 }
 
-func newPacketLogicHandler(context *CommunicationContext) PacketLogicHandler {
+func newPacketLogicHandler(context *CommunicationContext, withClient bool) PacketLogicHandler {
 	return PacketLogicHandler{
-		ConnectedPeer:    NewConnectedPeer(context),
+		ConnectedPeer:    NewConnectedPeer(context, withClient),
 		handlers:         NewRawPacketHandlerMap(),
 		dataHandlers:     NewDataHandlerMap(),
 		instanceHandlers: NewNewInstanceHandlerMap(),

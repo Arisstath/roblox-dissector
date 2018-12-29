@@ -5,7 +5,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/gskartwii/rbxfile"
+	"github.com/robloxapi/rbxfile"
 )
 
 // ProxyHalf describes a proxy connection to a connected peer.
@@ -14,9 +14,9 @@ type ProxyHalf struct {
 	fakePackets []uint32
 }
 
-func NewProxyHalf(context *CommunicationContext) *ProxyHalf {
+func NewProxyHalf(context *CommunicationContext, withClient bool) *ProxyHalf {
 	return &ProxyHalf{
-		ConnectedPeer: NewConnectedPeer(context),
+		ConnectedPeer: NewConnectedPeer(context, withClient),
 		fakePackets:   nil,
 	}
 }
@@ -91,8 +91,8 @@ func (writer *ProxyWriter) startAcker() {
 // NewProxyWriter creates and initializes a new ProxyWriter
 func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 	writer := &ProxyWriter{}
-	clientHalf := NewProxyHalf(context)
-	serverHalf := NewProxyHalf(context)
+	clientHalf := NewProxyHalf(context, true)
+	serverHalf := NewProxyHalf(context, false)
 
 	clientHalf.SimpleHandler = func(packetType byte, layers *PacketLayers) {
 		if layers.Error != nil {
@@ -267,9 +267,6 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 			clientHalf.Writer.WriteRakNet(layer, writer.ClientAddr)
 		}*/
 	}
-
-	clientHalf.DefaultPacketWriter.SetToClient(true) // writes TO client!
-	clientHalf.DefaultPacketReader.SetIsClient(true) // reads FROM client!
 	// Caches will have been assigned by NewConnectedPeer()
 
 	writer.ClientHalf = clientHalf

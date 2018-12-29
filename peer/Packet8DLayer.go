@@ -4,7 +4,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/gskartwii/rbxfile"
+	"github.com/robloxapi/rbxfile"
 )
 
 type Cell struct {

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gskartwii/rbxfile"
+	"github.com/gskartwii/roblox-dissector/datamodel"
 )
 
 func is2ndRoundType(typeId uint8) bool {
@@ -12,7 +12,7 @@ func is2ndRoundType(typeId uint8) bool {
 	return ((id-3) > 0x1F || ((1<<(id-3))&uint32(0xC200000F)) == 0) && (id != 1) // thank you ARM compiler for optimizing this <3
 }
 
-func decodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader, layers *PacketLayers) (*rbxfile.Instance, error) {
+func decodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader, layers *PacketLayers) (*datamodel.Instance, error) {
 	var err error
 	var referent Referent
 	context := reader.Context()
@@ -21,7 +21,7 @@ func decodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader
 	if err != nil {
 		return nil, errors.New("while parsing self: " + err.Error())
 	}
-	if referent.IsNull() {
+	if referent.IsNull {
 		return nil, errors.New("self is nil in decodeReplicationInstance")
 	}
 	thisInstance, err := context.InstancesByReferent.CreateInstance(referent)
@@ -35,18 +35,15 @@ func decodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader
 	}
 	schema := context.StaticSchema.Instances[schemaIDx]
 	thisInstance.ClassName = schema.Name
-	layers.Root.Logger.Println("will parse", referent, schema.Name, len(schema.Properties))
+	layers.Root.Logger.Println("will parse", referent.String(), schema.Name, len(schema.Properties))
 
 	unkBool, err := thisBitstream.readBoolByte()
 	if err != nil {
 		return thisInstance, err
 	}
-	layers.Root.Logger.Println("unkbool:", unkBool)
-	thisInstance.PropertiesMutex.Lock()
-	thisInstance.Properties = make(map[string]rbxfile.Value, len(schema.Properties))
+	layers.Root.Logger.Println("delete on disconnect:", unkBool)
 
 	err = thisBitstream.ReadProperties(schema.Properties, thisInstance.Properties, reader)
-	thisInstance.PropertiesMutex.Unlock()
 	if err != nil {
 		return thisInstance, err
 	}
@@ -55,29 +52,29 @@ func decodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader
 	if err != nil {
 		return thisInstance, errors.New("while parsing parent: " + err.Error())
 	}
-	if referent.IsNull() {
+	if referent.IsNull {
 		return thisInstance, errors.New("parent is null")
 	}
-	if len(referent) > 0x50 {
-		layers.Root.Logger.Println("Parent: (invalid), ", len(referent))
+	if len(referent.String()) > 0x50 {
+		layers.Root.Logger.Println("Parent: (invalid), ", len(referent.String()))
 	} else {
-		layers.Root.Logger.Println("Parent: ", referent)
+		layers.Root.Logger.Println("Parent: ", referent.String())
 	}
 
-	context.InstancesByReferent.AddInstance(Referent(thisInstance.Reference), thisInstance)
+	context.InstancesByReferent.AddInstance(thisInstance.Ref, thisInstance)
 	parent, err := context.InstancesByReferent.TryGetInstance(referent)
 	if parent != nil {
 		return thisInstance, parent.AddChild(thisInstance)
 	}
 	if err != nil && !thisInstance.IsService {
-		println("couldn't find parent for", thisInstance.Reference, referent)
+		println("couldn't find parent for", thisInstance.Ref.String(), referent.String())
 		return thisInstance, err // the parents of services don't exist
 	}
 
 	return thisInstance, nil
 }
 
-func serializeReplicationInstance(instance *rbxfile.Instance, writer PacketWriter, stream InstanceWriter) error {
+func serializeReplicationInstance(instance *datamodel.Instance, writer PacketWriter, stream InstanceWriter) error {
 	var err error
 	if instance == nil {
 		return errors.New("self is nil in serialize repl inst")
@@ -99,9 +96,7 @@ func serializeReplicationInstance(instance *rbxfile.Instance, writer PacketWrite
 	}
 
 	schema := context.StaticSchema.Instances[schemaIdx]
-	instance.PropertiesMutex.RLock()
 	err = stream.WriteProperties(schema.Properties, instance.Properties, writer)
-	instance.PropertiesMutex.RUnlock()
 	if err != nil {
 		return err
 	}

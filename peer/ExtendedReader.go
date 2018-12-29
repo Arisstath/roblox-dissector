@@ -544,33 +544,33 @@ func (b *extendedReader) RegionToZStdStream() (*extendedReader, error) {
 	return &extendedReader{bitstream.NewReader(zstdStream)}, nil
 }
 
-func (b *extendedReader) readJoinReferent(context *CommunicationContext) (string, uint32, error) {
+func (b *extendedReader) readJoinReferent(context *CommunicationContext) (datamodel.Reference, error) {
+	ref := datamodel.Reference{}
 	stringLen, err := b.readUint8()
 	if err != nil {
-		return "", 0, err
+		return ref, err
 	}
 	if stringLen == 0x00 {
-		return "null", 0, err
+		ref.IsNull = true
+		ref.Scope = "null"
+		return ref, err
 	}
-	var ref string
+	var refString string
 	if stringLen != 0xFF {
-		ref, err = b.readASCII(int(stringLen))
-		if len(ref) != 0x23 {
+		refString, err = b.readASCII(int(stringLen))
+		if len(refString) != 0x23 {
 			println("WARN: wrong ref len!! this should never happen, unless you are communicating with a non-standard peer")
 		}
 		if err != nil {
-			return "", 0, err
+			return ref, err
 		}
+		ref.Scope = refString
 	} else {
-		ref = context.InstanceTopScope
+		ref.Scope = context.InstanceTopScope
 	}
 
-	intVal, err := b.readUint32LE()
-	if err != nil && err != io.EOF {
-		return "", 0, err
-	}
-
-	return ref, intVal, nil
+	ref.Id, err = b.readUint32LE()
+	return ref, err
 }
 
 func (b *extendedReader) readFloat16BE(floatMin float32, floatMax float32) (float32, error) {

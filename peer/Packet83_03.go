@@ -4,13 +4,14 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gskartwii/rbxfile"
+	"github.com/gskartwii/roblox-dissector/datamodel"
+	"github.com/robloxapi/rbxfile"
 )
 
 // Packet83_03 describes an ID_CHANGE_PROPERTY data subpacket.
 type Packet83_03 struct {
 	// Instance that had the property change
-	Instance    *rbxfile.Instance
+	Instance    *datamodel.Instance
 	Bool1       bool
 	Int1        int32
 	DoWriteInt1 bool
@@ -36,9 +37,7 @@ func (thisBitstream *extendedReader) DecodePacket83_03(reader PacketReader, laye
 		return layer, err
 	}
 	layer.Instance = instance
-	instance.PropertiesMutex.Lock()
-	instance.Properties[layer.PropertyName] = layer.Value
-	instance.PropertiesMutex.Unlock()
+	instance.Set(layer.PropertyName, layer.Value)
 
 	propertyIDx, err := thisBitstream.readUint16BE()
 	if err != nil {

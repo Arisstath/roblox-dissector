@@ -3,7 +3,7 @@ package peer
 import (
 	"errors"
 
-	"github.com/gskartwii/rbxfile"
+	"github.com/robloxapi/rbxfile"
 )
 
 func (schema StaticPropertySchema) Decode(reader PacketReader, stream SerializeReader, layers *PacketLayers) (rbxfile.Value, error) {

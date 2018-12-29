@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gskartwii/rbxfile"
+	"github.com/robloxapi/rbxfile"
 )
 
 // ID_EVENT

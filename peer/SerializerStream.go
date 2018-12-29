@@ -3,7 +3,8 @@ package peer
 import (
 	"errors"
 
-	"github.com/gskartwii/rbxfile"
+	"github.com/gskartwii/roblox-dissector/datamodel"
+	"github.com/robloxapi/rbxfile"
 )
 
 type SerializeReader interface {
@@ -24,7 +25,7 @@ type InstanceReader interface {
 
 type SerializeWriter interface {
 	WriteSerializedValue(val rbxfile.Value, writer PacketWriter, valType uint8) error
-	WriteObject(object *rbxfile.Instance, writer PacketWriter) error
+	WriteObject(object *datamodel.Instance, writer PacketWriter) error
 
 	writeUint16BE(uint16) error
 	writeBoolByte(bool) error
@@ -130,21 +131,21 @@ func (b *extendedWriter) WriteSerializedValue(val rbxfile.Value, writer PacketWr
 	case PROP_TYPE_CONTENT:
 		err = b.writeNewContent(val.(rbxfile.ValueContent), writer.Caches())
 	case PROP_TYPE_SYSTEMADDRESS:
-		err = b.writeSystemAddress(val.(rbxfile.ValueSystemAddress), writer.Caches())
+		err = b.writeSystemAddress(val.(ValueSystemAddress), writer.Caches())
 	case PROP_TYPE_TUPLE:
-		err = b.writeNewTuple(val.(rbxfile.ValueTuple), writer)
+		err = b.writeNewTuple(val.(datamodel.ValueTuple), writer)
 	case PROP_TYPE_ARRAY:
-		err = b.writeNewArray(val.(rbxfile.ValueArray), writer)
+		err = b.writeNewArray(val.(datamodel.ValueArray), writer)
 	case PROP_TYPE_DICTIONARY:
-		err = b.writeNewDictionary(val.(rbxfile.ValueDictionary), writer)
+		err = b.writeNewDictionary(val.(datamodel.ValueDictionary), writer)
 	case PROP_TYPE_MAP:
-		err = b.writeNewMap(val.(rbxfile.ValueMap), writer)
+		err = b.writeNewMap(val.(datamodel.ValueMap), writer)
 	default:
 		return b.writeSerializedValueGeneric(val, valueType)
 	}
 	return err
 }
-func (b *extendedWriter) WriteObject(object *rbxfile.Instance, writer PacketWriter) error {
+func (b *extendedWriter) WriteObject(object *datamodel.Instance, writer PacketWriter) error {
 	return b.writeObject(object, writer.Caches())
 }
 func (b *extendedWriter) WriteProperties(schema []StaticPropertySchema, properties map[string]rbxfile.Value, writer PacketWriter) error {
@@ -283,13 +284,13 @@ func (b *JoinSerializeWriter) WriteSerializedValue(val rbxfile.Value, writer Pac
 	case PROP_TYPE_CONTENT:
 		err = b.writeNewContent(val.(rbxfile.ValueContent))
 	case PROP_TYPE_SYSTEMADDRESS:
-		err = b.writeSystemAddress(val.(rbxfile.ValueSystemAddress))
+		err = b.writeSystemAddress(val.(ValueSystemAddress))
 	default:
 		return b.writeSerializedValueGeneric(val, valueType)
 	}
 	return err
 }
-func (b *JoinSerializeWriter) WriteObject(object *rbxfile.Instance, writer PacketWriter) error {
+func (b *JoinSerializeWriter) WriteObject(object *datamodel.Instance, writer PacketWriter) error {
 	return b.extendedWriter.writeJoinObject(object, writer.Context())
 }
 func (b *JoinSerializeWriter) WriteProperties(schema []StaticPropertySchema, properties map[string]rbxfile.Value, writer PacketWriter) error {

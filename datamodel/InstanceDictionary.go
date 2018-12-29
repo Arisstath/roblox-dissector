@@ -1,9 +1,8 @@
-package peer
+package datamodel
 
 import (
 	"encoding/hex"
 	"math/rand"
-	"strconv"
 )
 
 type InstanceDictionary struct {
@@ -23,8 +22,8 @@ func NewInstanceDictionary() *InstanceDictionary {
 	return &InstanceDictionary{Scope: scopeStr, InstanceIndex: 1}
 }
 
-func (dictionary *InstanceDictionary) NewReference() string {
-	reference := dictionary.Scope + "_" + strconv.FormatUint(uint64(dictionary.InstanceIndex), 10)
+func (dictionary *InstanceDictionary) NewReference() Reference {
+	reference := Reference{Scope: dictionary.Scope, Id: dictionary.InstanceIndex}
 	dictionary.InstanceIndex++
 	return reference
 }

@@ -1,11 +1,11 @@
 package peer
 
-import "github.com/gskartwii/rbxfile"
+import "github.com/gskartwii/roblox-dissector/datamodel"
 
 // ID_CREATE_INSTANCE
 type Packet83_02 struct {
 	// The instance that was created
-	Child *rbxfile.Instance
+	Child *datamodel.Instance
 }
 
 func (thisBitstream *extendedReader) DecodePacket83_02(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {

@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gskartwii/rbxfile"
+	"github.com/robloxapi/rbxfile"
 )
 
 func (myClient *CustomClient) bindDefaultHandlers() {
@@ -223,7 +223,7 @@ func (myClient *CustomClient) handlePlayersService(players *rbxfile.Instance) {
 	return
 }
 
-func (myClient *CustomClient) InvokeRemote(instance *rbxfile.Instance, arguments []rbxfile.Value) (rbxfile.ValueTuple, error) {
+func (myClient *CustomClient) InvokeRemote(instance *rbxfile.Instance, arguments []rbxfile.Value) (datamodel.ValueTuple, error) {
 	if myClient.LocalPlayer == nil {
 		panic(errors.New("local player is nil!"))
 	}
@@ -243,7 +243,7 @@ func (myClient *CustomClient) InvokeRemote(instance *rbxfile.Instance, arguments
 	err := myClient.SendEvent(instance, "RemoteOnInvokeServer",
 		rbxfile.ValueInt(index),
 		rbxfile.ValueReference{Instance: myClient.LocalPlayer},
-		rbxfile.ValueTuple(arguments),
+		datamodel.ValueTuple(arguments),
 	)
 	if err != nil {
 		return nil, err
@@ -257,7 +257,7 @@ func (myClient *CustomClient) InvokeRemote(instance *rbxfile.Instance, arguments
 				conn1.Disconnect()
 				conn2.Disconnect()
 
-				return succ.Arguments[1].(rbxfile.ValueTuple), nil // return any values
+				return succ.Arguments[1].(datamodel.ValueTuple), nil // return any values
 			}
 		case err := <-errChan:
 			if uint32(err.Arguments[0].(rbxfile.ValueInt)) == index {
@@ -276,7 +276,7 @@ func (myClient *CustomClient) FireRemote(instance *rbxfile.Instance, arguments .
 	}
 	myClient.SendEvent(instance, "OnServerEvent",
 		rbxfile.ValueReference{Instance: myClient.LocalPlayer},
-		rbxfile.ValueTuple(arguments),
+		datamodel.ValueTuple(arguments),
 	)
 }
 

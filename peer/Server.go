@@ -6,7 +6,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/gskartwii/rbxfile"
+	"github.com/robloxapi/rbxfile"
 )
 
 // TODO: Perhaps have a multiplexer for datamodel-related handlers?
@@ -54,6 +54,9 @@ func (client *ServerClient) Init() {
 	client.Connection = client.Server.Connection
 	client.createWriter()
 
+	client.SetIsClient(false)
+	client.SetToClient(true)
+
 	client.startAcker()
 }
 func NewServerClient(clientAddr *net.UDPAddr, server *CustomServer, context *CommunicationContext) *ServerClient {
@@ -67,7 +70,7 @@ func NewServerClient(clientAddr *net.UDPAddr, server *CustomServer, context *Com
 	}
 
 	newClient := &ServerClient{
-		PacketLogicHandler: newPacketLogicHandler(newContext),
+		PacketLogicHandler: newPacketLogicHandler(newContext, true),
 		Server:             server,
 		Address:            clientAddr,
 	}

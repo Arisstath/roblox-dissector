@@ -3,7 +3,7 @@ package peer
 import "github.com/gskartwii/go-bitstream"
 import "encoding/binary"
 import "net"
-import "github.com/gskartwii/rbxfile"
+import "github.com/robloxapi/rbxfile"
 import "math"
 import "bytes"
 
@@ -201,11 +201,11 @@ func (b *extendedWriter) writeNewCachedProtectedString(val []byte, caches *Cache
 		return b.allBytes(val.([]byte))
 	})
 }
-func (b *extendedWriter) writeCachedSystemAddress(val rbxfile.ValueSystemAddress, caches *Caches) error {
+func (b *extendedWriter) writeCachedSystemAddress(val datamodel.ValueSystemAddress, caches *Caches) error {
 	cache := &caches.SystemAddress
 
 	return b.writeWithCache(val, cache, func(b *extendedWriter, val interface{}) error {
-		return b.writeSystemAddressRaw(val.(rbxfile.ValueSystemAddress))
+		return b.writeSystemAddressRaw(val.(datamodel.ValueSystemAddress))
 	})
 }
 

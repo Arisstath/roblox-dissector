@@ -1,7 +1,7 @@
 package peer
 
 import "math"
-import "github.com/gskartwii/rbxfile"
+import "github.com/robloxapi/rbxfile"
 import "errors"
 import "strconv"
 import "net"
@@ -419,7 +419,7 @@ func (b *extendedWriter) writeNewTypeAndValue(val rbxfile.Value, writer PacketWr
 	return b.WriteSerializedValue(val, writer, valueType)
 }
 
-func (b *extendedWriter) writeNewTuple(val rbxfile.ValueTuple, writer PacketWriter) error {
+func (b *extendedWriter) writeNewTuple(val datamodel.ValueTuple, writer PacketWriter) error {
 	err := b.writeUintUTF8(uint32(len(val)))
 	if err != nil {
 		return err
@@ -432,11 +432,11 @@ func (b *extendedWriter) writeNewTuple(val rbxfile.ValueTuple, writer PacketWrit
 	}
 	return nil
 }
-func (b *extendedWriter) writeNewArray(val rbxfile.ValueArray, writer PacketWriter) error {
-	return b.writeNewTuple(rbxfile.ValueTuple(val), writer)
+func (b *extendedWriter) writeNewArray(val datamodel.ValueArray, writer PacketWriter) error {
+	return b.writeNewTuple(datamodel.ValueTuple(val), writer)
 }
 
-func (b *extendedWriter) writeNewDictionary(val rbxfile.ValueDictionary, writer PacketWriter) error {
+func (b *extendedWriter) writeNewDictionary(val datamodel.ValueDictionary, writer PacketWriter) error {
 	err := b.writeUintUTF8(uint32(len(val)))
 	if err != nil {
 		return err
@@ -457,8 +457,8 @@ func (b *extendedWriter) writeNewDictionary(val rbxfile.ValueDictionary, writer 
 	}
 	return nil
 }
-func (b *extendedWriter) writeNewMap(val rbxfile.ValueMap, writer PacketWriter) error {
-	return b.writeNewDictionary(rbxfile.ValueDictionary(val), writer)
+func (b *extendedWriter) writeNewMap(val datamodel.ValueMap, writer PacketWriter) error {
+	return b.writeNewDictionary(datamodel.ValueDictionary(val), writer)
 }
 
 func (b *extendedWriter) writeNumberSequenceKeypoint(val rbxfile.ValueNumberSequenceKeypoint) error {
@@ -524,7 +524,7 @@ func (b *extendedWriter) writeNewEnumValue(val rbxfile.ValueToken) error {
 }
 
 func (b *extendedWriter) writeSystemAddressRaw(val rbxfile.ValueSystemAddress) error {
-	addr, err := net.ResolveUDPAddr("udp", string(val))
+	addr, err := net.UDPAddr(val)
 	if err != nil {
 		return err
 	}
@@ -545,10 +545,10 @@ func (b *extendedWriter) writeSystemAddressRaw(val rbxfile.ValueSystemAddress) e
 	return b.writeUint16BE(uint16(addr.Port))
 }
 
-func (b *extendedWriter) writeSystemAddress(val rbxfile.ValueSystemAddress, caches *Caches) error {
+func (b *extendedWriter) writeSystemAddress(val datamodel.ValueSystemAddress, caches *Caches) error {
 	return b.writeCachedSystemAddress(val, caches)
 }
-func (b *JoinSerializeWriter) writeSystemAddress(val rbxfile.ValueSystemAddress) error {
+func (b *JoinSerializeWriter) writeSystemAddress(val datamodel.ValueSystemAddress) error {
 	return b.writeSystemAddressRaw(val)
 }
 

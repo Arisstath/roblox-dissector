@@ -3,8 +3,8 @@ package main
 import "github.com/therecipe/qt/widgets"
 import "github.com/therecipe/qt/gui"
 import "github.com/therecipe/qt/core"
-import "github.com/gskartwii/rbxfile"
-import "github.com/gskartwii/rbxfile/bin"
+import "github.com/robloxapi/rbxfile"
+import "github.com/robloxapi/rbxfile/xml"
 import "github.com/Gskartwii/roblox-dissector/peer"
 import "os"
 import "fmt"
@@ -119,7 +119,7 @@ func NewDataModelBrowser(context *peer.CommunicationContext, dataModel *rbxfile.
 
 	takeSnapshotButton := widgets.NewQPushButton2("Save as RBXL...", nil)
 	takeSnapshotButton.ConnectPressed(func() {
-		location := widgets.QFileDialog_GetSaveFileName(subWindow, "Save as RBXL...", "", "Roblox place files (*.rbxl)", "", 0)
+		location := widgets.QFileDialog_GetSaveFileName(subWindow, "Save as RBXLX...", "", "Roblox place files (*.rbxlx)", "", 0)
 		writer, err := os.OpenFile(location, os.O_RDWR|os.O_CREATE, 0666)
 		defer writer.Close()
 		if err != nil {
@@ -130,7 +130,7 @@ func NewDataModelBrowser(context *peer.CommunicationContext, dataModel *rbxfile.
 		writableClone := children.Copy()
 		stripInvalidTypes(writableClone.Instances, defaultValues, 0)
 
-		err = bin.SerializePlace(writer, nil, writableClone)
+		err = xml.Serialize(writer, nil, writableClone)
 		if err != nil {
 			println("while serializing place:", err.Error())
 			return

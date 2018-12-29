@@ -5,7 +5,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/gskartwii/rbxfile"
+	"github.com/robloxapi/rbxfile"
 )
 
 type PacketHandlerConnection struct {

@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gskartwii/rbxfile"
+	"github.com/robloxapi/rbxfile"
 )
 
 type JoinDataConfig struct {

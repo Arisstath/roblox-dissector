@@ -9,7 +9,7 @@ import "math/rand"
 import "errors"
 
 import "log"
-import "github.com/gskartwii/rbxfile"
+import "github.com/robloxapi/rbxfile"
 import "math/bits"
 import "github.com/pierrec/xxHash/xxHash32"
 
@@ -117,7 +117,7 @@ func NewCustomClient() *CustomClient {
 		httpClient: &http.Client{},
 		GUID:       rand.Uint64(),
 
-		PacketLogicHandler: newPacketLogicHandler(context),
+		PacketLogicHandler: newPacketLogicHandler(context, false),
 		InstanceDictionary: NewInstanceDictionary(),
 	}
 	return client
@@ -160,7 +160,7 @@ func (myClient *CustomClient) setupChat() error {
 	for true {
 		select {
 		case message := <-newFilteredMessageChan:
-			dict := message.Arguments[0].(rbxfile.ValueTuple)[0].(rbxfile.ValueDictionary)
+			dict := message.Arguments[0].(datamodel.ValueTuple)[0].(datamodel.ValueDictionary)
 			myClient.Logger.Printf("<%s (%s)> %s\n", dict["FromSpeaker"].(rbxfile.ValueString), dict["MessageType"].(rbxfile.ValueString), dict["Message"].(rbxfile.ValueString))
 		case player := <-playerJoinChan:
 			myClient.Logger.Printf("SYSTEM: %s has joined the game.\n", player.Name())

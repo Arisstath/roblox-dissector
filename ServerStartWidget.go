@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/Gskartwii/roblox-dissector/peer"
-	"github.com/gskartwii/rbxfile"
+	"github.com/robloxapi/rbxfile"
 	"github.com/therecipe/qt/widgets"
 )
 
@@ -80,6 +80,16 @@ func normalizeReferences(children []*rbxfile.Instance, dictionary *peer.Instance
 // normalizeTypes changes the types of instances from binary format types to network types
 func normalizeTypes(children []*rbxfile.Instance, schema *peer.StaticSchema) {
 	for _, instance := range children {
+		defaultValues, ok := noLocalDefaults[instance.ClassName]
+		if ok {
+			for _, prop := range schema.Instances[schema.ClassesByName[instance.ClassName]].Properties {
+				if _, ok = instance.Properties[prop.Name]; !ok {
+					println("Adding missing default value", instance.ClassName, prop.Name)
+					instance.Properties[prop.Name] = defaultValues[prop.Name]
+				}
+			}
+		}
+
 		for name, prop := range instance.Properties {
 			id, ok := schema.PropertiesByName[instance.ClassName+"."+name]
 			if !ok {
@@ -93,21 +103,30 @@ func normalizeTypes(children []*rbxfile.Instance, schema *peer.StaticSchema) {
 				peer.PROP_TYPE_PROTECTEDSTRING_1,
 				peer.PROP_TYPE_PROTECTEDSTRING_2,
 				peer.PROP_TYPE_PROTECTEDSTRING_3:
-				instance.Properties[name] = rbxfile.ValueProtectedString(prop.(rbxfile.ValueString))
+				// This type may be encoded correctly depending on the format
+				if _, ok = prop.(rbxfile.ValueString); ok {
+					instance.Properties[name] = rbxfile.ValueProtectedString(prop.(rbxfile.ValueString))
+				}
 			case peer.PROP_TYPE_CONTENT:
-				instance.Properties[name] = rbxfile.ValueContent(prop.(rbxfile.ValueString))
+				// This type may be encoded correctly depending on the format
+				if _, ok = prop.(rbxfile.ValueString); ok {
+					instance.Properties[name] = rbxfile.ValueContent(prop.(rbxfile.ValueString))
+				}
 			case peer.PROP_TYPE_ENUM:
 				instance.Properties[name] = rbxfile.ValueToken{ID: propSchema.EnumID, Value: prop.(rbxfile.ValueToken).Value}
 			case peer.PROP_TYPE_BINARYSTRING:
-				instance.Properties[name] = rbxfile.ValueBinaryString(prop.(rbxfile.ValueString))
-			}
-		}
-		defaultValues, ok := noLocalDefaults[instance.ClassName]
-		if ok {
-			for _, prop := range schema.Instances[schema.ClassesByName[instance.ClassName]].Properties {
-				if _, ok = instance.Properties[prop.Name]; !ok {
-					println("Adding missing default value", instance.ClassName, prop.Name)
-					instance.Properties[prop.Name] = defaultValues[prop.Name]
+				// This type may be encoded correctly depending on the format
+				if _, ok = prop.(rbxfile.ValueString); ok {
+					instance.Properties[name] = rbxfile.ValueBinaryString(prop.(rbxfile.ValueString))
+				}
+			case peer.PROP_TYPE_COLOR3UINT8:
+				if _, ok = prop.(rbxfile.ValueColor3); ok {
+					propc3 := prop.(rbxfile.ValueColor3)
+					instance.Properties[name] = rbxfile.ValueColor3uint8{R: uint8(propc3.R * 255), G: uint8(propc3.G * 255), B: uint8(propc3.B * 255)}
+				}
+			case peer.PROP_TYPE_BRICKCOLOR:
+				if _, ok = prop.(rbxfile.ValueInt); ok {
+					instance.Properties[name] = rbxfile.ValueBrickColor(prop.(rbxfile.ValueInt))
 				}
 			}
 		}
@@ -120,11 +139,11 @@ func NewServerStartWidget(parent widgets.QWidget_ITF, settings *ServerSettings, 
 	window.SetWindowTitle("Start server...")
 	layout := widgets.NewQVBoxLayout()
 
-	rbxlLabel := NewQLabelF("RBXL location:")
+	rbxlLabel := NewQLabelF("RBXLX location:")
 	rbxlTextBox := widgets.NewQLineEdit2(settings.RBXLLocation, nil)
 	browseButton := widgets.NewQPushButton2("Browse...", nil)
 	browseButton.ConnectPressed(func() {
-		rbxlTextBox.SetText(widgets.QFileDialog_GetOpenFileName(window, "Find place...", "", "RBXL files (*.rbxl)", "", 0))
+		rbxlTextBox.SetText(widgets.QFileDialog_GetOpenFileName(window, "Find place...", "", "RBXLX files (*.rbxlx)", "", 0))
 	})
 	layout.AddWidget(rbxlLabel, 0, 0)
 	layout.AddWidget(rbxlTextBox, 0, 0)

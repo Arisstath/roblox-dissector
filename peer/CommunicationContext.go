@@ -150,9 +150,7 @@ type CommunicationContext struct {
 
 func NewCommunicationContext() *CommunicationContext {
 	return &CommunicationContext{
-		InstancesByReferent: &InstanceList{
-			Instances: make(map[string]*rbxfile.Instance),
-		},
+		InstancesByReferent: datamodel.NewInstanceList(),
 		InstanceTopScope: "WARNING_UNASSIGNED_TOP_SCOPE",
 	}
 }

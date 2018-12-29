@@ -1,6 +1,6 @@
 package main
-import "github.com/gskartwii/rbxfile/bin"
-import "github.com/gskartwii/rbxfile"
+import "github.com/robloxapi/rbxfile/bin"
+import "github.com/robloxapi/rbxfile"
 import "os"
 
 func ParseDefaultValues(files []string) DefaultValues {

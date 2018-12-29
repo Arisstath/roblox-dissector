@@ -3,7 +3,7 @@ package peer
 import (
 	"errors"
 
-	"github.com/gskartwii/rbxfile"
+	"github.com/robloxapi/rbxfile"
 )
 
 // Touch replication for a single touch

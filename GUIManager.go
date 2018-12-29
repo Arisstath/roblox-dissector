@@ -4,8 +4,9 @@ import "github.com/therecipe/qt/widgets"
 import "github.com/therecipe/qt/gui"
 import "github.com/therecipe/qt/core"
 import "github.com/Gskartwii/roblox-dissector/peer"
-import "github.com/gskartwii/rbxfile"
-import "github.com/gskartwii/rbxfile/bin"
+import "github.com/robloxapi/rbxfile"
+import "github.com/robloxapi/rbxfile/bin"
+import "github.com/robloxapi/rbxfile/xml"
 import "os"
 import "os/exec"
 import "fmt"
@@ -843,7 +844,7 @@ func GUIMain() {
 				println("while reading instances:", err.Error())
 				return
 			}
-			dataModelRoot, err := bin.DeserializePlace(dataModelReader, nil)
+			dataModelRoot, err := xml.Deserialize(dataModelReader, nil)
 			if err != nil {
 				println("while reading instances:", err.Error())
 				return

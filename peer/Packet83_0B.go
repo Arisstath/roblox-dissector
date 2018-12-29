@@ -6,7 +6,7 @@ import (
 
 	"github.com/DataDog/zstd"
 	bitstream "github.com/gskartwii/go-bitstream"
-	"github.com/gskartwii/rbxfile"
+	"github.com/robloxapi/rbxfile"
 )
 
 // ID_JOINDATA

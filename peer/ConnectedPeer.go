@@ -59,7 +59,7 @@ func (peer *ConnectedPeer) sendACKs() {
 	peer.WriteRakNet(result)
 }
 
-func NewConnectedPeer(context *CommunicationContext) *ConnectedPeer {
+func NewConnectedPeer(context *CommunicationContext, withClient bool) *ConnectedPeer {
 	myPeer := &ConnectedPeer{}
 
 	reader := NewPacketReader()
@@ -69,6 +69,8 @@ func NewConnectedPeer(context *CommunicationContext) *ConnectedPeer {
 	writer.SetContext(context)
 	reader.SetCaches(new(Caches))
 	writer.SetCaches(new(Caches))
+	reader.SetIsClient(withClient)
+	writer.SetToClient(withClient)
 
 	myPeer.DefaultPacketReader = reader
 	myPeer.DefaultPacketWriter = writer

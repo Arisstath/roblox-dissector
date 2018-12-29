@@ -2,24 +2,9 @@ package peer
 
 import "net"
 import "errors"
-import "github.com/gskartwii/rbxfile"
-import "fmt"
+import "github.com/robloxapi/rbxfile"
+
 import "math"
-import "strings"
-
-// Referent is a type that is used to refer to rbxfile.Instances.
-// A Referent to a NULL instance is "null"
-// Other Referents are of the the form "RBX123456789ABCDEF_1234", consisting of
-// a scope and an index number
-type Referent string
-
-// IsNull checks if a a Referent refers to a NULL/nil instance.
-func (ref Referent) IsNull() bool {
-	return ref == "null"
-}
-func (ref Referent) String() string {
-	return string(ref)
-}
 
 // PhysicsMotor is an alias type for rbxfile.ValueCFrames. They are used to
 // describe motors in physics packets
@@ -74,7 +59,7 @@ func (b *extendedReader) readRay() (rbxfile.ValueRay, error) {
 	return val, err
 }
 
-func (b *extendedReader) readRegion3() (rbxfile.ValueRegion3, error) {
+func (b *extendedReader) readRegion3() (ValueRegion3, error) {
 	var err error
 	val := rbxfile.ValueRegion3{}
 	val.Start, err = b.readVector3Simple()
@@ -84,7 +69,7 @@ func (b *extendedReader) readRegion3() (rbxfile.ValueRegion3, error) {
 	val.End, err = b.readVector3Simple()
 	return val, err
 }
-func (b *extendedReader) readRegion3int16() (rbxfile.ValueRegion3int16, error) {
+func (b *extendedReader) readRegion3int16() (ValueRegion3int16, error) {
 	var err error
 	val := rbxfile.ValueRegion3int16{}
 	val.Start, err = b.readVector3int16()
@@ -270,42 +255,20 @@ func (b *extendedReader) readBrickColor() (rbxfile.ValueBrickColor, error) {
 	return rbxfile.ValueBrickColor(val), err
 }
 
-func formatBindable(obj rbxfile.ValueReference) string {
-	return obj.String()
-}
-func objectToRef(referent string, referentInt uint32) Referent {
-	if referent == "NULL" || referent == "null" || referent == "nil" {
-		return "null"
-	}
-	return Referent(fmt.Sprintf("%s_%d", referent, referentInt))
-}
-func refToObject(refString Referent) (string, uint32) {
-	if refString.IsNull() {
-		return "null", 0
-	}
-	components := strings.Split(string(refString), "_")
-	return components[0], uint32(mustAtoi(components[1]))
-}
-
-func (b *extendedReader) readJoinObject(context *CommunicationContext) (Referent, error) {
-	referent, referentInt, err := b.readJoinReferent(context)
-	serialized := objectToRef(referent, referentInt)
-
-	return Referent(serialized), err
-}
-func (b *extendedReader) readObject(caches *Caches) (Referent, error) {
+func (b *extendedReader) readObject(caches *Caches) (datamodel.Reference, error) {
 	var referentInt uint32
 	referent, err := b.readCachedScope(caches)
 	if err != nil && err != CacheReadOOB { // TODO: hack! physics packets may have problems with caches
 		return "", err
 	}
+	reference := datamodel.Reference{Scope: referent}
 	if referent != "NULL" {
-		referentInt, err = b.readUint32LE()
+		reference.Id, err = b.readUint32LE()
+	} else {
+		reference.IsNull = true
 	}
 
-	serialized := objectToRef(referent, referentInt)
-
-	return Referent(serialized), err
+	return reference, err
 }
 
 func (b *extendedReader) readCFrameSimple() (rbxfile.ValueCFrame, error) {
@@ -454,10 +417,10 @@ func (b *extendedReader) readContent(caches *Caches) (rbxfile.ValueContent, erro
 }
 
 // TODO: Make this function uniform with other cache functions
-func (b *extendedReader) readSystemAddress(caches *Caches) (rbxfile.ValueSystemAddress, error) {
+func (b *extendedReader) readSystemAddress(caches *Caches) (ValueSystemAddress, error) {
 	cache := &caches.SystemAddress
 
-	thisAddress := rbxfile.ValueSystemAddress("0.0.0.0:0")
+	thisAddress := ValueSystemAddress("0.0.0.0:0")
 	var err error
 	var cacheIndex uint8
 	cacheIndex, err = b.readUint8()
@@ -473,7 +436,7 @@ func (b *extendedReader) readSystemAddress(caches *Caches) (rbxfile.ValueSystemA
 		if !ok {
 			return thisAddress, nil
 		}
-		return result.(rbxfile.ValueSystemAddress), nil
+		return result.(ValueSystemAddress), nil
 	}
 	thisAddr := net.UDPAddr{}
 	thisAddr.IP = make([]byte, 4)
@@ -493,28 +456,23 @@ func (b *extendedReader) readSystemAddress(caches *Caches) (rbxfile.ValueSystemA
 
 	cache.Put(thisAddress, cacheIndex-0x80)
 
-	return rbxfile.ValueSystemAddress(thisAddr.String()), nil
+	return ValueSystemAddress(thisAddr.String()), nil
 }
 
-func (b *JoinSerializeReader) readSystemAddress() (rbxfile.ValueSystemAddress, error) {
+func (b *JoinSerializeReader) readSystemAddress() (datamodel.ValueSystemAddress, error) {
 	var err error
-	thisAddress := rbxfile.ValueSystemAddress("0.0.0.0:0")
-	thisAddr := net.UDPAddr{}
-	thisAddr.IP = make([]byte, 4)
-	err = b.bytes(thisAddr.IP, 4)
+	thisAddress := datamodel.ValueSystemAddress{}
+	err = b.bytes(thisAddress.IP, 4)
 	if err != nil {
 		return thisAddress, err
 	}
 	for i := 0; i < 4; i++ {
-		thisAddr.IP[i] = thisAddr.IP[i] ^ 0xFF // bitwise NOT
+		thisAddress.IP[i] = thisAddress.IP[i] ^ 0xFF // bitwise NOT
 	}
 
 	port, err := b.readUint16BE()
-	thisAddr.Port = int(port)
-	if err != nil {
-		return thisAddress, err
-	}
-	return rbxfile.ValueSystemAddress(thisAddr.String()), nil
+	thisAddress.Port = int(port)
+	return thisAddress, err
 }
 
 func (b *extendedReader) readUintUTF8() (uint32, error) {
@@ -596,11 +554,7 @@ func (b *extendedReader) readNewBinaryString() (rbxfile.ValueBinaryString, error
 // TODO: Remove context argument dependency
 func (b *extendedReader) readNewEnumValue(enumID uint16, context *CommunicationContext) (rbxfile.ValueToken, error) {
 	val, err := b.readUintUTF8()
-	token := rbxfile.ValueToken{
-		Value: val,
-		ID:    enumID,
-		Name:  getEnumName(context, enumID),
-	}
+	token := rbxfile.ValueToken(val)
 	return token, err
 }
 
@@ -633,8 +587,8 @@ func (b *extendedReader) readNewTypeAndValue(reader PacketReader) (rbxfile.Value
 	return val, err
 }
 
-func (b *extendedReader) readNewTuple(reader PacketReader) (rbxfile.ValueTuple, error) {
-	var tuple rbxfile.ValueTuple
+func (b *extendedReader) readNewTuple(reader PacketReader) (datamodel.ValueTuple, error) {
+	var tuple datamodel.ValueTuple
 	tupleLen, err := b.readUintUTF8()
 	if err != nil {
 		return tuple, err
@@ -642,7 +596,7 @@ func (b *extendedReader) readNewTuple(reader PacketReader) (rbxfile.ValueTuple, 
 	if tupleLen > 0x10000 {
 		return tuple, errors.New("sanity check: exceeded maximum tuple len")
 	}
-	tuple = make(rbxfile.ValueTuple, tupleLen)
+	tuple = make(datamodel.ValueTuple, tupleLen)
 	for i := 0; i < int(tupleLen); i++ {
 		val, err := b.readNewTypeAndValue(reader)
 		if err != nil {
@@ -654,13 +608,13 @@ func (b *extendedReader) readNewTuple(reader PacketReader) (rbxfile.ValueTuple, 
 	return tuple, nil
 }
 
-func (b *extendedReader) readNewArray(reader PacketReader) (rbxfile.ValueArray, error) {
+func (b *extendedReader) readNewArray(reader PacketReader) (datamodel.ValueArray, error) {
 	array, err := b.readNewTuple(reader)
-	return rbxfile.ValueArray(array), err
+	return datamodel.ValueArray(array), err
 }
 
-func (b *extendedReader) readNewDictionary(reader PacketReader) (rbxfile.ValueDictionary, error) {
-	var dictionary rbxfile.ValueDictionary
+func (b *extendedReader) readNewDictionary(reader PacketReader) (datamodel.ValueDictionary, error) {
+	var dictionary datamodel.ValueDictionary
 	dictionaryLen, err := b.readUintUTF8()
 	if err != nil {
 		return dictionary, err
@@ -668,7 +622,7 @@ func (b *extendedReader) readNewDictionary(reader PacketReader) (rbxfile.ValueDi
 	if dictionaryLen > 0x10000 {
 		return dictionary, errors.New("sanity check: exceeded maximum dictionary len")
 	}
-	dictionary = make(rbxfile.ValueDictionary, dictionaryLen)
+	dictionary = make(datamodel.ValueDictionary, dictionaryLen)
 	for i := 0; i < int(dictionaryLen); i++ {
 		keyLen, err := b.readUintUTF8()
 		if err != nil {
@@ -687,9 +641,9 @@ func (b *extendedReader) readNewDictionary(reader PacketReader) (rbxfile.ValueDi
 	return dictionary, nil
 }
 
-func (b *extendedReader) readNewMap(reader PacketReader) (rbxfile.ValueMap, error) {
+func (b *extendedReader) readNewMap(reader PacketReader) (datamodel.ValueMap, error) {
 	thisMap, err := b.readNewDictionary(reader)
-	return rbxfile.ValueMap(thisMap), err
+	return datamodel.ValueMap(thisMap), err
 }
 
 func (b *extendedReader) readNumberSequenceKeypoint() (rbxfile.ValueNumberSequenceKeypoint, error) {

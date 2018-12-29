@@ -1,7 +1,7 @@
 package peer
 
 import (
-	"github.com/gskartwii/rbxfile"
+	"github.com/robloxapi/rbxfile"
 )
 
 // Packet85LayerSubpacket represents physics replication for one instance
