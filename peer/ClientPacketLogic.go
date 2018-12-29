@@ -395,9 +395,9 @@ func (myClient *CustomClient) stalkPart(movePart *datamodel.Instance, cframe rbx
 	myCframe := rbxfile.ValueCFrame{
 		Rotation: cframe.Rotation,
 		Position: rbxfile.ValueVector3{
-			cframe.Position.X,
-			cframe.Position.Y + 10.0,
-			cframe.Position.Z,
+			X: cframe.Position.X,
+			Y: cframe.Position.Y + 10.0,
+			Z: cframe.Position.Z,
 		},
 	}
 

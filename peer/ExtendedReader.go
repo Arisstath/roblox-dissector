@@ -470,7 +470,7 @@ func (b *extendedReader) readAddress() (*net.UDPAddr, error) {
 		return nil, err
 	}
 
-	return &net.UDPAddr{address, int(port), ""}, nil
+	return &net.UDPAddr{IP: address, Port: int(port)}, nil
 }
 
 func (b *extendedReader) readFloat32LE() (float32, error) {

@@ -98,7 +98,7 @@ func (thisBitstream *extendedReader) DecodePacket83_09(reader PacketReader, laye
 		thisSubpacket := &Packet83_09_07{}
 		subpacket = thisSubpacket
 	default:
-		layers.Root.Logger.Println("don't know rocky subpacket", inner.Type)
+		layers.Root.Logger.Println("don't know rocky subpacket", inner.Type())
 		return inner, errors.New("unimplemented subpacket type")
 	}
 	inner.Subpacket = subpacket

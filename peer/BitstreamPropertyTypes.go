@@ -29,7 +29,7 @@ func (b *extendedReader) readUDim() (rbxfile.ValueUDim, error) {
 
 func (b *extendedReader) readUDim2() (rbxfile.ValueUDim2, error) {
 	var err error
-	val := rbxfile.ValueUDim2{rbxfile.ValueUDim{}, rbxfile.ValueUDim{}}
+	val := rbxfile.ValueUDim2{}
 	val.X.Scale, err = b.readFloat32BE()
 	if err != nil {
 		return val, err
@@ -203,7 +203,7 @@ func (b *extendedReader) readVector3int16() (rbxfile.ValueVector3int16, error) {
 		return val, err
 	}
 	valZ, err := b.readUint16BE()
-	val = rbxfile.ValueVector3int16{int16(valX), int16(valY), int16(valZ)}
+	val = rbxfile.ValueVector3int16{X: int16(valX), Y: int16(valY), Z: int16(valZ)}
 	return val, err
 }
 
@@ -728,7 +728,7 @@ func (b *extendedReader) readColorSequence() (datamodel.ValueColorSequence, erro
 
 func (b *extendedReader) readRect2D() (rbxfile.ValueRect2D, error) {
 	var err error
-	thisRect := rbxfile.ValueRect2D{rbxfile.ValueVector2{}, rbxfile.ValueVector2{}}
+	thisRect := rbxfile.ValueRect2D{}
 
 	thisRect.Min.X, err = b.readFloat32BE()
 	if err != nil {
@@ -786,7 +786,7 @@ func (b *extendedReader) readCoordsMode1() (rbxfile.ValueVector3, error) {
 		return value, err
 	}
 	if cRange <= 0.0000099999997 { // Has to be precise
-		return rbxfile.ValueVector3{0, 0, 0}, nil
+		return rbxfile.ValueVector3{}, nil
 	}
 	x, err := b.readUint16BE()
 	if err != nil {
@@ -1040,7 +1040,7 @@ func (b *extendedReader) readPhysicsCFrame() (rbxfile.ValueCFrame, error) {
 	if err != nil {
 		return val, err
 	}
-	return rbxfile.ValueCFrame{coords, matrix}, nil
+	return rbxfile.ValueCFrame{Position: coords, Rotation: matrix}, nil
 }
 
 /* code to convert compact cf to real:

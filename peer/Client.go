@@ -183,7 +183,6 @@ func (myClient *CustomClient) setupChat() error {
 			myClient.Logger.Printf("SYSTEM: %s has left the game.\n", player.Name())
 		}
 	}
-	return nil
 }
 
 func (myClient *CustomClient) SendChat(message string, toPlayer string, channel string) {

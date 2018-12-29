@@ -29,7 +29,7 @@ type SerializeWriter interface {
 
 	writeUint16BE(uint16) error
 	writeBoolByte(bool) error
-	WriteByte(uint8) error
+	WriteByte(byte) error
 }
 type InstanceWriter interface {
 	SerializeWriter
