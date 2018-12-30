@@ -141,10 +141,14 @@ func (client *ServerClient) authHandler(packetType byte, layers *PacketLayers) {
 		return
 	}
 
-	partTest := datamodel.NewInstance("NumberValue", nil)
+	partTest, _ := datamodel.NewInstance("NumberValue", nil)
 	partTest.Set("Value", rbxfile.ValueDouble(3.0))
 	partTest.Ref = client.Server.InstanceDictionary.NewReference()
-	client.DataModel.FindService("Workspace").AddChild(partTest)
+	err = client.DataModel.FindService("Workspace").AddChild(partTest)
+	if err != nil {
+		println("parttest error: ", err.Error())
+		return
+	}
 
 	err = client.WriteDataPackets(&Packet83_02{partTest})
 	if err != nil {

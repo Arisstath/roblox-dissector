@@ -153,6 +153,7 @@ type CommunicationContext struct {
 
 func NewCommunicationContext() *CommunicationContext {
 	return &CommunicationContext{
+		DataModel:           datamodel.New(),
 		InstancesByReferent: datamodel.NewInstanceList(),
 		InstanceTopScope:    "WARNING_UNASSIGNED_TOP_SCOPE",
 	}

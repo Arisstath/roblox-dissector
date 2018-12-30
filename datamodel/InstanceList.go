@@ -42,7 +42,7 @@ func (l *InstanceList) CreateInstance(ref Reference) (*Instance, error) {
 	}
 	instance := l.getScope(ref).Instances[ref.Id]
 	if instance == nil {
-		instance = NewInstance("", nil)
+		instance, _ = NewInstance("", nil)
 		instance.Ref = ref
 		l.AddInstance(ref, instance)
 		return instance, nil

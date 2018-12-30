@@ -285,9 +285,9 @@ func (b *extendedReader) bits(len int) (uint64, error) {
 	return b.ReadBits(len)
 }
 
-func (b *extendedReader) bytes(dest []byte, len int) error {
+func (b *extendedReader) bytes(dest []byte, length int) error {
 	var Byte byte
-	for i := 0; i < len; i++ {
+	for i := 0; i < length; i++ {
 		res, err := b.bits(8)
 		if err != nil {
 			return err

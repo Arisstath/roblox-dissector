@@ -419,7 +419,7 @@ func (b *extendedReader) readContent(caches *Caches) (rbxfile.ValueContent, erro
 func (b *extendedReader) readSystemAddress(caches *Caches) (datamodel.ValueSystemAddress, error) {
 	cache := &caches.SystemAddress
 
-	thisAddress := datamodel.ValueSystemAddress{}
+	thisAddress := datamodel.ValueSystemAddress{IP: make([]byte, 4)}
 	var err error
 	var cacheIndex uint8
 	cacheIndex, err = b.readUint8()
@@ -458,7 +458,7 @@ func (b *extendedReader) readSystemAddress(caches *Caches) (datamodel.ValueSyste
 
 func (b *JoinSerializeReader) readSystemAddress() (datamodel.ValueSystemAddress, error) {
 	var err error
-	thisAddress := datamodel.ValueSystemAddress{}
+	thisAddress := datamodel.ValueSystemAddress{IP: make([]byte, 4)}
 	err = b.bytes(thisAddress.IP, 4)
 	if err != nil {
 		return thisAddress, err

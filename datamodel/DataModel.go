@@ -37,7 +37,7 @@ func (model *DataModel) WaitForService(name string) <-chan *Instance {
 		return servChan
 	}
 	emitterChan := model.ServiceEmitter.Once(name)
-	go func() {
+	go func(emitterChan <-chan emitter.Event) {
 		// If the service was added while the emitter was being created
 		service := model.FindService(name)
 		if service != nil {
@@ -45,8 +45,9 @@ func (model *DataModel) WaitForService(name string) <-chan *Instance {
 			return
 		}
 
-		servChan <- (<-emitterChan).Args[0].(*Instance)
-	}()
+		servMiddle := (<-emitterChan).Args[0].(*Instance)
+		servChan <- servMiddle
+	}(emitterChan)
 	return servChan
 }
 

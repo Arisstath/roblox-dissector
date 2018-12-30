@@ -37,7 +37,6 @@ func (thisBitstream *extendedReader) DecodePacket83_03(reader PacketReader, laye
 		return layer, err
 	}
 	layer.Instance = instance
-	instance.Set(layer.PropertyName, layer.Value)
 
 	propertyIDx, err := thisBitstream.readUint16BE()
 	if err != nil {
@@ -72,7 +71,7 @@ func (thisBitstream *extendedReader) DecodePacket83_03(reader PacketReader, laye
 			instance.SetParent(nil)
 			return layer, nil
 		}
-		parent.AddChild(instance)
+		err = parent.AddChild(instance)
 		return layer, err
 	}
 
@@ -83,6 +82,7 @@ func (thisBitstream *extendedReader) DecodePacket83_03(reader PacketReader, laye
 	layer.PropertyName = schema.Name
 
 	layer.Value, err = schema.Decode(reader, thisBitstream, layers)
+	instance.Set(layer.PropertyName, layer.Value)
 
 	return layer, err
 }

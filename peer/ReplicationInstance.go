@@ -64,8 +64,7 @@ func decodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader
 	context.InstancesByReferent.AddInstance(thisInstance.Ref, thisInstance)
 	parent, err := context.InstancesByReferent.TryGetInstance(referent)
 	if parent != nil {
-		parent.AddChild(thisInstance)
-		return thisInstance, nil
+		return thisInstance, parent.AddChild(thisInstance)
 	}
 	if err != nil && !thisInstance.IsService {
 		println("couldn't find parent for", thisInstance.Ref.String(), referent.String())

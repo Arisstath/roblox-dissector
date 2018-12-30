@@ -1,6 +1,7 @@
 package datamodel
 
 import (
+	"errors"
 	"strings"
 	"sync"
 
@@ -21,24 +22,45 @@ type Instance struct {
 	parent          *Instance
 }
 
-func NewInstance(className string, parent *Instance) *Instance {
+func NewInstance(className string, parent *Instance) (*Instance, error) {
 	inst := &Instance{
 		ClassName:       className,
 		Properties:      make(map[string]rbxfile.Value),
 		PropertiesMutex: &sync.RWMutex{},
 		ChildEmitter:    emitter.New(1),
 		PropertyEmitter: emitter.New(1),
+		EventEmitter:    emitter.New(1),
 	}
-	inst.SetParent(inst)
-	return inst
+
+	return inst, inst.SetParent(inst)
 }
 
-func (instance *Instance) AddChild(child *Instance) {
+func (instance *Instance) HasAncestor(ancestor *Instance) bool {
+	if instance == ancestor {
+		return true
+	}
+	for instance != nil {
+		if instance.parent == ancestor {
+			return true
+		}
+		instance = instance.parent
+	}
+	return false
+}
+
+func (instance *Instance) AddChild(child *Instance) error {
+	if instance.HasAncestor(child) {
+		return errors.New("instance references can't be cyclic")
+	}
+	child.parent = instance
 	if instance != nil {
 		instance.Children = append(instance.Children, child)
+		// Do NOT wait for the emitter to finish!
 		instance.ChildEmitter.Emit(child.Name(), child)
 	}
+	// Do NOT wait for the emitter to finish!
 	child.PropertyEmitter.Emit("Parent", instance)
+	return nil
 }
 
 func (instance *Instance) Get(name string) rbxfile.Value {
@@ -50,11 +72,12 @@ func (instance *Instance) Set(name string, value rbxfile.Value) {
 	instance.PropertiesMutex.Lock()
 	instance.Properties[name] = value
 	instance.PropertiesMutex.Unlock()
+	// Do NOT wait for the emitter to finish!
 	instance.PropertyEmitter.Emit(name, value)
 }
 
-func (instance *Instance) SetParent(parent *Instance) {
-	parent.AddChild(instance)
+func (instance *Instance) SetParent(parent *Instance) error {
+	return parent.AddChild(instance)
 }
 
 func (instance *Instance) FindFirstChild(name string) *Instance {
@@ -109,16 +132,23 @@ func (instance *Instance) WaitForProp(name string) <-chan rbxfile.Value {
 func (instance *Instance) WaitForRefProp(name string) <-chan *Instance {
 	propChan := make(chan *Instance, 1)
 	currProp := instance.Get(name)
-	if currProp != nil && currProp.(*ValueReference).Instance != nil {
-		propChan <- currProp.(*ValueReference).Instance
+	if currProp != nil && currProp.(ValueReference).Instance != nil {
+		propChan <- currProp.(ValueReference).Instance
 		return propChan
 	}
 	go func() {
-		for currProp := range instance.WaitForProp(name) {
-			if currProp != nil && currProp.(*ValueReference).Instance != nil {
-				propChan <- currProp.(*ValueReference).Instance
+		for propEvt := range instance.PropertyEmitter.On(name) {
+			if propEvt.Args[0] == nil {
+				println("skipping nil prop")
+				continue
+			}
+			currProp := propEvt.Args[0].(ValueReference)
+			if currProp.Instance != nil {
+				println("got arg")
+				propChan <- currProp.Instance
 				return
 			}
+			println("skipping nil ref")
 		}
 	}()
 	return propChan
@@ -140,11 +170,15 @@ func (instance *Instance) GetFullName() string {
 	if instance == nil {
 		return "nil"
 	}
-	var builder strings.Builder
+	parts := make([]string, 0, 8)
 	for instance != nil {
-		builder.WriteByte('.')
-		builder.WriteString(string(instance.Get("Name").(rbxfile.ValueString)))
+		parts = append([]string{instance.Name()}, parts...)
 		instance = instance.parent
+	}
+	var builder strings.Builder
+	for _, part := range parts {
+		builder.WriteByte('.')
+		builder.WriteString(part)
 	}
 	return builder.String()
 }
@@ -161,10 +195,12 @@ func (instance *Instance) MakeEventChan(name string, once bool) (<-chan emitter.
 		for ev := range emitterChan {
 			evChan <- ev.Args[0].([]rbxfile.Value)
 		}
+		close(evChan)
 	}()
 	return emitterChan, evChan
 }
 func (instance *Instance) FireEvent(name string, args ...rbxfile.Value) {
+	// Should not wait for the emitter to finish
 	instance.EventEmitter.Emit(name, []rbxfile.Value(args))
 }
 

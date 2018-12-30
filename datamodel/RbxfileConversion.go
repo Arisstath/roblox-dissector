@@ -15,6 +15,9 @@ func NewRbxfileReferencePool() *RbxfileReferencePool {
 }
 
 func (pool *RbxfileReferencePool) Make(instance *Instance) *rbxfile.Instance {
+	if instance == nil {
+		return nil
+	}
 	key := instance.Ref.String()
 	inst, ok := pool.pool[key]
 	if ok {
@@ -39,6 +42,9 @@ func NewSelfReferencePool() *SelfReferencePool {
 }
 
 func (pool *SelfReferencePool) Make(instance *rbxfile.Instance) *Instance {
+	if instance == nil {
+		return nil
+	}
 	return pool.MakeWithRef(instance.Reference)
 }
 func (pool *SelfReferencePool) MakeWithRef(ref string) *Instance {
@@ -47,7 +53,7 @@ func (pool *SelfReferencePool) MakeWithRef(ref string) *Instance {
 	if ok {
 		return inst
 	}
-	inst = NewInstance("", nil)
+	inst, _ = NewInstance("", nil)
 
 	pool.pool[key] = inst
 	return inst
@@ -66,8 +72,8 @@ func (instance *Instance) ToRbxfile(pool *RbxfileReferencePool) *rbxfile.Instanc
 	inst.IsService = instance.IsService
 	inst.Reference = instance.Ref.String()
 	instance.PropertiesMutex.RLock()
-	inst.Properties = make(map[string]rbxfile.Value, len(inst.Properties))
-	for name, value := range inst.Properties {
+	inst.Properties = make(map[string]rbxfile.Value, len(instance.Properties))
+	for name, value := range instance.Properties {
 		switch value.(type) {
 		case ValueNumberSequenceKeypoint,
 			ValueColorSequenceKeypoint,
@@ -79,12 +85,28 @@ func (instance *Instance) ToRbxfile(pool *RbxfileReferencePool) *rbxfile.Instanc
 			ValueRegion3,
 			ValueRegion3int16:
 			println("Dropping property", name)
+		case ValueNumberSequence:
+			oldSeq := value.(ValueNumberSequence)
+			newSeq := make([]rbxfile.ValueNumberSequenceKeypoint, len(oldSeq))
+			for i, keypoint := range oldSeq {
+				newSeq[i] = rbxfile.ValueNumberSequenceKeypoint(keypoint)
+			}
+			inst.Properties[name] = rbxfile.ValueNumberSequence(newSeq)
+		case ValueColorSequence:
+			oldSeq := value.(ValueColorSequence)
+			newSeq := make([]rbxfile.ValueColorSequenceKeypoint, len(oldSeq))
+			for i, keypoint := range oldSeq {
+				newSeq[i] = rbxfile.ValueColorSequenceKeypoint(keypoint)
+			}
+			inst.Properties[name] = rbxfile.ValueColorSequence(newSeq)
 		case ValueToken:
 			inst.Properties[name] = rbxfile.ValueToken(value.(ValueToken).Value)
 		case ValueReference:
 			inst.Properties[name] = rbxfile.ValueReference{
 				Instance: pool.Make(value.(ValueReference).Instance),
 			}
+		case nil:
+			// Strip this property
 		default:
 			inst.Properties[name] = value
 		}
@@ -119,6 +141,38 @@ func InstanceFromRbxfile(inst *rbxfile.Instance, pool *SelfReferencePool, dictio
 	instance.Properties = make(map[string]rbxfile.Value, len(inst.Properties))
 	for name, value := range inst.Properties {
 		instance.Properties[name] = value
+		switch value.Type() {
+		case rbxfile.TypeToken:
+			newToken := ValueToken{Value: uint32(value.(rbxfile.ValueToken))}
+
+			instance.Properties[name] = newToken
+		case rbxfile.TypeReference:
+			refInst := pool.Make(value.(rbxfile.ValueReference).Instance)
+			if refInst == nil {
+				instance.Properties[name] = ValueReference{Reference: NullReference}
+			} else {
+				instance.Properties[name] = ValueReference{
+					Reference: refInst.Ref,
+					Instance:  refInst,
+				}
+			}
+		case rbxfile.TypeNumberSequence:
+			oldSeq := value.(rbxfile.ValueNumberSequence)
+			newSeq := make([]ValueNumberSequenceKeypoint, len(oldSeq))
+
+			for i, keypoint := range oldSeq {
+				newSeq[i] = ValueNumberSequenceKeypoint(keypoint)
+			}
+			instance.Properties[name] = ValueNumberSequence(newSeq)
+		case rbxfile.TypeColorSequence:
+			oldSeq := value.(rbxfile.ValueColorSequence)
+			newSeq := make([]ValueColorSequenceKeypoint, len(oldSeq))
+			for i, keypoint := range oldSeq {
+				newSeq[i] = ValueColorSequenceKeypoint(keypoint)
+			}
+
+			instance.Properties[name] = ValueColorSequence(newSeq)
+		}
 	}
 	instance.PropertiesMutex.Unlock()
 
@@ -134,7 +188,7 @@ func FromRbxfile(dictionary *InstanceDictionary, root *rbxfile.Root) *DataModel 
 	pool := NewSelfReferencePool()
 	model := New()
 
-	dummyRoot := NewInstance("DataModel", nil)
+	dummyRoot, _ := NewInstance("DataModel", nil)
 	dummyRoot.IsService = true
 
 	for _, serv := range root.Instances {

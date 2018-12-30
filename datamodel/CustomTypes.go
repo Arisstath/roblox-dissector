@@ -80,7 +80,7 @@ func (ValueSystemAddress) Type() rbxfile.Type {
 	return TypeSystemAddress
 }
 func (t ValueSystemAddress) String() string {
-	return t.String()
+	return ((*net.UDPAddr)(&t)).String()
 }
 func (t ValueSystemAddress) Copy() rbxfile.Value {
 	c := new(net.UDPAddr)
@@ -191,7 +191,7 @@ func (x ValueColorSequenceKeypoint) Copy() rbxfile.Value {
 	return x
 }
 func (x ValueColorSequenceKeypoint) String() string {
-	return x.String()
+	return (rbxfile.ValueColorSequenceKeypoint)(x).String()
 }
 
 func (x ValueNumberSequenceKeypoint) Type() rbxfile.Type {
@@ -201,7 +201,7 @@ func (x ValueNumberSequenceKeypoint) Copy() rbxfile.Value {
 	return x
 }
 func (x ValueNumberSequenceKeypoint) String() string {
-	return x.String()
+	return (rbxfile.ValueNumberSequenceKeypoint)(x).String()
 }
 
 func (x ValueColorSequence) Type() rbxfile.Type {

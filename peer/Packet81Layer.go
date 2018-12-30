@@ -89,7 +89,6 @@ func (thisBitstream *extendedReader) DecodePacket81Layer(reader PacketReader, la
 	}
 
 	context := reader.Context()
-	context.DataModel = datamodel.New()
 
 	layer.Items = make([]*Packet81LayerItem, arrayLen)
 	for i := 0; i < int(arrayLen); i++ {
@@ -109,7 +108,7 @@ func (thisBitstream *extendedReader) DecodePacket81Layer(reader PacketReader, la
 		}
 
 		className := context.StaticSchema.Instances[thisItem.ClassID].Name
-		thisService := datamodel.NewInstance(className, nil)
+		thisService, _ := datamodel.NewInstance(className, nil)
 		thisService.IsService = true
 		thisService.Ref = referent
 		context.DataModel.AddService(thisService)

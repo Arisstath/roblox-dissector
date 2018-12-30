@@ -183,7 +183,7 @@ func (myClient *CustomClient) handlePlayersService(players *datamodel.Instance) 
 		return
 	}
 
-	myPlayer := datamodel.NewInstance("Player", nil)
+	myPlayer, _ := datamodel.NewInstance("Player", nil)
 	myPlayer.Ref = myClient.InstanceDictionary.NewReference()
 	myPlayer.Properties = map[string]rbxfile.Value{
 		"Name":                  rbxfile.ValueString(myClient.UserName),
@@ -197,11 +197,14 @@ func (myClient *CustomClient) handlePlayersService(players *datamodel.Instance) 
 		"UserId":              rbxfile.ValueInt64(myClient.PlayerId),
 		"ReplicatedLocaleId":  rbxfile.ValueString("en-us"),
 	}
-	players.AddChild(myPlayer)
+	err := players.AddChild(myPlayer)
+	if err != nil {
+		println("Failed to create localpalyer:", err.Error())
+	}
 	myClient.Context.InstancesByReferent.AddInstance(myPlayer.Ref, myPlayer)
 	myClient.LocalPlayer = myPlayer
 
-	err := myClient.WriteDataPackets(
+	err = myClient.WriteDataPackets(
 		&Packet83_05{
 			Timestamp:  uint64(time.Now().UnixNano() / int64(time.Millisecond)),
 			IsPingBack: false,
@@ -322,7 +325,7 @@ func (myClient *CustomClient) StalkPlayer(name string) {
 	targetCharacter := <-targetPlayer.WaitForRefProp("Character")
 	targetRootPart := <-targetCharacter.WaitForChild("HumanoidRootPart")
 	targetAnimator := <-targetCharacter.WaitForChild("Humanoid", "Animator")
-	println("got target root part")
+	println("got target animator")
 
 	var targetPosition rbxfile.ValueCFrame
 	currentPosition := myRootPart.Get("CFrame").(rbxfile.ValueCFrame).Position
@@ -368,6 +371,10 @@ func (myClient *CustomClient) StalkPlayer(name string) {
 			targetAnimator.EventEmitter.Off("OnPlay", animationEmitter)
 			println("targetca, updating")
 			targetCharacter = newTarget.Args[0].(datamodel.ValueReference).Instance
+			if targetCharacter == nil {
+				println("Stalk process finished!")
+				return
+			}
 			targetRootPart = <-targetCharacter.WaitForChild("HumanoidRootPart")
 			targetAnimator = <-targetCharacter.WaitForChild("Humanoid", "Animator")
 			animationEmitter, animationChan = targetAnimator.MakeEventChan("OnPlay", false)
