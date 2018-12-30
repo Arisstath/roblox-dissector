@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/Gskartwii/roblox-dissector/peer"
-	"github.com/robloxapi/rbxfile/bin"
+	"github.com/robloxapi/rbxfile/xml"
 	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/widgets"
 )
@@ -81,10 +81,10 @@ func NewClientConsole(parent widgets.QWidget_ITF, client *peer.CustomClient) {
 			return
 		}
 
-		writableClone := client.Context.DataModel.Copy()
-		stripInvalidTypes(writableClone.Instances, nil, 0)
+		writableClone := client.Context.DataModel.ToRbxfile()
+		dumpScripts(writableClone.Instances, 0)
 
-		err = bin.SerializePlace(writer, nil, client.Context.DataModel)
+		err = xml.Serialize(writer, nil, writableClone)
 		if err != nil {
 			println("while serializing place:", err.Error())
 			return

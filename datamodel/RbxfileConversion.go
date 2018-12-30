@@ -39,7 +39,10 @@ func NewSelfReferencePool() *SelfReferencePool {
 }
 
 func (pool *SelfReferencePool) Make(instance *rbxfile.Instance) *Instance {
-	key := instance.Reference
+	return pool.MakeWithRef(instance.Reference)
+}
+func (pool *SelfReferencePool) MakeWithRef(ref string) *Instance {
+	key := ref
 	inst, ok := pool.pool[key]
 	if ok {
 		return inst

@@ -45,7 +45,7 @@ func ShowPacket85(packetType byte, context *peer.CommunicationContext, layers *p
 			continue
 		}
 		nameItem := NewQStandardItemF(item.Data.Instance.GetFullName())
-		referenceItem := NewQStandardItemF(item.Data.Instance.Reference)
+		referenceItem := NewQStandardItemF(item.Data.Instance.Ref.String())
 		humanoidStateItem := NewQStandardItemF("%s", NetworkHumanoidStates[item.NetworkHumanoidState])
 		cframeItem := NewQStandardItemF(item.Data.CFrame.String())
 		linVelItem := NewQStandardItemF(item.Data.LinearVelocity.String())
@@ -54,7 +54,7 @@ func ShowPacket85(packetType byte, context *peer.CommunicationContext, layers *p
 		if item.Data.PlatformChild != nil {
 			nameItem.AppendRow([]*gui.QStandardItem{
 				NewQStandardItemF(item.Data.PlatformChild.GetFullName()),
-				NewQStandardItemF(item.Data.PlatformChild.Reference),
+				NewQStandardItemF(item.Data.PlatformChild.Ref.String()),
 			})
 		}
 		if len(item.Data.Motors) > 0 {
@@ -91,7 +91,7 @@ func ShowPacket85(packetType byte, context *peer.CommunicationContext, layers *p
 				if history.PlatformChild != nil {
 					historyItem.AppendRow([]*gui.QStandardItem{
 						NewQStandardItemF(history.PlatformChild.GetFullName()),
-						NewQStandardItemF(history.PlatformChild.Reference),
+						NewQStandardItemF(history.PlatformChild.Ref.String()),
 					})
 				}
 			}
@@ -107,7 +107,7 @@ func ShowPacket85(packetType byte, context *peer.CommunicationContext, layers *p
 				childItem := NewQStandardItemF(child.Instance.Name())
 				childrenItem.AppendRow([]*gui.QStandardItem{
 					childItem,
-					NewQStandardItemF(child.Instance.Reference),
+					NewQStandardItemF(child.Instance.Ref.String()),
 					nil,
 					NewQStandardItemF(child.CFrame.String()),
 					NewQStandardItemF(child.LinearVelocity.String()),
@@ -116,7 +116,7 @@ func ShowPacket85(packetType byte, context *peer.CommunicationContext, layers *p
 				if child.PlatformChild != nil {
 					childItem.AppendRow([]*gui.QStandardItem{
 						NewQStandardItemF(child.PlatformChild.GetFullName()),
-						NewQStandardItemF(child.PlatformChild.Reference),
+						NewQStandardItemF(child.PlatformChild.Ref.String()),
 					})
 				}
 				if len(child.Motors) > 0 {

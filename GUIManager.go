@@ -4,8 +4,9 @@ import "github.com/therecipe/qt/widgets"
 import "github.com/therecipe/qt/gui"
 import "github.com/therecipe/qt/core"
 import "github.com/Gskartwii/roblox-dissector/peer"
+import "github.com/gskartwii/roblox-dissector/datamodel"
 import "github.com/robloxapi/rbxfile"
-import "github.com/robloxapi/rbxfile/bin"
+
 import "github.com/robloxapi/rbxfile/xml"
 import "os"
 import "os/exec"
@@ -727,7 +728,7 @@ func GUIMain() {
 
 	scriptDumperAction := toolsBar.AddAction("Dump &scripts")
 	scriptDumperAction.ConnectTriggered(func(checked bool) {
-		dumpScripts(packetViewer.Context.DataModel.Instances, 0)
+		dumpScripts(packetViewer.Context.DataModel.ToRbxfile().Instances, 0)
 		scriptData, err := os.OpenFile("dumps/scriptKeys", os.O_RDWR|os.O_CREATE, 0666)
 		defer scriptData.Close()
 		if err != nil {
@@ -750,9 +751,11 @@ func GUIMain() {
 			return
 		}
 
-		stripInvalidTypes(packetViewer.Context.DataModel.Instances, packetViewer.DefaultValues, 0)
+		writableClone := packetViewer.Context.DataModel.ToRbxfile()
 
-		err = bin.SerializePlace(writer, nil, packetViewer.Context.DataModel)
+		dumpScripts(writableClone.Instances, 0)
+
+		err = xml.Serialize(writer, nil, writableClone)
 		if err != nil {
 			println("while serializing place:", err.Error())
 			return
@@ -788,7 +791,7 @@ func GUIMain() {
 		}
 
 		dataModel := packetViewer.Context.DataModel.Instances
-		var players, replicatedStorage *rbxfile.Instance
+		var players, replicatedStorage *datamodel.Instance
 		for i := 0; i < len(dataModel); i++ {
 			if dataModel[i].ClassName == "Players" {
 				players = dataModel[i]
@@ -798,14 +801,14 @@ func GUIMain() {
 		}
 		player := players.Children[0]
 		println("chose player", player.Name())
-		chatEvent := replicatedStorage.FindFirstChild("DefaultChatSystemChatEvents", false).FindFirstChild("SayMessageRequest", false)
+		chatEvent := replicatedStorage.FindFirstChild("DefaultChatSystemChatEvents").FindFirstChild("SayMessageRequest")
 		subpacket := &peer.Packet83_07{
 			Instance:  chatEvent,
 			EventName: "OnServerEvent",
 			Event: &peer.ReplicationEvent{
 				Arguments: []rbxfile.Value{
-					rbxfile.ValueReference{Instance: player},
-					rbxfile.ValueTuple{
+					datamodel.ValueReference{Instance: player, Reference: player.Ref},
+					datamodel.ValueTuple{
 						rbxfile.ValueString("Hello, this is a hacked message"),
 						rbxfile.ValueString("All"),
 					},
@@ -849,14 +852,17 @@ func GUIMain() {
 				println("while reading instances:", err.Error())
 				return
 			}
-			server, err := peer.NewCustomServer(uint16(port), &schema, dataModelRoot)
+
+			instanceDictionary := datamodel.NewInstanceDictionary()
+			thisRoot := datamodel.FromRbxfile(instanceDictionary, dataModelRoot)
+			normalizeTypes(thisRoot.Instances, &schema)
+
+			server, err := peer.NewCustomServer(uint16(port), &schema, thisRoot)
 			if err != nil {
 				println("while creating server", err.Error())
 				return
 			}
-			root := normalizeParents(dataModelRoot.Instances)
-			normalizeReferences([]*rbxfile.Instance{root}, server.InstanceDictionary)
-			normalizeTypes(dataModelRoot.Instances, &schema)
+			server.InstanceDictionary = instanceDictionary
 
 			NewServerConsole(window, server)
 

@@ -1,15 +1,19 @@
 package main
 
-import "github.com/therecipe/qt/widgets"
-import "github.com/therecipe/qt/gui"
-import "github.com/therecipe/qt/core"
-import "github.com/robloxapi/rbxfile"
-import "github.com/robloxapi/rbxfile/xml"
-import "github.com/Gskartwii/roblox-dissector/peer"
-import "os"
-import "fmt"
+import (
+	"fmt"
+	"os"
 
-func showChildren(rootNode *gui.QStandardItem, children []*rbxfile.Instance) {
+	"github.com/Gskartwii/roblox-dissector/peer"
+	"github.com/gskartwii/roblox-dissector/datamodel"
+	"github.com/robloxapi/rbxfile"
+	"github.com/robloxapi/rbxfile/xml"
+	"github.com/therecipe/qt/core"
+	"github.com/therecipe/qt/gui"
+	"github.com/therecipe/qt/widgets"
+)
+
+func showChildren(rootNode *gui.QStandardItem, children []*datamodel.Instance) {
 	for _, instance := range children {
 		row := showReplicationInstance(instance)
 		if len(instance.Children) > 0 {
@@ -23,18 +27,11 @@ func showChildren(rootNode *gui.QStandardItem, children []*rbxfile.Instance) {
 
 func dumpScripts(instances []*rbxfile.Instance, i int) int {
 	for _, instance := range instances {
-		instance.PropertiesMutex.Lock()
 		for name, property := range instance.Properties {
-			if property == nil {
-				delete(instance.Properties, name)
-				continue
-			}
 			thisType := property.Type()
 			if thisType == rbxfile.TypeProtectedString {
 				println("dumping protectedstring", instance.ClassName, name, thisType.String())
-				instance.PropertiesMutex.Unlock()
 				file, err := os.Create(fmt.Sprintf("dumps/%s.%d", instance.GetFullName(), i))
-				instance.PropertiesMutex.Lock()
 				if err != nil {
 					println(err.Error())
 					continue
@@ -52,70 +49,18 @@ func dumpScripts(instances []*rbxfile.Instance, i int) int {
 				}
 			}
 		}
-		instance.PropertiesMutex.Unlock()
 		i = dumpScripts(instance.Children, i)
 	}
 	return i
 }
 
-func stripInvalidTypes(instances []*rbxfile.Instance, defaultValues DefaultValues, i int) int {
-	for _, instance := range instances {
-		instance.PropertiesMutex.Lock()
-		color, ok := instance.Properties["Color3uint8"]
-		if ok {
-			col := color.(rbxfile.ValueColor3uint8)
-			instance.Properties["Color"] = rbxfile.ValueColor3{
-				R: float32(col.R) / 255,
-				G: float32(col.R) / 255,
-				B: float32(col.B) / 255,
-			}
-		}
-
-		for name, property := range instance.Properties {
-			if property == nil {
-				delete(instance.Properties, name)
-				continue
-			}
-			thisType := property.Type()
-			if (thisType >= rbxfile.TypeNumberSequenceKeypoint ||
-				thisType == rbxfile.TypeVector2int16) && thisType != rbxfile.TypeInt64 {
-				delete(instance.Properties, name)
-				continue
-			} else if thisType == rbxfile.TypeProtectedString {
-				println("dumping protectedstring", instance.ClassName, name, thisType.String())
-				instance.PropertiesMutex.Unlock()
-				file, err := os.Create(fmt.Sprintf("dumps/%s.%d", instance.GetFullName(), i))
-				instance.PropertiesMutex.Lock()
-				if err != nil {
-					println(err.Error())
-					continue
-				}
-				i++
-				_, err = file.Write([]byte(instance.Properties[name].(rbxfile.ValueProtectedString)))
-				if err != nil {
-					println(err.Error())
-					continue
-				}
-				err = file.Close()
-				if err != nil {
-					println(err.Error())
-					continue
-				}
-			}
-		}
-		instance.PropertiesMutex.Unlock()
-		i = stripInvalidTypes(instance.Children, defaultValues, i)
-	}
-	return i
-}
-
-func NewDataModelBrowser(context *peer.CommunicationContext, dataModel *rbxfile.Root, defaultValues DefaultValues) {
+func NewDataModelBrowser(context *peer.CommunicationContext, dataModel *datamodel.DataModel, defaultValues DefaultValues) {
 	subWindow := widgets.NewQWidget(window, core.Qt__Window)
 	subWindowLayout := widgets.NewQVBoxLayout2(subWindow)
 
 	subWindow.SetWindowTitle("Data Model")
 
-	children := dataModel.Copy()
+	writableClone := dataModel.ToRbxfile()
 
 	takeSnapshotButton := widgets.NewQPushButton2("Save as RBXL...", nil)
 	takeSnapshotButton.ConnectPressed(func() {
@@ -127,8 +72,7 @@ func NewDataModelBrowser(context *peer.CommunicationContext, dataModel *rbxfile.
 			return
 		}
 
-		writableClone := children.Copy()
-		stripInvalidTypes(writableClone.Instances, defaultValues, 0)
+		dumpScripts(writableClone.Instances, 0)
 
 		err = xml.Serialize(writer, nil, writableClone)
 		if err != nil {
@@ -156,7 +100,7 @@ func NewDataModelBrowser(context *peer.CommunicationContext, dataModel *rbxfile.
 	standardModel.SetHorizontalHeaderLabels([]string{"Name", "Type", "Value", "Referent", "Parent"})
 
 	rootNode := standardModel.InvisibleRootItem()
-	showChildren(rootNode, children.Instances)
+	showChildren(rootNode, dataModel.Instances)
 	instanceList.SetModel(standardModel)
 	instanceList.SetSelectionMode(0)
 	instanceList.SetSortingEnabled(true)

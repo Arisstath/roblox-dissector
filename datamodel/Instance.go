@@ -171,3 +171,37 @@ func (instance *Instance) FireEvent(name string, args ...rbxfile.Value) {
 func (instance *Instance) Parent() *Instance {
 	return instance.parent
 }
+
+func (instance *Instance) Copy(pool *SelfReferencePool) *Instance {
+	newInst := pool.MakeWithRef(instance.Ref.String())
+	newInst.ClassName = instance.ClassName
+	newInst.Ref = instance.Ref
+	newInst.Children = make([]*Instance, len(instance.Children))
+	newInst.Properties = make(map[string]rbxfile.Value, len(instance.Properties))
+	// We intentionally do NOT set the parent here!
+	// The parent may not be a copied instance
+
+	newInst.PropertiesMutex.Lock()
+	instance.PropertiesMutex.RLock()
+	for name, value := range instance.Properties {
+		newInst.Properties[name] = value.Copy()
+		// Copy() clears the Instance field
+		// hence we need to set it again here
+		if value.Type() == TypeReference {
+			newInst.Properties[name] = ValueReference{
+				Instance:  pool.MakeWithRef(value.(ValueReference).Reference.String()),
+				Reference: value.(ValueReference).Reference,
+			}
+		}
+	}
+	newInst.PropertiesMutex.Unlock()
+	instance.PropertiesMutex.RUnlock()
+
+	for i, child := range instance.Children {
+		newChild := child.Copy(pool)
+		newChild.parent = newInst
+		newInst.Children[i] = newChild
+	}
+
+	return newInst
+}

@@ -62,3 +62,15 @@ func (model *DataModel) WaitForChild(names ...string) <-chan *Instance {
 	}()
 	return retChan
 }
+
+func (model *DataModel) Copy() *DataModel {
+	newModel := New()
+	pool := NewSelfReferencePool()
+	newModel.Instances = make([]*Instance, len(model.Instances))
+
+	for i, inst := range model.Instances {
+		newModel.Instances[i] = inst.Copy(pool)
+	}
+
+	return newModel
+}

@@ -172,7 +172,9 @@ func (x ValueRegion3int16) Type() rbxfile.Type {
 	return TypeRegion3int16
 }
 
+// WARNING: Remember to set val.Instance yourself when copying
 func (x ValueReference) Copy() rbxfile.Value {
+	x.Instance = nil
 	return x
 }
 func (x ValueReference) Type() rbxfile.Type {

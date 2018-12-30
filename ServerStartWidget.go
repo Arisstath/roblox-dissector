@@ -98,7 +98,7 @@ func normalizeTypes(children []*datamodel.Instance, schema *peer.StaticSchema) {
 					instance.Properties[name] = rbxfile.ValueContent(prop.(rbxfile.ValueString))
 				}
 			case peer.PROP_TYPE_ENUM:
-				instance.Properties[name] = datamodel.ValueToken{ID: propSchema.EnumID, Value: prop.(rbxfile.ValueToken)}
+				instance.Properties[name] = datamodel.ValueToken{ID: propSchema.EnumID, Value: uint32(prop.(rbxfile.ValueToken))}
 			case peer.PROP_TYPE_BINARYSTRING:
 				// This type may be encoded correctly depending on the format
 				if _, ok = prop.(rbxfile.ValueString); ok {
