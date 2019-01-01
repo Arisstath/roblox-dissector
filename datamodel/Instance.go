@@ -10,16 +10,17 @@ import (
 )
 
 type Instance struct {
-	ClassName       string
-	PropertiesMutex *sync.RWMutex
-	Properties      map[string]rbxfile.Value
-	Children        []*Instance
-	IsService       bool
-	Ref             Reference
-	ChildEmitter    *emitter.Emitter
-	PropertyEmitter *emitter.Emitter
-	EventEmitter    *emitter.Emitter
-	parent          *Instance
+	ClassName          string
+	PropertiesMutex    *sync.RWMutex
+	Properties         map[string]rbxfile.Value
+	Children           []*Instance
+	IsService          bool
+	Ref                Reference
+	ChildEmitter       *emitter.Emitter
+	PropertyEmitter    *emitter.Emitter
+	EventEmitter       *emitter.Emitter
+	parent             *Instance
+	DeleteOnDisconnect bool
 }
 
 func NewInstance(className string, parent *Instance) (*Instance, error) {
@@ -32,7 +33,7 @@ func NewInstance(className string, parent *Instance) (*Instance, error) {
 		EventEmitter:    emitter.New(1),
 	}
 
-	return inst, inst.SetParent(inst)
+	return inst, inst.SetParent(parent)
 }
 
 func (instance *Instance) HasAncestor(ancestor *Instance) bool {

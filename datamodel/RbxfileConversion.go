@@ -188,8 +188,11 @@ func FromRbxfile(dictionary *InstanceDictionary, root *rbxfile.Root) *DataModel 
 	pool := NewSelfReferencePool()
 	model := New()
 
+	// We do not need to register the dummy root in the pool
+	// Nothing should ever refer to it
 	dummyRoot, _ := NewInstance("DataModel", nil)
 	dummyRoot.IsService = true
+	dummyRoot.Ref = dictionary.NewReference()
 
 	for _, serv := range root.Instances {
 		thisServ := InstanceFromRbxfile(serv, pool, dictionary)
