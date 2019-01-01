@@ -74,9 +74,7 @@ func (thisBitstream *extendedReader) DecodePacket83_09(reader PacketReader, laye
 			return inner, err
 		}
 		subpacket = thisSubpacket
-	case 2: // net pmc response
-
-	case 5:
+	case 5: // id challenge
 		thisSubpacket := &Packet83_09_05{}
 		thisSubpacket.Int, err = thisBitstream.readUint32BE()
 		if err != nil {
@@ -113,6 +111,9 @@ func (layer *Packet83_09) Serialize(writer PacketWriter, stream *extendedWriter)
 	}
 
 	switch layer.SubpacketType {
+	case 5:
+		subpacket := layer.Subpacket.(*Packet83_09_05)
+		err = stream.writeUint32BE(subpacket.Int)
 	case 6:
 		subpacket := layer.Subpacket.(*Packet83_09_06)
 		err = stream.writeUint32BE(subpacket.Int1)
@@ -120,10 +121,9 @@ func (layer *Packet83_09) Serialize(writer PacketWriter, stream *extendedWriter)
 			return err
 		}
 		err = stream.writeUint32BE(subpacket.Int2)
-		break
 	default:
-		println("Tried to write rocky packet", layer.Type)
-		return errors.New("rocky packet not implemented!")
+		println("Tried to write rocky packet", layer.Type())
+		return errors.New("rocky packet not implemented")
 	}
 
 	return err
