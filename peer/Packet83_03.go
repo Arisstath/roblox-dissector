@@ -47,6 +47,7 @@ func (thisBitstream *extendedReader) DecodePacket83_03(reader PacketReader, laye
 	if err != nil {
 		return layer, err
 	}
+	// If this packet was written by the client, read version
 	if layer.Bool1 && reader.IsClient() {
 		layer.Int1, err = thisBitstream.readSintUTF8()
 		if err != nil {
@@ -107,7 +108,8 @@ func (layer *Packet83_03) Serialize(writer PacketWriter, stream *extendedWriter)
 		if err != nil {
 			return err
 		}
-		if writer.ToClient() {
+		// If this packet is to the server, write version
+		if layer.Bool1 && !writer.ToClient() {
 			err = stream.writeSintUTF8(layer.Int1)
 			if err != nil {
 				return err
@@ -126,17 +128,14 @@ func (layer *Packet83_03) Serialize(writer PacketWriter, stream *extendedWriter)
 	if err != nil {
 		return err
 	}
-	if writer.ToClient() { // TODO: Serializers should be able to access PacketWriter
+	if layer.Bool1 && !writer.ToClient() {
 		err = stream.writeSintUTF8(layer.Int1)
 		if err != nil {
 			return err
 		}
 	}
 
-	//println("serializing property", layer.PropertyName, layer.Instance.Name(), layer.Value.String())
-	if layer.Instance == nil {
-		return errors.New("cannot serialize property because instance is nil")
-	}
+	println("serializing property", layer.PropertyName, layer.Instance.Name(), layer.Value.String(), uint16(context.StaticSchema.PropertiesByName[layer.Instance.ClassName+"."+layer.PropertyName]))
 
 	// Shun Go for silently ignoring nil map values and just returning 0 instead
 	// TODO improve this
