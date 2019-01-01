@@ -3,12 +3,13 @@ package peer
 import (
 	"errors"
 
-	"github.com/gskartwii/rbxfile"
+	"github.com/gskartwii/roblox-dissector/datamodel"
+	"github.com/robloxapi/rbxfile"
 )
 
 type SerializeReader interface {
 	ReadSerializedValue(reader PacketReader, valType uint8, enumId uint16) (rbxfile.Value, error)
-	ReadObject(reader PacketReader) (Referent, error)
+	ReadObject(reader PacketReader) (datamodel.Reference, error)
 
 	// We must also ask for the following methods for compatibility reasons.
 	// Any better way to do this? I can't tell Go that the interface
@@ -24,11 +25,11 @@ type InstanceReader interface {
 
 type SerializeWriter interface {
 	WriteSerializedValue(val rbxfile.Value, writer PacketWriter, valType uint8) error
-	WriteObject(object *rbxfile.Instance, writer PacketWriter) error
+	WriteObject(object *datamodel.Instance, writer PacketWriter) error
 
 	writeUint16BE(uint16) error
 	writeBoolByte(bool) error
-	WriteByte(uint8) error
+	WriteByte(byte) error
 }
 type InstanceWriter interface {
 	SerializeWriter
@@ -50,20 +51,20 @@ func (b *extendedReader) ReadSerializedValue(reader PacketReader, valueType uint
 	case PROP_TYPE_PROTECTEDSTRING_3:
 		result, err = b.readNewProtectedString(reader.Caches())
 	case PROP_TYPE_INSTANCE:
-		var referent Referent
+		var referent datamodel.Reference
 		referent, err = b.ReadObject(reader)
 		if err != nil {
 			return nil, err
 		}
 		// Note: NULL is a valid referent!
-		if referent.IsNull() {
-			result = rbxfile.ValueReference{nil}
+		if referent.IsNull {
+			result = datamodel.ValueReference{Instance: nil, Reference: referent}
 		} else {
 			instance, err := reader.Context().InstancesByReferent.CreateInstance(referent)
 			if err != nil {
 				return nil, err
 			}
-			result = rbxfile.ValueReference{instance}
+			result = datamodel.ValueReference{Instance: instance, Reference: referent}
 		}
 	case PROP_TYPE_CONTENT:
 		result, err = b.readNewContent(reader.Caches())
@@ -82,7 +83,7 @@ func (b *extendedReader) ReadSerializedValue(reader PacketReader, valueType uint
 	}
 	return result, err
 }
-func (b *extendedReader) ReadObject(reader PacketReader) (Referent, error) {
+func (b *extendedReader) ReadObject(reader PacketReader) (datamodel.Reference, error) {
 	return b.readObject(reader.Caches())
 }
 func (b *extendedReader) ReadProperties(schema []StaticPropertySchema, properties map[string]rbxfile.Value, reader PacketReader) error {
@@ -126,25 +127,25 @@ func (b *extendedWriter) WriteSerializedValue(val rbxfile.Value, writer PacketWr
 	case PROP_TYPE_PROTECTEDSTRING_3:
 		err = b.writeNewProtectedString(val.(rbxfile.ValueProtectedString), writer.Caches())
 	case PROP_TYPE_INSTANCE:
-		err = b.writeObject(val.(rbxfile.ValueReference).Instance, writer.Caches())
+		err = b.writeObject(val.(datamodel.ValueReference).Instance, writer.Caches())
 	case PROP_TYPE_CONTENT:
 		err = b.writeNewContent(val.(rbxfile.ValueContent), writer.Caches())
 	case PROP_TYPE_SYSTEMADDRESS:
-		err = b.writeSystemAddress(val.(rbxfile.ValueSystemAddress), writer.Caches())
+		err = b.writeSystemAddress(val.(datamodel.ValueSystemAddress), writer.Caches())
 	case PROP_TYPE_TUPLE:
-		err = b.writeNewTuple(val.(rbxfile.ValueTuple), writer)
+		err = b.writeNewTuple(val.(datamodel.ValueTuple), writer)
 	case PROP_TYPE_ARRAY:
-		err = b.writeNewArray(val.(rbxfile.ValueArray), writer)
+		err = b.writeNewArray(val.(datamodel.ValueArray), writer)
 	case PROP_TYPE_DICTIONARY:
-		err = b.writeNewDictionary(val.(rbxfile.ValueDictionary), writer)
+		err = b.writeNewDictionary(val.(datamodel.ValueDictionary), writer)
 	case PROP_TYPE_MAP:
-		err = b.writeNewMap(val.(rbxfile.ValueMap), writer)
+		err = b.writeNewMap(val.(datamodel.ValueMap), writer)
 	default:
 		return b.writeSerializedValueGeneric(val, valueType)
 	}
 	return err
 }
-func (b *extendedWriter) WriteObject(object *rbxfile.Instance, writer PacketWriter) error {
+func (b *extendedWriter) WriteObject(object *datamodel.Instance, writer PacketWriter) error {
 	return b.writeObject(object, writer.Caches())
 }
 func (b *extendedWriter) WriteProperties(schema []StaticPropertySchema, properties map[string]rbxfile.Value, writer PacketWriter) error {
@@ -219,14 +220,14 @@ func (b *JoinSerializeReader) ReadSerializedValue(reader PacketReader, valueType
 	case PROP_TYPE_PROTECTEDSTRING_3:
 		result, err = b.readNewProtectedString()
 	case PROP_TYPE_INSTANCE:
-		var referent Referent
+		var referent datamodel.Reference
 		referent, err = b.readJoinObject(reader.Context())
 		if err != nil {
-			return nil, err
+			return datamodel.ValueReference{Instance: nil, Reference: referent}, err
 		}
 		// Note: NULL is a valid referent!
 		instance, _ := reader.Context().InstancesByReferent.TryGetInstance(referent)
-		result = rbxfile.ValueReference{instance}
+		result = datamodel.ValueReference{Instance: instance, Reference: referent}
 	case PROP_TYPE_CONTENT:
 		result, err = b.readNewContent()
 	case PROP_TYPE_SYSTEMADDRESS:
@@ -236,7 +237,7 @@ func (b *JoinSerializeReader) ReadSerializedValue(reader PacketReader, valueType
 	}
 	return result, err
 }
-func (b *JoinSerializeReader) ReadObject(reader PacketReader) (Referent, error) {
+func (b *JoinSerializeReader) ReadObject(reader PacketReader) (datamodel.Reference, error) {
 	return b.readJoinObject(reader.Context())
 }
 func (b *JoinSerializeReader) ReadProperties(schema []StaticPropertySchema, properties map[string]rbxfile.Value, reader PacketReader) error {
@@ -279,17 +280,17 @@ func (b *JoinSerializeWriter) WriteSerializedValue(val rbxfile.Value, writer Pac
 	case PROP_TYPE_PROTECTEDSTRING_3:
 		err = b.writeNewProtectedString(val.(rbxfile.ValueProtectedString))
 	case PROP_TYPE_INSTANCE:
-		err = b.WriteObject(val.(rbxfile.ValueReference).Instance, writer)
+		err = b.WriteObject(val.(datamodel.ValueReference).Instance, writer)
 	case PROP_TYPE_CONTENT:
 		err = b.writeNewContent(val.(rbxfile.ValueContent))
 	case PROP_TYPE_SYSTEMADDRESS:
-		err = b.writeSystemAddress(val.(rbxfile.ValueSystemAddress))
+		err = b.writeSystemAddress(val.(datamodel.ValueSystemAddress))
 	default:
 		return b.writeSerializedValueGeneric(val, valueType)
 	}
 	return err
 }
-func (b *JoinSerializeWriter) WriteObject(object *rbxfile.Instance, writer PacketWriter) error {
+func (b *JoinSerializeWriter) WriteObject(object *datamodel.Instance, writer PacketWriter) error {
 	return b.extendedWriter.writeJoinObject(object, writer.Context())
 }
 func (b *JoinSerializeWriter) WriteProperties(schema []StaticPropertySchema, properties map[string]rbxfile.Value, writer PacketWriter) error {

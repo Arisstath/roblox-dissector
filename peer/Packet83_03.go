@@ -4,13 +4,14 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gskartwii/rbxfile"
+	"github.com/gskartwii/roblox-dissector/datamodel"
+	"github.com/robloxapi/rbxfile"
 )
 
 // Packet83_03 describes an ID_CHANGE_PROPERTY data subpacket.
 type Packet83_03 struct {
 	// Instance that had the property change
-	Instance    *rbxfile.Instance
+	Instance    *datamodel.Instance
 	Bool1       bool
 	Int1        int32
 	DoWriteInt1 bool
@@ -28,7 +29,7 @@ func (thisBitstream *extendedReader) DecodePacket83_03(reader PacketReader, laye
 	if err != nil {
 		return layer, err
 	}
-	if referent.IsNull() {
+	if referent.IsNull {
 		return layer, errors.New("self is null in repl property")
 	}
 	instance, err := reader.Context().InstancesByReferent.TryGetInstance(referent)
@@ -36,9 +37,6 @@ func (thisBitstream *extendedReader) DecodePacket83_03(reader PacketReader, laye
 		return layer, err
 	}
 	layer.Instance = instance
-	instance.PropertiesMutex.Lock()
-	instance.Properties[layer.PropertyName] = layer.Value
-	instance.PropertiesMutex.Unlock()
 
 	propertyIDx, err := thisBitstream.readUint16BE()
 	if err != nil {
@@ -49,6 +47,7 @@ func (thisBitstream *extendedReader) DecodePacket83_03(reader PacketReader, laye
 	if err != nil {
 		return layer, err
 	}
+	// If this packet was written by the client, read version
 	if layer.Bool1 && reader.IsClient() {
 		layer.Int1, err = thisBitstream.readSintUTF8()
 		if err != nil {
@@ -58,19 +57,20 @@ func (thisBitstream *extendedReader) DecodePacket83_03(reader PacketReader, laye
 
 	context := reader.Context()
 	if int(propertyIDx) == int(len(context.StaticSchema.Properties)) { // explicit Parent property system
-		var referent Referent
+		var referent datamodel.Reference
 		referent, err = thisBitstream.readObject(reader.Caches())
 		parent, err := context.InstancesByReferent.TryGetInstance(referent)
 		if err != nil {
 			return layer, errors.New("parent doesn't exist in repl property")
 		}
 		layers.Root.Logger.Printf("Parent: %s -> %s\n", referent, parent.GetFullName())
-		result := rbxfile.ValueReference{parent}
+		result := datamodel.ValueReference{Instance: parent, Reference: referent}
 		layer.Value = result
 		layer.PropertyName = "Parent"
 
-		if referent.IsNull() { // NULL is a valid referent; think about :Remove()!
-			return layer, instance.SetParent(nil)
+		if referent.IsNull { // NULL is a valid referent; think about :Remove()!
+			instance.SetParent(nil)
+			return layer, nil
 		}
 		err = parent.AddChild(instance)
 		return layer, err
@@ -83,6 +83,7 @@ func (thisBitstream *extendedReader) DecodePacket83_03(reader PacketReader, laye
 	layer.PropertyName = schema.Name
 
 	layer.Value, err = schema.Decode(reader, thisBitstream, layers)
+	instance.Set(layer.PropertyName, layer.Value)
 
 	return layer, err
 }
@@ -107,14 +108,15 @@ func (layer *Packet83_03) Serialize(writer PacketWriter, stream *extendedWriter)
 		if err != nil {
 			return err
 		}
-		if writer.ToClient() {
+		// If this packet is to the server, write version
+		if layer.Bool1 && !writer.ToClient() {
 			err = stream.writeSintUTF8(layer.Int1)
 			if err != nil {
 				return err
 			}
 		}
 
-		return stream.writeObject(layer.Value.(rbxfile.ValueReference).Instance, writer.Caches())
+		return stream.writeObject(layer.Value.(datamodel.ValueReference).Instance, writer.Caches())
 	}
 
 	err = stream.writeUint16BE(uint16(context.StaticSchema.PropertiesByName[layer.Instance.ClassName+"."+layer.PropertyName]))
@@ -126,17 +128,14 @@ func (layer *Packet83_03) Serialize(writer PacketWriter, stream *extendedWriter)
 	if err != nil {
 		return err
 	}
-	if writer.ToClient() { // TODO: Serializers should be able to access PacketWriter
+	if layer.Bool1 && !writer.ToClient() {
 		err = stream.writeSintUTF8(layer.Int1)
 		if err != nil {
 			return err
 		}
 	}
 
-	//println("serializing property", layer.PropertyName, layer.Instance.Name(), layer.Value.String())
-	if layer.Instance == nil {
-		return errors.New("cannot serialize property because instance is nil")
-	}
+	println("serializing property", layer.PropertyName, layer.Instance.Name(), layer.Value.String(), uint16(context.StaticSchema.PropertiesByName[layer.Instance.ClassName+"."+layer.PropertyName]))
 
 	// Shun Go for silently ignoring nil map values and just returning 0 instead
 	// TODO improve this

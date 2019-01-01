@@ -1,15 +1,18 @@
 package peer
 
-import "errors"
-import "github.com/gskartwii/rbxfile"
-import "bytes"
-import "github.com/gskartwii/go-bitstream"
-import "github.com/DataDog/zstd"
+import (
+	"bytes"
+	"errors"
+
+	"github.com/DataDog/zstd"
+	bitstream "github.com/gskartwii/go-bitstream"
+	"github.com/gskartwii/roblox-dissector/datamodel"
+)
 
 // ID_JOINDATA
 type Packet83_0B struct {
 	// Instances replicated by the server
-	Instances []*rbxfile.Instance
+	Instances []*datamodel.Instance
 }
 
 func NewPacket83_0BLayer() *Packet83_0B {
@@ -29,7 +32,7 @@ func (thisBitstream *extendedReader) DecodePacket83_0B(reader PacketReader, laye
 		return layer, errors.New("sanity check: array len too long")
 	}
 
-	layer.Instances = make([]*rbxfile.Instance, arrayLen)
+	layer.Instances = make([]*datamodel.Instance, arrayLen)
 	if arrayLen == 0 {
 		return layer, nil
 	}
@@ -112,5 +115,5 @@ func (Packet83_0B) Type() uint8 {
 	return 0xB
 }
 func (Packet83_0B) TypeString() string {
-	return "ID_REPLIC_JOI_NDATA"
+	return "ID_REPLIC_JOIN_DATA"
 }

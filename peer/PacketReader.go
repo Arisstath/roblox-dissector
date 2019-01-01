@@ -38,23 +38,24 @@ var packetDecoders = map[byte]decoderFunc{
 type ReceiveHandler func(byte, *PacketLayers)
 
 type ContextualHandler interface {
-    SetContext(*CommunicationContext)
+	SetContext(*CommunicationContext)
 	Context() *CommunicationContext
-    SetCaches(*Caches)
+	SetCaches(*Caches)
 	Caches() *Caches
 }
 
 // PacketReader is an interface that can be passed to packet decoders
 type PacketReader interface {
-    ContextualHandler
-    SetIsClient(bool)
+	ContextualHandler
+	SetIsClient(bool)
 	IsClient() bool
 }
 
 type contextualHandler struct {
-	context  *CommunicationContext
-	caches   *Caches
+	context *CommunicationContext
+	caches  *Caches
 }
+
 func (handler *contextualHandler) Context() *CommunicationContext {
 	return handler.context
 }
@@ -72,7 +73,7 @@ func (handler *contextualHandler) SetContext(val *CommunicationContext) {
 // Pass packets in using ReadPacket() and bind to the given callbacks
 // to receive the results
 type DefaultPacketReader struct {
-    contextualHandler
+	contextualHandler
 	// Callback for "simple" packets (pre-connection offline packets).
 	SimpleHandler ReceiveHandler
 	// Callback for ReliabilityLayer subpackets. This callback is invoked for every
@@ -87,11 +88,7 @@ type DefaultPacketReader struct {
 	// Callback for ReliabilityLayer full packets. This callback is invoked for every
 	// real ReliabilityLayer.
 	ReliabilityLayerHandler func(layers *PacketLayers)
-	// Context is a struct representing the state of the connection. It contains
-	// information such as the addresses of the peers and the state of the DataModel.
-	isClient bool
-
-	SkipParsing map[byte]struct{}
+	isClient                bool
 
 	queues       *queues
 	splitPackets splitPacketList
@@ -106,10 +103,7 @@ func (reader *DefaultPacketReader) SetIsClient(val bool) {
 
 func NewPacketReader() *DefaultPacketReader {
 	return &DefaultPacketReader{
-		queues:      newPeerQueues(),
-		SkipParsing: map[byte]struct{}{
-			//0x85: struct{}{}, // Skip physics! they don't work very well
-		},
+		queues: newPeerQueues(),
 	}
 }
 
@@ -118,8 +112,7 @@ func (reader *DefaultPacketReader) readSimple(stream *extendedReader, packetType
 	layers.Root.logBuffer = new(strings.Builder)
 	layers.Root.Logger = log.New(layers.Root.logBuffer, "", log.Lmicroseconds|log.Ltime)
 	decoder := packetDecoders[packetType]
-	_, skip := reader.SkipParsing[packetType]
-	if decoder != nil && !skip {
+	if decoder != nil {
 		layers.Main, err = decoder(stream, reader, layers)
 		if err != nil {
 			layers.Error = fmt.Errorf("Failed to decode simple packet %02X: %s", packetType, err.Error())
@@ -151,9 +144,8 @@ func (reader *DefaultPacketReader) readGeneric(stream *extendedReader, packetTyp
 		layers.Reliability.SplitBuffer.HasPacketType = true
 	}
 	decoder := packetDecoders[layers.Reliability.SplitBuffer.PacketType]
-	_, skip := reader.SkipParsing[layers.Reliability.SplitBuffer.PacketType]
 	// TODO: Should we really void partial deserializations?
-	if decoder != nil && !skip {
+	if decoder != nil {
 		layers.Main, err = decoder(stream, reader, layers)
 
 		if err != nil {
@@ -175,7 +167,7 @@ func (reader *DefaultPacketReader) readOrdered(layers *PacketLayers) {
 		if err != nil {
 			println("ouch, my packetType", err.Error())
 			subPacket.SplitBuffer.Logger.Println("error:", err.Error())
-			layers.Error = fmt.Errorf("Failed to decode reliablePacket type: %s", packetType, err.Error())
+			layers.Error = fmt.Errorf("Failed to decode reliablePacket type %d: %s", packetType, err.Error())
 		} else {
 			reader.readGeneric(buffer.dataReader, packetType, layers)
 		}

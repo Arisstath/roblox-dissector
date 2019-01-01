@@ -119,9 +119,13 @@ func captureFromWinDivertProxy(realServerAddr string, captureJobContext context.
 			} else {
 				proxyWriter.ProxyServer(newPacket.Payload, newPacket.Layers)
 			}
-		case _ = <-injectPacket:
-			//proxyWriter.InjectServer(injectedPacket)
-			println("Attempt to inject packet not implemented")
+		case inject := <-injectPacket:
+			println("Attempting injection to client")
+			injResult, err := proxyWriter.ClientHalf.WritePacket(inject)
+			if err != nil {
+				println("Error while injecting to client: ", err.Error())
+			}
+			fmt.Printf("ProxyWriter injection finished: %X\n", injResult)
 		case <-captureJobContext.Done():
 			proxyWriter.CancelFunc()
 			return
@@ -143,7 +147,7 @@ func autoDetectWinDivertProxy(settings *PlayerProxySettings, captureJobContext c
 		req.URL.Scheme = "https"
 
 		if req.URL.Path == "/Game/Join.ashx" {
-			println("patching join.ashx for gzip encoding")
+			//println("patching join.ashx for gzip encoding")
 			req.Header.Set("Accept-Encoding", "none")
 			// We must use a raw setter, because req.AddCookie() "sanitizes" the values in the wrong way
 			req.Header.Set("Cookie", req.Header.Get("Cookie")+"; RBXAppDeviceIdentifier=AppDeviceIdentifier=ROBLOX UWP")
@@ -153,15 +157,15 @@ func autoDetectWinDivertProxy(settings *PlayerProxySettings, captureJobContext c
 		}
 
 		resp, err := transport.RoundTrip(req)
-		fmt.Printf("Request: %s/%s %s %v\n%s %v\n", req.Host, req.URL.String(), req.Method, req.Header, resp.Status, resp.Header)
+		//fmt.Printf("Request: %s/%s %s %v\n%s %v\n", req.Host, req.URL.String(), req.Method, req.Header, resp.Status, resp.Header)
 		if err != nil {
 			println("error:", err.Error())
 			return
 		}
 		if resp.StatusCode == 403 { // CSRF check fail?
 			req.Header.Set("X-Csrf-Token", resp.Header.Get("X-Csrf-Token"))
-			println("Set csrftoken:", resp.Header.Get("X-Csrf-Token"))
-			println("retrying")
+			//println("Set csrftoken:", resp.Header.Get("X-Csrf-Token"))
+			//println("retrying")
 			resp, err = transport.RoundTrip(req)
 			//fmt.Printf("Request: %s/%s %s %v\n%s %v\n", req.Host, req.URL.String(), req.Method, req.Header, resp.Status, resp.Header)
 			if err != nil {
@@ -185,12 +189,12 @@ func autoDetectWinDivertProxy(settings *PlayerProxySettings, captureJobContext c
 				println("joinashx err:", err.Error())
 				return
 			}
-			println("joinashx:", string(response))
+			//println("joinashx:", string(response))
 
 			args := regexp.MustCompile(`MachineAddress":"(\d+.\d+.\d+.\d+)","ServerPort":(\d+)`).FindSubmatch(response)
 
 			serverAddr := string(args[1]) + ":" + string(args[2])
-			println("joinashx response:", serverAddr)
+			//println("joinashx response:", serverAddr)
 			go captureFromWinDivertProxy(serverAddr, proxyContext, injectPacket, packetViewer, commContext)
 
 			w.Write(response)

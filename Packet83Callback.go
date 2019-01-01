@@ -1,11 +1,15 @@
 package main
 
-import "strconv"
-import "github.com/therecipe/qt/widgets"
-import "github.com/therecipe/qt/core"
-import "github.com/therecipe/qt/gui"
-import "github.com/Gskartwii/roblox-dissector/peer"
-import "github.com/gskartwii/rbxfile"
+import (
+	"strconv"
+
+	"github.com/Gskartwii/roblox-dissector/peer"
+	"github.com/gskartwii/roblox-dissector/datamodel"
+	"github.com/robloxapi/rbxfile"
+	"github.com/therecipe/qt/core"
+	"github.com/therecipe/qt/gui"
+	"github.com/therecipe/qt/widgets"
+)
 
 var SubpacketCallbacks = map[uint8](func(peer.Packet83Subpacket) widgets.QWidget_ITF){
 	0xB:  show83_0B,
@@ -30,13 +34,13 @@ var Callbacks83_09 = map[uint8](func(peer.Packet83_09Subpacket) widgets.QWidget_
 	0x7: show83_09_07,
 }
 
-func showReplicationInstance(this *rbxfile.Instance) []*gui.QStandardItem {
+func showReplicationInstance(this *datamodel.Instance) []*gui.QStandardItem {
 	rootNameItem := NewQStandardItemF("Name: %s", this.Name())
 	typeItem := NewQStandardItemF(this.ClassName)
-	referentItem := NewQStandardItemF(this.Reference)
+	referentItem := NewQStandardItemF(this.Ref.String())
 	var parentItem *gui.QStandardItem
 	if this.Parent() != nil {
-		parentItem = NewQStandardItemF(this.Parent().Reference)
+		parentItem = NewQStandardItemF(this.Parent().Ref.String())
 	} else {
 		parentItem = NewQStandardItemF("DataModel/NULL")
 	}
@@ -110,7 +114,7 @@ func show83_0B(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 }
 func show83_01(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_01)
-	return NewQLabelF("Delete instance: %s, %s", this.Instance.Reference, this.Instance.GetFullName())
+	return NewQLabelF("Delete instance: %s, %s", this.Instance.Ref.String(), this.Instance.GetFullName())
 }
 func show83_02(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_02)

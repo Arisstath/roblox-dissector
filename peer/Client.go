@@ -1,18 +1,20 @@
 package peer
 
-import "time"
-import "net"
-import "fmt"
-import "net/http"
-import "encoding/json"
-import "math/rand"
-import "errors"
-import "encoding/hex"
-import "log"
-import "github.com/gskartwii/rbxfile"
-import "sync"
-import "math/bits"
-import "github.com/pierrec/xxHash/xxHash32"
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log"
+	"math/bits"
+	"math/rand"
+	"net"
+	"net/http"
+	"time"
+
+	"github.com/gskartwii/roblox-dissector/datamodel"
+	"github.com/pierrec/xxHash/xxHash32"
+	"github.com/robloxapi/rbxfile"
+)
 
 var LauncherStatuses = [...]string{
 	"Wait",
@@ -59,12 +61,12 @@ type SecurityHandler interface {
 	UserAgent() string
 }
 type SecuritySettings struct {
-	rakPassword         []byte
-	goldenHash          uint32
-	securityKey         string
-	dataModelHash       string
-	osPlatform          string
-	userAgent           string
+	rakPassword   []byte
+	goldenHash    uint32
+	securityKey   string
+	dataModelHash string
+	osPlatform    string
+	userAgent     string
 }
 type Windows10SecuritySettings struct {
 	SecuritySettings
@@ -74,8 +76,7 @@ type AndroidSecuritySettings struct {
 }
 
 type CustomClient struct {
-	*ConnectedPeer
-	Context               *CommunicationContext
+	PacketLogicHandler
 	Address               net.UDPAddr
 	ServerAddress         net.UDPAddr
 	Connected             bool
@@ -85,7 +86,6 @@ type CustomClient struct {
 	UserName              string
 	characterAppearance   string
 	characterAppearanceId int64
-	pingInterval          int
 	PlaceId               uint32
 	httpClient            *http.Client
 	GUID                  uint64
@@ -94,43 +94,11 @@ type CustomClient struct {
 	IsPartyLeader         bool
 	AccountAge            int
 
-	SecuritySettings SecurityHandler
-
-	instanceIndex uint32
-	scope         string
-
-	ackTicker      *time.Ticker
-	dataPingTicker *time.Ticker
-
-	Connection *net.UDPConn
-	Logger     *log.Logger
-
-	handlers         *RawPacketHandlerMap
-	dataHandlers     *DataPacketHandlerMap
-	instanceHandlers *NewInstanceHandlerMap
-	deleteHandlers   *DeleteInstanceHandlerMap
-	eventHandlers    *EventHandlerMap
-	propHandlers     *PropertyHandlerMap
-
-	remoteIndices map[*rbxfile.Instance]uint32
-	remoteLock    *sync.Mutex
-
-	LocalPlayer *rbxfile.Instance
-
-	timestamp2Index uint64
-}
-
-func (myClient *CustomClient) RegisterPacketHandler(packetType uint8, handler ReceiveHandler) {
-	myClient.handlers.Bind(packetType, handler)
-}
-func (myClient *CustomClient) RegisterDataHandler(packetType uint8, handler DataReceiveHandler) {
-	myClient.dataHandlers.Bind(packetType, handler)
-}
-func (myClient *CustomClient) RegisterInstanceHandler(path *InstancePath, handler NewInstanceHandler) *PacketHandlerConnection {
-	myClient.instanceHandlers.Lock()
-	conn := myClient.instanceHandlers.Bind(path, handler)
-	myClient.instanceHandlers.Unlock()
-	return conn
+	SecuritySettings   SecurityHandler
+	Logger             *log.Logger
+	LocalPlayer        *datamodel.Instance
+	timestamp2Index    uint64
+	InstanceDictionary *datamodel.InstanceDictionary
 }
 
 func (myClient *CustomClient) ReadPacket(buf []byte) {
@@ -148,34 +116,18 @@ func NewCustomClient() *CustomClient {
 	rand.Seed(time.Now().UnixNano())
 	context := NewCommunicationContext()
 
-	scope := make([]byte, 0x10)
-	n, err := rand.Read(scope)
-	if n < 0x10 && err != nil {
-		panic(err)
+	client := &CustomClient{
+		httpClient: &http.Client{},
+		GUID:       rand.Uint64(),
+
+		PacketLogicHandler: newPacketLogicHandler(context, false),
+		InstanceDictionary: datamodel.NewInstanceDictionary(),
 	}
-
-	return &CustomClient{
-		ConnectedPeer: NewConnectedPeer(context),
-		httpClient:    &http.Client{},
-		Context:       context,
-		GUID:          rand.Uint64(),
-		instanceIndex: 1000,
-		scope:         "RBX" + hex.EncodeToString(scope),
-
-		handlers:         NewRawPacketHandlerMap(),
-		dataHandlers:     NewDataHandlerMap(),
-		instanceHandlers: NewNewInstanceHandlerMap(),
-		deleteHandlers:   NewDeleteInstanceHandlerMap(),
-		eventHandlers:    NewEventHandlerMap(),
-		propHandlers:     NewPropertyHandlerMap(),
-
-		remoteIndices: make(map[*rbxfile.Instance]uint32),
-		remoteLock:    &sync.Mutex{},
-	}
+	return client
 }
 
-func (myClient *CustomClient) GetLocalPlayer() *rbxfile.Instance { // may yield! do not call from main thread
-	return <-myClient.WaitForInstance("Players", myClient.UserName)
+func (myClient *CustomClient) GetLocalPlayer() *datamodel.Instance { // may yield! do not call from main thread
+	return <-myClient.DataModel.WaitForChild("Players", myClient.UserName)
 }
 
 // call this asynchronously! it will wait a lot
@@ -185,7 +137,8 @@ func (myClient *CustomClient) setupStalk() {
 
 // call this asynchronously! it will wait a lot
 func (myClient *CustomClient) setupChat() error {
-	getInitDataRequest := <-myClient.WaitForInstance("ReplicatedStorage", "DefaultChatSystemChatEvents", "GetInitDataRequest")
+	chatEvents := <-myClient.DataModel.WaitForChild("ReplicatedStorage", "DefaultChatSystemChatEvents")
+	getInitDataRequest := <-chatEvents.WaitForChild("GetInitDataRequest")
 	println("got req")
 
 	_, err := myClient.InvokeRemote(getInitDataRequest, []rbxfile.Value{})
@@ -200,27 +153,36 @@ func (myClient *CustomClient) setupChat() error {
 		"OnClientEvent",
 	)*/
 
-	_, newFilteredMessageChan := myClient.MakeEventChan(
-		<-myClient.WaitForInstance("ReplicatedStorage", "DefaultChatSystemChatEvents", "OnMessageDoneFiltering"),
-		"OnClientEvent",
-	)
+	messageFiltered := <-chatEvents.WaitForChild("OnMessageDoneFiltering")
+	_, newFilteredMessageChan := messageFiltered.MakeEventChan("OnClientEvent", false)
 
-	playerJoinChan := myClient.MakeChildChan(myClient.FindService("Players"))
-	playerLeaveChan := myClient.MakeGroupDeleteChan(myClient.FindService("Players").Children)
+	players := myClient.DataModel.FindService("Players")
 
-	for true {
+	playerJoinEmitter := players.ChildEmitter.On("*")
+	playerLeaveChan := make(chan *datamodel.Instance)
+
+	for {
 		select {
 		case message := <-newFilteredMessageChan:
-			dict := message.Arguments[0].(rbxfile.ValueTuple)[0].(rbxfile.ValueDictionary)
+			dict := message[0].(datamodel.ValueTuple)[0].(datamodel.ValueDictionary)
 			myClient.Logger.Printf("<%s (%s)> %s\n", dict["FromSpeaker"].(rbxfile.ValueString), dict["MessageType"].(rbxfile.ValueString), dict["Message"].(rbxfile.ValueString))
-		case player := <-playerJoinChan:
+		case joinEvent := <-playerJoinEmitter:
+			player := joinEvent.Args[0].(*datamodel.Instance)
 			myClient.Logger.Printf("SYSTEM: %s has joined the game.\n", player.Name())
-			playerLeaveChan.AddInstances(player)
-		case player := <-playerLeaveChan.C:
+			go func(player *datamodel.Instance) {
+				parentEmitter := player.PropertyEmitter.On("Parent")
+				for newParent := range parentEmitter {
+					if newParent.Args[0].(*datamodel.Instance) == nil {
+						playerLeaveChan <- player
+						player.PropertyEmitter.Off("Parent", parentEmitter)
+						return
+					}
+				}
+			}(player)
+		case player := <-playerLeaveChan:
 			myClient.Logger.Printf("SYSTEM: %s has left the game.\n", player.Name())
 		}
 	}
-	return nil
 }
 
 func (myClient *CustomClient) SendChat(message string, toPlayer string, channel string) {
@@ -228,7 +190,7 @@ func (myClient *CustomClient) SendChat(message string, toPlayer string, channel 
 		channel = "All" // assume default channel
 	}
 
-	remote := <-myClient.WaitForInstance("ReplicatedStorage", "DefaultChatSystemChatEvents", "SayMessageRequest")
+	remote := <-myClient.DataModel.WaitForChild("ReplicatedStorage", "DefaultChatSystemChatEvents", "SayMessageRequest")
 	if toPlayer != "" {
 		message = "/w " + toPlayer + " " + message
 	}
@@ -386,7 +348,7 @@ func (settings *SecuritySettings) OsPlatform() string {
 }
 
 // Automatically fills in any needed hashes/key for Windows 10 clients
-func Win10Settings() (*Windows10SecuritySettings) {
+func Win10Settings() *Windows10SecuritySettings {
 	settings := &Windows10SecuritySettings{}
 	settings.userAgent = "Roblox/WinINet"
 	settings.osPlatform = "Windows_Universal"
@@ -431,7 +393,7 @@ func (settings *AndroidSecuritySettings) PatchTicketPacket(packet *Packet8ALayer
 }
 
 // Automatically fills in any needed hashes/key for Android clients
-func AndroidSettings() (*AndroidSecuritySettings) {
+func AndroidSettings() *AndroidSecuritySettings {
 	settings := &AndroidSecuritySettings{}
 	settings.osPlatform = "Android"
 	settings.userAgent = "Mozilla/5.0 (512MB; 576x480; 300x300; 300x300; Samsung Galaxy S8; 6.0.1 Marshmallow) AppleWebKit/537.36 (KHTML, like Gecko) Roblox Android App 0.334.0.195932 Phone Hybrid()"
@@ -455,58 +417,6 @@ func (myClient *CustomClient) ConnectGuest(placeId uint32, genderId uint8) error
 	return myClient.joinWithPlaceLauncher(fmt.Sprintf("https://assetgame.roblox.com/game/PlaceLauncher.ashx?request=RequestGame&browserTrackerId=%d&placeId=%d&isPartyLeader=false&genderId=%d", myClient.BrowserTrackerId, myClient.PlaceId, myClient.GenderId), []*http.Cookie{})
 }
 
-func (myClient *CustomClient) defaultAckHandler(layers *PacketLayers) {
-	// nop
-	if layers.Error != nil {
-		println("ack error: ", layers.Error.Error())
-	}
-}
-func (myClient *CustomClient) defaultReliabilityLayerHandler(layers *PacketLayers) {
-	myClient.mustACK = append(myClient.mustACK, int(layers.RakNet.DatagramNumber))
-	if layers.Error != nil {
-		println("reliabilitylayer error: ", layers.Error.Error())
-	}
-}
-func (myClient *CustomClient) defaultSimpleHandler(packetType byte, layers *PacketLayers) {
-	if layers.Error == nil {
-		go myClient.handlers.Fire(packetType, layers) // Let the reader continue its job while the packet is processed
-	} else {
-		println("simple error: ", layers.Error.Error())
-	}
-}
-func (myClient *CustomClient) defaultReliableHandler(packetType byte, layers *PacketLayers) {
-	// nop
-	if layers.Error != nil {
-		println("reliable error: ", layers.Error.Error())
-	}
-}
-func (myClient *CustomClient) defaultFullReliableHandler(packetType byte, layers *PacketLayers) {
-	if layers.Error == nil {
-		go myClient.handlers.Fire(packetType, layers)
-	} else {
-		println("simple error: ", layers.Error.Error())
-	}
-}
-
-func (myClient *CustomClient) createReader() {
-	myClient.ACKHandler = myClient.defaultAckHandler
-	myClient.ReliabilityLayerHandler = myClient.defaultReliabilityLayerHandler
-	myClient.SimpleHandler = myClient.defaultSimpleHandler
-	myClient.ReliableHandler = myClient.defaultReliableHandler
-	myClient.FullReliableHandler = myClient.defaultFullReliableHandler
-
-	myClient.DefaultPacketReader.SetContext(myClient.Context)
-}
-
-func (myClient *CustomClient) createWriter() {
-	myClient.OutputHandler = func(payload []byte) {
-		num, err := myClient.Connection.Write(payload)
-		if err != nil {
-			fmt.Printf("Wrote %d bytes, err: %s\n", num, err.Error())
-		}
-	}
-}
-
 func (myClient *CustomClient) dial() {
 	connreqpacket := &Packet05Layer{ProtocolVersion: 5, maxLength: 1492}
 	go func() {
@@ -525,33 +435,6 @@ func (myClient *CustomClient) dial() {
 	}()
 }
 
-func (myClient *CustomClient) startAcker() {
-	myClient.ackTicker = time.NewTicker(500 * time.Millisecond)
-	go func() {
-		for {
-			<-myClient.ackTicker.C
-			myClient.sendACKs()
-		}
-	}()
-
-}
-func (myClient *CustomClient) startDataPing() {
-	// boot up dataping
-	myClient.dataPingTicker = time.NewTicker(time.Duration(myClient.pingInterval) * time.Millisecond)
-	go func() {
-		for {
-			<-myClient.dataPingTicker.C
-
-			myClient.WritePacket(&Packet83Layer{
-				[]Packet83Subpacket{&Packet83_05{
-					Timestamp:  uint64(time.Now().UnixNano() / int64(time.Millisecond)),
-					IsPingBack: false,
-				}},
-			})
-		}
-	}()
-}
-
 func (myClient *CustomClient) mainReadLoop() error {
 	buf := make([]byte, 1492)
 	for {
@@ -566,24 +449,16 @@ func (myClient *CustomClient) mainReadLoop() error {
 	}
 }
 
-func (myClient *CustomClient) disconnectInternal() error {
-	if myClient.ackTicker != nil {
-		myClient.ackTicker.Stop()
+func (myClient *CustomClient) createWriter() {
+	myClient.OutputHandler = func(payload []byte) {
+		num, err := myClient.Connection.Write(payload)
+		if err != nil {
+			fmt.Printf("Wrote %d bytes, err: %s\n", num, err.Error())
+		}
 	}
-	if myClient.dataPingTicker != nil {
-		myClient.dataPingTicker.Stop()
-	}
-	return myClient.Connection.Close()
 }
 
-func (myClient *CustomClient) Disconnect() {
-	myClient.WritePacket(&Packet15Layer{
-		Reason: 0xFFFFFFFF,
-	})
-
-	myClient.disconnectInternal()
-}
-
+// TODO: Implement with contexts
 func (myClient *CustomClient) rakConnect() error {
 	var err error
 	addr := myClient.ServerAddress

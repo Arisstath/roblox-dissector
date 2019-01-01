@@ -1,8 +1,11 @@
 package peer
 
-import "github.com/gskartwii/rbxfile"
-import "net"
-import "bytes"
+import (
+	"bytes"
+	"net"
+
+	"github.com/gskartwii/roblox-dissector/datamodel"
+)
 
 // Cache represents a network cache that stores repeatable objects such as strings.
 type Cache interface {
@@ -65,7 +68,7 @@ func (c *SysAddrCache) Get(index uint8) (interface{}, bool) {
 
 // Put implements Cache.Put().
 func (c *SysAddrCache) Put(val interface{}, index uint8) {
-	c.Values[index] = val.(rbxfile.ValueSystemAddress)
+	c.Values[index] = val.(datamodel.ValueSystemAddress)
 	c.lastWrite = index
 }
 
@@ -75,7 +78,7 @@ func (c *SysAddrCache) Equal(index uint8, val interface{}) (bool, bool) {
 	if val1 == nil || val == nil {
 		return val1 == val, val1 == nil
 	}
-	return val1.(rbxfile.ValueSystemAddress).String() == val.(rbxfile.ValueSystemAddress).String(), val1 != nil
+	return val1.(datamodel.ValueSystemAddress).String() == val.(datamodel.ValueSystemAddress).String(), val1 != nil
 }
 
 // LastWrite implements Cache.LastWrite().
@@ -124,14 +127,18 @@ type Caches struct {
 	ProtectedString ByteSliceCache
 }
 
+// TODO: Remove CommunicationContext, or at least
+// make it so that it's only used for PCAP captures
+// where the server and client must be stored somewhere
 type CommunicationContext struct {
 	Server *net.UDPAddr
 	Client *net.UDPAddr
 
+	// TODO: Move this to reader and writer
 	InstanceTopScope string
 
-	DataModel           *rbxfile.Root
-	InstancesByReferent InstanceList
+	DataModel           *datamodel.DataModel
+	InstancesByReferent *datamodel.InstanceList
 
 	// TODO: Can we do better?
 	UniqueID uint32
@@ -146,10 +153,9 @@ type CommunicationContext struct {
 
 func NewCommunicationContext() *CommunicationContext {
 	return &CommunicationContext{
-		InstancesByReferent: InstanceList{
-			Instances: make(map[string]*rbxfile.Instance),
-		},
-		InstanceTopScope: "WARNING_UNASSIGNED_TOP_SCOPE",
+		DataModel:           datamodel.New(),
+		InstancesByReferent: datamodel.NewInstanceList(),
+		InstanceTopScope:    "WARNING_UNASSIGNED_TOP_SCOPE",
 	}
 }
 

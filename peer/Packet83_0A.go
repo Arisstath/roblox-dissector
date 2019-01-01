@@ -4,13 +4,13 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gskartwii/rbxfile"
+	"github.com/gskartwii/roblox-dissector/datamodel"
 )
 
 // Packet83_0A describes a ID_PROP_ACK packet.
 type Packet83_0A struct {
 	// Instance that had the property change
-	Instance     *rbxfile.Instance
+	Instance     *datamodel.Instance
 	PropertyName string
 	Versions     []uint32
 }
@@ -23,7 +23,7 @@ func (thisBitstream *extendedReader) DecodePacket83_0A(reader PacketReader, laye
 	if err != nil {
 		return layer, err
 	}
-	if referent.IsNull() {
+	if referent.IsNull {
 		return layer, errors.New("self is null in repl prop ack")
 	}
 

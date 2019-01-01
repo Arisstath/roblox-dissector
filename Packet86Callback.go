@@ -24,9 +24,9 @@ func ShowPacket86(packetType byte, context *peer.CommunicationContext, layers *p
 		}
 		var name1Item, name2Item *gui.QStandardItem
 		name1Item = NewQStandardItemF(item.Instance1.GetFullName())
-		reference1Item := NewQStandardItemF(item.Instance1.Reference)
+		reference1Item := NewQStandardItemF(item.Instance1.Ref.String())
 		name2Item = NewQStandardItemF(item.Instance2.GetFullName())
-		reference2Item := NewQStandardItemF(item.Instance2.Reference)
+		reference2Item := NewQStandardItemF(item.Instance2.Ref.String())
 		var typeItem *gui.QStandardItem
 		if item.IsTouch {
 			typeItem = NewQStandardItemF("Start touch")

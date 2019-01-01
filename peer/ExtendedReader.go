@@ -1,15 +1,18 @@
 package peer
 
-import "github.com/gskartwii/go-bitstream"
-import "encoding/binary"
-import "errors"
-import "net"
-import "math"
-import "bytes"
-import "compress/gzip"
-import "io"
-import "fmt"
-import "github.com/DataDog/zstd"
+import (
+	"bytes"
+	"compress/gzip"
+	"encoding/binary"
+	"errors"
+	"fmt"
+	"math"
+	"net"
+
+	"github.com/DataDog/zstd"
+	bitstream "github.com/gskartwii/go-bitstream"
+	"github.com/gskartwii/roblox-dissector/datamodel"
+)
 
 var englishTree *huffmanEncodingTree
 
@@ -282,9 +285,9 @@ func (b *extendedReader) bits(len int) (uint64, error) {
 	return b.ReadBits(len)
 }
 
-func (b *extendedReader) bytes(dest []byte, len int) error {
+func (b *extendedReader) bytes(dest []byte, length int) error {
 	var Byte byte
-	for i := 0; i < len; i++ {
+	for i := 0; i < length; i++ {
 		res, err := b.bits(8)
 		if err != nil {
 			return err
@@ -467,7 +470,7 @@ func (b *extendedReader) readAddress() (*net.UDPAddr, error) {
 		return nil, err
 	}
 
-	return &net.UDPAddr{address, int(port), ""}, nil
+	return &net.UDPAddr{IP: address, Port: int(port)}, nil
 }
 
 func (b *extendedReader) readFloat32LE() (float32, error) {
@@ -544,33 +547,33 @@ func (b *extendedReader) RegionToZStdStream() (*extendedReader, error) {
 	return &extendedReader{bitstream.NewReader(zstdStream)}, nil
 }
 
-func (b *extendedReader) readJoinReferent(context *CommunicationContext) (string, uint32, error) {
+func (b *extendedReader) readJoinObject(context *CommunicationContext) (datamodel.Reference, error) {
+	ref := datamodel.Reference{}
 	stringLen, err := b.readUint8()
 	if err != nil {
-		return "", 0, err
+		return ref, err
 	}
 	if stringLen == 0x00 {
-		return "null", 0, err
+		ref.IsNull = true
+		ref.Scope = "null"
+		return ref, err
 	}
-	var ref string
+	var refString string
 	if stringLen != 0xFF {
-		ref, err = b.readASCII(int(stringLen))
-		if len(ref) != 0x23 {
+		refString, err = b.readASCII(int(stringLen))
+		if len(refString) != 0x23 {
 			println("WARN: wrong ref len!! this should never happen, unless you are communicating with a non-standard peer")
 		}
 		if err != nil {
-			return "", 0, err
+			return ref, err
 		}
+		ref.Scope = refString
 	} else {
-		ref = context.InstanceTopScope
+		ref.Scope = context.InstanceTopScope
 	}
 
-	intVal, err := b.readUint32LE()
-	if err != nil && err != io.EOF {
-		return "", 0, err
-	}
-
-	return ref, intVal, nil
+	ref.Id, err = b.readUint32LE()
+	return ref, err
 }
 
 func (b *extendedReader) readFloat16BE(floatMin float32, floatMax float32) (float32, error) {

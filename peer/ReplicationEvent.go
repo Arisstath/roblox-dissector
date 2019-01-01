@@ -1,6 +1,6 @@
 package peer
 
-import "github.com/gskartwii/rbxfile"
+import "github.com/robloxapi/rbxfile"
 
 // ReplicationEvent describes an event invocation replication packet.
 type ReplicationEvent struct {

@@ -1,11 +1,11 @@
 package peer
 
 import (
-	"github.com/gskartwii/rbxfile"
+	"github.com/gskartwii/roblox-dissector/datamodel"
 )
 
 type Packet87Layer struct {
-	Instance *rbxfile.Instance
+	Instance *datamodel.Instance
 	Message  string
 }
 
@@ -14,10 +14,9 @@ func NewPacket87Layer() *Packet87Layer {
 }
 
 func (thisBitstream *extendedReader) DecodePacket87Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-	
 	context := reader.Context()
 	layer := NewPacket87Layer()
-	var ref Referent
+	var ref datamodel.Reference
 
 	scope, err := thisBitstream.readLengthAndString()
 	if err != nil {
@@ -28,7 +27,8 @@ func (thisBitstream *extendedReader) DecodePacket87Layer(reader PacketReader, la
 		return layer, err
 	}
 
-	ref = objectToRef(scope, id)
+	// This reference will never be null
+	ref = datamodel.Reference{Scope: scope, Id: id}
 	layer.Instance, err = context.InstancesByReferent.TryGetInstance(ref)
 	if err != nil {
 		return layer, err
@@ -39,12 +39,11 @@ func (thisBitstream *extendedReader) DecodePacket87Layer(reader PacketReader, la
 }
 
 func (layer *Packet87Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
-	scope, id := refToObject(Referent(layer.Instance.Reference))
-	err := stream.writeUint32AndString(scope)
+	err := stream.writeUint32AndString(layer.Instance.Ref.Scope)
 	if err != nil {
 		return err
 	}
-	err = stream.writeUint32BE(id)
+	err = stream.writeUint32BE(layer.Instance.Ref.Id)
 	if err != nil {
 		return err
 	}

@@ -4,7 +4,8 @@ import (
 	"errors"
 	"io"
 
-	"github.com/gskartwii/rbxfile"
+	"github.com/gskartwii/roblox-dissector/datamodel"
+	"github.com/robloxapi/rbxfile"
 )
 
 type Cell struct {
@@ -20,7 +21,7 @@ type Chunk struct {
 
 // ID_ROBLOX_CLUSTER: server -> client
 type Packet8DLayer struct {
-	Instance *rbxfile.Instance
+	Instance *datamodel.Instance
 	Chunks   []Chunk
 }
 
@@ -37,7 +38,7 @@ func (thisBitstream *extendedReader) DecodePacket8DLayer(reader PacketReader, la
 	if err != nil {
 		return nil, err
 	}
-	if referent.IsNull() {
+	if referent.IsNull {
 		return nil, errors.New("cluster instance is null")
 	}
 	layer.Instance, err = context.InstancesByReferent.TryGetInstance(referent)
@@ -72,9 +73,9 @@ func (thisBitstream *extendedReader) DecodePacket8DLayer(reader PacketReader, la
 					return layer, err
 				}
 				subpacket.ChunkSize = rbxfile.ValueVector3{
-					float32(int16(x)),
-					float32(int16(y)),
-					float32(int16(z)),
+					X: float32(int16(x)),
+					Y: float32(int16(y)),
+					Z: float32(int16(z)),
 				}
 			} else if sizeception == 0x40 {
 				x, err := zstdStream.readUint32BE()
@@ -90,9 +91,9 @@ func (thisBitstream *extendedReader) DecodePacket8DLayer(reader PacketReader, la
 					return layer, err
 				}
 				subpacket.ChunkSize = rbxfile.ValueVector3{
-					float32(int32(x)),
-					float32(int32(y)),
-					float32(int32(z)),
+					X: float32(int32(x)),
+					Y: float32(int32(y)),
+					Z: float32(int32(z)),
 				}
 			} else {
 				return layer, errors.New("invalid chunk header")
@@ -111,9 +112,9 @@ func (thisBitstream *extendedReader) DecodePacket8DLayer(reader PacketReader, la
 				return layer, err
 			}
 			subpacket.ChunkSize = rbxfile.ValueVector3{
-				float32(int8(x)),
-				float32(int8(y)),
-				float32(int8(z)),
+				X: float32(int8(x)),
+				Y: float32(int8(y)),
+				Z: float32(int8(z)),
 			}
 		}
 

@@ -3,13 +3,13 @@ package peer
 import (
 	"errors"
 
-	"github.com/gskartwii/rbxfile"
+	"github.com/gskartwii/roblox-dissector/datamodel"
 )
 
 // Touch replication for a single touch
 type Packet86LayerSubpacket struct {
-	Instance1 *rbxfile.Instance
-	Instance2 *rbxfile.Instance
+	Instance1 *datamodel.Instance
+	Instance2 *datamodel.Instance
 	// Touch started? If false, ended.
 	IsTouch bool
 }
@@ -24,7 +24,6 @@ func NewPacket86Layer() *Packet86Layer {
 }
 
 func (thisBitstream *extendedReader) DecodePacket86Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-	
 
 	layer := NewPacket86Layer()
 	context := reader.Context()
@@ -35,10 +34,10 @@ func (thisBitstream *extendedReader) DecodePacket86Layer(reader PacketReader, la
 		if err != nil {
 			return layer, err
 		}
-		if referent.IsNull() {
+		if referent.IsNull {
 			break
 		}
-		context.InstancesByReferent.OnAddInstance(referent, func(inst *rbxfile.Instance) {
+		context.InstancesByReferent.OnAddInstance(referent, func(inst *datamodel.Instance) {
 			subpacket.Instance1 = inst
 		})
 
@@ -46,10 +45,10 @@ func (thisBitstream *extendedReader) DecodePacket86Layer(reader PacketReader, la
 		if err != nil {
 			return layer, err
 		}
-		if referent.IsNull() {
+		if referent.IsNull {
 			return layer, errors.New("NULL second touch referent!")
 		}
-		context.InstancesByReferent.OnAddInstance(referent, func(inst *rbxfile.Instance) {
+		context.InstancesByReferent.OnAddInstance(referent, func(inst *datamodel.Instance) {
 			subpacket.Instance2 = inst
 		})
 

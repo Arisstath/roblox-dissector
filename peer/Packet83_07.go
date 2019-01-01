@@ -4,13 +4,13 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gskartwii/rbxfile"
+	"github.com/gskartwii/roblox-dissector/datamodel"
 )
 
 // ID_EVENT
 type Packet83_07 struct {
 	// Instance that the event was invoked on
-	Instance *rbxfile.Instance
+	Instance *datamodel.Instance
 	// Name of the event
 	EventName string
 	// Description about the invocation
@@ -25,7 +25,7 @@ func (thisBitstream *extendedReader) DecodePacket83_07(reader PacketReader, laye
 	if err != nil {
 		return layer, err
 	}
-	if referent.IsNull() {
+	if referent.IsNull {
 		return layer, errors.New("self is nil in decode repl event")
 	}
 	instance, err := reader.Context().InstancesByReferent.TryGetInstance(referent)
@@ -51,6 +51,8 @@ func (thisBitstream *extendedReader) DecodePacket83_07(reader PacketReader, laye
 	if err != nil {
 		return layer, err
 	}
+
+	layer.Instance.EventEmitter.Emit(layer.EventName, layer.Event.Arguments)
 	return layer, err
 }
 
