@@ -98,7 +98,7 @@ func normalizeTypes(children []*datamodel.Instance, schema *peer.StaticSchema) {
 					instance.Properties[name] = rbxfile.ValueContent(prop.(rbxfile.ValueString))
 				}
 			case peer.PROP_TYPE_ENUM:
-				instance.Properties[name] = datamodel.ValueToken{ID: propSchema.EnumID, Value: uint32(prop.(rbxfile.ValueToken))}
+				instance.Properties[name] = datamodel.ValueToken{ID: propSchema.EnumID, Value: prop.(datamodel.ValueToken).Value}
 			case peer.PROP_TYPE_BINARYSTRING:
 				// This type may be encoded correctly depending on the format
 				if _, ok = prop.(rbxfile.ValueString); ok {
@@ -154,6 +154,10 @@ func NewServerStartWidget(parent widgets.QWidget_ITF, settings *ServerSettings, 
 	layout.AddWidget(instanceTextBox, 0, 0)
 	layout.AddWidget(browseButton, 0, 0)
 
+	// HACK: convenience
+	if settings.Port == "" {
+		settings.Port = "53640"
+	}
 	portLabel := NewQLabelF("Port number:")
 	port := widgets.NewQLineEdit2(settings.Port, nil)
 	layout.AddWidget(portLabel, 0, 0)

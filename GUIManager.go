@@ -111,6 +111,8 @@ func NewMyPacketListView(parent widgets.QWidget_ITF) *MyPacketListView {
 		ServerSettings:      &ServerSettings{},
 		DefaultsSettings:    &DefaultsSettings{},
 		PlayerProxySettings: &PlayerProxySettings{},
+
+		InjectPacket: make(chan peer.RakNetPacket, 1),
 	}
 	return new
 }
@@ -863,6 +865,7 @@ func GUIMain() {
 				return
 			}
 			server.InstanceDictionary = instanceDictionary
+			server.Context.InstancesByReferent.Populate(thisRoot.Instances)
 
 			NewServerConsole(window, server)
 
