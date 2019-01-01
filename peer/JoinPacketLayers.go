@@ -278,7 +278,8 @@ func (thisBitstream *extendedReader) DecodePacket09Layer(reader PacketReader, la
 	if err != nil {
 		return layer, err
 	}
-	layer.Password, err = thisBitstream.readString(2)
+	// 2x 64 for timestamps, 8 for UseSecurity and 8 for PacketType
+	layer.Password, err = thisBitstream.readString(int((layers.Reliability.LengthInBits - 64 - 64 - 8 - 8) / 8))
 	if layer.Password[0] == 0x5E && layer.Password[1] == 0x11 {
 		layers.Root.Logger.Println("Detected Studio!")
 		reader.Context().IsStudio = true
