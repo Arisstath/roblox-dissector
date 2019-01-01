@@ -1,7 +1,5 @@
 package peer
 
-import "fmt"
-
 // ID_HASH
 type Packet83_12 struct {
 	HashList       []uint32
@@ -52,7 +50,7 @@ func (stream *extendedReader) DecodePacket83_12(reader PacketReader, layers *Pac
 	hasExtra := false
 
 	if numItems != 0xFF {
-		println("noextranumitem")
+		//println("noextranumitem")
 		hasExtra = true
 	} else {
 		numItems, err = stream.readUint8()
@@ -88,9 +86,9 @@ func (stream *extendedReader) DecodePacket83_12(reader PacketReader, layers *Pac
 	}
 	hashList[0] ^= nonce
 	nonce ^= hashList[numItems-1]
-	nonceDiff := nonce - getRbxNonce(hashList[1], hashList[2])
+	//nonceDiff := nonce - getRbxNonce(hashList[1], hashList[2])
 
-	fmt.Println("hashlist", hashList, nonce, nonceDiff)
+	//fmt.Println("hashlist", hashList, nonce, nonceDiff)
 
 	return inner, nil
 }

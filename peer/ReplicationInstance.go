@@ -42,6 +42,7 @@ func decodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader
 		return thisInstance, err
 	}
 	layers.Root.Logger.Println("delete on disconnect:", unkBool)
+	thisInstance.DeleteOnDisconnect = unkBool
 
 	err = thisBitstream.ReadProperties(schema.Properties, thisInstance.Properties, reader)
 	if err != nil {
@@ -76,7 +77,7 @@ func decodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader
 
 func serializeReplicationInstance(instance *datamodel.Instance, writer PacketWriter, stream InstanceWriter) error {
 	var err error
-	if instance == nil {
+	if instance == nil || instance.Ref.IsNull {
 		return errors.New("self is nil in serialize repl inst")
 	}
 	err = stream.WriteObject(instance, writer)
@@ -90,7 +91,7 @@ func serializeReplicationInstance(instance *datamodel.Instance, writer PacketWri
 	if err != nil {
 		return err
 	}
-	err = stream.writeBoolByte(true) // ???
+	err = stream.writeBoolByte(instance.DeleteOnDisconnect) // ???
 	if err != nil {
 		return err
 	}

@@ -380,6 +380,7 @@ func (b *extendedReader) readCFrame() (rbxfile.ValueCFrame, error) {
 		return val, err
 	}
 
+	// FIXME: There's something wrong with CFrame parsing? Or maybe writing them?
 	special, err := b.readUint8()
 	if err != nil {
 		return val, err

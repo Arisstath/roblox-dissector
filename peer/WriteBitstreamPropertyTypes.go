@@ -2,6 +2,7 @@ package peer
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"net"
 	"strconv"
@@ -313,7 +314,7 @@ var typeToNetworkConvTable = map[rbxfile.Type]uint8{
 	rbxfile.TypeVector3:                  PROP_TYPE_VECTOR3_COMPLICATED,
 	rbxfile.TypeCFrame:                   PROP_TYPE_CFRAME_COMPLICATED,
 	rbxfile.TypeToken:                    PROP_TYPE_ENUM,
-	rbxfile.TypeReference:                PROP_TYPE_INSTANCE,
+	datamodel.TypeReference:              PROP_TYPE_INSTANCE,
 	rbxfile.TypeVector3int16:             PROP_TYPE_VECTOR3UINT16,
 	rbxfile.TypeVector2int16:             PROP_TYPE_VECTOR2UINT16,
 	datamodel.TypeNumberSequence:         PROP_TYPE_NUMBERSEQUENCE,
@@ -329,13 +330,15 @@ var typeToNetworkConvTable = map[rbxfile.Type]uint8{
 	datamodel.TypeDictionary:             PROP_TYPE_DICTIONARY,
 	datamodel.TypeArray:                  PROP_TYPE_ARRAY,
 	datamodel.TypeTuple:                  PROP_TYPE_TUPLE,
+	rbxfile.TypeInt64:                    PROP_TYPE_INT64,
 }
 
-func typeToNetwork(val rbxfile.Value) uint8 {
+func typeToNetwork(val rbxfile.Value) (uint8, bool) {
 	if val == nil {
-		return 0
+		return 0, true
 	}
-	return typeToNetworkConvTable[val.Type()]
+	typ, ok := typeToNetworkConvTable[val.Type()]
+	return typ, ok
 }
 func (b *extendedWriter) writeSerializedValueGeneric(val rbxfile.Value, valueType uint8) error {
 	if val == nil {
@@ -411,8 +414,16 @@ func (b *extendedWriter) writeSerializedValueGeneric(val rbxfile.Value, valueTyp
 
 func (b *extendedWriter) writeNewTypeAndValue(val rbxfile.Value, writer PacketWriter) error {
 	var err error
-	valueType := typeToNetwork(val)
+	valueType, ok := typeToNetwork(val)
+	if !ok {
+		fmt.Printf("Invalid network type: %T\n", val)
+		return errors.New("invalid network type")
+	}
 	err = b.WriteByte(uint8(valueType))
+	// if it's nil:
+	if valueType == 0 {
+		return nil
+	}
 	if valueType == 7 {
 		err = b.writeUint16BE(val.(datamodel.ValueToken).ID)
 		if err != nil {
