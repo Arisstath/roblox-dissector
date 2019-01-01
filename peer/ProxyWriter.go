@@ -142,18 +142,8 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 			println("client error: ", layers.Error.Error())
 			return
 		}
-		if layers.Main == nil || (packetType != 0x83 && packetType != 0x8A && packetType != 0x85 && packetType != 0x86) {
-			relPacket := layers.Reliability
-			// packets that fail to parse: pass through untouched
-			// FIXME: this may prove problematic
-			//println("client sent reliable, serverHalf writing", packetType, packet.Source.String(), packet.Destination.String())
-			err = serverHalf.WriteReliablePacket(
-				relPacket.SplitBuffer.data,
-				relPacket,
-			)
-			if err != nil {
-				println(err.Error())
-			}
+		if layers.Main == nil {
+			println("Dropping unknown packettype", packetType)
 			return
 		}
 		switch packetType {
@@ -162,14 +152,19 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 			modifiedSubpackets := mainLayer.SubPackets[:0] // in case packets need to be dropped
 			for _, subpacket := range mainLayer.SubPackets {
 				switch subpacket.(type) {
+				case *Packet83_07:
+					evtPacket := subpacket.(*Packet83_07)
+					if evtPacket.EventName == "StatsAvailable" {
+						println("(RobloxApp has detected a hacker) permanently dropping statspacket, codename = ", evtPacket.Event.Arguments[0].String())
+					} else {
+						modifiedSubpackets = append(modifiedSubpackets, subpacket)
+					}
 				case *Packet83_02:
 					instPacket := subpacket.(*Packet83_02)
-					println("patching osplatform", instPacket.Child.Name())
 					if instPacket.Child.ClassName == "Player" {
+						println("patching osplatform", instPacket.Child.Name())
 						// patch OsPlatform!
-						instPacket.Child.PropertiesMutex.Lock()
-						instPacket.Child.Properties["OsPlatform"] = rbxfile.ValueString(writer.SecuritySettings.OsPlatform())
-						instPacket.Child.PropertiesMutex.Unlock()
+						instPacket.Child.Set("OsPlatform", rbxfile.ValueString(writer.SecuritySettings.OsPlatform()))
 					}
 					modifiedSubpackets = append(modifiedSubpackets, subpacket)
 				case *Packet83_09:
@@ -213,11 +208,12 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 			mainLayer := layers.Main.(*Packet85Layer)
 			_, err = serverHalf.WritePhysics(layers.Timestamp, mainLayer)
 		case 0x86:
+			println("Dropping touch: test")
 			mainLayer := layers.Main.(*Packet86Layer)
 			_, err = serverHalf.WritePacket(mainLayer)
-		case 0x87:
-			mainLayer := layers.Main.(*Packet87Layer)
-			_, err = serverHalf.WritePacket(mainLayer)
+		default:
+			println("passthrough packet: ", packetType)
+			_, err = serverHalf.WritePacket(layers.Main.(RakNetPacket))
 		}
 		if err != nil {
 			println("client error:", err.Error())
@@ -228,12 +224,18 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 			println("server error: ", layers.Error.Error())
 			return
 		}
-		relPacket := layers.Reliability
-		//println("server sent reliable, clientHalf writing", packetType, packet.Source.String(), packet.Destination.String())
-		clientHalf.WriteReliablePacket(
-			relPacket.SplitBuffer.data,
-			relPacket,
-		)
+		if layers.Main == nil {
+			println("dropping nil packet??", packetType)
+			return
+		}
+		println("server sent reliable, clientHalf writing", packetType)
+		_, err := clientHalf.WritePacket(layers.Main.(RakNetPacket))
+		//clientHalf.WriteReliablePacket(layers.Reliability.SplitBuffer.data, layers.Reliability)
+
+		if err != nil {
+			println("server serialize error: ", err.Error())
+			return
+		}
 
 		if packetType == 0x15 {
 			println("Disconnected by server!!")

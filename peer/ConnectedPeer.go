@@ -6,6 +6,8 @@ import "net"
 type ErrorHandler func(error)
 
 // ConnectedPeer describes a connection to a peer
+// FIXME: ACKs and NAKs are not properly reacted to.
+// create a resend queue before you forget!
 type ConnectedPeer struct {
 	// Reader is a PacketReader reading packets sent by the peer.
 	*DefaultPacketReader
