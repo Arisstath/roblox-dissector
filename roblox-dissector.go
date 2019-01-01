@@ -66,17 +66,17 @@ var ActivationCallbacks map[byte]ActivationCallback = map[byte]ActivationCallbac
 	0x03: ShowPacket03,
 	0x15: ShowPacket15,
 
-	0x93: ShowPacket93,
-	//0x82: ShowPacket82,
-	0x92: ShowPacket92,
-	0x90: ShowPacket90,
-	0x8F: ShowPacket8F,
 	0x81: ShowPacket81,
 	0x83: ShowPacket83,
-	0x97: ShowPacket97,
 	0x85: ShowPacket85,
 	0x86: ShowPacket86,
 	0x8A: ShowPacket8A,
+	0x8F: ShowPacket8F,
+	0x90: ShowPacket90,
+	0x92: ShowPacket92,
+	0x93: ShowPacket93,
+	0x96: ShowPacket96,
+	0x97: ShowPacket97,
 }
 
 func SrcAndDestFromGoPacket(packet gopacket.Packet) (*net.UDPAddr, *net.UDPAddr) {

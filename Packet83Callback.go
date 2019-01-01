@@ -9,6 +9,7 @@ import (
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/widgets"
+	"github.com/dustin/go-humanize"
 )
 
 var SubpacketCallbacks = map[uint8](func(peer.Packet83Subpacket) widgets.QWidget_ITF){
@@ -304,21 +305,85 @@ func show83_11(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_11)
 	widget := widgets.NewQWidget(nil, 0)
 	layout := widgets.NewQVBoxLayout()
-	layout.AddWidget(NewQLabelF("Skip stat set 1: %v", this.SkipStats1), 0, 0)
-	if !this.SkipStats1 {
-		layout.AddWidget(NewQLabelF("Stat 1/1: %s", this.Stats_1_1), 0, 0)
-		layout.AddWidget(NewQLabelF("Stat 1/2: %G", this.Stats_1_2), 0, 0)
-		layout.AddWidget(NewQLabelF("Stat 1/3: %G", this.Stats_1_3), 0, 0)
-		layout.AddWidget(NewQLabelF("Stat 1/4: %G", this.Stats_1_4), 0, 0)
-		layout.AddWidget(NewQLabelF("Stat 1/5: %v", this.Stats_1_5), 0, 0)
+
+	n, pref := humanize.ComputeSI(this.MemoryStats.TotalServerMemory)
+	layout.AddWidget(NewQLabelF("Total server memory: %G %sB", n, pref), 0, 0)
+	layout.AddWidget(NewQLabelF("Memory by category:"), 0, 0)
+
+	memoryStatsList := widgets.NewQTreeView(nil)
+	standardModel := NewProperSortModel(nil)
+	standardModel.SetHorizontalHeaderLabels([]string{"Name", "Used memory"})
+	rootItem := standardModel.InvisibleRootItem()
+
+	developerRoot := NewQStandardItemF("Developer's categories")
+	for _, stats := range this.MemoryStats.DeveloperTags {
+		n, pref := humanize.ComputeSI(stats.Memory)
+		developerRoot.AppendRow([]*gui.QStandardItem{
+			NewQStandardItemF("%s", stats.Name),
+			NewQStandardItemF("%G %sB", n, pref),
+		})
 	}
-	layout.AddWidget(NewQLabelF("Skip stat set 2: %v", this.SkipStats2), 0, 0)
-	if !this.SkipStats2 {
-		layout.AddWidget(NewQLabelF("Stat 2/1: %s", this.Stats_2_1), 0, 0)
-		layout.AddWidget(NewQLabelF("Stat 2/2: %G", this.Stats_2_2), 0, 0)
-		layout.AddWidget(NewQLabelF("Stat 2/3: %d", this.Stats_2_3), 0, 0)
-		layout.AddWidget(NewQLabelF("Stat 2/4: %v", this.Stats_2_4), 0, 0)
+	rootItem.AppendRow([]*gui.QStandardItem{developerRoot})
+
+	internalRoot := NewQStandardItemF("Internal categories")
+	for _, stats := range this.MemoryStats.InternalCategories {
+		n, pref := humanize.ComputeSI(stats.Memory)
+		internalRoot.AppendRow([]*gui.QStandardItem{
+			NewQStandardItemF("%s", stats.Name),
+			NewQStandardItemF("%G %sB", n, pref),
+		})
 	}
+	memoryStatsList.SetSortingEnabled(true)
+	memoryStatsList.SetModel(standardModel)
+	layout.AddWidget(memoryStatsList, 0, 0)
+
+	layout.AddWidget(NewQLabelF("DataStore enabled: %v", this.DataStoreStats.Enabled), 0, 0)
+	if this.DataStoreStats.Enabled {
+		layout.AddWidget(NewQLabelF("DataStore GetAsync: %G", this.DataStoreStats.GetAsync), 0, 0)
+		layout.AddWidget(NewQLabelF("DataStore Set/IncrementAsync: %G", this.DataStoreStats.SetAndIncrementAsync), 0, 0)
+		layout.AddWidget(NewQLabelF("DataStore UpdateAsync: %G", this.DataStoreStats.UpdateAsync), 0, 0)
+		layout.AddWidget(NewQLabelF("DataStore GetSortedAsync: %G", this.DataStoreStats.GetSortedAsync), 0, 0)
+		layout.AddWidget(NewQLabelF("DataStore SetIncrementSortedAsync: %G", this.DataStoreStats.SetIncrementSortedAsync), 0, 0)
+		layout.AddWidget(NewQLabelF("DataStore OnUpdate: %G", this.DataStoreStats.OnUpdate), 0, 0)
+	}
+
+	layout.AddWidget(NewQLabelF("Job stats:"), 0, 0)
+	jobStatsList := widgets.NewQTreeView(nil)
+	standardModel = NewProperSortModel(nil)
+	standardModel.SetHorizontalHeaderLabels([]string{"Name", "Duty cycle (%)", "Op/s (1/s)", "Time/op (ms)"})
+
+	rootNode := standardModel.InvisibleRootItem()
+	for _, job := range this.JobStats {
+		rootNode.AppendRow([]*gui.QStandardItem{
+			NewQStandardItemF("%s", job.Name),
+			NewQStandardItemF("%G", job.Stat1),
+			NewQStandardItemF("%G", job.Stat2),
+			NewQStandardItemF("%G", job.Stat3),
+		})
+	}
+	jobStatsList.SetModel(standardModel)
+	jobStatsList.SetSelectionMode(0)
+	jobStatsList.SetSortingEnabled(true)
+	layout.AddWidget(jobStatsList, 0, 0)
+
+	layout.AddWidget(NewQLabelF("Script stats:"), 0, 0)
+	scriptStatsList := widgets.NewQTreeView(nil)
+	standardModel = NewProperSortModel(nil)
+	standardModel.SetHorizontalHeaderLabels([]string{"Name", "Activity (%)", "Rate (1/s)"})
+
+	rootNode = standardModel.InvisibleRootItem()
+	for _, script := range this.ScriptStats {
+		rootNode.AppendRow([]*gui.QStandardItem{
+			NewQStandardItemF("%s", script.Name),
+			NewQStandardItemF("%G", script.Stat1),
+			NewQStandardItemF("%d", script.Stat2),
+		})
+	}
+	scriptStatsList.SetModel(standardModel)
+	scriptStatsList.SetSelectionMode(0)
+	scriptStatsList.SetSortingEnabled(true)
+	layout.AddWidget(scriptStatsList, 0, 0)
+
 	layout.AddWidget(NewQLabelF("Average ping ms: %G", this.AvgPingMs), 0, 0)
 	layout.AddWidget(NewQLabelF("Average physics sender Pkt/s: %G", this.AvgPhysicsSenderPktPS), 0, 0)
 	layout.AddWidget(NewQLabelF("Total data KB/s: %G", this.TotalDataKBPS), 0, 0)
@@ -354,6 +419,8 @@ func show83_12(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	hashList.SetSortingEnabled(true)
 	hashList.SetModel(standardModel)
 	layerLayout.AddWidget(hashList, 0, 0)
+
+	widget.SetLayout(layerLayout)
 
 	return widget
 }

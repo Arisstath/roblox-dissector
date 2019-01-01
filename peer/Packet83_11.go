@@ -2,19 +2,44 @@ package peer
 
 import "errors"
 
-type Packet83_11 struct {
-	SkipStats1 bool
-	Stats_1_1  []byte
-	Stats_1_2  float32
-	Stats_1_3  float32
-	Stats_1_4  float32
-	Stats_1_5  bool
+type MemoryStatsItem struct {
+	Name   string
+	Memory float64
+}
+type ServerMemoryStats struct {
+	TotalServerMemory  float64
+	DeveloperTags      []MemoryStatsItem
+	InternalCategories []MemoryStatsItem
+}
+type DataStoreStats struct {
+	Enabled                 bool
+	GetAsync                uint32
+	SetAndIncrementAsync    uint32
+	UpdateAsync             uint32
+	GetSortedAsync          uint32
+	SetIncrementSortedAsync uint32
+	OnUpdate                uint32
+}
 
-	SkipStats2 bool
-	Stats_2_1  []byte
-	Stats_2_2  float32
-	Stats_2_3  uint32
-	Stats_2_4  bool
+type JobStatsItem struct {
+	Name  string
+	Stat1 float32
+	Stat2 float32
+	Stat3 float32
+}
+type ScriptStatsItem struct {
+	Name  string
+	Stat1 float32
+	Stat2 uint32
+}
+
+type Packet83_11 struct {
+	Version uint32
+
+	MemoryStats    ServerMemoryStats
+	DataStoreStats DataStoreStats
+	JobStats       []JobStatsItem
+	ScriptStats    []ScriptStatsItem
 
 	AvgPingMs             float32
 	AvgPhysicsSenderPktPS float32
@@ -23,70 +48,140 @@ type Packet83_11 struct {
 	DataThroughputRatio   float32
 }
 
+func (thisBitstream *extendedReader) readMemoryStats() ([]MemoryStatsItem, error) {
+	numItems, err := thisBitstream.readUint32BE()
+	if err != nil {
+		return nil, err
+	}
+	memoryStats := make([]MemoryStatsItem, numItems)
+	for i := range memoryStats {
+		name, err := thisBitstream.readUint32AndString()
+		if err != nil {
+			return memoryStats, err
+		}
+		memoryStats[i].Name = name.(string)
+
+		memoryStats[i].Memory, err = thisBitstream.readFloat64BE()
+		if err != nil {
+			return memoryStats, err
+		}
+	}
+
+	return memoryStats, nil
+}
+
 func (thisBitstream *extendedReader) DecodePacket83_11(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
 	var err error
 	inner := &Packet83_11{}
-	
-	inner.SkipStats1, err = thisBitstream.readBool()
+	inner.Version, err = thisBitstream.readUint32BE()
 	if err != nil {
 		return inner, err
 	}
-	if !inner.SkipStats1 {
-		stringLen, err := thisBitstream.readUint32BE()
-		if err != nil {
-			return inner, err
-		}
-		inner.Stats_1_1, err = thisBitstream.readString(int(stringLen))
+
+	if inner.Version >= 5 {
+		println("reading memory stats")
+		inner.MemoryStats.TotalServerMemory, err = thisBitstream.readFloat64BE()
 		if err != nil {
 			return inner, err
 		}
 
-		inner.Stats_1_2, err = thisBitstream.readFloat32BE()
+		inner.MemoryStats.DeveloperTags, err = thisBitstream.readMemoryStats()
 		if err != nil {
 			return inner, err
 		}
-		inner.Stats_1_3, err = thisBitstream.readFloat32BE()
+		inner.MemoryStats.InternalCategories, err = thisBitstream.readMemoryStats()
 		if err != nil {
 			return inner, err
 		}
-		inner.Stats_1_4, err = thisBitstream.readFloat32BE()
-		if err != nil {
-			return inner, err
-		}
-		inner.Stats_1_5, err = thisBitstream.readBool()
-		if err != nil {
-			return inner, err
-		}
-		print("Receive stats1", inner.Stats_1_1, ",", inner.Stats_1_2, ",", inner.Stats_1_3, ",", inner.Stats_1_4, ",", inner.Stats_1_5)
+		println("Successfully read memory stats")
 	}
 
-	inner.SkipStats2, err = thisBitstream.readBool()
+	if inner.Version >= 3 {
+		println("reading datastore stats")
+		inner.DataStoreStats.Enabled, err = thisBitstream.readBoolByte()
+		if err != nil {
+			return inner, err
+		}
+		println("enabled:", inner.DataStoreStats.Enabled)
+		if inner.DataStoreStats.Enabled {
+			inner.DataStoreStats.GetAsync, err = thisBitstream.readUint32BE()
+			if err != nil {
+				return inner, err
+			}
+			inner.DataStoreStats.SetAndIncrementAsync, err = thisBitstream.readUint32BE()
+			if err != nil {
+				return inner, err
+			}
+			inner.DataStoreStats.UpdateAsync, err = thisBitstream.readUint32BE()
+			if err != nil {
+				return inner, err
+			}
+			inner.DataStoreStats.GetSortedAsync, err = thisBitstream.readUint32BE()
+			if err != nil {
+				return inner, err
+			}
+			inner.DataStoreStats.SetIncrementSortedAsync, err = thisBitstream.readUint32BE()
+			if err != nil {
+				return inner, err
+			}
+			inner.DataStoreStats.OnUpdate, err = thisBitstream.readUint32BE()
+			if err != nil {
+				return inner, err
+			}
+		}
+	}
+
+	for isEnd, err := thisBitstream.readBoolByte(); !isEnd && err == nil; isEnd, err = thisBitstream.readBoolByte() {
+		newJobItem := JobStatsItem{}
+		println("reading a job")
+		name, err := thisBitstream.readUint32AndString()
+		if err != nil {
+			return inner, err
+		}
+		newJobItem.Name = name.(string)
+		println("job:", newJobItem.Name)
+
+		newJobItem.Stat1, err = thisBitstream.readFloat32BE()
+		if err != nil {
+			return inner, err
+		}
+		newJobItem.Stat2, err = thisBitstream.readFloat32BE()
+		if err != nil {
+			return inner, err
+		}
+		newJobItem.Stat3, err = thisBitstream.readFloat32BE()
+		if err != nil {
+			return inner, err
+		}
+
+		inner.JobStats = append(inner.JobStats, newJobItem)
+	}
 	if err != nil {
 		return inner, err
 	}
-	if !inner.SkipStats2 {
-		stringLen, err := thisBitstream.readUint32BE()
-		if err != nil {
-			return inner, err
-		}
-		inner.Stats_2_1, err = thisBitstream.readString(int(stringLen))
-		if err != nil {
-			return inner, err
-		}
 
-		inner.Stats_2_2, err = thisBitstream.readFloat32BE()
+	for isEnd, err := thisBitstream.readBoolByte(); !isEnd && err == nil; isEnd, err = thisBitstream.readBoolByte() {
+		newScriptItem := ScriptStatsItem{}
+		println("reading a script")
+		name, err := thisBitstream.readUint32AndString()
 		if err != nil {
 			return inner, err
 		}
-		inner.Stats_2_3, err = thisBitstream.readUint32BE()
+		newScriptItem.Name = name.(string)
+		println("script name:", newScriptItem.Name)
+
+		newScriptItem.Stat1, err = thisBitstream.readFloat32BE()
 		if err != nil {
 			return inner, err
 		}
-		inner.Stats_2_4, err = thisBitstream.readBool()
+		newScriptItem.Stat2, err = thisBitstream.readUint32BE()
 		if err != nil {
 			return inner, err
 		}
-		print("Receive stats2", inner.Stats_2_1, ",", inner.Stats_2_2, ",", inner.Stats_2_3, ",", inner.Stats_2_4)
+		inner.ScriptStats = append(inner.ScriptStats, newScriptItem)
+	}
+	if err != nil {
+		return inner, err
 	}
 
 	inner.AvgPingMs, err = thisBitstream.readFloat32BE()
