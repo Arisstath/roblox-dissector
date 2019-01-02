@@ -512,7 +512,7 @@ func GUIMain() {
 	packetViewer.SetSelectionMode(1)
 	packetViewer.SetSortingEnabled(true)
 	packetViewer.ConnectClicked(func(index *core.QModelIndex) {
-		realSelectedValue, _ := strconv.Atoi(standardModel.Item(index.Row(), 0).Data(0).ToString())
+		realSelectedValue, _ := strconv.Atoi(standardModel.Item(proxy.MapToSource(index).Row(), 0).Data(0).ToString())
 		if packetViewer.SelectionHandlers[uint64(realSelectedValue)] != nil {
 			packetViewer.SelectionHandlers[uint64(realSelectedValue)]()
 		}
