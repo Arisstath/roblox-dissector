@@ -2,6 +2,7 @@ package peer
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"strconv"
 )
@@ -48,6 +49,7 @@ var Packet83Decoders = map[uint8](func(*extendedReader, PacketReader, *PacketLay
 
 // A subpacket contained within a 0x83 (ID_DATA) packet
 type Packet83Subpacket interface {
+	fmt.Stringer
 	Serialize(writer PacketWriter, stream *extendedWriter) error
 	Type() uint8
 	TypeString() string
@@ -114,4 +116,8 @@ func (layer *Packet83Layer) Serialize(writer PacketWriter, stream *extendedWrite
 		}
 	}
 	return stream.WriteByte(0)
+}
+
+func (layer *Packet83Layer) String() string {
+	return fmt.Sprintf("ID_REPLICATION_DATA: %d items", len(layer.SubPackets))
 }

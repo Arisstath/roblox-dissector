@@ -3,6 +3,7 @@ package peer
 import (
 	"bytes"
 	"errors"
+	"fmt"
 
 	"github.com/DataDog/zstd"
 	bitstream "github.com/gskartwii/go-bitstream"
@@ -116,4 +117,8 @@ func (Packet83_0B) Type() uint8 {
 }
 func (Packet83_0B) TypeString() string {
 	return "ID_REPLIC_JOIN_DATA"
+}
+
+func (layer *Packet83_0B) String() string {
+	return fmt.Sprintf("ID_REPLIC_JOIN_DATA: %d items", len(layer.Instances))
 }

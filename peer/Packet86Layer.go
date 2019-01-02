@@ -2,6 +2,7 @@ package peer
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/gskartwii/roblox-dissector/datamodel"
 )
@@ -87,4 +88,8 @@ func (layer *Packet86Layer) Serialize(writer PacketWriter, stream *extendedWrite
 		}
 	}
 	return stream.WriteByte(0x00) // referent to NULL instance; terminator
+}
+
+func (layer *Packet86Layer) String() string {
+	return fmt.Sprintf("ID_TOUCH: %d items", len(layer.SubPackets))
 }

@@ -1,5 +1,7 @@
 package peer
 
+import "fmt"
+
 // ID_HASH
 type Packet83_12 struct {
 	HashList       []uint32
@@ -102,4 +104,7 @@ func (Packet83_12) Type() uint8 {
 }
 func (Packet83_12) TypeString() string {
 	return "ID_REPLIC_HASH"
+}
+func (layer *Packet83_12) String() string {
+	return fmt.Sprintf("ID_REPLIC_HASH: %d hashes", len(layer.HashList))
 }

@@ -66,3 +66,8 @@ func (Packet83_05) Type() uint8 {
 func (Packet83_05) TypeString() string {
 	return "ID_REPLIC_PING"
 }
+
+func (layer *Packet83_05) String() string {
+	// yes, these packets are boring
+	return "ID_REPLIC_PING"
+}

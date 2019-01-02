@@ -18,7 +18,6 @@ func NewPacket93Layer() *Packet93Layer {
 
 func (thisBitstream *extendedReader) DecodePacket93Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket93Layer()
-	
 
 	var err error
 	layer.ProtocolSchemaSync, err = thisBitstream.readBool()
@@ -106,4 +105,8 @@ func (layer *Packet93Layer) Serialize(writer PacketWriter, stream *extendedWrite
 	}
 
 	return err
+}
+
+func (layer *Packet93Layer) String() string {
+	return fmt.Sprintf("ID_DICTIONARY_FORMAT: %d flags", len(layer.Params))
 }

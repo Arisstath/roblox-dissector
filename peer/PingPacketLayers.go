@@ -27,6 +27,9 @@ func (layer *Packet00Layer) Serialize(writer PacketWriter, stream *extendedWrite
 	err = stream.writeUint64BE(layer.SendPingTime)
 	return err
 }
+func (layer *Packet00Layer) String() string {
+	return "ID_CONNECTED_PING"
+}
 
 // ID_CONNECTED_PONG - client <-> server
 type Packet03Layer struct {
@@ -65,4 +68,8 @@ func (layer *Packet03Layer) Serialize(writer PacketWriter, stream *extendedWrite
 	}
 	err = stream.writeUint64BE(layer.SendPongTime)
 	return err
+}
+
+func (layer *Packet03Layer) String() string {
+	return "ID_CONNECTED_PONG"
 }

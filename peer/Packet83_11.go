@@ -1,5 +1,7 @@
 package peer
 
+import "fmt"
+
 type MemoryStatsItem struct {
 	Name   string
 	Memory float64
@@ -351,4 +353,8 @@ func (Packet83_11) Type() uint8 {
 }
 func (Packet83_11) TypeString() string {
 	return "ID_REPLIC_STATS"
+}
+
+func (layer *Packet83_11) String() string {
+	return fmt.Sprintf("ID_REPLIC_STATS: Version %d", layer.Version)
 }

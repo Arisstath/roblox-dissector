@@ -5,6 +5,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"errors"
+	"fmt"
 
 	bitstream "github.com/gskartwii/go-bitstream"
 )
@@ -249,4 +250,8 @@ func (layer *Packet8ALayer) Serialize(writer PacketWriter, stream *extendedWrite
 	dest = shuffleSlice(dest) // shuffle back to correct order
 
 	return stream.allBytes(dest)
+}
+
+func (layer *Packet8ALayer) String() string {
+	return fmt.Sprintf("ID_SUBMIT_TICKET: %s", layer.Platform)
 }

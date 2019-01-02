@@ -5,6 +5,7 @@ package peer
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
@@ -16,6 +17,7 @@ const DEBUG bool = true
 
 // RakNetPacket describes any packet that can be serialized and written to UDP
 type RakNetPacket interface {
+	fmt.Stringer
 	Serialize(writer PacketWriter, stream *extendedWriter) error
 }
 

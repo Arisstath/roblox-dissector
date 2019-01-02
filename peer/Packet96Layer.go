@@ -1,5 +1,7 @@
 package peer
 
+import "fmt"
+
 type Packet96Layer struct {
 	Request bool
 	Version uint32
@@ -35,4 +37,8 @@ func (layer *Packet96Layer) Serialize(writer PacketWriter, stream *extendedWrite
 	}
 
 	return stream.writeUint32BE(layer.Version)
+}
+
+func (layer *Packet96Layer) String() string {
+	return fmt.Sprintf("ID_REQUEST_STATS: Version %d", layer.Version)
 }

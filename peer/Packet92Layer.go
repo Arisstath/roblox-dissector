@@ -1,5 +1,7 @@
 package peer
 
+import "fmt"
+
 // ID_PLACEID_VERIFICATION - client -> server
 type Packet92Layer struct {
 	PlaceId int64
@@ -23,4 +25,8 @@ func (layer *Packet92Layer) Serialize(writer PacketWriter, stream *extendedWrite
 		return err
 	}
 	return stream.writeVarsint64(layer.PlaceId)
+}
+
+func (layer *Packet92Layer) String() string {
+	return fmt.Sprintf("ID_PLACEID_VERIFICATION: %d", layer.PlaceId)
 }

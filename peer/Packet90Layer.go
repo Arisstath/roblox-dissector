@@ -1,5 +1,7 @@
 package peer
 
+import "fmt"
+
 // ID_PROTOCOL_SYNC - client -> server
 type Packet90Layer struct {
 	SchemaVersion  uint32
@@ -59,4 +61,8 @@ func (layer *Packet90Layer) Serialize(writer PacketWriter, stream *extendedWrite
 		}
 	}
 	return nil
+}
+
+func (layer *Packet90Layer) String() string {
+	return fmt.Sprintf("ID_PROTOCOL_SYNC: Version %d, %d flags", layer.SchemaVersion, len(layer.RequestedFlags))
 }

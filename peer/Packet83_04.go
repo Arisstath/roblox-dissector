@@ -1,5 +1,7 @@
 package peer
 
+import "fmt"
+
 // ID_MARKER
 type Packet83_04 struct {
 	MarkerId uint32
@@ -26,4 +28,8 @@ func (Packet83_04) Type() uint8 {
 }
 func (Packet83_04) TypeString() string {
 	return "ID_REPLIC_MARKER"
+}
+
+func (layer *Packet83_04) String() string {
+	return fmt.Sprintf("ID_REPLIC_MARKER: %d", layer.MarkerId)
 }

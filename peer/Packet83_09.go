@@ -1,24 +1,17 @@
 package peer
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
-type Packet83_09Subpacket interface{}
+type Packet83_09Subpacket interface {
+	fmt.Stringer
+}
 
 type Packet83_09 struct {
 	Subpacket     Packet83_09Subpacket
 	SubpacketType uint8
-}
-
-type Packet83_09_00 struct {
-	Values [5]uint32
-}
-
-type Packet83_09_01 struct {
-	Int1 uint8
-	Int2 uint32
-	Int3 uint32
-	Int4 uint32
-	Int5 uint64
 }
 
 type Packet83_09_05 struct {
@@ -30,8 +23,6 @@ type Packet83_09_06 struct {
 	Int2 uint32
 }
 
-type Packet83_09_07 struct{}
-
 func (thisBitstream *extendedReader) DecodePacket83_09(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
 	var err error
 	inner := &Packet83_09{}
@@ -40,40 +31,8 @@ func (thisBitstream *extendedReader) DecodePacket83_09(reader PacketReader, laye
 	if err != nil {
 		return inner, err
 	}
-	var subpacket interface{}
+	var subpacket Packet83_09Subpacket
 	switch inner.SubpacketType {
-	case 0: // Rocky
-		thisSubpacket := &Packet83_09_00{}
-		for i := 0; i < 5; i++ {
-			thisSubpacket.Values[i], err = thisBitstream.readUint32BE()
-			if err != nil {
-				return inner, err
-			}
-		}
-		subpacket = thisSubpacket
-	case 1:
-		thisSubpacket := &Packet83_09_01{}
-		thisSubpacket.Int1, err = thisBitstream.readUint8()
-		if err != nil {
-			return inner, err
-		}
-		thisSubpacket.Int2, err = thisBitstream.readUint32BE()
-		if err != nil {
-			return inner, err
-		}
-		thisSubpacket.Int3, err = thisBitstream.readUint32BE()
-		if err != nil {
-			return inner, err
-		}
-		thisSubpacket.Int4, err = thisBitstream.readUint32BE()
-		if err != nil {
-			return inner, err
-		}
-		thisSubpacket.Int5, err = thisBitstream.readUint64BE()
-		if err != nil {
-			return inner, err
-		}
-		subpacket = thisSubpacket
 	case 5: // id challenge
 		thisSubpacket := &Packet83_09_05{}
 		thisSubpacket.Int, err = thisBitstream.readUint32BE()
@@ -91,9 +50,6 @@ func (thisBitstream *extendedReader) DecodePacket83_09(reader PacketReader, laye
 		if err != nil {
 			return inner, err
 		}
-		subpacket = thisSubpacket
-	case 7:
-		thisSubpacket := &Packet83_09_07{}
 		subpacket = thisSubpacket
 	default:
 		layers.Root.Logger.Println("don't know rocky subpacket", inner.Type())
@@ -134,4 +90,15 @@ func (Packet83_09) Type() uint8 {
 }
 func (Packet83_09) TypeString() string {
 	return "ID_REPLIC_ROCKY"
+}
+
+func (layer *Packet83_09) String() string {
+	return fmt.Sprintf("ID_REPLIC_ROCKY: %s", layer.Subpacket.String())
+}
+
+func (Packet83_09_05) String() string {
+	return "IdChallenge"
+}
+func (Packet83_09_06) String() string {
+	return "IdResponse"
 }

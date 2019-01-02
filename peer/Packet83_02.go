@@ -23,3 +23,7 @@ func (Packet83_02) Type() uint8 {
 func (Packet83_02) TypeString() string {
 	return "ID_REPLIC_NEW_INSTANCE"
 }
+
+func (layer *Packet83_02) String() string {
+	return "ID_REPLIC_NEW_INSTANCE: " + layer.Child.GetFullName()
+}

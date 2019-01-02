@@ -1,5 +1,7 @@
 package peer
 
+import "fmt"
+
 // Disconnection reasons
 const (
 	// Sent when a data:HashItem packet or 0x8A packet contains a bad hash
@@ -65,4 +67,8 @@ func (layer *Packet15Layer) Serialize(writer PacketWriter, stream *extendedWrite
 		return err
 	}
 	return stream.writeUint32BE(layer.Reason)
+}
+
+func (layer *Packet15Layer) String() string {
+	return fmt.Sprintf("ID_DISCONNECTION_NOTIFICATION: Reason %d", layer.Reason)
 }

@@ -2,6 +2,7 @@ package peer
 
 import (
 	"errors"
+	"fmt"
 	"io"
 
 	"github.com/gskartwii/roblox-dissector/datamodel"
@@ -184,4 +185,8 @@ func (thisBitstream *extendedReader) DecodePacket8DLayer(reader PacketReader, la
 
 func (layer *Packet8DLayer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	return errors.New("not implemented!")
+}
+
+func (layer *Packet8DLayer) String() string {
+	return fmt.Sprintf("ID_CLUSTER: WIP")
 }

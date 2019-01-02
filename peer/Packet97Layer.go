@@ -3,6 +3,7 @@ package peer
 import (
 	"bytes"
 	"errors"
+	"fmt"
 
 	"github.com/DataDog/zstd"
 	bitstream "github.com/gskartwii/go-bitstream"
@@ -525,4 +526,8 @@ func (layer *Packet97Layer) Serialize(writer PacketWriter, stream *extendedWrite
 	}
 	err = stream.allBytes(zstdBuf.Bytes())
 	return err
+}
+
+func (layer *Packet97Layer) String() string {
+	return fmt.Sprintf("ID_NEW_SCHEMA: %d enums, %d instances", len(layer.Schema.Enums), len(layer.Schema.Instances))
 }

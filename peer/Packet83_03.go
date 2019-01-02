@@ -155,3 +155,7 @@ func (Packet83_03) Type() uint8 {
 func (Packet83_03) TypeString() string {
 	return "ID_REPLIC_PROP"
 }
+
+func (layer *Packet83_03) String() string {
+	return fmt.Sprintf("ID_REPLIC_PROP: %s[%s]", layer.Instance.GetFullName(), layer.PropertyName)
+}

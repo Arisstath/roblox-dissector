@@ -28,3 +28,14 @@ func (Packet83_10) Type() uint8 {
 func (Packet83_10) TypeString() string {
 	return "ID_REPLIC_TAG"
 }
+
+func (layer *Packet83_10) String() string {
+	switch layer.TagId {
+	case 12:
+		return "ID_REPLIC_TAG: ReplicatedFirst finished"
+	case 13:
+		return "ID_REPLIC_TAG: JoinData replication finished"
+	default:
+		return "ID_REPLIC_TAG: Unknown tag"
+	}
+}

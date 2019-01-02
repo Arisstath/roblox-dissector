@@ -91,3 +91,7 @@ func (Packet83_0A) Type() uint8 {
 func (Packet83_0A) TypeString() string {
 	return "ID_REPLIC_CFRAME_ACK"
 }
+
+func (layer *Packet83_0A) String() string {
+	return fmt.Sprintf("ID_REPLIC_CFRAME_ACK: %s[%s]", layer.Instance.GetFullName(), layer.PropertyName)
+}

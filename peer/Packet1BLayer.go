@@ -42,3 +42,7 @@ func (layer *Packet1BLayer) Serialize(writer PacketWriter, stream *extendedWrite
 	err = stream.bits(64, layer.Timestamp2)
 	return err
 }
+
+func (layer *Packet1BLayer) String() string {
+	return "ID_TIMESTAMP"
+}

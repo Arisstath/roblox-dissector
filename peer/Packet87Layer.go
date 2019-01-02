@@ -1,6 +1,8 @@
 package peer
 
 import (
+	"fmt"
+
 	"github.com/gskartwii/roblox-dissector/datamodel"
 )
 
@@ -48,4 +50,8 @@ func (layer *Packet87Layer) Serialize(writer PacketWriter, stream *extendedWrite
 		return err
 	}
 	return stream.writeUint32AndString(layer.Message)
+}
+
+func (layer *Packet87Layer) String() string {
+	return fmt.Sprintf("ID_CHAT_ALL: <%s>", layer.Instance.GetFullName())
 }

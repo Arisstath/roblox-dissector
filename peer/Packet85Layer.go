@@ -1,6 +1,8 @@
 package peer
 
 import (
+	"fmt"
+
 	"github.com/gskartwii/roblox-dissector/datamodel"
 	"github.com/robloxapi/rbxfile"
 )
@@ -263,4 +265,8 @@ func (layer *Packet85Layer) Serialize(writer PacketWriter, stream *extendedWrite
 		}
 	}
 	return stream.WriteByte(0x00) // referent to NULL instance; terminator
+}
+
+func (layer *Packet85Layer) String() string {
+	return fmt.Sprintf("ID_PHYSICS: %d items", len(layer.SubPackets))
 }

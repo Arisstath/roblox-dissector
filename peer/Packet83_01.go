@@ -41,3 +41,7 @@ func (Packet83_01) Type() uint8 {
 func (Packet83_01) TypeString() string {
 	return "ID_REPLIC_DELETE_INSTANCE"
 }
+
+func (layer *Packet83_01) String() string {
+	return "ID_REPLIC_DELETE_INSTANCE: " + layer.Instance.GetFullName()
+}
