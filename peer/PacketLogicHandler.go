@@ -130,7 +130,7 @@ func (logicHandler *PacketLogicHandler) disconnectInternal() {
 
 func (logicHandler *PacketLogicHandler) Disconnect() {
 	logicHandler.WritePacket(&Packet15Layer{
-		Reason: 0xFFFFFFFF,
+		Reason: -1,
 	})
 }
 

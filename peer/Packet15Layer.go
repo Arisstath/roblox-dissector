@@ -46,7 +46,7 @@ const (
 
 // ID_DISCONNECTION_NOTIFICATION - client <-> server
 type Packet15Layer struct {
-	Reason uint32
+	Reason int32
 }
 
 func NewPacket15Layer() *Packet15Layer {
@@ -57,7 +57,8 @@ func (thisBitstream *extendedReader) DecodePacket15Layer(reader PacketReader, la
 	layer := NewPacket15Layer()
 
 	var err error
-	layer.Reason, err = thisBitstream.readUint32BE()
+	reason, err := thisBitstream.readUint16BE()
+	layer.Reason = int32(reason)
 	return layer, err
 }
 
@@ -66,7 +67,7 @@ func (layer *Packet15Layer) Serialize(writer PacketWriter, stream *extendedWrite
 	if err != nil {
 		return err
 	}
-	return stream.writeUint32BE(layer.Reason)
+	return stream.writeUint32BE(uint32(layer.Reason))
 }
 
 func (layer *Packet15Layer) String() string {

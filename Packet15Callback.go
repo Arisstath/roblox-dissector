@@ -1,4 +1,5 @@
 package main
+
 import "github.com/Gskartwii/roblox-dissector/peer"
 
 var disconnectionReasons = [...]string{
@@ -25,7 +26,7 @@ func ShowPacket15(packetType byte, context *peer.CommunicationContext, layers *p
 	MainLayer := layers.Main.(*peer.Packet15Layer)
 
 	var reason string
-	if MainLayer.Reason == 0xFFFFFFFF {
+	if MainLayer.Reason == -1 {
 		reason = "Developer has shut down all game servers or game has shut down for other reasons, please reconnect"
 	} else {
 		reason = disconnectionReasons[MainLayer.Reason]
