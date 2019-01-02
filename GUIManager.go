@@ -192,13 +192,15 @@ func (m *MyPacketListView) BindCallback(packetType byte, context *peer.Communica
 	if packetName == "" {
 		packetName = fmt.Sprintf("0x%02X", packetType)
 	}
+	if layers.Main != nil {
+		packetName = layers.Main.(peer.RakNetPacket).String()
+	}
 	row[1].SetData(core.NewQVariant14(packetName), 0)
 
 	for _, item := range row {
 		if layers.Main != nil {
 			item.SetBackground(gui.NewQBrush2(core.Qt__NoBrush))
 		} else {
-			println("mainlayer just is nil", packetType)
 			paintItems(row, gui.NewQColor3(255, 0, 0, 127))
 		}
 	}

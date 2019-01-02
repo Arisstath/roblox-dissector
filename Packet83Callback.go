@@ -28,11 +28,8 @@ var SubpacketCallbacks = map[uint8](func(peer.Packet83Subpacket) widgets.QWidget
 	0x12: show83_12,
 }
 var Callbacks83_09 = map[uint8](func(peer.Packet83_09Subpacket) widgets.QWidget_ITF){
-	0x0: show83_09_00,
-	0x1: show83_09_01,
 	0x5: show83_09_05,
 	0x6: show83_09_06,
-	0x7: show83_09_07,
 }
 
 func showReplicationInstance(this *datamodel.Instance) []*gui.QStandardItem {
@@ -236,31 +233,6 @@ func show83_07(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	return widget
 }
 
-func show83_09_00(t peer.Packet83_09Subpacket) widgets.QWidget_ITF {
-	this := t.(*peer.Packet83_09_00)
-	widget := widgets.NewQWidget(nil, 0)
-	layout := widgets.NewQVBoxLayout()
-
-	for i := 0; i < 5; i++ {
-		layout.AddWidget(NewQLabelF("Int %d: %d", i, this.Values[i]), 0, 0)
-	}
-	widget.SetLayout(layout)
-
-	return widget
-}
-func show83_09_01(t peer.Packet83_09Subpacket) widgets.QWidget_ITF {
-	this := t.(*peer.Packet83_09_01)
-	widget := widgets.NewQWidget(nil, 0)
-	layout := widgets.NewQVBoxLayout()
-	layout.AddWidget(NewQLabelF("Int 1: %d", this.Int1), 0, 0)
-	layout.AddWidget(NewQLabelF("Int 2: %d", this.Int2), 0, 0)
-	layout.AddWidget(NewQLabelF("Int 3: %d", this.Int3), 0, 0)
-	layout.AddWidget(NewQLabelF("Int 4: %d", this.Int4), 0, 0)
-	layout.AddWidget(NewQLabelF("Int 5: %d", this.Int5), 0, 0)
-	widget.SetLayout(layout)
-
-	return widget
-}
 func show83_09_05(t peer.Packet83_09Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_09_05)
 	return NewQLabelF("Int: %d", this.Int)
@@ -275,9 +247,6 @@ func show83_09_06(t peer.Packet83_09Subpacket) widgets.QWidget_ITF {
 	widget.SetLayout(layout)
 
 	return widget
-}
-func show83_09_07(t peer.Packet83_09Subpacket) widgets.QWidget_ITF {
-	return NewQLabelF("(no values)")
 }
 func show83_09(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_09)
