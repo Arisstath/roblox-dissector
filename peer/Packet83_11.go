@@ -1,7 +1,5 @@
 package peer
 
-import "errors"
-
 type MemoryStatsItem struct {
 	Name   string
 	Memory float64
@@ -79,7 +77,6 @@ func (thisBitstream *extendedReader) DecodePacket83_11(reader PacketReader, laye
 	}
 
 	if inner.Version >= 5 {
-		println("reading memory stats")
 		inner.MemoryStats.TotalServerMemory, err = thisBitstream.readFloat64BE()
 		if err != nil {
 			return inner, err
@@ -93,16 +90,13 @@ func (thisBitstream *extendedReader) DecodePacket83_11(reader PacketReader, laye
 		if err != nil {
 			return inner, err
 		}
-		println("Successfully read memory stats")
 	}
 
 	if inner.Version >= 3 {
-		println("reading datastore stats")
 		inner.DataStoreStats.Enabled, err = thisBitstream.readBoolByte()
 		if err != nil {
 			return inner, err
 		}
-		println("enabled:", inner.DataStoreStats.Enabled)
 		if inner.DataStoreStats.Enabled {
 			inner.DataStoreStats.GetAsync, err = thisBitstream.readUint32BE()
 			if err != nil {
@@ -208,8 +202,148 @@ func (thisBitstream *extendedReader) DecodePacket83_11(reader PacketReader, laye
 	return inner, nil
 }
 
+func (stream *extendedWriter) writeMemoryStats(stats []MemoryStatsItem) error {
+	err := stream.writeUint32BE(uint32(len(stats)))
+	if err != nil {
+		return err
+	}
+
+	for _, stat := range stats {
+		err = stream.writeUint32AndString(stat.Name)
+		if err != nil {
+			return err
+		}
+		err = stream.writeFloat64BE(stat.Memory)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (layer *Packet83_11) Serialize(writer PacketWriter, stream *extendedWriter) error {
-	return errors.New("packet 83_11 not implemented!")
+	err := stream.writeUint32BE(layer.Version)
+	if err != nil {
+		return err
+	}
+
+	if layer.Version >= 5 {
+		err = stream.writeFloat64BE(layer.MemoryStats.TotalServerMemory)
+		if err != nil {
+			return err
+		}
+		err = stream.writeMemoryStats(layer.MemoryStats.DeveloperTags)
+		if err != nil {
+			return err
+		}
+		err = stream.writeMemoryStats(layer.MemoryStats.InternalCategories)
+		if err != nil {
+			return err
+		}
+	}
+
+	if layer.Version >= 3 {
+		err = stream.writeBoolByte(layer.DataStoreStats.Enabled)
+		if err != nil {
+			return err
+		}
+		if layer.DataStoreStats.Enabled {
+			err = stream.writeUint32BE(layer.DataStoreStats.GetAsync)
+			if err != nil {
+				return err
+			}
+			err = stream.writeUint32BE(layer.DataStoreStats.SetAndIncrementAsync)
+			if err != nil {
+				return err
+			}
+			err = stream.writeUint32BE(layer.DataStoreStats.UpdateAsync)
+			if err != nil {
+				return err
+			}
+			err = stream.writeUint32BE(layer.DataStoreStats.GetSortedAsync)
+			if err != nil {
+				return err
+			}
+			err = stream.writeUint32BE(layer.DataStoreStats.SetIncrementSortedAsync)
+			if err != nil {
+				return err
+			}
+			err = stream.writeUint32BE(layer.DataStoreStats.OnUpdate)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	for _, job := range layer.JobStats {
+		// write isEnd
+		err = stream.writeBoolByte(false)
+		if err != nil {
+			return err
+		}
+		err = stream.writeUint32AndString(job.Name)
+		if err != nil {
+			return err
+		}
+		err = stream.writeFloat32BE(job.Stat1)
+		if err != nil {
+			return err
+		}
+		err = stream.writeFloat32BE(job.Stat2)
+		if err != nil {
+			return err
+		}
+		err = stream.writeFloat32BE(job.Stat3)
+		if err != nil {
+			return err
+		}
+	}
+	// write isEnd
+	err = stream.writeBoolByte(true)
+
+	for _, script := range layer.ScriptStats {
+		// write isEnd
+		err = stream.writeBoolByte(false)
+		if err != nil {
+			return err
+		}
+		err = stream.writeUint32AndString(script.Name)
+		if err != nil {
+			return err
+		}
+		err = stream.writeFloat32BE(script.Stat1)
+		if err != nil {
+			return err
+		}
+		err = stream.writeUint32BE(script.Stat2)
+		if err != nil {
+			return err
+		}
+	}
+	// write isEnd
+	err = stream.writeBoolByte(true)
+	if err != nil {
+		return err
+	}
+
+	err = stream.writeFloat32BE(layer.AvgPingMs)
+	if err != nil {
+		return err
+	}
+	err = stream.writeFloat32BE(layer.AvgPhysicsSenderPktPS)
+	if err != nil {
+		return err
+	}
+	err = stream.writeFloat32BE(layer.TotalDataKBPS)
+	if err != nil {
+		return err
+	}
+	err = stream.writeFloat32BE(layer.TotalPhysicsKBPS)
+	if err != nil {
+		return err
+	}
+	return stream.writeFloat32BE(layer.DataThroughputRatio)
 }
 
 func (Packet83_11) Type() uint8 {
