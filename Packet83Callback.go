@@ -413,7 +413,7 @@ func ShowPacket83(packetType byte, context *peer.CommunicationContext, layers *p
 	for index, subpacket := range MainLayer.SubPackets {
 		rootItem.AppendRow([]*gui.QStandardItem{
 			NewQStandardItemF("%d", index),
-			NewQStandardItemF(subpacket.TypeString()),
+			NewQStandardItemF(subpacket.String()),
 		})
 	}
 	packetList.SetSelectionMode(1)
