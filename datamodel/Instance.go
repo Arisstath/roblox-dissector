@@ -140,16 +140,13 @@ func (instance *Instance) WaitForRefProp(name string) <-chan *Instance {
 	go func() {
 		for propEvt := range instance.PropertyEmitter.On(name) {
 			if propEvt.Args[0] == nil {
-				println("skipping nil prop")
 				continue
 			}
 			currProp := propEvt.Args[0].(ValueReference)
 			if currProp.Instance != nil {
-				println("got arg")
 				propChan <- currProp.Instance
 				return
 			}
-			println("skipping nil ref")
 		}
 	}()
 	return propChan
