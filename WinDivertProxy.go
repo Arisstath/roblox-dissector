@@ -143,7 +143,7 @@ func autoDetectWinDivertProxy(settings *PlayerProxySettings, captureJobContext c
 	proxyContext, proxyContextCancel := context.WithCancel(captureJobContext)
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
-		req.URL.Host = "8.42.96.30"
+		req.URL.Host = "209.206.41.230"
 		req.URL.Scheme = "https"
 
 		if req.URL.Path == "/Game/Join.ashx" {

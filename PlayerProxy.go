@@ -10,9 +10,10 @@ import (
 	"net/http"
 	"os"
 	"regexp"
-	"github.com/Gskartwii/roblox-dissector/peer"
 	"strconv"
 	"strings"
+
+	"github.com/Gskartwii/roblox-dissector/peer"
 )
 
 // Requires you to patch the player with memcheck bypass and rbxsig ignoring! But it could work...
@@ -25,7 +26,7 @@ func captureFromPlayerProxy(settings *PlayerProxySettings, captureJobContext con
 	proxyContext, proxyContextCancel := context.WithCancel(captureJobContext)
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
-		req.URL.Host = "8.42.96.30"
+		req.URL.Host = "209.206.41.230"
 		req.URL.Scheme = "https"
 		if req.URL.Path == "/Game/Join.ashx" {
 			println("patching join.ashx for gzip encoding")
