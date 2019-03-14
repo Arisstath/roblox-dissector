@@ -1,11 +1,17 @@
 package peer
 
+import "errors"
+
 // ID_PING
 type Packet83_05 struct {
+	PacketVersion uint8
 	// Always false
-	IsPingBack bool
-	Timestamp  uint64
-	SendStats  uint32
+	Timestamp uint64
+	Fps1      float32
+	Fps2      float32
+	Fps3      float32
+	Int1      uint32
+	SendStats uint32
 	// Hack flags
 	ExtraStats uint32
 }
@@ -14,14 +20,39 @@ func (thisBitstream *extendedReader) DecodePacket83_05(reader PacketReader, laye
 	var err error
 	inner := &Packet83_05{}
 
-	inner.IsPingBack, err = thisBitstream.readBoolByte()
+	inner.PacketVersion, err = thisBitstream.readUint8()
 	if err != nil {
 		return inner, err
 	}
 
-	inner.Timestamp, err = thisBitstream.bits(64)
-	if err != nil {
-		return inner, err
+	if inner.PacketVersion <= 1 {
+		inner.Timestamp, err = thisBitstream.bits(64)
+		if err != nil {
+			return inner, err
+		}
+	} else if inner.PacketVersion == 2 {
+		inner.Int1, err = thisBitstream.readUint32BE()
+		if err != nil {
+			return inner, err
+		}
+		inner.Timestamp, err = thisBitstream.bits(32)
+		if err != nil {
+			return inner, err
+		}
+		inner.Fps1, err = thisBitstream.readFloat32BE()
+		if err != nil {
+			return inner, err
+		}
+		inner.Fps2, err = thisBitstream.readFloat32BE()
+		if err != nil {
+			return inner, err
+		}
+		inner.Fps3, err = thisBitstream.readFloat32BE()
+		if err != nil {
+			return inner, err
+		}
+	} else {
+		return inner, errors.New("invalid packetversion")
 	}
 	inner.SendStats, err = thisBitstream.readUint32BE()
 	if err != nil {
@@ -40,13 +71,38 @@ func (thisBitstream *extendedReader) DecodePacket83_05(reader PacketReader, laye
 
 func (layer *Packet83_05) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
-	err = stream.writeBoolByte(layer.IsPingBack)
+	err = stream.WriteByte(layer.PacketVersion)
 	if err != nil {
 		return err
 	}
-	err = stream.bits(64, layer.Timestamp)
-	if err != nil {
-		return err
+	if layer.PacketVersion <= 1 {
+		err = stream.bits(64, layer.Timestamp)
+		if err != nil {
+			return err
+		}
+	} else if layer.PacketVersion == 2 {
+		err = stream.writeUint32BE(layer.Int1)
+		if err != nil {
+			return err
+		}
+		err = stream.bits(32, layer.Timestamp)
+		if err != nil {
+			return err
+		}
+		err = stream.writeFloat32BE(layer.Fps1)
+		if err != nil {
+			return err
+		}
+		err = stream.writeFloat32BE(layer.Fps2)
+		if err != nil {
+			return err
+		}
+		err = stream.writeFloat32BE(layer.Fps3)
+		if err != nil {
+			return err
+		}
+	} else {
+		return errors.New("invalid packetversion")
 	}
 	err = stream.writeUint32BE(layer.SendStats)
 	if err != nil {
