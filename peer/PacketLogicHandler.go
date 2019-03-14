@@ -26,6 +26,7 @@ type PacketLogicHandler struct {
 	pingInterval int
 
 	DataModel *datamodel.DataModel
+	Connected bool
 }
 
 func newPacketLogicHandler(context *CommunicationContext, withClient bool) PacketLogicHandler {
@@ -92,6 +93,7 @@ func (logicHandler *PacketLogicHandler) createReader() {
 	logicHandler.DefaultPacketReader.SetContext(logicHandler.Context)
 }
 
+// only used by server and Studio? client must use ClientPacketLogic.go
 func (logicHandler *PacketLogicHandler) startDataPing() {
 	// boot up dataping
 	logicHandler.dataPingTicker = time.NewTicker(time.Duration(logicHandler.pingInterval) * time.Millisecond)
@@ -101,8 +103,8 @@ func (logicHandler *PacketLogicHandler) startDataPing() {
 
 			logicHandler.WritePacket(&Packet83Layer{
 				[]Packet83Subpacket{&Packet83_05{
-					Timestamp:  uint64(time.Now().UnixNano() / int64(time.Millisecond)),
-					IsPingBack: false,
+					Timestamp:     uint64(time.Now().UnixNano() / int64(time.Millisecond)),
+					PacketVersion: 0,
 				}},
 			})
 		}
@@ -129,9 +131,11 @@ func (logicHandler *PacketLogicHandler) disconnectInternal() {
 }
 
 func (logicHandler *PacketLogicHandler) Disconnect() {
-	logicHandler.WritePacket(&Packet15Layer{
-		Reason: -1,
-	})
+	if logicHandler.Connected {
+		logicHandler.WritePacket(&Packet15Layer{
+			Reason: -1,
+		})
+	}
 }
 
 func (logicHandler *PacketLogicHandler) sendDataPingBack() {
@@ -161,6 +165,17 @@ func (logicHandler *PacketLogicHandler) disconnectHandler(packetType uint8, laye
 	fmt.Printf("Received disconnect with reason %d\n", mainLayer.Reason)
 
 	logicHandler.disconnectInternal()
+}
+
+func (logicHandler *PacketLogicHandler) sendPing() {
+	packet := &Packet00Layer{
+		SendPingTime: uint64(time.Now().UnixNano() / int64(time.Millisecond)),
+	}
+
+	_, err := logicHandler.WritePacket(packet)
+	if err != nil {
+		println("Failed to write ping: ", err.Error())
+	}
 }
 
 func (logicHandler *PacketLogicHandler) sendPong(pingTime uint64) {
@@ -253,4 +268,8 @@ func (logicHandler *PacketLogicHandler) ReplicateJoinData(rootInstance *datamode
 	}
 
 	return logicHandler.WriteDataPackets(joinDataObject)
+}
+
+func (logicHandler *PacketLogicHandler) SendHackFlag(player *datamodel.Instance, flag string) error {
+	return logicHandler.SendEvent(player, "StatsAvailable", rbxfile.ValueString(flag))
 }

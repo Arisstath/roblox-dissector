@@ -57,6 +57,8 @@ func (client *ServerClient) Init() {
 	client.SetIsClient(false)
 	client.SetToClient(true)
 
+	client.Connected = true
+
 	client.startAcker()
 }
 func NewServerClient(clientAddr *net.UDPAddr, server *CustomServer, context *CommunicationContext) *ServerClient {

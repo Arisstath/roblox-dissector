@@ -10,6 +10,30 @@ import (
 	"github.com/robloxapi/rbxfile"
 )
 
+func (myClient *CustomClient) startDataPing() {
+	// boot up dataping
+	myClient.dataPingTicker = time.NewTicker(time.Duration(myClient.pingInterval) * time.Millisecond)
+	go func() {
+		for {
+			<-myClient.dataPingTicker.C
+
+			myClient.WritePacket(&Packet83Layer{
+				[]Packet83Subpacket{&Packet83_05{
+					Timestamp:     uint64(time.Now().UnixNano() / int64(time.Millisecond)),
+					PacketVersion: 2,
+					Fps1:          60,
+					Fps2:          60,
+					Fps3:          60,
+				}},
+			})
+		}
+	}()
+}
+
+func (myClient *CustomClient) disconnectionLogger(packetType uint8, layers *PacketLayers) {
+	myClient.Logger.Println("Received disconnection:", layers.Main.(*Packet15Layer).String())
+}
+
 func (myClient *CustomClient) bindDefaultHandlers() {
 	myClient.PacketLogicHandler.bindDefaultHandlers()
 
@@ -17,6 +41,7 @@ func (myClient *CustomClient) bindDefaultHandlers() {
 	basicHandlers.Bind(6, myClient.simple6Handler)
 	basicHandlers.Bind(8, myClient.simple8Handler)
 	basicHandlers.Bind(0x10, myClient.packet10Handler)
+	basicHandlers.Bind(0x15, myClient.disconnectionLogger)
 	basicHandlers.Bind(0x81, myClient.topReplicationHandler)
 
 	dataHandlers := myClient.dataHandlers
@@ -87,26 +112,32 @@ func (myClient *CustomClient) sendResponse13(pingTime uint64) {
 	}
 }
 func (myClient *CustomClient) sendProtocolSync() {
+	marshalledJoin, err := myClient.JoinDataObject.JSON()
+	if err != nil {
+		myClient.Logger.Println("Failed to marshal join JSON: ", err.Error())
+		return
+	}
 	response90 := &Packet90Layer{
 		SchemaVersion: 36,
 		RequestedFlags: []string{
-			"AllowMoreAngles",
-			"BodyColorsColor3PropertyReplicationEnabled",
-			"FixWeldConstraintReplicationCLI19374",
-			"NetworkClusterByte2",
-			"NetworkCompressorNewRotation",
-			"NetworkCompressorNewTranslation",
-			"NetworkCompressorNewVelocity",
-			"NetworkNewInstanceNoDefault",
-			"NetworkS2NewFraming",
-			"SendAdditionalNonAdjustedTimeStamp",
-			"SendPlayerGuiEarly2",
+			"FixDictionaryScopePlatformsReplication",
 			"UseNativePathWaypoint",
-			"UseNewPhysicsSender7",
-			"UseNewProtocolForStreaming",
+			"BodyColorsColor3PropertyReplicationEnabled",
+			"FixBallRaycasts",
+			"FixRaysInWedges",
+			"FixHats",
+			"EnableRootPriority",
+			"PartMasslessEnabled",
+			"KeepRedundantWeldsAlways",
+			"KeepRedundantWeldsExplicit",
+			"PgsForAll",
+			"WeldedToAnchoredIsntSpecial",
+			"ReplicateInterpolateRelativeHumanoidPlatformsMotion",
+			"TerrainRaycastsRespectCollisionGroups",
 		},
+		JoinData: string(marshalledJoin),
 	}
-	_, err := myClient.WritePacket(response90)
+	_, err = myClient.WritePacket(response90)
 	if err != nil {
 		println("Failed to write response90: ", err.Error())
 	}
@@ -147,7 +178,10 @@ func (myClient *CustomClient) packet10Handler(packetType uint8, layers *PacketLa
 	mainLayer := layers.Main.(*Packet10Layer)
 
 	myClient.sendResponse13(mainLayer.SendPongTime)
-	myClient.sendProtocolSync()
+	// RakNet sends two pings when connecting
+	myClient.sendPing()
+	myClient.sendPing()
+	myClient.sendProtocolSync() // This is broken and I have no clue why
 	myClient.sendPlaceIdVerification(0)
 	myClient.submitTicket()
 	myClient.sendSpawnName()
@@ -186,9 +220,10 @@ func (myClient *CustomClient) handlePlayersService(players *datamodel.Instance) 
 	myPlayer, _ := datamodel.NewInstance("Player", nil)
 	myPlayer.Ref = myClient.InstanceDictionary.NewReference()
 	myPlayer.Properties = map[string]rbxfile.Value{
-		"Name":                  rbxfile.ValueString(myClient.UserName),
-		"CharacterAppearance":   rbxfile.ValueString(myClient.characterAppearance),
-		"CharacterAppearanceId": rbxfile.ValueInt64(myClient.characterAppearanceId),
+		"Name":                              rbxfile.ValueString(myClient.UserName),
+		"CharacterAppearance":               rbxfile.ValueString(myClient.characterAppearance),
+		"CharacterAppearanceId":             rbxfile.ValueInt64(myClient.characterAppearanceId),
+		"InternalCharacterAppearanceLoaded": rbxfile.ValueBool(true),
 		// TODO: Assign ID here, in case somebody wants to pass this in an event arg
 		"ChatPrivacyMode":     datamodel.ValueToken{Value: 0},
 		"AccountAgeReplicate": rbxfile.ValueInt(myClient.AccountAge),
@@ -206,8 +241,11 @@ func (myClient *CustomClient) handlePlayersService(players *datamodel.Instance) 
 
 	err = myClient.WriteDataPackets(
 		&Packet83_05{
-			Timestamp:  uint64(time.Now().UnixNano() / int64(time.Millisecond)),
-			IsPingBack: false,
+			Timestamp:     uint64(time.Now().UnixNano() / int64(time.Millisecond)),
+			PacketVersion: 2,
+			Fps1:          60,
+			Fps2:          60,
+			Fps3:          60,
 		},
 		&Packet83_0B{},
 		&Packet83_02{myPlayer},

@@ -1,9 +1,11 @@
 package peer
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math/bits"
 	"math/rand"
@@ -75,11 +77,36 @@ type AndroidSecuritySettings struct {
 	SecuritySettings
 }
 
+type JoinData struct {
+	RawJoinData           string
+	CharacterAppearance   string
+	GameChatType          string
+	FollowUserId          int64
+	AccountAge            int32
+	SuperSafeChat         bool
+	VrDevice              string
+	MembershipType        string
+	Locale2Id             string
+	UserName              string
+	IsTeleportedIn        bool
+	LocaleId              string
+	CharacterAppearanceId int64
+	UserId                int64
+}
+
+func (d JoinData) JSON() ([]byte, error) {
+	buffer := &bytes.Buffer{}
+	encoder := json.NewEncoder(buffer)
+	encoder.SetEscapeHTML(false)
+	err := encoder.Encode(&d)
+	// drop trailing newline
+	return buffer.Bytes()[:buffer.Len()-1], err
+}
+
 type CustomClient struct {
 	PacketLogicHandler
 	Address               net.UDPAddr
 	ServerAddress         net.UDPAddr
-	Connected             bool
 	clientTicket          string
 	sessionId             string
 	PlayerId              int64
@@ -93,6 +120,8 @@ type CustomClient struct {
 	GenderId              uint8
 	IsPartyLeader         bool
 	AccountAge            int
+
+	JoinDataObject JoinData
 
 	SecuritySettings   SecurityHandler
 	Logger             *log.Logger
@@ -139,7 +168,6 @@ func (myClient *CustomClient) setupStalk() {
 func (myClient *CustomClient) setupChat() error {
 	chatEvents := <-myClient.DataModel.WaitForChild("ReplicatedStorage", "DefaultChatSystemChatEvents")
 	getInitDataRequest := <-chatEvents.WaitForChild("GetInitDataRequest")
-	println("got req")
 
 	_, err := myClient.InvokeRemote(getInitDataRequest, []rbxfile.Value{})
 	if err != nil {
@@ -210,13 +238,13 @@ func (myClient *CustomClient) joinWithJoinScript(url string, cookies []*http.Coo
 			joinScriptRequest.AddCookie(cook)
 		}
 	}
+	joinScriptRequest.Header.Set("Cookie", joinScriptRequest.Header.Get("Cookie")+"; RBXAppDeviceIdentifier=AppDeviceIdentifier=ROBLOX UWP")
 
 	resp, err := robloxCommClient.Do(joinScriptRequest)
 	if err != nil {
 		return err
 	}
 	body := resp.Body
-	defer body.Close()
 
 	// Discard rbxsig by reading until newline
 	char := make([]byte, 1)
@@ -229,8 +257,14 @@ func (myClient *CustomClient) joinWithJoinScript(url string, cookies []*http.Coo
 		return err
 	}
 
+	bodyBytes, err := ioutil.ReadAll(body)
+	if err != nil {
+		return err
+	}
+	body.Close()
+
 	var jsResp JoinAshxResponse
-	err = json.NewDecoder(body).Decode(&jsResp)
+	err = json.Unmarshal(bodyBytes, &jsResp)
 	if err != nil {
 		return err
 	}
@@ -242,6 +276,12 @@ func (myClient *CustomClient) joinWithJoinScript(url string, cookies []*http.Coo
 	myClient.UserName = jsResp.UserName
 	myClient.pingInterval = jsResp.PingInterval
 	myClient.AccountAge = jsResp.AccountAge
+
+	err = json.Unmarshal(bodyBytes, &myClient.JoinDataObject)
+	if err != nil {
+		return err
+	}
+	myClient.JoinDataObject.LocaleId = "en-us"
 
 	addrp, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", jsResp.MachineAddress, jsResp.ServerPort))
 	if err != nil {
@@ -268,6 +308,7 @@ func (myClient *CustomClient) joinWithPlaceLauncher(url string, cookies []*http.
 		for _, cookie := range cookies {
 			placeLauncherRequest.AddCookie(cookie)
 		}
+		placeLauncherRequest.Header.Set("Cookie", placeLauncherRequest.Header.Get("Cookie")+"; RBXAppDeviceIdentifier=AppDeviceIdentifier=ROBLOX UWP")
 
 		resp, err = robloxCommClient.Do(placeLauncherRequest)
 		if err != nil {
