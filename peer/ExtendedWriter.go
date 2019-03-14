@@ -1,12 +1,17 @@
 package peer
 
-import bitstream "github.com/gskartwii/go-bitstream"
-import "github.com/gskartwii/roblox-dissector/datamodel"
-import "encoding/binary"
-import "net"
+import (
+	"bytes"
+	"crypto/aes"
+	"crypto/cipher"
+	"encoding/binary"
+	"io"
+	"math"
+	"net"
 
-import "math"
-import "bytes"
+	bitstream "github.com/gskartwii/go-bitstream"
+	"github.com/gskartwii/roblox-dissector/datamodel"
+)
 
 type extendedWriter struct {
 	*bitstream.BitWriter
@@ -314,4 +319,54 @@ func (b *extendedWriter) writeUint32BECompressed(value uint32) error {
 	val := make([]byte, 4)
 	binary.BigEndian.PutUint32(val, value)
 	return b.writeCompressed(val, 32, true)
+}
+
+type aesExtendedWriter struct {
+	*extendedWriter
+	buffer       *bytes.Buffer
+	targetStream io.Writer
+}
+
+func (b *aesExtendedWriter) Close() error {
+	rawStream := b.extendedWriter
+	rawBuffer := b.buffer
+	rawStream.Flush(bitstream.Bit(false))
+
+	// create slice with 6-byte header and padding to align to 0x10-byte blocks
+	length := rawBuffer.Len()
+	paddingSize := 0xF - (length+5)%0x10
+	rawCopy := make([]byte, length+6+paddingSize)
+	rawCopy[5] = byte(paddingSize & 0xF)
+	copy(rawCopy[6+paddingSize:], rawBuffer.Bytes())
+
+	checkSum := calculateChecksum(rawCopy[4:])
+	rawCopy[3] = byte(checkSum >> 24 & 0xFF)
+	rawCopy[2] = byte(checkSum >> 16 & 0xFF)
+	rawCopy[1] = byte(checkSum >> 8 & 0xFF)
+	rawCopy[0] = byte(checkSum & 0xFF)
+
+	// CBC blocks are encrypted in a weird order
+	dest := make([]byte, len(rawCopy))
+	shuffledEncryptable := shuffleSlice(rawCopy)
+	block, err := aes.NewCipher([]byte{0xFE, 0xF9, 0xF0, 0xEB, 0xE2, 0xDD, 0xD4, 0xCF, 0xC6, 0xC1, 0xB8, 0xB3, 0xAA, 0xA5, 0x9C, 0x97})
+	if err != nil {
+		return err
+	}
+	c := cipher.NewCBCEncrypter(block, []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
+	c.CryptBlocks(dest, shuffledEncryptable)
+	dest = shuffleSlice(dest) // shuffle back to correct order
+
+	_, err = b.targetStream.Write(dest)
+	return err
+}
+
+func (b *extendedWriter) aesEncrypt() *aesExtendedWriter {
+	rawBuffer := new(bytes.Buffer)
+	rawStream := &extendedWriter{bitstream.NewWriter(rawBuffer)}
+
+	return &aesExtendedWriter{
+		extendedWriter: rawStream,
+		targetStream:   b,
+		buffer:         rawBuffer,
+	}
 }

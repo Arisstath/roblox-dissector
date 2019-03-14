@@ -6,16 +6,21 @@ import "fmt"
 type Packet90Layer struct {
 	SchemaVersion  uint32
 	RequestedFlags []string
+	JoinData       string
 }
 
 func NewPacket90Layer() *Packet90Layer {
 	return &Packet90Layer{}
 }
 
-func (thisBitstream *extendedReader) DecodePacket90Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (stream *extendedReader) DecodePacket90Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket90Layer()
 
-	var err error
+	lenBytes := bitsToBytes(uint(layers.Reliability.LengthInBits)) - 1 // -1 for packet id
+	thisBitstream, err := stream.aesDecrypt(int(lenBytes))
+	if err != nil {
+		return layer, err
+	}
 	layer.SchemaVersion, err = thisBitstream.readUint32BE()
 
 	flagsLen, err := thisBitstream.readUint16BE()
@@ -25,14 +30,14 @@ func (thisBitstream *extendedReader) DecodePacket90Layer(reader PacketReader, la
 
 	layer.RequestedFlags = make([]string, flagsLen)
 	for i := 0; i < int(flagsLen); i++ {
-		flagLen, err := thisBitstream.readUint8()
+		layer.RequestedFlags[i], err = thisBitstream.readVarLengthString()
 		if err != nil {
 			return layer, err
 		}
-		layer.RequestedFlags[i], err = thisBitstream.readASCII(int(flagLen))
-		if err != nil {
-			return layer, err
-		}
+	}
+	layer.JoinData, err = thisBitstream.readVarLengthString()
+	if err != nil {
+		return layer, err
 	}
 	return layer, nil
 }
@@ -42,23 +47,28 @@ func (layer *Packet90Layer) Serialize(writer PacketWriter, stream *extendedWrite
 	if err != nil {
 		return err
 	}
-	err = stream.writeUint32BE(layer.SchemaVersion)
+	rawStream := stream.aesEncrypt()
+	err = rawStream.writeUint32BE(layer.SchemaVersion)
 	if err != nil {
 		return err
 	}
-	err = stream.writeUint16BE(uint16(len(layer.RequestedFlags)))
+	err = rawStream.writeUint16BE(uint16(len(layer.RequestedFlags)))
 	if err != nil {
 		return err
 	}
 	for i := 0; i < len(layer.RequestedFlags); i++ {
-		err = stream.WriteByte(uint8(len(layer.RequestedFlags[i])))
+		err = rawStream.writeVarLengthString(layer.RequestedFlags[i])
 		if err != nil {
 			return err
 		}
-		err = stream.writeASCII(layer.RequestedFlags[i])
-		if err != nil {
-			return err
-		}
+	}
+	err = rawStream.writeVarLengthString(layer.JoinData)
+	if err != nil {
+		return err
+	}
+	err = rawStream.Close()
+	if err != nil {
+		return err
 	}
 	return nil
 }

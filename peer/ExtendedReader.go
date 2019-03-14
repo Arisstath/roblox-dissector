@@ -3,6 +3,8 @@ package peer
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/aes"
+	"crypto/cipher"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -667,4 +669,78 @@ func (b *extendedReader) readNewCachedProtectedString(caches *Caches) ([]byte, e
 		return nil, err
 	}
 	return thisString.([]byte), err
+}
+
+func shuffleSlice(src []byte) []byte {
+	ShuffledSrc := make([]byte, 0, len(src))
+	ShuffledSrc = append(ShuffledSrc, src[:0x10]...)
+	for j := len(src) - 0x10; j >= 0x10; j -= 0x10 {
+		ShuffledSrc = append(ShuffledSrc, src[j:j+0x10]...)
+	}
+	return ShuffledSrc
+}
+
+func calculateChecksum(data []byte) uint32 {
+	var sum uint32 = 0
+	var r uint16 = 55665
+	var c1 uint16 = 52845
+	var c2 uint16 = 22719
+	for i := 0; i < len(data); i++ {
+		char := data[i]
+		cipher := (char ^ byte(r>>8)) & 0xFF
+		r = (uint16(cipher)+r)*c1 + c2
+		sum += uint32(cipher)
+	}
+	return sum
+}
+
+func (b *extendedReader) aesDecrypt(lenBytes int) (*extendedReader, error) {
+	data, err := b.readString(lenBytes)
+	if err != nil {
+		return nil, err
+	}
+	block, err := aes.NewCipher([]byte{0xFE, 0xF9, 0xF0, 0xEB, 0xE2, 0xDD, 0xD4, 0xCF, 0xC6, 0xC1, 0xB8, 0xB3, 0xAA, 0xA5, 0x9C, 0x97})
+	if err != nil {
+		return nil, err
+	}
+
+	dest := make([]byte, len(data))
+	// "Invalid" initialization for debug
+	for i := range dest {
+		dest[i] = 0xBA
+	}
+	c := cipher.NewCBCDecrypter(block, []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
+	ShuffledSrc := shuffleSlice(data)
+
+	c.CryptBlocks(dest, ShuffledSrc)
+	dest = shuffleSlice(dest)
+
+	checkSum := calculateChecksum(dest[4:])
+	thisBitstream := &extendedReader{bitstream.NewReader(bytes.NewReader(dest))}
+	storedChecksum, err := thisBitstream.readUint32LE()
+	if err != nil {
+		return thisBitstream, err
+	}
+	if storedChecksum != checkSum {
+		println("checksum check failed!", storedChecksum, checkSum)
+		return thisBitstream, errors.New("checksum check fail")
+	}
+
+	_, err = thisBitstream.ReadByte()
+	if err != nil {
+		return thisBitstream, err
+	}
+	paddingSizeByte, err := thisBitstream.ReadByte()
+	if err != nil {
+		return thisBitstream, err
+	}
+	PaddingSize := paddingSizeByte & 0xF
+
+	void := make([]byte, PaddingSize)
+	err = thisBitstream.bytes(void, int(PaddingSize))
+	if err != nil {
+		return thisBitstream, err
+	}
+
+	return thisBitstream, nil
 }
