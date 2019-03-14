@@ -31,6 +31,7 @@ var PacketNames map[byte]string = map[byte]string{
 	0x81: "ID_ROBLOX_INIT_INSTANCES", // ID_SET_GLOBALS
 	0x82: "ID_ROBLOX_DICTIONARIES",   // ID_TEACH_DESCRIPTOR_DICTIONARIES
 	0x83: "ID_ROBLOX_REPLICATION",    // ID_DATA
+	0x84: "ID_ROBLOX_MARKER",
 	0x85: "ID_ROBLOX_PHYSICS",        // ID_PHYSICS
 	0x86: "ID_ROBLOX_TOUCH",          // ID_TOUCHES
 	0x87: "ID_ROBLOX_CHAT",           // unused

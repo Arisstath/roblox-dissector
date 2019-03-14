@@ -11,7 +11,7 @@ func (thisBitstream *extendedReader) DecodePacket83_04(reader PacketReader, laye
 	var err error
 	inner := &Packet83_04{}
 
-	inner.MarkerId, err = thisBitstream.readUint32LE()
+	inner.MarkerId, err = thisBitstream.readUint32BE()
 	if err != nil {
 		return inner, err
 	}
@@ -20,7 +20,7 @@ func (thisBitstream *extendedReader) DecodePacket83_04(reader PacketReader, laye
 }
 
 func (layer *Packet83_04) Serialize(writer PacketWriter, stream *extendedWriter) error {
-	return stream.writeUint32LE(layer.MarkerId)
+	return stream.writeUint32BE(layer.MarkerId)
 }
 
 func (Packet83_04) Type() uint8 {
