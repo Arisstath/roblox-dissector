@@ -1,37 +1,91 @@
 package main
 
-import "github.com/Gskartwii/roblox-dissector/peer"
+import (
+	"fmt"
+	"net/http"
 
-var disconnectionReasons = [...]string{
-	"Disconnected due to a bad hash",
-	"Disconnected due to a Security Key Mismatch",
-	"Protocol mismatch, please reconnect",
-	"Error while receiving data, please reconnect",
-	"Error while streaming data, please reconnect",
-	"Error while sending data, please reconnect",
-	"Place ID verification failed",
-	"You are already joined to a game. Please shutdown other game and try again",
-	"Error processing ticket, please reconnect",
-	"Lost connection to server due to timeout",
-	"You have been kicked from the game",
-	"Kicked by server. Please close and rejoin another game",
-	"Disconnected due to timeout, pleas reconnect",
-	"You have been disconnected from Team Create, please reconnect",
-	"Server was shutdown due to no active players",
-	"Disconnected due to Security Key Mismatch (15)",
-	"Disconnected from game, possibly due to game joined from another device",
+	"github.com/therecipe/qt/widgets"
+
+	"github.com/Gskartwii/roblox-dissector/peer"
+	"github.com/robloxapi/rbxapi/rbxapijson"
+	"github.com/robloxapi/rbxapiref/fetch"
+)
+
+// Can't use https:// because the site is broken
+const CDNURL = "http://setup.roblox.com/"
+
+var latestRobloxAPI *rbxapijson.Root
+var latestRobloxAPIChan chan struct{} // Closed when retrievement is done
+
+func init() {
+	latestRobloxAPIChan = make(chan struct{})
+	go func() {
+		defer func() {
+			close(latestRobloxAPIChan)
+		}()
+		robloxApiClient := &fetch.Client{
+			Client: &http.Client{},
+			Config: fetch.Config{
+				Builds:             []fetch.Location{fetch.NewLocation(CDNURL + "DeployHistory.txt")},
+				Latest:             []fetch.Location{fetch.NewLocation(CDNURL + "versionQTStudio")},
+				APIDump:            []fetch.Location{fetch.NewLocation(CDNURL + "$HASH-API-Dump.json")},
+				ReflectionMetadata: []fetch.Location{fetch.NewLocation(CDNURL + "$HASH-RobloxStudio.zip#ReflectionMetadata.xml")},
+				ExplorerIcons:      []fetch.Location{fetch.NewLocation(CDNURL + "$HASH-RobloxStudio.zip#RobloxStudioBeta.exe")},
+			},
+		}
+		latestBuild, err := robloxApiClient.Latest()
+		if err != nil {
+			fmt.Println("Error retrieving API:", err.Error())
+			return
+		}
+		apiDump, err := robloxApiClient.APIDump(latestBuild.Hash)
+		if err != nil {
+			fmt.Println("Error retrieving API:", err.Error())
+			return
+		}
+		latestRobloxAPI = apiDump
+	}()
 }
 
 func ShowPacket15(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) {
 	MainLayer := layers.Main.(*peer.Packet15Layer)
 
-	var reason string
-	if MainLayer.Reason == -1 {
-		reason = "Developer has shut down all game servers or game has shut down for other reasons, please reconnect"
-	} else {
-		reason = disconnectionReasons[MainLayer.Reason]
+	var reasonLabel *widgets.QLabel
+	reasonLabel = NewQLabelF("")
+	reasonSuccess := func(r string) {
+		reasonLabel.SetText("Disconnection reason: " + r)
 	}
-
+	reasonFail := func(r string) {
+		reasonLabel.SetText("Failed to fetch reason: " + r)
+	}
+	if MainLayer.Reason == -1 {
+		reasonSuccess("Generic disconnection -1")
+	} else {
+		reasonLabel.SetText("Fetching API...")
+		go func() {
+			wait := true
+			for wait {
+				_, wait = <-latestRobloxAPIChan
+			}
+			if latestRobloxAPI == nil {
+				reasonFail("Roblox API not available")
+				return
+			}
+			disconnectionEnum := latestRobloxAPI.GetEnum("ConnectionError")
+			if disconnectionEnum == nil {
+				reasonFail("ConnectionError Enum not available")
+				return
+			}
+			items := disconnectionEnum.GetEnumItems()
+			for _, item := range items {
+				if item.GetValue() == int(MainLayer.Reason) {
+					reasonSuccess(item.GetName())
+					return
+				}
+			}
+			reasonFail(fmt.Sprintf("Unknown disconnection %d", MainLayer.Reason))
+		}()
+	}
 	layerLayout := NewBasicPacketViewer(packetType, context, layers)
-	layerLayout.AddWidget(NewQLabelF("Disconnection reason: %s", reason), 0, 0)
+	layerLayout.AddWidget(reasonLabel, 0, 0)
 }
