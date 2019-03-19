@@ -7,13 +7,12 @@ import (
 
 	"github.com/DataDog/zstd"
 	bitstream "github.com/gskartwii/go-bitstream"
-	"github.com/gskartwii/roblox-dissector/datamodel"
 )
 
 // ID_JOINDATA
 type Packet83_0B struct {
 	// Instances replicated by the server
-	Instances []*datamodel.Instance
+	Instances []*ReplicationInstance
 }
 
 func NewPacket83_0BLayer() *Packet83_0B {
@@ -33,7 +32,7 @@ func (thisBitstream *extendedReader) DecodePacket83_0B(reader PacketReader, laye
 		return layer, errors.New("sanity check: array len too long")
 	}
 
-	layer.Instances = make([]*datamodel.Instance, arrayLen)
+	layer.Instances = make([]*ReplicationInstance, arrayLen)
 	if arrayLen == 0 {
 		return layer, nil
 	}
@@ -73,7 +72,7 @@ func (layer *Packet83_0B) Serialize(writer PacketWriter, stream *extendedWriter)
 	zstdStream := &extendedWriter{bitstream.NewWriter(uncompressedBuf)}
 
 	for i := 0; i < len(layer.Instances); i++ {
-		err = serializeReplicationInstance(layer.Instances[i], writer, &JoinSerializeWriter{zstdStream})
+		err = layer.Instances[i].Serialize(writer, &JoinSerializeWriter{zstdStream})
 		if err != nil {
 			middleStream.Close()
 			return err

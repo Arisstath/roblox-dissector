@@ -215,26 +215,43 @@ func (b *extendedWriter) writeCachedSystemAddress(val datamodel.ValueSystemAddre
 	})
 }
 
-func (b *extendedWriter) writeJoinObject(object *datamodel.Instance, context *CommunicationContext) error {
+func (b *extendedWriter) writeJoinRef(ref datamodel.Reference, context *CommunicationContext) error {
 	var err error
-	if object == nil || object.Ref.IsNull {
+	if ref.IsNull {
 		err = b.WriteByte(0)
 		return err
 	}
-	if object.Ref.Scope == context.InstanceTopScope {
+	if ref.Scope == context.InstanceTopScope {
 		err = b.WriteByte(0xFF)
 	} else {
-		err = b.WriteByte(uint8(len(object.Ref.Scope)))
+		err = b.WriteByte(uint8(len(ref.Scope)))
 		if err != nil {
 			return err
 		}
-		err = b.writeASCII(object.Ref.Scope)
+		err = b.writeASCII(ref.Scope)
 	}
 	if err != nil {
 		return err
 	}
 
-	return b.writeUint32LE(object.Ref.Id)
+	return b.writeUint32LE(ref.Id)
+}
+func (b *extendedWriter) writeJoinObject(object *datamodel.Instance, context *CommunicationContext) error {
+	if object == nil {
+		return b.WriteByte(0)
+	}
+	return b.writeJoinRef(object.Ref)
+}
+
+func (b *extendedWriter) writeRef(ref datamodel.Reference, caches *Caches) error {
+	if ref.IsNull {
+		return b.WriteByte(0)
+	}
+	err := b.writeCachedObject(ref.Scope, caches)
+	if err != nil {
+		return err
+	}
+	return b.writeUint32LE(ref.Id)
 }
 
 // TODO: Implement a similar system for readers, where it simply returns an instance
@@ -243,14 +260,7 @@ func (b *extendedWriter) writeObject(object *datamodel.Instance, caches *Caches)
 	if object == nil {
 		return b.WriteByte(0)
 	}
-	if object.Ref.IsNull {
-		return b.WriteByte(0x00)
-	}
-	err = b.writeCachedObject(object.Ref.Scope, caches)
-	if err != nil {
-		return err
-	}
-	return b.writeUint32LE(object.Ref.Id)
+	return b.writeRef(object.Ref, caches)
 }
 func (b *extendedWriter) writeAnyObject(object *datamodel.Instance, writer PacketWriter, isJoinData bool) error {
 	if isJoinData {

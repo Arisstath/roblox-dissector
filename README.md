@@ -6,16 +6,12 @@ Then fetch the repo and its dependencies: `go get -v github.com/gskartwii/roblox
 And compile: `%GOPATH%/bin/qtdeploy build %GOPATH%/src/github.com/gskartwii/roblox-dissector`  
 A directory named `deploy` should now exist in `$GOPATH/src/github/gskartwii/roblox-dissector`.
 
-If you want to capture Roblox Studio traffic on Windows, you must make it flow through the dissector. Steps:
-
-1. Start a proxy capture using Capture -> From proxy...
-2. Start a local Studio server listening on port 53641 by choosing Start Roblox -> Start local server...
-3. Start a local Studio clients either from the Studio server or the dissector.
+---
 
 Features not yet implemented:
 
 * HTTPS proxy similar to Fiddler
-* Dissection of hash packets and Rocky packets
+* TeleportService support
 
 ```
 -----BEGIN PGP SIGNED MESSAGE-----

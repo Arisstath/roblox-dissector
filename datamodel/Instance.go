@@ -10,17 +10,16 @@ import (
 )
 
 type Instance struct {
-	ClassName          string
-	PropertiesMutex    *sync.RWMutex
-	Properties         map[string]rbxfile.Value
-	Children           []*Instance
-	IsService          bool
-	Ref                Reference
-	ChildEmitter       *emitter.Emitter
-	PropertyEmitter    *emitter.Emitter
-	EventEmitter       *emitter.Emitter
-	parent             *Instance
-	DeleteOnDisconnect bool
+	ClassName       string
+	PropertiesMutex *sync.RWMutex
+	Properties      map[string]rbxfile.Value
+	Children        []*Instance
+	IsService       bool
+	Ref             Reference
+	ChildEmitter    *emitter.Emitter
+	PropertyEmitter *emitter.Emitter
+	EventEmitter    *emitter.Emitter
+	parent          *Instance
 }
 
 func NewInstance(className string, parent *Instance) (*Instance, error) {

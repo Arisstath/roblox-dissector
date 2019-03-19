@@ -39,6 +39,7 @@ func captureJob(handle *pcap.Handle, useIPv4 bool, captureJobContext context.Con
 		packetViewer.AddSplitPacket(packetType, context, layers)
 	}
 	clientPacketReader.FullReliableHandler = func(packetType byte, layers *peer.PacketLayers) {
+		// special hook: we do not have a way to send specific security settings to the parser
 		if packetType == 0x8A && layers.Error == nil {
 			layer := layers.Main.(*peer.Packet8ALayer)
 			layers.Root.Logger.Printf("hash = %8X, computed = %8X\n", settings.GenerateTicketHash(layer.ClientTicket), layer.TicketHash)
@@ -78,9 +79,9 @@ func captureJob(handle *pcap.Handle, useIPv4 bool, captureJobContext context.Con
 				//println("Ignoring 0 payload")
 				continue
 			}
-            if packet.Layer(layers.LayerTypeIPv4) == nil {
-                continue
-            }
+			if packet.Layer(layers.LayerTypeIPv4) == nil {
+				continue
+			}
 			src, dst := SrcAndDestFromGoPacket(packet)
 			layers := &peer.PacketLayers{
 				Root: peer.RootLayer{

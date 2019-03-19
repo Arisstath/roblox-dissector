@@ -9,8 +9,7 @@ import (
 
 // Describes a global service from ID_SET_GLOBALS (Packet81Layer)
 type Packet81LayerItem struct {
-	// Class ID, according to ID_NEW_SCHEMA (Packet97Layer)
-	ClassID  uint16
+	Schema   *StaticInstanceSchema
 	Instance *datamodel.Instance
 	Bool1    bool
 	Bool2    bool
@@ -65,6 +64,7 @@ func (thisBitstream *extendedReader) DecodePacket81Layer(reader PacketReader, la
 	if err != nil {
 		return layer, err
 	}
+	// This assignment is justifiable because a call to readJoinObject() below depends on it
 	reader.Context().InstanceTopScope = layer.ReferentString
 	if !reader.Context().IsStudio {
 		layer.Int1, err = thisBitstream.readUint32BE()
@@ -98,22 +98,24 @@ func (thisBitstream *extendedReader) DecodePacket81Layer(reader PacketReader, la
 			return layer, err
 		}
 
-		thisItem.ClassID, err = thisBitstream.readUint16BE()
+		classID, err := thisBitstream.readUint16BE()
 		if err != nil {
 			return layer, err
 		}
 
-		if int(thisItem.ClassID) > len(context.StaticSchema.Instances) {
-			return layer, fmt.Errorf("class idx %d is higher than %d", thisItem.ClassID, len(context.StaticSchema.Instances))
+		if int(classID) > len(context.StaticSchema.Instances) {
+			return layer, fmt.Errorf("class idx %d is higher than %d", classID, len(context.StaticSchema.Instances))
 		}
 
-		className := context.StaticSchema.Instances[thisItem.ClassID].Name
-		thisService, _ := datamodel.NewInstance(className, nil)
-		thisService.IsService = true
-		thisService.Ref = referent
-		context.DataModel.AddService(thisService)
-		context.InstancesByReferent.AddInstance(referent, thisService)
-		thisItem.Instance = thisService
+		schema := context.StaticSchema.Instances[classID]
+		thisItem.Schema = schema
+		instance, err := context.InstancesByReferent.CreateInstance(referent)
+		if err != nil {
+			return layer, err
+		}
+		instance.ClassName = schema.Name
+		instance.IsService = true
+		thisItem.Instance = instance
 
 		thisItem.Bool1, err = thisBitstream.readBoolByte()
 		if err != nil {
@@ -178,7 +180,7 @@ func (layer *Packet81Layer) Serialize(writer PacketWriter, stream *extendedWrite
 		if err != nil {
 			return err
 		}
-		err = stream.writeUint16BE(item.ClassID)
+		err = stream.writeUint16BE(item.Schema.NetworkID)
 		if err != nil {
 			return err
 		}

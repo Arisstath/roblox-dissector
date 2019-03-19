@@ -110,14 +110,16 @@ type StaticArgumentSchema struct {
 }
 
 type StaticEnumSchema struct {
-	Name    string
-	BitSize uint8
+	Name      string
+	BitSize   uint8
+	NetworkID uint16
 }
 
 type StaticEventSchema struct {
 	Name           string
-	Arguments      []StaticArgumentSchema
+	Arguments      []*StaticArgumentSchema
 	InstanceSchema *StaticInstanceSchema
+	NetworkID      uint16
 }
 
 type StaticPropertySchema struct {
@@ -126,16 +128,18 @@ type StaticPropertySchema struct {
 	TypeString     string
 	EnumID         uint16
 	InstanceSchema *StaticInstanceSchema
+	NetworkID      uint16
 }
 
 type StaticInstanceSchema struct {
 	Name       string
 	Unknown    uint16
-	Properties []StaticPropertySchema
-	Events     []StaticEventSchema
+	Properties []*StaticPropertySchema
+	Events     []*StaticEventSchema
+	NetworkID  uint16
 }
 
-func (schema *StaticInstanceSchema) FindPropertyIndex(name string) int {
+func (schema *StaticInstanceSchema) LocalPropertyIndex(name string) int {
 	for i := 0; i < len(schema.Properties); i++ {
 		if schema.Properties[i].Name == name {
 			return i
@@ -143,7 +147,14 @@ func (schema *StaticInstanceSchema) FindPropertyIndex(name string) int {
 	}
 	return -1
 }
-func (schema *StaticInstanceSchema) FindEventIndex(name string) int {
+func (schema *StaticInstanceSchema) SchemaForProp(name string) *StaticPropertySchema {
+	idx := schema.LocalPropertyIndex(name)
+	if idx == -1 {
+		return nil
+	}
+	return schema.Properties[idx]
+}
+func (schema *StaticInstanceSchema) LocalEventIndex(name string) int {
 	for i := 0; i < len(schema.Events); i++ {
 		if schema.Events[i].Name == name {
 			return i
@@ -151,27 +162,49 @@ func (schema *StaticInstanceSchema) FindEventIndex(name string) int {
 	}
 	return -1
 }
+func (schema *StaticInstanceSchema) SchemaForEvent(name string) *StaticEventSchema {
+	idx := schema.LocalEventIndex(name)
+	if idx == -1 {
+		return nil
+	}
+	return schema.Events[idx]
+}
+
+func (schema *StaticSchema) SchemaForClass(instance string) *StaticInstanceSchema {
+	for _, inst := range schema.Instances {
+		if inst.Name == instance {
+			return inst
+		}
+	}
+	return nil
+}
+func (schema *StaticSchema) SchemaForEnum(enum string) *StaticEnumSchema {
+	for _, enumVal := range schema.Enums {
+		if enum == enumVal.Name {
+			return enumVal
+		}
+	}
+	return nil
+}
 
 type StaticSchema struct {
-	Instances  []StaticInstanceSchema
-	Properties []StaticPropertySchema
-	Events     []StaticEventSchema
-	Enums      []StaticEnumSchema
-	// TODO: Improve this
-	ClassesByName    map[string]int
-	PropertiesByName map[string]int
-	EventsByName     map[string]int
-	EnumsByName      map[string]int
+	Instances  []*StaticInstanceSchema
+	Properties []*StaticPropertySchema
+	Events     []*StaticEventSchema
+	Enums      []*StaticEnumSchema
 }
 
 // ID_NEW_SCHEMA - server -> client
 // Negotiates a network schema with the client
 type Packet97Layer struct {
-	Schema StaticSchema
+	Schema *StaticSchema
 }
 
+func NewStaticShema() *StaticSchema {
+	return &StaticSchema{}
+}
 func NewPacket97Layer() *Packet97Layer {
-	return &Packet97Layer{}
+	return &Packet97Layer{Schema: NewStaticShema()}
 }
 
 func (thisBitstream *extendedReader) DecodePacket97Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
@@ -191,12 +224,12 @@ func (thisBitstream *extendedReader) DecodePacket97Layer(reader PacketReader, la
 		return layer, errors.New("sanity check: exceeded maximum enum array len")
 	}
 	layer.Schema.Enums = make([]StaticEnumSchema, enumArrayLen)
-	layer.Schema.EnumsByName = make(map[string]int, enumArrayLen)
 	for i := 0; i < int(enumArrayLen); i++ {
 		stringLen, err := stream.readUintUTF8()
 		if err != nil {
 			return layer, err
 		}
+		layer.Schema.Enums[i] = new(StaticEnumSchema)
 		layer.Schema.Enums[i].Name, err = stream.readASCII(int(stringLen))
 		if err != nil {
 			return layer, err
@@ -205,7 +238,7 @@ func (thisBitstream *extendedReader) DecodePacket97Layer(reader PacketReader, la
 		if err != nil {
 			return layer, err
 		}
-		layer.Schema.EnumsByName[layer.Schema.Enums[i].Name] = i
+		layer.Schema.Enums[i].NetworkID = i
 	}
 
 	classArrayLen, err := stream.readUintUTF8()
@@ -229,12 +262,9 @@ func (thisBitstream *extendedReader) DecodePacket97Layer(reader PacketReader, la
 	if eventArrayLen > 0x10000 {
 		return layer, errors.New("sanity check: exceeded maximum event array len")
 	}
-	layer.Schema.Instances = make([]StaticInstanceSchema, classArrayLen)
-	layer.Schema.Properties = make([]StaticPropertySchema, propertyArrayLen)
-	layer.Schema.Events = make([]StaticEventSchema, eventArrayLen)
-	layer.Schema.ClassesByName = make(map[string]int, classArrayLen)
-	layer.Schema.PropertiesByName = make(map[string]int, propertyArrayLen)
-	layer.Schema.EventsByName = make(map[string]int, eventArrayLen)
+	layer.Schema.Instances = make([]*StaticInstanceSchema, classArrayLen)
+	layer.Schema.Properties = make([]*StaticPropertySchema, propertyArrayLen)
+	layer.Schema.Events = make([]*StaticEventSchema, eventArrayLen)
 	propertyGlobalIndex := 0
 	classGlobalIndex := 0
 	eventGlobalIndex := 0
@@ -243,12 +273,13 @@ func (thisBitstream *extendedReader) DecodePacket97Layer(reader PacketReader, la
 		if err != nil {
 			return layer, err
 		}
-		thisInstance := layer.Schema.Instances[i]
+		thisInstance := new(StaticInstanceSchema)
+		layer.Schema.Instances[i] = thisInstance
 		thisInstance.Name, err = stream.readASCII(int(classNameLen))
 		if err != nil {
 			return layer, err
 		}
-		layer.Schema.ClassesByName[thisInstance.Name] = i
+		thisInstance.NetworkID = i
 
 		propertyCount, err := stream.readUintUTF8()
 		if err != nil {
@@ -257,10 +288,11 @@ func (thisBitstream *extendedReader) DecodePacket97Layer(reader PacketReader, la
 		if propertyCount > 0x10000 {
 			return layer, errors.New("sanity check: exceeded maximum property count")
 		}
-		thisInstance.Properties = make([]StaticPropertySchema, propertyCount)
+		thisInstance.Properties = make([]*StaticPropertySchema, propertyCount)
 
 		for j := 0; j < int(propertyCount); j++ {
-			thisProperty := thisInstance.Properties[j]
+			thisProperty := new(StaticPropertySchema)
+			thisInstance.Properties[j] = thisProperty
 			propNameLen, err := stream.readUintUTF8()
 			if err != nil {
 				return layer, err
@@ -269,11 +301,7 @@ func (thisBitstream *extendedReader) DecodePacket97Layer(reader PacketReader, la
 			if err != nil {
 				return layer, err
 			}
-			propertyGlobalName := make([]byte, propNameLen+1+classNameLen)
-			copy(propertyGlobalName, thisInstance.Name)
-			propertyGlobalName[classNameLen] = byte('.')
-			copy(propertyGlobalName[classNameLen+1:], thisProperty.Name)
-			layer.Schema.PropertiesByName[string(propertyGlobalName)] = propertyGlobalIndex
+			thisProperty.NetworkID = uint16(propertyGlobalIndex)
 
 			thisProperty.Type, err = stream.readUint8()
 			if err != nil {
@@ -292,9 +320,8 @@ func (thisBitstream *extendedReader) DecodePacket97Layer(reader PacketReader, la
 				return layer, errors.New("property global index too high")
 			}
 
-			thisProperty.InstanceSchema = &thisInstance
+			thisProperty.InstanceSchema = thisInstance
 			layer.Schema.Properties[propertyGlobalIndex] = thisProperty
-			thisInstance.Properties[j] = thisProperty
 			propertyGlobalIndex++
 		}
 
@@ -313,10 +340,11 @@ func (thisBitstream *extendedReader) DecodePacket97Layer(reader PacketReader, la
 		if eventCount > 0x10000 {
 			return layer, errors.New("sanity check: exceeded maximum event count")
 		}
-		thisInstance.Events = make([]StaticEventSchema, eventCount)
+		thisInstance.Events = make([]*StaticEventSchema, eventCount)
 
 		for j := 0; j < int(eventCount); j++ {
-			thisEvent := thisInstance.Events[j]
+			thisEvent := new(StaticEventSchema)
+			thisInstance.Events[j] = thisEvent
 			eventNameLen, err := stream.readUintUTF8()
 			if err != nil {
 				return layer, err
@@ -325,11 +353,7 @@ func (thisBitstream *extendedReader) DecodePacket97Layer(reader PacketReader, la
 			if err != nil {
 				return layer, err
 			}
-			eventGlobalName := make([]byte, eventNameLen+1+classNameLen)
-			copy(eventGlobalName, thisInstance.Name)
-			eventGlobalName[classNameLen] = byte('.')
-			copy(eventGlobalName[classNameLen+1:], thisEvent.Name)
-			layer.Schema.EventsByName[string(eventGlobalName)] = eventGlobalIndex
+			thisEvent.NetworkID = uint16(eventGlobalIndex)
 
 			countArguments, err := stream.readUintUTF8()
 			if err != nil {
@@ -338,10 +362,11 @@ func (thisBitstream *extendedReader) DecodePacket97Layer(reader PacketReader, la
 			if countArguments > 0x10000 {
 				return layer, errors.New("sanity check: exceeded maximum argument count")
 			}
-			thisEvent.Arguments = make([]StaticArgumentSchema, countArguments)
+			thisEvent.Arguments = make([]*StaticArgumentSchema, countArguments)
 
 			for k := 0; k < int(countArguments); k++ {
-				thisArgument := thisEvent.Arguments[k]
+				thisArgument := new(StaticArgumentSchema)
+				thisEvent.Arguments[k] = thisArgument
 				thisArgument.Type, err = stream.readUint8()
 				if err != nil {
 					return layer, err
@@ -351,17 +376,14 @@ func (thisBitstream *extendedReader) DecodePacket97Layer(reader PacketReader, la
 				if err != nil {
 					return layer, err
 				}
-				thisEvent.Arguments[k] = thisArgument
 			}
-			thisEvent.InstanceSchema = &thisInstance
+			thisEvent.InstanceSchema = thisInstance
 			layer.Schema.Events[eventGlobalIndex] = thisEvent
-			thisInstance.Events[j] = thisEvent
 			eventGlobalIndex++
 		}
 		layer.Schema.Instances[classGlobalIndex] = thisInstance
 		classGlobalIndex++
 	}
-	reader.Context().StaticSchema = &layer.Schema
 
 	return layer, err
 }

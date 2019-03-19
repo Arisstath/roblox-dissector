@@ -60,7 +60,7 @@ func (b *extendedReader) ReadSerializedValue(reader PacketReader, valueType uint
 		if referent.IsNull {
 			result = datamodel.ValueReference{Instance: nil, Reference: referent}
 		} else {
-			instance, err := reader.Context().InstancesByReferent.CreateInstance(referent)
+			instance, err := reader.Context().InstancesByReferent.TryGetInstance(referent)
 			if err != nil {
 				return nil, err
 			}

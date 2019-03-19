@@ -11,12 +11,10 @@ import (
 // Packet83_03 describes an ID_CHANGE_PROPERTY data subpacket.
 type Packet83_03 struct {
 	// Instance that had the property change
-	Instance    *datamodel.Instance
-	Bool1       bool
-	Int1        int32
-	DoWriteInt1 bool
-	// Name of the property
-	PropertyName string
+	Instance *datamodel.Instance
+	Bool1    bool
+	Int1     int32
+	Schema   *StaticPropertySchema
 	// New value
 	Value rbxfile.Value
 }
@@ -32,11 +30,10 @@ func (thisBitstream *extendedReader) DecodePacket83_03(reader PacketReader, laye
 	if referent.IsNull {
 		return layer, errors.New("self is null in repl property")
 	}
-	instance, err := reader.Context().InstancesByReferent.TryGetInstance(referent)
+	layer.Instance, err = reader.Context().InstancesByReferent.TryGetInstance(referent)
 	if err != nil {
 		return layer, err
 	}
-	layer.Instance = instance
 
 	propertyIDx, err := thisBitstream.readUint16BE()
 	if err != nil {
@@ -59,20 +56,13 @@ func (thisBitstream *extendedReader) DecodePacket83_03(reader PacketReader, laye
 	if int(propertyIDx) == int(len(context.StaticSchema.Properties)) { // explicit Parent property system
 		var referent datamodel.Reference
 		referent, err = thisBitstream.readObject(reader.Caches())
-		parent, err := context.InstancesByReferent.TryGetInstance(referent)
 		if err != nil {
-			return layer, errors.New("parent doesn't exist in repl property")
+			return layer, err
 		}
-		layers.Root.Logger.Printf("Parent: %s -> %s\n", referent, parent.GetFullName())
-		result := datamodel.ValueReference{Instance: parent, Reference: referent}
+		result := datamodel.ValueReference{Reference: referent}
 		layer.Value = result
-		layer.PropertyName = "Parent"
+		layer.Schema = nil
 
-		if referent.IsNull { // NULL is a valid referent; think about :Remove()!
-			instance.SetParent(nil)
-			return layer, nil
-		}
-		err = parent.AddChild(instance)
 		return layer, err
 	}
 
@@ -80,10 +70,9 @@ func (thisBitstream *extendedReader) DecodePacket83_03(reader PacketReader, laye
 		return layer, fmt.Errorf("prop idx %d is higher than %d", propertyIDx, len(context.StaticSchema.Properties))
 	}
 	schema := context.StaticSchema.Properties[propertyIDx]
-	layer.PropertyName = schema.Name
+	layer.Schema = schema
 
 	layer.Value, err = schema.Decode(reader, thisBitstream, layers)
-	instance.Set(layer.PropertyName, layer.Value)
 
 	return layer, err
 }
@@ -99,7 +88,7 @@ func (layer *Packet83_03) Serialize(writer PacketWriter, stream *extendedWriter)
 	}
 
 	context := writer.Context()
-	if layer.PropertyName == "Parent" { // explicit system for this
+	if layer.Schema == nil { // assume Parent property
 		err = stream.writeUint16BE(uint16(len(context.StaticSchema.Properties)))
 		if err != nil {
 			return err
@@ -116,10 +105,10 @@ func (layer *Packet83_03) Serialize(writer PacketWriter, stream *extendedWriter)
 			}
 		}
 
-		return stream.writeObject(layer.Value.(datamodel.ValueReference).Instance, writer.Caches())
+		return stream.writeObject(layer.Value.(datamodel.ValueReference).Reference, writer.Caches())
 	}
 
-	err = stream.writeUint16BE(uint16(context.StaticSchema.PropertiesByName[layer.Instance.ClassName+"."+layer.PropertyName]))
+	err = stream.writeUint16BE(layer.Schema.NetworkID)
 	if err != nil {
 		return err
 	}
@@ -135,17 +124,8 @@ func (layer *Packet83_03) Serialize(writer PacketWriter, stream *extendedWriter)
 		}
 	}
 
-	println("serializing property", layer.PropertyName, layer.Instance.Name(), layer.Value.String(), uint16(context.StaticSchema.PropertiesByName[layer.Instance.ClassName+"."+layer.PropertyName]))
-
-	// Shun Go for silently ignoring nil map values and just returning 0 instead
-	// TODO improve this
-	propertyID, ok := context.StaticSchema.PropertiesByName[layer.Instance.ClassName+"."+layer.PropertyName]
-	if !ok {
-		return errors.New("unrecognized property " + layer.Instance.ClassName + "." + layer.PropertyName)
-	}
-
 	// TODO: A different system for this?
-	err = context.StaticSchema.Properties[propertyID].Serialize(layer.Value, writer, stream)
+	err = layer.Schema.Serialize(layer.Value, writer, stream)
 	return err
 }
 
@@ -157,5 +137,5 @@ func (Packet83_03) TypeString() string {
 }
 
 func (layer *Packet83_03) String() string {
-	return fmt.Sprintf("ID_REPLIC_PROP: %s[%s]", layer.Instance.GetFullName(), layer.PropertyName)
+	return fmt.Sprintf("ID_REPLIC_PROP: %s[%s]", layer.Instance.GetFullName(), layer.Schema.Name)
 }

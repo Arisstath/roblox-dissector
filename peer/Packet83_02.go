@@ -1,11 +1,11 @@
 package peer
 
-import "github.com/gskartwii/roblox-dissector/datamodel"
+import "fmt"
 
 // ID_CREATE_INSTANCE
 type Packet83_02 struct {
 	// The instance that was created
-	Child *datamodel.Instance
+	*ReplicationInstance
 }
 
 func (thisBitstream *extendedReader) DecodePacket83_02(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
@@ -14,7 +14,7 @@ func (thisBitstream *extendedReader) DecodePacket83_02(reader PacketReader, laye
 }
 
 func (layer *Packet83_02) Serialize(writer PacketWriter, stream *extendedWriter) error {
-	return serializeReplicationInstance(layer.Child, writer, stream)
+	return layer.ReplicationInstance.Serialize(writer, stream)
 }
 
 func (Packet83_02) Type() uint8 {
@@ -25,5 +25,5 @@ func (Packet83_02) TypeString() string {
 }
 
 func (layer *Packet83_02) String() string {
-	return "ID_REPLIC_NEW_INSTANCE: " + layer.Child.GetFullName()
+	return fmt.Sprintf("ID_REPLIC_NEW_INSTANCE: %s (%s)", layer.Instance.GetFullName(), layer.Schema.Name)
 }

@@ -9,7 +9,6 @@ import (
 	"github.com/gskartwii/roblox-dissector/datamodel"
 )
 
-// TODO: Perhaps have a multiplexer for datamodel-related handlers?
 // TODO: Filtering?
 type ServerClient struct {
 	PacketLogicHandler

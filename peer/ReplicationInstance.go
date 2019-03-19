@@ -7,13 +7,24 @@ import (
 	"github.com/gskartwii/roblox-dissector/datamodel"
 )
 
+type ReplicationInstance struct {
+	Instance           *datamodel.Instance
+	Schema             *StaticInstanceSchema
+	DeleteOnDisconnect bool
+}
+
+func NewReplicationInstance() *ReplicationInstance {
+	return &ReplicationInstance{}
+}
+
 func is2ndRoundType(typeId uint8) bool {
 	id := uint32(typeId)
 	return ((id-3) > 0x1F || ((1<<(id-3))&uint32(0xC200000F)) == 0) && (id != 1) // thank you ARM compiler for optimizing this <3
 }
 
-func decodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader, layers *PacketLayers) (*datamodel.Instance, error) {
+func decodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader, layers *PacketLayers) (*ReplicationInstance, error) {
 	var err error
+	repInstance := NewReplicationInstance()
 	var referent datamodel.Reference
 	context := reader.Context()
 
@@ -28,79 +39,71 @@ func decodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader
 	if err != nil {
 		return nil, err
 	}
+	repInstance = thisInstance
 
 	schemaIDx, err := thisBitstream.readUint16BE()
 	if int(schemaIDx) > len(context.StaticSchema.Instances) {
-		return thisInstance, fmt.Errorf("class idx %d is higher than %d", schemaIDx, len(context.StaticSchema.Instances))
+		return repInstance, fmt.Errorf("class idx %d is higher than %d", schemaIDx, len(context.StaticSchema.Instances))
 	}
 	schema := context.StaticSchema.Instances[schemaIDx]
+	repInstance.Schema = schema
 	thisInstance.ClassName = schema.Name
 	layers.Root.Logger.Println("will parse", referent.String(), schema.Name, len(schema.Properties))
 
-	unkBool, err := thisBitstream.readBoolByte()
+	thisInstance.DeleteOnDisconnect, err = thisBitstream.readBoolByte()
 	if err != nil {
-		return thisInstance, err
+		return repInstance, err
 	}
-	layers.Root.Logger.Println("delete on disconnect:", unkBool)
-	thisInstance.DeleteOnDisconnect = unkBool
 
-	err = thisBitstream.ReadProperties(schema.Properties, thisInstance.Properties, reader)
+	err = thisBitstream.ReadProperties(schema.Properties, repInstance.Properties, reader)
 	if err != nil {
-		return thisInstance, err
+		return repInstance, err
 	}
 
 	referent, err = thisBitstream.ReadObject(reader)
 	if err != nil {
-		return thisInstance, errors.New("while parsing parent: " + err.Error())
+		return repInstance, errors.New("while parsing parent: " + err.Error())
 	}
 	if referent.IsNull {
-		return thisInstance, errors.New("parent is null")
+		return repInstance, errors.New("parent is null")
 	}
 	if len(referent.String()) > 0x50 {
 		layers.Root.Logger.Println("Parent: (invalid), ", len(referent.String()))
 	} else {
 		layers.Root.Logger.Println("Parent: ", referent.String())
 	}
-
-	context.InstancesByReferent.AddInstance(thisInstance.Ref, thisInstance)
 	parent, err := context.InstancesByReferent.TryGetInstance(referent)
-	if parent != nil {
-		return thisInstance, parent.AddChild(thisInstance)
+	if err != nil {
+		return repInstance, err
 	}
-	if err != nil && !thisInstance.IsService {
-		println("couldn't find parent for", thisInstance.Ref.String(), referent.String())
-		return thisInstance, err // the parents of services don't exist
-	}
+	parent.AddChild(thisInstance)
 
 	return thisInstance, nil
 }
 
-func serializeReplicationInstance(instance *datamodel.Instance, writer PacketWriter, stream InstanceWriter) error {
+func (instance *ReplicationInstance) Serialize(writer PacketWriter, stream InstanceWriter) error {
 	var err error
-	if instance == nil || instance.Ref.IsNull {
+	if instance == nil || instance.Instance {
 		return errors.New("self is nil in serialize repl inst")
 	}
-	err = stream.WriteObject(instance, writer)
+	err = stream.WriteObject(instance.Instance, writer)
 	if err != nil {
 		return err
 	}
 
-	context := writer.Context()
-	schemaIdx := uint16(context.StaticSchema.ClassesByName[instance.ClassName])
-	err = stream.writeUint16BE(schemaIdx)
+	err = stream.writeUint16BE(instance.Schema.NetworkID)
 	if err != nil {
 		return err
 	}
-	err = stream.writeBoolByte(instance.DeleteOnDisconnect) // ???
-	if err != nil {
-		return err
-	}
-
-	schema := context.StaticSchema.Instances[schemaIdx]
-	err = stream.WriteProperties(schema.Properties, instance.Properties, writer)
+	err = stream.writeBoolByte(instance.DeleteOnDisconnect)
 	if err != nil {
 		return err
 	}
 
-	return stream.WriteObject(instance.Parent(), writer)
+	err = stream.WriteProperties(instance.Schema.Properties, instance.Instance.Properties, writer)
+	if err != nil {
+		return err
+	}
+
+	return stream.WriteObject(instance.Instance.Parent(), writer)
 }

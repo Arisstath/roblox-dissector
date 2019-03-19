@@ -11,8 +11,7 @@ import (
 type Packet83_07 struct {
 	// Instance that the event was invoked on
 	Instance *datamodel.Instance
-	// Name of the event
-	EventName string
+	Schema   *StaticEventSchema
 	// Description about the invocation
 	Event *ReplicationEvent
 }
@@ -28,11 +27,10 @@ func (thisBitstream *extendedReader) DecodePacket83_07(reader PacketReader, laye
 	if referent.IsNull {
 		return layer, errors.New("self is nil in decode repl event")
 	}
-	instance, err := reader.Context().InstancesByReferent.TryGetInstance(referent)
+	layer.Instance, err = reader.Context().InstancesByReferent.TryGetInstance(referent)
 	if err != nil {
 		return layer, err
 	}
-	layer.Instance = instance
 
 	eventIDx, err := thisBitstream.readUint16BE()
 	if err != nil {
@@ -45,14 +43,13 @@ func (thisBitstream *extendedReader) DecodePacket83_07(reader PacketReader, laye
 	}
 
 	schema := context.StaticSchema.Events[eventIDx]
-	layer.EventName = schema.Name
-	layers.Root.Logger.Println("Decoding event", layer.EventName)
+	layer.Schema = schema
+	layers.Root.Logger.Println("Decoding event", schema.Name)
 	layer.Event, err = schema.Decode(reader, thisBitstream, layers)
 	if err != nil {
 		return layer, err
 	}
 
-	layer.Instance.EventEmitter.Emit(layer.EventName, layer.Event.Arguments)
 	return layer, err
 }
 
@@ -65,20 +62,12 @@ func (layer *Packet83_07) Serialize(writer PacketWriter, stream *extendedWriter)
 		return err
 	}
 
-	context := writer.Context()
-	eventSchemaID, ok := context.StaticSchema.EventsByName[layer.Instance.ClassName+"."+layer.EventName]
-	if !ok {
-		return errors.New("Invalid event: " + layer.Instance.ClassName + "." + layer.EventName)
-	}
-	err = stream.writeUint16BE(uint16(eventSchemaID))
+	err = stream.writeUint16BE(uint16(layer.Schema.NetworkID))
 	if err != nil {
 		return err
 	}
 
-	schema := context.StaticSchema.Events[uint16(eventSchemaID)]
-	//println("Writing event", schema.Name, schema.InstanceSchema.Name)
-
-	return schema.Serialize(layer.Event, writer, stream)
+	return layer.Schema.Serialize(layer.Event, writer, stream)
 }
 
 func (Packet83_07) Type() uint8 {
@@ -89,5 +78,5 @@ func (Packet83_07) TypeString() string {
 }
 
 func (layer *Packet83_07) String() string {
-	return fmt.Sprintf("ID_REPLIC_EVENT: %s::%s", layer.Instance.GetFullName(), layer.EventName)
+	return fmt.Sprintf("ID_REPLIC_EVENT: %s::%s", layer.Instance.GetFullName(), layer.Schema.Name)
 }

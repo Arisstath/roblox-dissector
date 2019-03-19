@@ -8,6 +8,7 @@ import (
 	"github.com/robloxapi/rbxfile"
 )
 
+type Value rbxfile.Value
 type Reference struct {
 	IsNull bool
 	Scope  string
