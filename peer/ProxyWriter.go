@@ -94,7 +94,7 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 	clientHalf := NewProxyHalf(context, true)
 	serverHalf := NewProxyHalf(context, false)
 
-	clientHalf.SimpleHandler = func(packetType byte, layers *PacketLayers) {
+	clientHalf.SimpleHandler.BindAll(func(packetType byte, layers *PacketLayers) {
 		if layers.Error != nil {
 			println("client error: ", layers.Error.Error())
 			return
@@ -104,32 +104,32 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 			println("recv 5, protocol type", layers.Main.(*Packet05Layer).ProtocolVersion)
 		}
 		serverHalf.WriteSimple(layers.Main.(RakNetPacket))
-	}
-	serverHalf.SimpleHandler = func(packetType byte, layers *PacketLayers) {
+	})
+	serverHalf.SimpleHandler.BindAll(func(packetType byte, layers *PacketLayers) {
 		if layers.Error != nil {
 			println("server error: ", layers.Error.Error())
 			return
 		}
 		println("server simple", packetType)
 		clientHalf.WriteSimple(layers.Main.(RakNetPacket))
-	}
+	})
 
-	clientHalf.ReliabilityLayerHandler = func(layers *PacketLayers) {
+	clientHalf.ReliabilityLayerHandler.BindAll(func(_ uint8, layers *PacketLayers) {
 		if layers.Error != nil {
 			println("client error: ", layers.Error.Error())
 			return
 		}
 		clientHalf.mustACK = append(clientHalf.mustACK, int(layers.RakNet.DatagramNumber))
-	}
-	serverHalf.ReliabilityLayerHandler = func(layers *PacketLayers) {
+	})
+	serverHalf.ReliabilityLayerHandler.BindAll(func(_ uint8, layers *PacketLayers) {
 		if layers.Error != nil {
 			println("server error: ", layers.Error.Error())
 			return
 		}
 		serverHalf.mustACK = append(serverHalf.mustACK, int(layers.RakNet.DatagramNumber))
-	}
+	})
 
-	clientHalf.FullReliableHandler = func(packetType byte, layers *PacketLayers) {
+	clientHalf.FullReliableHandler.BindAll(func(packetType byte, layers *PacketLayers) {
 		// FIXME: No streaming support
 		//println("client fullreliable", packetType)
 		var err error
@@ -218,8 +218,8 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 		if err != nil {
 			println("client error:", err.Error())
 		}
-	}
-	serverHalf.FullReliableHandler = func(packetType byte, layers *PacketLayers) {
+	})
+	serverHalf.FullReliableHandler.BindAll(func(packetType byte, layers *PacketLayers) {
 		if layers.Error != nil {
 			println("server error: ", layers.Error.Error())
 			return
@@ -241,35 +241,20 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 			println("Disconnected by server!!")
 			writer.CancelFunc()
 		}
-	}
-	clientHalf.ReliableHandler = func(packetType byte, layers *PacketLayers) {
+	})
+	clientHalf.ReliableHandler.BindAll(func(packetType byte, layers *PacketLayers) {
 		if layers.Error != nil {
 			println("client error: ", layers.Error.Error())
 			return
 		}
-	}
-	serverHalf.ReliableHandler = func(packetType byte, layers *PacketLayers) {
+	})
+	serverHalf.ReliableHandler.BindAll(func(packetType byte, layers *PacketLayers) {
 		if layers.Error != nil {
 			println("server error: ", layers.Error.Error())
 			return
 		}
-	}
-
-	clientHalf.ACKHandler = func(layers *PacketLayers) {
-		/*drop, newacks := serverHalf.rotateACKs(layer.ACKs)
-		if !drop {
-			layer.ACKs = newacks
-			serverHalf.Writer.WriteRakNet(layer, writer.ServerAddr)
-		}*/
-	}
-	serverHalf.ACKHandler = func(layers *PacketLayers) {
-		/*drop, newacks := clientHalf.rotateACKs(layer.ACKs)
-		if !drop {
-			layer.ACKs = newacks
-			clientHalf.Writer.WriteRakNet(layer, writer.ClientAddr)
-		}*/
-	}
-	// Caches will have been assigned by NewConnectedPeer()
+	})
+	// nop ack handler
 
 	writer.ClientHalf = clientHalf
 	writer.ServerHalf = serverHalf

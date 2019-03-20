@@ -37,8 +37,6 @@ var packetDecoders = map[byte]decoderFunc{
 	0x97: (*extendedReader).DecodePacket97Layer,
 }
 
-type ReceiveHandler func(byte, *PacketLayers)
-
 type ContextualHandler interface {
 	SetContext(*CommunicationContext)
 	Context() *CommunicationContext
@@ -77,20 +75,24 @@ func (handler *contextualHandler) SetContext(val *CommunicationContext) {
 type DefaultPacketReader struct {
 	contextualHandler
 	// Callback for "simple" packets (pre-connection offline packets).
-	SimpleHandler ReceiveHandler
+	SimpleHandler RawPacketHandlerMap
 	// Callback for ReliabilityLayer subpackets. This callback is invoked for every
 	// split of every packets, possible duplicates, etc.
-	ReliableHandler ReceiveHandler
+	ReliableHandler RawPacketHandlerMap
 	// Callback for generic packets (anything that is sent when a connection has been
 	// established. You definitely want to bind to this.
-	FullReliableHandler ReceiveHandler
+	FullReliableHandler RawPacketHandlerMap
 	// Callback for ACKs and NAKs. Not very useful if you're just parsing packets.
 	// However, you want to bind to this if you are writing a peer.
-	ACKHandler func(layers *PacketLayers)
+	// ACKHandler uses a packet type of 0, but you can just use BindAll()
+	ACKHandler RawPacketHandlerMap
 	// Callback for ReliabilityLayer full packets. This callback is invoked for every
 	// real ReliabilityLayer.
-	ReliabilityLayerHandler func(layers *PacketLayers)
-	isClient                bool
+	// ReliabilityLayerHandler uses a packet type of 0, but you can just use BindAll()
+	ReliabilityLayerHandler RawPacketHandlerMap
+
+	DataHandler DataPacketHandlerMap
+	isClient    bool
 
 	queues       *queues
 	splitPackets splitPacketList
@@ -104,9 +106,23 @@ func (reader *DefaultPacketReader) SetIsClient(val bool) {
 }
 
 func NewPacketReader() *DefaultPacketReader {
-	return &DefaultPacketReader{
-		queues: newPeerQueues(),
+	reader := &DefaultPacketReader{
+		queues:                  newPeerQueues(),
+		SimpleHandler:           NewRawPacketHandlerMap(),
+		ACKHandler:              NewRawPacketHandlerMap(),
+		FullReliableHandler:     NewRawPacketHandlerMap(),
+		ReliabilityLayerHandler: NewRawPacketHandlerMap(),
+		ReliableHandler:         NewRawPacketHandlerMap(),
+		DataHandler:             NewDataHandlerMap(),
 	}
+
+	reader.FullReliableHandler.Bind(0x83, func(_ uint8, layers *PacketLayers) {
+		for _, sub := range layers.Main.(*Packet83Layer).SubPackets {
+			reader.DataHandler.Fire(sub.Type(), sub)
+		}
+	})
+
+	return reader
 }
 
 func (reader *DefaultPacketReader) readSimple(stream *extendedReader, packetType uint8, layers *PacketLayers) {
@@ -121,7 +137,7 @@ func (reader *DefaultPacketReader) readSimple(stream *extendedReader, packetType
 		}
 	}
 
-	reader.SimpleHandler(packetType, layers)
+	reader.SimpleHandler.Fire(packetType, layers)
 }
 
 func (reader *DefaultPacketReader) readGeneric(stream *extendedReader, packetType uint8, layers *PacketLayers) {
@@ -176,7 +192,7 @@ func (reader *DefaultPacketReader) readOrdered(layers *PacketLayers) {
 
 		// fullreliablehandler, regardless of whether the parsing succeeded or not!
 		// this is because readGeneric will have set the Error and Main layers accordingly
-		reader.FullReliableHandler(layers.Reliability.SplitBuffer.PacketType, layers)
+		reader.FullReliableHandler.Fire(layers.Reliability.SplitBuffer.PacketType, layers)
 	}
 }
 
@@ -185,13 +201,13 @@ func (reader *DefaultPacketReader) readReliable(layers *PacketLayers) {
 	reliabilityLayer, err := stream.DecodeReliabilityLayer(reader, layers)
 	if err != nil {
 		layers.Error = errors.New("Failed to decode reliable packet: " + err.Error())
-		reader.ReliabilityLayerHandler(layers)
+		reader.ReliabilityLayerHandler(0, layers)
 		return
 	}
 
 	queues := reader.queues
 
-	reader.ReliabilityLayerHandler(layers)
+	reader.ReliabilityLayerHandler(0, layers)
 	for _, subPacket := range reliabilityLayer.Packets {
 		reliablePacketLayers := &PacketLayers{Root: layers.Root, RakNet: layers.RakNet, Reliability: subPacket}
 
@@ -201,11 +217,11 @@ func (reader *DefaultPacketReader) readReliable(layers *PacketLayers) {
 			println("error while handling split")
 			subPacket.SplitBuffer.Logger.Println("error while handling split:", err.Error())
 			reliablePacketLayers.Error = fmt.Errorf("Error while handling split packet: %s", err.Error())
-			reader.ReliableHandler(buffer.PacketType, reliablePacketLayers)
+			reader.ReliableHandler.Fire(buffer.PacketType, reliablePacketLayers)
 			return
 		}
 
-		reader.ReliableHandler(buffer.PacketType, reliablePacketLayers)
+		reader.ReliableHandler.Fire(buffer.PacketType, reliablePacketLayers)
 		queues.add(reliablePacketLayers)
 		if reliablePacketLayers.Reliability.Reliability == 0 {
 			reader.readOrdered(reliablePacketLayers)
@@ -230,7 +246,7 @@ func (reader *DefaultPacketReader) ReadPacket(payload []byte, layers *PacketLaye
 	rakNetLayer, err := stream.DecodeRakNetLayer(reader, payload[0], layers)
 	if err != nil {
 		layers.Error = err
-		reader.SimpleHandler(payload[0], layers)
+		reader.SimpleHandler.Fire(payload[0], layers)
 		return
 	}
 
@@ -240,10 +256,63 @@ func (reader *DefaultPacketReader) ReadPacket(payload []byte, layers *PacketLaye
 		reader.readSimple(stream, packetType, layers)
 	} else if !rakNetLayer.IsValid {
 		layers.Error = fmt.Errorf("Sent invalid packet (packet header %x)", payload[0])
-		reader.SimpleHandler(payload[0], layers)
+		reader.SimpleHandler.Fire(payload[0], layers)
 	} else if rakNetLayer.IsACK || rakNetLayer.IsNAK {
-		reader.ACKHandler(layers)
+		reader.ACKHandler.Fire(0, layers)
 	} else {
 		reader.readReliable(layers)
 	}
+}
+
+// Deletion handler
+func (reader *DefaultPacketReader) HandlePacket01(packet *Packet83_01) error {
+	return packet.Instance.SetParent(nil)
+}
+
+// New instance handler
+func (reader *DefaultPacketReader) HandlePacket02(packet *Packet83_02) error {
+	return packet.Instance.SetParent(packet.Parent)
+}
+
+// Prop update handler
+func (reader *DefaultPacketReader) HandlePacket03(packet *Packet83_03) error {
+	packet.Instance.Set(packet.Schema.Name, packet.Value)
+	return nil
+}
+
+// event handler
+func (reader *DefaultPacketReader) HandlePacket07(packet *Packet83_07) error {
+	packet.Instance.FireEvent(packet.Schema.Name, packet.Event.Arguments)
+	return nil
+}
+
+// Joindata handler
+func (reader *DefaultPacketReader) HandlePacket0B(packet *Packet83_0B) error {
+	for _, inst := range packet.Instances {
+		err := inst.Instance.SetParent(inst.Parent)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Top replic handler
+func (reader *DefaultPacketReader) HandlePacket81(packet Packet81Layer) error {
+	for _, item := range packet.Items {
+		err := reader.context.DataModel.AddService(item.Instance)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (reader *DefaultPacketReader) BindDefaultHandlers() {
+	reader.FullReliableHandler.Bind(0x81, reader.HandlePacket81)
+	reader.DataHandler.Bind(1, reader.HandlePacket01)
+	reader.DataHandler.Bind(2, reader.HandlePacket02)
+	reader.DataHandler.Bind(3, reader.HandlePacket03)
+	reader.DataHandler.Bind(7, reader.HandlePacket07)
+	reader.DataHandler.Bind(0xB, reader.HandlePacket0B)
 }

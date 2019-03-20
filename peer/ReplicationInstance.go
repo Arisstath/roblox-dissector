@@ -9,6 +9,7 @@ import (
 
 type ReplicationInstance struct {
 	Instance           *datamodel.Instance
+	Parent             *datamodel.Instance
 	Schema             *StaticInstanceSchema
 	DeleteOnDisconnect bool
 }
@@ -76,9 +77,9 @@ func decodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader
 	if err != nil {
 		return repInstance, err
 	}
-	parent.AddChild(thisInstance)
+	repInstance.Parent = parent
 
-	return thisInstance, nil
+	return repInstance, nil
 }
 
 func (instance *ReplicationInstance) Serialize(writer PacketWriter, stream InstanceWriter) error {
@@ -105,5 +106,5 @@ func (instance *ReplicationInstance) Serialize(writer PacketWriter, stream Insta
 		return err
 	}
 
-	return stream.WriteObject(instance.Instance.Parent(), writer)
+	return stream.WriteObject(instance.Parent, writer)
 }

@@ -37,14 +37,15 @@ func (myClient *CustomClient) disconnectionLogger(packetType uint8, layers *Pack
 func (myClient *CustomClient) bindDefaultHandlers() {
 	myClient.PacketLogicHandler.bindDefaultHandlers()
 
-	basicHandlers := myClient.handlers
-	basicHandlers.Bind(6, myClient.simple6Handler)
-	basicHandlers.Bind(8, myClient.simple8Handler)
+	simpleHandlers := myClient.SimpleHandler
+	simpleHandlers.Bind(6, myClient.simple6Handler)
+	simpleHandlers.Bind(8, myClient.simple8Handler)
+	basicHandlers := myClient.FullReliableHandler
 	basicHandlers.Bind(0x10, myClient.packet10Handler)
 	basicHandlers.Bind(0x15, myClient.disconnectionLogger)
 	basicHandlers.Bind(0x81, myClient.topReplicationHandler)
 
-	dataHandlers := myClient.dataHandlers
+	dataHandlers := myClient.DataHandler
 	dataHandlers.Bind(9, myClient.idChallengeHandler)
 
 	// Even though this could be compressed into a single function call,

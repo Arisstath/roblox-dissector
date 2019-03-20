@@ -5,6 +5,12 @@ import (
 	"sync"
 )
 
+// ReceiveHandler is a function that can receive a deserialized packet's layers
+type ReceiveHandler func(byte, *PacketLayers)
+
+type packetHandlerWildCard struct{}
+
+// PacketHandlerConnection represents a ReceiveHandler's binding to a packet handler
 type PacketHandlerConnection struct {
 	Callback interface{}
 	Data     interface{}
@@ -48,10 +54,20 @@ func (m *RawPacketHandlerMap) Bind(packetType uint8, handler ReceiveHandler) *Pa
 	m.Unlock()
 	return conn
 }
+func (m *RawPacketHandlerMap) BindAll(handler ReceiveHandler) *PacketHandlerConnection {
+	m.Lock()
+	conn := &PacketHandlerConnection{Callback: handler, parent: m, Data: packetHandlerWildCard{}}
+	conn.element = m.m.PushBack(conn)
+	m.Unlock()
+	return conn
+}
 func (m *RawPacketHandlerMap) Fire(packetType uint8, layers *PacketLayers) {
 	m.Lock()
 	for e := m.m.Front(); e != nil; e = e.Next() {
 		conn := e.Value.(*PacketHandlerConnection)
+		if _, ok := conn.Data.(packetHandlerWildCard); ok {
+			go conn.Callback.(ReceiveHandler)(packetType, layers)
+		}
 		if conn.Data.(uint8) == packetType {
 			go conn.Callback.(ReceiveHandler)(packetType, layers)
 		}
@@ -74,10 +90,20 @@ func (m *DataPacketHandlerMap) Bind(packetType uint8, handler DataReceiveHandler
 	m.Unlock()
 	return conn
 }
+func (m *DataPacketHandlerMap) BindAll(handler DataReceiveHandler) *PacketHandlerConnection {
+	m.Lock()
+	conn := &PacketHandlerConnection{parent: m, Callback: handler, Data: packetHandlerWildCard{}}
+	conn.element = m.m.PushBack(conn)
+	m.Unlock()
+	return conn
+}
 func (m *DataPacketHandlerMap) Fire(packetType uint8, layers *PacketLayers, subpacket Packet83Subpacket) {
 	m.Lock()
 	for e := m.m.Front(); e != nil; e = e.Next() {
 		conn := e.Value.(*PacketHandlerConnection)
+		if _, ok := conn.Data.(packetHandlerWildCard); ok {
+			go conn.Callback.(ReceiveHandler)(packetType, layers)
+		}
 		if conn.Data.(uint8) == packetType {
 			go conn.Callback.(DataReceiveHandler)(packetType, layers, subpacket)
 		}

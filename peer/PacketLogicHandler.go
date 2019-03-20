@@ -12,9 +12,7 @@ import (
 
 type PacketLogicHandler struct {
 	*ConnectedPeer
-	Context      *CommunicationContext
-	handlers     *RawPacketHandlerMap
-	dataHandlers *DataPacketHandlerMap
+	Context *CommunicationContext
 
 	ackTicker      *time.Ticker
 	dataPingTicker *time.Ticker
@@ -32,8 +30,6 @@ type PacketLogicHandler struct {
 func newPacketLogicHandler(context *CommunicationContext, withClient bool) PacketLogicHandler {
 	return PacketLogicHandler{
 		ConnectedPeer: NewConnectedPeer(context, withClient),
-		handlers:      NewRawPacketHandlerMap(),
-		dataHandlers:  NewDataHandlerMap(),
 
 		remoteIndices: make(map[*datamodel.Instance]uint32),
 		remoteLock:    &sync.Mutex{},
@@ -43,53 +39,7 @@ func newPacketLogicHandler(context *CommunicationContext, withClient bool) Packe
 	}
 }
 
-func (logicHandler *PacketLogicHandler) RegisterPacketHandler(packetType uint8, handler ReceiveHandler) {
-	logicHandler.handlers.Bind(packetType, handler)
-}
-func (logicHandler *PacketLogicHandler) RegisterDataHandler(packetType uint8, handler DataReceiveHandler) {
-	logicHandler.dataHandlers.Bind(packetType, handler)
-}
-
-func (logicHandler *PacketLogicHandler) defaultAckHandler(layers *PacketLayers) {
-	// nop
-	if layers.Error != nil {
-		println("ack error: ", layers.Error.Error())
-	}
-}
-func (logicHandler *PacketLogicHandler) defaultReliabilityLayerHandler(layers *PacketLayers) {
-	logicHandler.mustACK = append(logicHandler.mustACK, int(layers.RakNet.DatagramNumber))
-	if layers.Error != nil {
-		println("reliabilitylayer error: ", layers.Error.Error())
-	}
-}
-func (logicHandler *PacketLogicHandler) defaultSimpleHandler(packetType byte, layers *PacketLayers) {
-	if layers.Error == nil {
-		go logicHandler.handlers.Fire(packetType, layers) // Let the reader continue its job while the packet is processed
-	} else {
-		println("simple error: ", layers.Error.Error())
-	}
-}
-func (logicHandler *PacketLogicHandler) defaultReliableHandler(packetType byte, layers *PacketLayers) {
-	// nop
-	if layers.Error != nil {
-		println("reliable error: ", layers.Error.Error())
-	}
-}
-func (logicHandler *PacketLogicHandler) defaultFullReliableHandler(packetType byte, layers *PacketLayers) {
-	if layers.Error == nil {
-		go logicHandler.handlers.Fire(packetType, layers)
-	} else {
-		println("simple error: ", layers.Error.Error())
-	}
-}
-
 func (logicHandler *PacketLogicHandler) createReader() {
-	logicHandler.ACKHandler = logicHandler.defaultAckHandler
-	logicHandler.ReliabilityLayerHandler = logicHandler.defaultReliabilityLayerHandler
-	logicHandler.SimpleHandler = logicHandler.defaultSimpleHandler
-	logicHandler.ReliableHandler = logicHandler.defaultReliableHandler
-	logicHandler.FullReliableHandler = logicHandler.defaultFullReliableHandler
-
 	logicHandler.DefaultPacketReader.SetContext(logicHandler.Context)
 }
 
@@ -153,13 +103,6 @@ func (logicHandler *PacketLogicHandler) dataPingHandler(packetType uint8, layers
 	logicHandler.sendDataPingBack()
 }
 
-func (logicHandler *PacketLogicHandler) dataHandler(packetType uint8, layers *PacketLayers) {
-	mainLayer := layers.Main.(*Packet83Layer)
-	for _, item := range mainLayer.SubPackets {
-		logicHandler.dataHandlers.Fire(item.Type(), layers, item)
-	}
-}
-
 func (logicHandler *PacketLogicHandler) disconnectHandler(packetType uint8, layers *PacketLayers) {
 	mainLayer := layers.Main.(*Packet15Layer)
 	fmt.Printf("Received disconnect with reason %d\n", mainLayer.Reason)
@@ -197,12 +140,11 @@ func (logicHandler *PacketLogicHandler) pingHandler(packetType byte, layers *Pac
 
 func (logicHandler *PacketLogicHandler) bindDefaultHandlers() {
 	// common to all peers
-	dataHandlers := logicHandler.dataHandlers
+	dataHandlers := logicHandler.DataHandler
 	dataHandlers.Bind(5, logicHandler.dataPingHandler)
 
-	basicHandlers := logicHandler.handlers
+	basicHandlers := logicHandler.FullReliableHandler
 	basicHandlers.Bind(0x15, logicHandler.disconnectHandler)
-	basicHandlers.Bind(0x83, logicHandler.dataHandler)
 }
 
 func (logicHandler *PacketLogicHandler) WriteDataPackets(packets ...Packet83Subpacket) error {

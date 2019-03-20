@@ -1,8 +1,8 @@
 - philosophy:
-    * parser reader/writer don't access datamodel
-    * parser reader/writer may access instanceList
-    * parser reader/writer may access topscope, vm ints, etc. freely
-    * parser reader/writer may access schema freely
+    * parser reader/writer don't write to datamodel (only read)
+    * parser reader/writer may r/w instanceList (w for now)
+    * parser reader/writer may r/w topscope, vm ints, etc. freely (w for now)
+    * parser reader/writer may r/w schema freely (w for now)
 
 - Replication instance aren't automatically added to the instance list
 - Properties aren't automatically applied

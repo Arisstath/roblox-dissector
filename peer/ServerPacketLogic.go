@@ -200,9 +200,12 @@ func (client *ServerClient) authHandler(packetType byte, layers *PacketLayers) {
 }
 
 func (client *ServerClient) bindDefaultHandlers() {
-	client.RegisterPacketHandler(0x05, client.simple5Handler)
-	client.RegisterPacketHandler(0x07, client.simple7Handler)
-	client.RegisterPacketHandler(0x09, client.connectionRequestHandler)
-	client.RegisterPacketHandler(0x90, client.requestParamsHandler)
-	client.RegisterPacketHandler(0x8A, client.authHandler)
+	// TODO: Error handling?
+	simpleHandlers := client.SimpleHandler
+	simpleHandlers.Bind(0x05, client.simple5Handler)
+	simpleHandlers.Bind(0x07, client.simple7Handler)
+	basicHandlers := client.FullReliableHandler
+	basicHandlers.Bind(0x09, client.connectionRequestHandler)
+	basicHandlers.Bind(0x90, client.requestParamsHandler)
+	basicHandlers.Bind(0x8A, client.authHandler)
 }

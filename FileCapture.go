@@ -31,14 +31,13 @@ func captureJob(handle *pcap.Handle, useIPv4 bool, captureJobContext context.Con
 		}
 	}()
 
-	clientPacketReader := peer.NewPacketReader()
-	clientPacketReader.SimpleHandler = func(packetType byte, layers *peer.PacketLayers) {
+	simpleHandler := func(packetType byte, layers *peer.PacketLayers) {
 		packetViewer.AddFullPacket(packetType, context, layers, ActivationCallbacks[packetType])
 	}
-	clientPacketReader.ReliableHandler = func(packetType byte, layers *peer.PacketLayers) {
+	reliableHandler := func(packetType byte, layers *peer.PacketLayers) {
 		packetViewer.AddSplitPacket(packetType, context, layers)
 	}
-	clientPacketReader.FullReliableHandler = func(packetType byte, layers *peer.PacketLayers) {
+	fullReliableHandler := func(packetType byte, layers *peer.PacketLayers) {
 		// special hook: we do not have a way to send specific security settings to the parser
 		if packetType == 0x8A && layers.Error == nil {
 			layer := layers.Main.(*peer.Packet8ALayer)
@@ -46,22 +45,21 @@ func captureJob(handle *pcap.Handle, useIPv4 bool, captureJobContext context.Con
 		}
 		packetViewer.BindCallback(packetType, context, layers, ActivationCallbacks[packetType])
 	}
-	clientPacketReader.ReliabilityLayerHandler = func(layers *peer.PacketLayers) {
-		// nop
-	}
-	clientPacketReader.ACKHandler = func(layers *peer.PacketLayers) {
-		// nop
-	}
+
+	clientPacketReader := peer.NewPacketReader()
+	serverPacketReader := peer.NewPacketReader()
+
+	clientPacketReader.SimpleHandler.BindAll(simpleHandler)
+	clientPacketReader.ReliableHandler.BindAll(reliableHandler)
+	clientPacketReader.FullReliableHandler.BindAll(fullReliableHandler)
+	serverPacketReader.SimpleHandler.BindAll(simpleHandler)
+	serverPacketReader.ReliableHandler.BindAll(reliableHandler)
+	serverPacketReader.FullReliableHandler.BindAll(fullReliableHandler)
+	// ACK and ReliabilityLayer are nops
+
 	clientPacketReader.SetContext(context)
 	clientPacketReader.SetCaches(new(peer.Caches))
 	clientPacketReader.SetIsClient(true)
-
-	serverPacketReader := peer.NewPacketReader()
-	serverPacketReader.SimpleHandler = clientPacketReader.SimpleHandler
-	serverPacketReader.ReliableHandler = clientPacketReader.ReliableHandler
-	serverPacketReader.FullReliableHandler = clientPacketReader.FullReliableHandler
-	serverPacketReader.ReliabilityLayerHandler = clientPacketReader.ReliabilityLayerHandler
-	serverPacketReader.ACKHandler = clientPacketReader.ACKHandler
 	serverPacketReader.SetContext(context)
 	serverPacketReader.SetCaches(new(peer.Caches))
 
