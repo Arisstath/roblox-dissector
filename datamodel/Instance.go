@@ -52,14 +52,23 @@ func (instance *Instance) AddChild(child *Instance) error {
 	if instance.HasAncestor(child) {
 		return errors.New("instance references can't be cyclic")
 	}
+	oldParent := child.parent
+	if oldParent != nil {
+		for i, c := range oldParent.Children {
+			if c == child {
+				copy(oldParent.Children[i:], oldParent.Children[i+1:])
+				oldParent.Children[len(oldParent.Children)-1] = nil
+				oldParent.Children = oldParent.Children[:len(oldParent.Children)-1]
+			}
+		}
+	}
+
 	child.parent = instance
 	if instance != nil {
 		instance.Children = append(instance.Children, child)
-		// Do NOT wait for the emitter to finish!
-		instance.ChildEmitter.Emit(child.Name(), child)
+		<-instance.ChildEmitter.Emit(child.Name(), child)
 	}
-	// Do NOT wait for the emitter to finish!
-	child.PropertyEmitter.Emit("Parent", instance)
+	<-child.PropertyEmitter.Emit("Parent", instance)
 	return nil
 }
 
@@ -72,8 +81,7 @@ func (instance *Instance) Set(name string, value rbxfile.Value) {
 	instance.PropertiesMutex.Lock()
 	instance.Properties[name] = value
 	instance.PropertiesMutex.Unlock()
-	// Do NOT wait for the emitter to finish!
-	instance.PropertyEmitter.Emit(name, value)
+	<-instance.PropertyEmitter.Emit(name, value)
 }
 
 func (instance *Instance) SetParent(parent *Instance) error {
@@ -197,8 +205,7 @@ func (instance *Instance) MakeEventChan(name string, once bool) (<-chan emitter.
 	return emitterChan, evChan
 }
 func (instance *Instance) FireEvent(name string, args ...rbxfile.Value) {
-	// Should not wait for the emitter to finish
-	instance.EventEmitter.Emit(name, []rbxfile.Value(args))
+	<-instance.EventEmitter.Emit(name, []rbxfile.Value(args))
 }
 
 func (instance *Instance) Parent() *Instance {

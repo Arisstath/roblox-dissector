@@ -23,7 +23,7 @@ func ShowPacket81(packetType byte, context *peer.CommunicationContext, layers *p
 
 	deletedListRootNode := standardModel.InvisibleRootItem()
 	for i := 0; i < len(MainLayer.Items); i++ {
-		classNameItem := NewQStandardItemF("%s", context.StaticSchema.Instances[MainLayer.Items[i].ClassID].Name)
+		classNameItem := NewQStandardItemF("%s", MainLayer.Items[i].Schema.Name)
 		referenceItem := NewQStandardItemF("%s", MainLayer.Items[i].Instance.Ref.String())
 		repPropertiesItem := NewQStandardItemF("%v", MainLayer.Items[i].Bool1)
 		repChildrenItem := NewQStandardItemF("%v", MainLayer.Items[i].Bool2)

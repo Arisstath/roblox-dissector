@@ -105,7 +105,7 @@ func (layer *Packet83_03) Serialize(writer PacketWriter, stream *extendedWriter)
 			}
 		}
 
-		return stream.writeObject(layer.Value.(datamodel.ValueReference).Reference, writer.Caches())
+		return stream.writeObject(layer.Value.(datamodel.ValueReference).Instance, writer.Caches())
 	}
 
 	err = stream.writeUint16BE(layer.Schema.NetworkID)

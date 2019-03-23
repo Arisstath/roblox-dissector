@@ -240,7 +240,7 @@ func (b *extendedWriter) writeJoinObject(object *datamodel.Instance, context *Co
 	if object == nil {
 		return b.WriteByte(0)
 	}
-	return b.writeJoinRef(object.Ref)
+	return b.writeJoinRef(object.Ref, context)
 }
 
 func (b *extendedWriter) writeRef(ref datamodel.Reference, caches *Caches) error {
@@ -256,7 +256,6 @@ func (b *extendedWriter) writeRef(ref datamodel.Reference, caches *Caches) error
 
 // TODO: Implement a similar system for readers, where it simply returns an instance
 func (b *extendedWriter) writeObject(object *datamodel.Instance, caches *Caches) error {
-	var err error
 	if object == nil {
 		return b.WriteByte(0)
 	}

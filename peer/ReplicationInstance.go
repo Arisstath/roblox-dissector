@@ -40,7 +40,7 @@ func decodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader
 	if err != nil {
 		return nil, err
 	}
-	repInstance = thisInstance
+	repInstance.Instance = thisInstance
 
 	schemaIDx, err := thisBitstream.readUint16BE()
 	if int(schemaIDx) > len(context.StaticSchema.Instances) {
@@ -51,12 +51,12 @@ func decodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader
 	thisInstance.ClassName = schema.Name
 	layers.Root.Logger.Println("will parse", referent.String(), schema.Name, len(schema.Properties))
 
-	thisInstance.DeleteOnDisconnect, err = thisBitstream.readBoolByte()
+	repInstance.DeleteOnDisconnect, err = thisBitstream.readBoolByte()
 	if err != nil {
 		return repInstance, err
 	}
 
-	err = thisBitstream.ReadProperties(schema.Properties, repInstance.Properties, reader)
+	err = thisBitstream.ReadProperties(schema.Properties, thisInstance.Properties, reader)
 	if err != nil {
 		return repInstance, err
 	}
@@ -75,6 +75,10 @@ func decodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader
 	}
 	parent, err := context.InstancesByReferent.TryGetInstance(referent)
 	if err != nil {
+		// service parents aren't excepted to exist
+		if err == datamodel.ErrInstanceDoesntExist && thisInstance.IsService {
+			return repInstance, nil
+		}
 		return repInstance, err
 	}
 	repInstance.Parent = parent
@@ -84,7 +88,7 @@ func decodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader
 
 func (instance *ReplicationInstance) Serialize(writer PacketWriter, stream InstanceWriter) error {
 	var err error
-	if instance == nil || instance.Instance {
+	if instance == nil || instance.Instance == nil {
 		return errors.New("self is nil in serialize repl inst")
 	}
 	err = stream.WriteObject(instance.Instance, writer)

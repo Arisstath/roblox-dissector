@@ -104,8 +104,8 @@ func (logicHandler *PacketLogicHandler) dataPingHandler(e *emitter.Event) {
 	logicHandler.sendDataPingBack()
 }
 
-func (logicHandler *PacketLogicHandler) disconnectHandler(packetType uint8, layers *PacketLayers) {
-	mainLayer := layers.Main.(*Packet15Layer)
+func (logicHandler *PacketLogicHandler) disconnectHandler(e *emitter.Event) {
+	mainLayer := e.Args[0].(*Packet15Layer)
 	fmt.Printf("Received disconnect with reason %d\n", mainLayer.Reason)
 
 	logicHandler.disconnectInternal()
@@ -162,29 +162,39 @@ func (logicHandler *PacketLogicHandler) SendEvent(instance *datamodel.Instance, 
 	instance.FireEvent(name, arguments...)
 	return logicHandler.WriteDataPackets(
 		&Packet83_07{
-			Instance:  instance,
-			EventName: name,
-			Event:     &ReplicationEvent{arguments},
+			Instance: instance,
+			Schema:   logicHandler.Context.StaticSchema.SchemaForClass(instance.ClassName).SchemaForEvent(name),
+			Event:    &ReplicationEvent{arguments},
 		},
 	)
 }
 
-func constructInstanceList(list []*datamodel.Instance, instance *datamodel.Instance) []*datamodel.Instance {
-	list = append(list, instance.Children...)
+func (logicHandler *PacketLogicHandler) ReplicationInstance(inst *datamodel.Instance, deleteOnDisconnect bool) *ReplicationInstance {
+	repInstance := &ReplicationInstance{}
+	repInstance.DeleteOnDisconnect = deleteOnDisconnect
+	repInstance.Instance = inst
+	repInstance.Parent = inst.Parent()
+	repInstance.Schema = logicHandler.Context.StaticSchema.SchemaForClass(inst.ClassName)
+
+	return repInstance
+}
+
+func (logicHandler *PacketLogicHandler) constructInstanceList(list []*ReplicationInstance, instance *datamodel.Instance) []*ReplicationInstance {
 	for _, child := range instance.Children {
-		list = constructInstanceList(list, child)
+		list = append(list, logicHandler.ReplicationInstance(child, false))
+		list = logicHandler.constructInstanceList(list, child)
 	}
 	return list
 }
 
 func (logicHandler *PacketLogicHandler) ReplicateJoinData(rootInstance *datamodel.Instance, replicateProperties, replicateChildren bool) error {
-	list := []*datamodel.Instance{}
+	list := []*ReplicationInstance{}
 	// HACK: Replicating some instances to the client without including properties
 	// may result in an error and a disconnection.
 	// Here's a bad workaround
 	rootInstance.PropertiesMutex.RLock()
 	if replicateProperties && len(rootInstance.Properties) != 0 {
-		list = append(list, rootInstance)
+		list = append(list, logicHandler.ReplicationInstance(rootInstance, false))
 	} else if replicateProperties {
 		switch rootInstance.ClassName {
 		case "AdService",
@@ -195,7 +205,7 @@ func (logicHandler *PacketLogicHandler) ReplicateJoinData(rootInstance *datamode
 			"StarterPack":
 			fmt.Printf("Warning: skipping replication of bad instance %s (no properties and no defaults), replicateProperties: %v\n", rootInstance.ClassName, replicateProperties)
 		default:
-			list = append(list, rootInstance)
+			list = append(list, logicHandler.ReplicationInstance(rootInstance, false))
 		}
 	}
 	rootInstance.PropertiesMutex.RUnlock()
@@ -205,7 +215,7 @@ func (logicHandler *PacketLogicHandler) ReplicateJoinData(rootInstance *datamode
 	// multiple segments
 	if replicateChildren {
 		joinDataObject = &Packet83_0B{
-			Instances: constructInstanceList(list, rootInstance),
+			Instances: logicHandler.constructInstanceList(list, rootInstance),
 		}
 	} else {
 		joinDataObject = &Packet83_0B{
@@ -220,12 +230,6 @@ func (logicHandler *PacketLogicHandler) SendHackFlag(player *datamodel.Instance,
 	return logicHandler.SendEvent(player, "StatsAvailable", rbxfile.ValueString(flag))
 }
 
-func (logicHandler *PacketLogicHandler) ReplicateInstance(inst *datamodel.Instance, deleteOnDisconnect bool) {
-	repInstance := &ReplicationInstance{}
-	repInstance.DeleteOnDisconnect = deleteOnDisconnect
-	repInstance.Instance = inst
-	repInstance.Parent = inst.Parent()
-	repInstance.Schema = logicHandler.Context.StaticSchema.SchemaForClass(inst.ClassName)
-
-	return client.WriteDataPackets(&Packet83_02{repInstance})
+func (logicHandler *PacketLogicHandler) ReplicateInstance(inst *datamodel.Instance, deleteOnDisconnect bool) error {
+	return logicHandler.WriteDataPackets(&Packet83_02{logicHandler.ReplicationInstance(inst, deleteOnDisconnect)})
 }

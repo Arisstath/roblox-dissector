@@ -15,6 +15,7 @@ import (
 	"github.com/Gskartwii/roblox-dissector/peer"
 
 	windivert "github.com/gskartwii/windivert-go"
+	"github.com/olebedev/emitter"
 )
 
 type ProxiedPacket struct {
@@ -55,7 +56,7 @@ func captureFromWinDivertProxy(realServerAddr string, captureJobContext context.
 			fmt.Println("write fail to client %s/%d/%d: %s", proxyWriter.ClientAddr.String(), ifIdx, subIfIdx, err.Error())
 			return
 		}
-	}
+	}, emitter.Void)
 	proxyWriter.ServerHalf.Output.On("udp", func(e *emitter.Event) { // writes TO server
 		p := e.Args[0].([]byte)
 		err := divertConnection.SendUDP(p, proxyWriter.ClientAddr, proxyWriter.ServerAddr, true, ifIdx, subIfIdx)
@@ -63,7 +64,7 @@ func captureFromWinDivertProxy(realServerAddr string, captureJobContext context.
 			fmt.Println("write fail to server %d/%d: %s", ifIdx, subIfIdx, err.Error())
 			return
 		}
-	}
+	}, emitter.Void)
 
 	packetChan := make(chan ProxiedPacket, 100)
 

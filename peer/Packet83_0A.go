@@ -63,8 +63,6 @@ func (layer *Packet83_0A) Serialize(writer PacketWriter, stream *extendedWriter)
 		return err
 	}
 
-	context := writer.Context()
-
 	err = stream.writeUint16BE(layer.Schema.NetworkID)
 	if err != nil {
 		return err
@@ -90,5 +88,5 @@ func (Packet83_0A) TypeString() string {
 }
 
 func (layer *Packet83_0A) String() string {
-	return fmt.Sprintf("ID_REPLIC_CFRAME_ACK: %s[%s]", layer.Instance.GetFullName(), layer.PropertyName)
+	return fmt.Sprintf("ID_REPLIC_CFRAME_ACK: %s[%s]", layer.Instance.GetFullName(), layer.Schema.Name)
 }

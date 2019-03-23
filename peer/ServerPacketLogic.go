@@ -6,6 +6,7 @@ import (
 
 	"github.com/gskartwii/roblox-dissector/datamodel"
 
+	"github.com/olebedev/emitter"
 	"github.com/robloxapi/rbxfile"
 )
 
@@ -75,7 +76,7 @@ func (client *ServerClient) connectionRequestHandler(e *emitter.Event) {
 			nullIP,
 			nullIP,
 		},
-		SendPingTime: layers.Main.(*Packet09Layer).Timestamp,
+		SendPingTime: e.Args[0].(*Packet09Layer).Timestamp,
 		SendPongTime: uint64(time.Now().UnixNano() / int64(time.Millisecond)),
 	})
 }
@@ -118,7 +119,7 @@ func (client *ServerClient) authHandler(e *emitter.Event) {
 	topReplicationItems := make([]*Packet81LayerItem, len(client.Context.DataModel.Instances))
 	for i, instance := range client.Context.DataModel.Instances {
 		topReplicationItems[i] = &Packet81LayerItem{
-			ClassID:  uint16(client.Context.StaticSchema.ClassesByName[instance.ClassName]),
+			Schema:   client.Context.StaticSchema.SchemaForClass(instance.ClassName),
 			Instance: instance,
 			Bool1:    false,
 			Bool2:    false,
@@ -150,7 +151,7 @@ func (client *ServerClient) authHandler(e *emitter.Event) {
 		return
 	}
 
-	err = client.ReplicateInstance(partTest)
+	err = client.ReplicateInstance(partTest, false)
 	if err != nil {
 		println("parttest error: ", err.Error())
 		return
@@ -158,10 +159,10 @@ func (client *ServerClient) authHandler(e *emitter.Event) {
 
 	// REPLICATION BEGIN
 	// Do not include ReplicatedFirst itself in replication
-	replicatedFirst := constructInstanceList(nil, client.DataModel.FindService("ReplicatedFirst"))
+	replicatedFirst := client.constructInstanceList(nil, client.DataModel.FindService("ReplicatedFirst"))
 	newInstanceList := make([]Packet83Subpacket, 0, len(replicatedFirst))
 	for _, repFirstInstance := range replicatedFirst {
-		newInstanceList = append(newInstanceList, &Packet83_02{Child: repFirstInstance})
+		newInstanceList = append(newInstanceList, &Packet83_02{repFirstInstance})
 	}
 	err = client.WriteDataPackets(newInstanceList...)
 	if err != nil {

@@ -6,6 +6,7 @@ import (
 	"net"
 
 	"github.com/Gskartwii/roblox-dissector/peer"
+	"github.com/olebedev/emitter"
 )
 
 func captureFromInjectionProxy(src string, dst string, captureJobContext context.Context, injectPacket chan peer.RakNetPacket, packetViewer *MyPacketListView, commContext *peer.CommunicationContext) {

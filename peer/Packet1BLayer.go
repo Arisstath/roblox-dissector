@@ -46,3 +46,7 @@ func (layer *Packet1BLayer) Serialize(writer PacketWriter, stream *extendedWrite
 func (layer *Packet1BLayer) String() string {
 	return "ID_TIMESTAMP"
 }
+
+func (Packet1BLayer) TypeString() string {
+	return "ID_TIMESTAMP"
+}

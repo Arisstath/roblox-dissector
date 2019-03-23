@@ -31,13 +31,13 @@ func (myClient *CustomClient) startDataPing() {
 	}()
 }
 
-func (myClient *CustomClient) disconnectionLogger(packetType uint8, layers *PacketLayers) {
-	myClient.Logger.Println("Received disconnection:", layers.Main.(*Packet15Layer).String())
+func (myClient *CustomClient) disconnectionLogger(e *emitter.Event) {
+	myClient.Logger.Println("Received disconnection:", e.Args[0].(*Packet15Layer).String())
 }
 
 func (myClient *CustomClient) bindDefaultHandlers() {
 	// let the DataModel be updated properly
-	myClient.DefaultPacketReader.BindDefaultHandlers()
+	myClient.DefaultPacketReader.BindDataModelHandlers()
 	myClient.PacketLogicHandler.bindDefaultHandlers()
 
 	emitter := myClient.PacketEmitter
@@ -190,7 +190,7 @@ func (myClient *CustomClient) packet10Handler(e *emitter.Event) {
 	myClient.sendSpawnName()
 }
 
-func (myClient *CustomClient) topReplicationHandler(packetType uint8, layers *PacketLayers) {
+func (myClient *CustomClient) topReplicationHandler(e *emitter.Event) {
 	myClient.startDataPing()
 }
 
@@ -206,8 +206,8 @@ func (myClient *CustomClient) sendDataIdResponse(challengeInt uint32) {
 		println("Failed to send dataidresponse:", err.Error())
 	}
 }
-func (myClient *CustomClient) idChallengeHandler(packetType uint8, layers *PacketLayers, item Packet83Subpacket) {
-	mainPacket := item.(*Packet83_09)
+func (myClient *CustomClient) idChallengeHandler(e *emitter.Event) {
+	mainPacket := e.Args[0].(*Packet83_09)
 	if mainPacket.SubpacketType == 5 {
 		myClient.Logger.Println("recv id challenge!")
 		myClient.sendDataIdResponse(mainPacket.Subpacket.(*Packet83_09_05).Int)
@@ -251,10 +251,14 @@ func (myClient *CustomClient) handlePlayersService(players *datamodel.Instance) 
 			Fps3:          60,
 		},
 		&Packet83_0B{},
-		&Packet83_02{myPlayer},
 	)
 	if err != nil {
-		println("Failed to send localplayer:", err.Error())
+		println("Failed to send initial data replic:", err.Error())
+		return
+	}
+	err = myClient.ReplicateInstance(myClient.LocalPlayer, true)
+	if err != nil {
+		println("Failed to send local player:", err.Error())
 	}
 	return
 }

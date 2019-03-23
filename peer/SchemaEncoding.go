@@ -1,11 +1,12 @@
 package peer
+
 import "bufio"
 import "fmt"
 import "regexp"
 import "strconv"
 import "io"
 
-func mustAtoi(x string) (int) {
+func mustAtoi(x string) int {
 	result, err := strconv.Atoi(x)
 	if err != nil {
 		panic(err)
@@ -24,16 +25,17 @@ func ParseSchema(ifile io.Reader, efile io.Reader) (StaticSchema, error) {
 	}
 
 	enumExp := regexp.MustCompile(`\s*"([a-zA-Z0-9 _]+)"\s*(\d+)\s*`)
-	schema.Enums = make([]StaticEnumSchema, totalEnums)
+	schema.Enums = make([]*StaticEnumSchema, totalEnums)
 	for i := 0; i < totalEnums; i++ {
 		line, err := enums.ReadString('\n')
 		if err != nil {
 			return schema, err
 		}
 		enum := enumExp.FindStringSubmatch(line)
-		schema.Enums[i] = StaticEnumSchema{
-			Name: enum[1],
-			BitSize: uint8(mustAtoi(enum[2])),
+		schema.Enums[i] = &StaticEnumSchema{
+			Name:      enum[1],
+			BitSize:   uint8(mustAtoi(enum[2])),
+			NetworkID: uint16(i),
 		}
 	}
 
@@ -48,12 +50,9 @@ func ParseSchema(ifile io.Reader, efile io.Reader) (StaticSchema, error) {
 	if err != nil {
 		return schema, err
 	}
-	schema.Instances = make([]StaticInstanceSchema, totalInstances)
-	schema.Properties = make([]StaticPropertySchema, totalProperties)
-	schema.Events = make([]StaticEventSchema, totalEvents)
-    schema.ClassesByName = make(map[string]int, totalInstances)
-    schema.PropertiesByName = make(map[string]int, totalProperties)
-    schema.EventsByName = make(map[string]int, totalEvents)
+	schema.Instances = make([]*StaticInstanceSchema, totalInstances)
+	schema.Properties = make([]*StaticPropertySchema, totalProperties)
+	schema.Events = make([]*StaticEventSchema, totalEvents)
 	propertyGlobalIndex := 0
 	eventGlobalIndex := 0
 	for i := 0; i < totalInstances; i++ {
@@ -62,18 +61,18 @@ func ParseSchema(ifile io.Reader, efile io.Reader) (StaticSchema, error) {
 			return schema, err
 		}
 		instance := instanceExp.FindStringSubmatch(line)
-		thisInstance := StaticInstanceSchema{
-			Name: instance[1],
-			Unknown: uint16(mustAtoi(instance[2])),
+		thisInstance := &StaticInstanceSchema{
+			Name:      instance[1],
+			Unknown:   uint16(mustAtoi(instance[2])),
+			NetworkID: uint16(i),
 		}
-        schema.ClassesByName[thisInstance.Name] = i
 
 		var countProperties int
 		_, err = fmt.Fscanf(instances, "%d\n", &countProperties)
 		if err != nil {
 			return schema, err
 		}
-		thisInstance.Properties = make([]StaticPropertySchema, countProperties)
+		thisInstance.Properties = make([]*StaticPropertySchema, countProperties)
 
 		for j := 0; j < countProperties; j++ {
 			line, err = instances.ReadString('\n')
@@ -82,16 +81,16 @@ func ParseSchema(ifile io.Reader, efile io.Reader) (StaticSchema, error) {
 			}
 
 			property := propertyExp.FindStringSubmatch(line)
-			thisProperty := StaticPropertySchema{
-				Name: property[1],
-				Type: uint8(mustAtoi(property[2])),
-				EnumID: uint16(mustAtoi(property[3])),
-				TypeString: TypeNames[uint8(mustAtoi(property[2]))],
-				InstanceSchema: &thisInstance,
+			thisProperty := &StaticPropertySchema{
+				Name:           property[1],
+				Type:           uint8(mustAtoi(property[2])),
+				EnumID:         uint16(mustAtoi(property[3])),
+				TypeString:     TypeNames[uint8(mustAtoi(property[2]))],
+				InstanceSchema: thisInstance,
+				NetworkID:      uint16(propertyGlobalIndex),
 			}
 			thisInstance.Properties[j] = thisProperty
 			schema.Properties[propertyGlobalIndex] = thisProperty
-            schema.PropertiesByName[thisInstance.Name+"."+thisProperty.Name] = propertyGlobalIndex
 
 			propertyGlobalIndex++
 		}
@@ -101,7 +100,7 @@ func ParseSchema(ifile io.Reader, efile io.Reader) (StaticSchema, error) {
 		if err != nil {
 			return schema, err
 		}
-		thisInstance.Events = make([]StaticEventSchema, countEvents)
+		thisInstance.Events = make([]*StaticEventSchema, countEvents)
 		for j := 0; j < countEvents; j++ {
 			line, err = instances.ReadString('\n')
 			if err != nil {
@@ -109,24 +108,25 @@ func ParseSchema(ifile io.Reader, efile io.Reader) (StaticSchema, error) {
 			}
 
 			event := eventExp.FindStringSubmatch(line)
-			thisEvent := StaticEventSchema{
-				Name: event[1],
-				InstanceSchema: &thisInstance,
+			thisEvent := &StaticEventSchema{
+				Name:           event[1],
+				InstanceSchema: thisInstance,
+				NetworkID:      uint16(eventGlobalIndex),
 			}
 			countArguments := mustAtoi(event[2])
-			thisEvent.Arguments = make([]StaticArgumentSchema, countArguments)
+			thisEvent.Arguments = make([]*StaticArgumentSchema, countArguments)
 			for k := 0; k < countArguments; k++ {
 				var argType int
 				var argUnk int
 
-                _, err = fmt.Fscanf(instances, "%d %d\n", &argType, &argUnk)
-                if err != nil {
-                    return schema, err
-                }
-				thisArgument := StaticArgumentSchema{
-					Type: uint8(argType),
+				_, err = fmt.Fscanf(instances, "%d %d\n", &argType, &argUnk)
+				if err != nil {
+					return schema, err
+				}
+				thisArgument := &StaticArgumentSchema{
+					Type:       uint8(argType),
 					TypeString: TypeNames[uint8(argType)],
-					EnumID: uint16(argUnk),
+					EnumID:     uint16(argUnk),
 				}
 
 				thisEvent.Arguments[k] = thisArgument
@@ -134,14 +134,13 @@ func ParseSchema(ifile io.Reader, efile io.Reader) (StaticSchema, error) {
 
 			thisInstance.Events[j] = thisEvent
 			schema.Events[eventGlobalIndex] = thisEvent
-            schema.EventsByName[thisInstance.Name+"."+thisEvent.Name] = eventGlobalIndex
 
 			eventGlobalIndex++
 		}
 
 		schema.Instances[i] = thisInstance
 	}
-    return schema, nil
+	return schema, nil
 }
 
 func (schema *StaticSchema) Dump(instances io.Writer, enums io.Writer) error {

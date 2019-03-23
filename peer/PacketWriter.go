@@ -44,7 +44,8 @@ type DefaultPacketWriter struct {
 }
 
 func NewPacketWriter() *DefaultPacketWriter {
-	return &DefaultPacketWriter{Output: emitter.New()}
+	// Ordering on output doesn't matter, hence we can set the cap high
+	return &DefaultPacketWriter{Output: emitter.New(8)}
 }
 func (writer *DefaultPacketWriter) ToClient() bool {
 	return writer.toClient
@@ -54,7 +55,7 @@ func (writer *DefaultPacketWriter) SetToClient(val bool) {
 }
 
 func (writer *DefaultPacketWriter) output(bytes []byte) {
-	writer.Output.Emit("udp", bytes)
+	<-writer.Output.Emit("udp", bytes)
 }
 
 // WriteSimple is used to write pre-connection packets (IDs 5-8). It doesn't use a

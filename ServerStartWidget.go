@@ -67,7 +67,7 @@ func normalizeTypes(children []*datamodel.Instance, schema *peer.StaticSchema) {
 	for _, instance := range children {
 		defaultValues, ok := noLocalDefaults[instance.ClassName]
 		if ok {
-			for _, prop := range schema.Instances[schema.ClassesByName[instance.ClassName]].Properties {
+			for _, prop := range schema.SchemaForClass(instance.ClassName).Properties {
 				if _, ok = instance.Properties[prop.Name]; !ok {
 					println("Adding missing default value", instance.ClassName, prop.Name)
 					instance.Properties[prop.Name] = defaultValues[prop.Name]
@@ -76,13 +76,12 @@ func normalizeTypes(children []*datamodel.Instance, schema *peer.StaticSchema) {
 		}
 
 		for name, prop := range instance.Properties {
-			id, ok := schema.PropertiesByName[instance.ClassName+"."+name]
-			if !ok {
+			propSchema := schema.SchemaForClass(instance.ClassName).SchemaForProp(name)
+			if propSchema == nil {
 				fmt.Printf("Warning: %s.%s doesn't exist in schema! Stripping this property.\n", instance.ClassName, name)
 				delete(instance.Properties, name)
 				continue
 			}
-			propSchema := schema.Properties[id]
 			switch propSchema.Type {
 			case peer.PROP_TYPE_PROTECTEDSTRING_0,
 				peer.PROP_TYPE_PROTECTEDSTRING_1,

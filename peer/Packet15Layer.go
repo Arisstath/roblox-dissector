@@ -30,9 +30,9 @@ func (layer *Packet15Layer) Serialize(writer PacketWriter, stream *extendedWrite
 	return stream.writeUint32BE(uint32(layer.Reason))
 }
 
-func (layer *Packet15Layer) TypeString() string {
+func (Packet15Layer) TypeString() string {
 	return "ID_DISCONNECTION_NOTIFICATION"
 }
-func (Packet15Layer) String() string {
+func (layer *Packet15Layer) String() string {
 	return fmt.Sprintf("ID_DISCONNECTION_NOTIFICATION: Reason %d", layer.Reason)
 }

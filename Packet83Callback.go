@@ -101,7 +101,7 @@ func show83_0B(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	rootNode := standardModel.InvisibleRootItem()
 	if this != nil && this.Instances != nil { // if arraylen == 0, this is nil
 		for _, instance := range this.Instances {
-			rootNode.AppendRow(showReplicationInstance(instance))
+			rootNode.AppendRow(showReplicationInstance(instance.Instance))
 		}
 	}
 	instanceList.SetModel(standardModel)
@@ -121,7 +121,7 @@ func show83_02(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	standardModel.SetHorizontalHeaderLabels([]string{"Name", "Type", "Value", "Referent", "Parent", "Path"})
 
 	rootNode := standardModel.InvisibleRootItem()
-	rootNode.AppendRow(showReplicationInstance(this.Child))
+	rootNode.AppendRow(showReplicationInstance(this.Instance))
 	instanceList.SetModel(standardModel)
 	instanceList.SetSelectionMode(0)
 	instanceList.SetSortingEnabled(true)
@@ -139,7 +139,11 @@ func show83_03(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	}
 	layout.AddWidget(NewQLabelF("Unknown bool: %v", this.Bool1), 0, 0)
 	layout.AddWidget(NewQLabelF("Unknown int: %d", this.Int1), 0, 0)
-	layout.AddWidget(NewQLabelF("Property name: %s", this.PropertyName), 0, 0)
+	if this.Schema == nil {
+		layout.AddWidget(NewQLabelF("Property name: Parent"), 0, 0)
+	} else {
+		layout.AddWidget(NewQLabelF("Property name: %s", this.Schema.Name), 0, 0)
+	}
 	layout.AddWidget(NewQLabelF("Property type: %s", this.Value.Type().String()), 0, 0)
 	if this.Value.Type() == rbxfile.TypeProtectedString {
 		layout.AddWidget(NewQLabelF("Property value: ... (len %d)", len(this.Value.String())), 0, 0)
@@ -159,7 +163,7 @@ func show83_0A(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	} else {
 		layout.AddWidget(NewQLabelF("Object: nil"), 0, 0)
 	}
-	layout.AddWidget(NewQLabelF("Acked property name: %s", this.PropertyName), 0, 0)
+	layout.AddWidget(NewQLabelF("Acked property name: %s", this.Schema.Name), 0, 0)
 	layout.AddWidget(NewQLabelF("Property version 1: %d", this.Versions[0]), 0, 0) // TODO
 	widget.SetLayout(layout)
 
@@ -203,7 +207,7 @@ func show83_07(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	} else {
 		layout.AddWidget(NewQLabelF("Object: nil"), 0, 0)
 	}
-	layout.AddWidget(NewQLabelF("Event name: %s", this.EventName), 0, 0)
+	layout.AddWidget(NewQLabelF("Event name: %s", this.Schema.Name), 0, 0)
 	layout.AddWidget(NewQLabelF("Arguments:"), 0, 0)
 
 	argumentList := widgets.NewQTreeView(nil)

@@ -18,7 +18,7 @@ func New() *DataModel {
 
 func (model *DataModel) AddService(service *Instance) {
 	model.Instances = append(model.Instances, service)
-	model.ServiceEmitter.Emit(service.ClassName, service)
+	<-model.ServiceEmitter.Emit(service.ClassName, service)
 }
 func (model *DataModel) FindService(name string) *Instance {
 	for _, service := range model.Instances {

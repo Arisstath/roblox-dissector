@@ -6,6 +6,8 @@ import (
 	"log"
 	"strings"
 
+	"github.com/gskartwii/roblox-dissector/datamodel"
+
 	"github.com/olebedev/emitter"
 )
 
@@ -107,23 +109,23 @@ func (reader *DefaultPacketReader) SetIsClient(val bool) {
 func NewPacketReader() *DefaultPacketReader {
 	reader := &DefaultPacketReader{
 		queues:        newPeerQueues(),
-		LayerEmitter:  emitter.New(8),
-		ErrorEmitter:  emitter.New(8),
-		PacketEmitter: emitter.New(8),
-		DataEmitter:   emitter.New(8),
+		LayerEmitter:  emitter.New(0),
+		ErrorEmitter:  emitter.New(0),
+		PacketEmitter: emitter.New(0),
+		DataEmitter:   emitter.New(0),
 	}
 
-	go reader.bindBasicPacketHandler()
-	go reader.bindDataPacketHandler()
+	reader.bindBasicPacketHandler()
+	reader.bindDataPacketHandler()
 
 	return reader
 }
 
 func (reader *DefaultPacketReader) emitLayers(topic string, layers *PacketLayers) {
 	if layers.Error != nil {
-		reader.ErrorEmitter.Emit(topic, layers)
+		<-reader.ErrorEmitter.Emit(topic, layers)
 	} else {
-		reader.LayerEmitter.Emit(topic, layers)
+		<-reader.LayerEmitter.Emit(topic, layers)
 	}
 }
 
@@ -153,7 +155,7 @@ func (reader *DefaultPacketReader) readGeneric(stream *extendedReader, layers *P
 			return
 		}
 		layers.Timestamp = tsLayer.(*Packet1BLayer)
-		packetType, err = stream.ReadByte()
+		packetType, err := stream.ReadByte()
 		if err != nil {
 			println("timestamp type fail")
 			layers.Reliability.SplitBuffer.Logger.Println("error:", err.Error())
@@ -162,7 +164,7 @@ func (reader *DefaultPacketReader) readGeneric(stream *extendedReader, layers *P
 		}
 		layers.Reliability.SplitBuffer.PacketType = packetType
 		layers.Reliability.SplitBuffer.HasPacketType = true
-		layers.PacketType = PacketType
+		layers.PacketType = packetType
 	}
 	decoder := packetDecoders[layers.PacketType]
 	// TODO: Should we really void partial deserializations?
@@ -191,7 +193,7 @@ func (reader *DefaultPacketReader) readOrdered(layers *PacketLayers) {
 			layers.Error = fmt.Errorf("Failed to decode reliablePacket type %d: %s", packetType, err.Error())
 		} else {
 			layers.PacketType = packetType
-			reader.readGeneric(buffer.dataReader, packetType, layers)
+			reader.readGeneric(buffer.dataReader, layers)
 		}
 
 		// fullreliablehandler, regardless of whether the parsing succeeded or not!
@@ -274,89 +276,83 @@ func (reader *DefaultPacketReader) ReadPacket(payload []byte, layers *PacketLaye
 }
 
 // Deletion handler
-func (reader *DefaultPacketReader) HandlePacket01(packet *Packet83_01) error {
-	return packet.Instance.SetParent(nil)
+func (reader *DefaultPacketReader) HandlePacket01(e *emitter.Event) {
+	packet := e.Args[0].(*Packet83_01)
+	err := packet.Instance.SetParent(nil)
+	if err != nil {
+		e.Args[1].(*PacketLayers).Root.Logger.Println("delete error:", err.Error())
+	}
 }
 
 // New instance handler
-func (reader *DefaultPacketReader) HandlePacket02(packet *Packet83_02) error {
-	return packet.Instance.SetParent(packet.Parent)
+func (reader *DefaultPacketReader) HandlePacket02(e *emitter.Event) {
+	packet := e.Args[0].(*Packet83_02)
+	err := packet.Instance.SetParent(packet.Parent)
+	if err != nil {
+		e.Args[1].(*PacketLayers).Error = err
+	}
 }
 
 // Prop update handler
-func (reader *DefaultPacketReader) HandlePacket03(packet *Packet83_03) error {
+func (reader *DefaultPacketReader) HandlePacket03(e *emitter.Event) {
+	packet := e.Args[0].(*Packet83_03)
+	if packet.Schema == nil {
+		// Parent handler
+		err := packet.Value.(datamodel.ValueReference).Instance.AddChild(packet.Instance)
+		if err != nil {
+			e.Args[1].(*PacketLayers).Error = err
+		}
+		return
+	}
 	packet.Instance.Set(packet.Schema.Name, packet.Value)
-	return nil
 }
 
 // event handler
-func (reader *DefaultPacketReader) HandlePacket07(packet *Packet83_07) error {
-	packet.Instance.FireEvent(packet.Schema.Name, packet.Event.Arguments)
-	return nil
+func (reader *DefaultPacketReader) HandlePacket07(e *emitter.Event) {
+	packet := e.Args[0].(*Packet83_07)
+	packet.Instance.FireEvent(packet.Schema.Name, packet.Event.Arguments...)
 }
 
 // Joindata handler
-func (reader *DefaultPacketReader) HandlePacket0B(packet *Packet83_0B) error {
+func (reader *DefaultPacketReader) HandlePacket0B(e *emitter.Event) {
+	packet := e.Args[0].(*Packet83_0B)
 	for _, inst := range packet.Instances {
 		err := inst.Instance.SetParent(inst.Parent)
 		if err != nil {
-			return err
+			e.Args[1].(*PacketLayers).Error = err
 		}
 	}
-	return nil
 }
 
 // Top replic handler
-func (reader *DefaultPacketReader) HandlePacket81(packet Packet81Layer) error {
+func (reader *DefaultPacketReader) HandlePacket81(e *emitter.Event) {
+	packet := e.Args[0].(*Packet81Layer)
 	for _, item := range packet.Items {
-		err := reader.context.DataModel.AddService(item.Instance)
-		if err != nil {
-			return err
-		}
+		reader.context.DataModel.AddService(item.Instance)
 	}
-	return nil
 }
 
 func (reader *DefaultPacketReader) BindDataModelHandlers() {
-	topReplicHandler := reader.PacketEmitter.On("ID_SET_GLOBALS", emitter.Sync)
-	deleteInstance := reader.DataEmitter.On("ID_REPLIC_DELETE_INSTANCE", reader.HandlePacket01)
-	newInstance := reader.DataEmitter.On("ID_REPLIC_NEW_INSTANCE", reader.HandlePacket02)
-	prop := reader.DataEmitter.On("ID_REPLIC_PROP", reader.HandlePacket03)
-	event := reader.DataEmitter.On("ID_REPLIC_EVENT", reader.HandlePacket07)
-	joinData := reader.DataEmitter.On("ID_REPLIC_JOIN_DATA", reader.HandlePacket0B)
-	for {
-		select {
-		case e := <-topReplicHandler:
-			reader.HandlePacket81(e.Args[0].(*Packet81Layer))
-		case e := <-deleteInstance:
-			reader.HandlePacket01(e.Args[0].(*Packet83_01))
-		case e := <-newInstance:
-			reader.HandlePacket02(e.Args[0].(*Packet83_02))
-		case e := <-prop:
-			reader.HandlePacket03(e.Args[0].(*Packet83_03))
-		case e := <-event:
-			reader.HandlePacket07(e.Args[0].(*Packet83_07))
-		case e := <-joinData:
-			reader.HandlePacket0B(e.Args[0].(*Packet83_0B))
-		}
-	}
+	reader.PacketEmitter.On("ID_SET_GLOBALS", reader.HandlePacket81, emitter.Void)
+	reader.DataEmitter.On("ID_REPLIC_DELETE_INSTANCE", reader.HandlePacket01, emitter.Void)
+	reader.DataEmitter.On("ID_REPLIC_NEW_INSTANCE", reader.HandlePacket02, emitter.Void)
+	reader.DataEmitter.On("ID_REPLIC_PROP", reader.HandlePacket03, emitter.Void)
+	reader.DataEmitter.On("ID_REPLIC_EVENT", reader.HandlePacket07, emitter.Void)
+	reader.DataEmitter.On("ID_REPLIC_JOIN_DATA", reader.HandlePacket0B, emitter.Void)
 }
 
 func (reader *DefaultPacketReader) bindBasicPacketHandler() {
 	// important: sync!
-	packetEmitterChan := reader.LayerEmitter.On("full-reliable", emitter.Sync)
-	for e := range packetEmitterChan {
+	reader.LayerEmitter.On("full-reliable", func(e *emitter.Event) {
 		layers := e.Args[0].(*PacketLayers)
 		<-reader.PacketEmitter.Emit(layers.Main.TypeString(), layers.Main, layers)
-	}
+	}, emitter.Void)
 }
 
 func (reader *DefaultPacketReader) bindDataPacketHandler() {
 	// important: sync!
-	dataEmitterChan := reader.PacketEmitter.On("ID_REPLICATION_DATA", emitter.Sync)
-
-	for e := range dataEmitterChan {
-		layers := e.Args[0].(*PacketLayers)
+	reader.PacketEmitter.On("ID_REPLICATION_DATA", func(e *emitter.Event) {
+		layers := e.Args[1].(*PacketLayers)
 		for _, sub := range layers.Main.(*Packet83Layer).SubPackets {
 			subLayers := &PacketLayers{
 				Root:        layers.Root,
@@ -371,5 +367,5 @@ func (reader *DefaultPacketReader) bindDataPacketHandler() {
 			}
 			<-reader.DataEmitter.Emit(sub.TypeString(), sub, subLayers)
 		}
-	}
+	}, emitter.Void)
 }

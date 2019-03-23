@@ -223,7 +223,7 @@ func (thisBitstream *extendedReader) DecodePacket97Layer(reader PacketReader, la
 	if enumArrayLen > 0x10000 {
 		return layer, errors.New("sanity check: exceeded maximum enum array len")
 	}
-	layer.Schema.Enums = make([]StaticEnumSchema, enumArrayLen)
+	layer.Schema.Enums = make([]*StaticEnumSchema, enumArrayLen)
 	for i := 0; i < int(enumArrayLen); i++ {
 		stringLen, err := stream.readUintUTF8()
 		if err != nil {
@@ -238,7 +238,7 @@ func (thisBitstream *extendedReader) DecodePacket97Layer(reader PacketReader, la
 		if err != nil {
 			return layer, err
 		}
-		layer.Schema.Enums[i].NetworkID = i
+		layer.Schema.Enums[i].NetworkID = uint16(i)
 	}
 
 	classArrayLen, err := stream.readUintUTF8()
@@ -279,7 +279,7 @@ func (thisBitstream *extendedReader) DecodePacket97Layer(reader PacketReader, la
 		if err != nil {
 			return layer, err
 		}
-		thisInstance.NetworkID = i
+		thisInstance.NetworkID = uint16(i)
 
 		propertyCount, err := stream.readUintUTF8()
 		if err != nil {
@@ -384,6 +384,8 @@ func (thisBitstream *extendedReader) DecodePacket97Layer(reader PacketReader, la
 		layer.Schema.Instances[classGlobalIndex] = thisInstance
 		classGlobalIndex++
 	}
+
+	reader.Context().StaticSchema = layer.Schema
 
 	return layer, err
 }

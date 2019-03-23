@@ -11,10 +11,14 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
+	"github.com/olebedev/emitter"
 )
 
 // TODO: Can this use ConnectedPeer?
 func captureJob(handle *pcap.Handle, useIPv4 bool, captureJobContext context.Context, packetViewer *MyPacketListView, context *peer.CommunicationContext) {
+	clientPacketReader := peer.NewPacketReader()
+	serverPacketReader := peer.NewPacketReader()
+
 	settings := peer.Win10Settings()
 	handle.SetBPFFilter("udp")
 	var packetSource *gopacket.PacketSource
@@ -31,53 +35,52 @@ func captureJob(handle *pcap.Handle, useIPv4 bool, captureJobContext context.Con
 		}
 	}()
 
-	simpleHandler := func(layers *peer.PacketLayers) {
-		packetViewer.AddFullPacket(packetType, context, layers, ActivationCallbacks[packetType])
+	simpleHandler := func(e *emitter.Event) {
+		layers := e.Args[0].(*peer.PacketLayers)
+		//println("simple: ", layers.PacketType)
+		packetViewer.AddFullPacket(layers.PacketType, context, layers, ActivationCallbacks[layers.PacketType])
 	}
-	reliableHandler := func(layers *peer.PacketLayers) {
-		packetViewer.AddSplitPacket(packetType, context, layers)
+	reliableHandler := func(e *emitter.Event) {
+		layers := e.Args[0].(*peer.PacketLayers)
+		//println("reliable: ", layers.Reliability.SplitBuffer.UniqueID)
+		packetViewer.AddSplitPacket(layers.PacketType, context, layers)
 	}
-	fullReliableHandler := func(layers *peer.PacketLayers) {
+	fullReliableHandler := func(e *emitter.Event) {
+		layers := e.Args[0].(*peer.PacketLayers)
+		//println("full-reliable: ", layers.Reliability.SplitBuffer.UniqueID)
 		// special hook: we do not have a way to send specific security settings to the parser
-		if packetType == 0x8A && layers.Error == nil {
+		if layers.PacketType == 0x8A && layers.Error == nil {
 			layer := layers.Main.(*peer.Packet8ALayer)
 			layers.Root.Logger.Printf("hash = %8X, computed = %8X\n", settings.GenerateTicketHash(layer.ClientTicket), layer.TicketHash)
 		}
-		packetViewer.BindCallback(packetType, context, layers, ActivationCallbacks[packetType])
+		packetViewer.BindCallback(layers.PacketType, context, layers, ActivationCallbacks[layers.PacketType])
 	}
-
-	clientPacketReader := peer.NewPacketReader()
-	serverPacketReader := peer.NewPacketReader()
-
-	packetAggregate := &emitter.Group{Cap: 0}
-	// even errors can be grouped to the same channel! they are handled by GUIManager
-	packetAggregate.Add(
-		clientPacketReader.LayerEmitter.On("*", emitter.Sync),
-		clientPacketReader.ErrorEmitter.On("*", emitter.Sync),
-		serverPacketReader.LayerEmitter.On("*", emitter.Sync),
-		serverPacketReader.ErrorEmitter.On("*", emitter.Sync),
-	)
-	
 	// ACK and ReliabilityLayer are nops
 
 	clientPacketReader.SetContext(context)
 	clientPacketReader.SetCaches(new(peer.Caches))
 	clientPacketReader.SetIsClient(true)
+	clientPacketReader.BindDataModelHandlers()
 	serverPacketReader.SetContext(context)
 	serverPacketReader.SetCaches(new(peer.Caches))
+	serverPacketReader.BindDataModelHandlers()
 
-	for true {
+	clientPacketReader.LayerEmitter.On("simple", simpleHandler, emitter.Void)
+	clientPacketReader.LayerEmitter.On("reliable", reliableHandler, emitter.Void)
+	clientPacketReader.LayerEmitter.On("full-reliable", fullReliableHandler, emitter.Void)
+	clientPacketReader.ErrorEmitter.On("simple", simpleHandler, emitter.Void)
+	clientPacketReader.ErrorEmitter.On("reliable", reliableHandler, emitter.Void)
+	clientPacketReader.ErrorEmitter.On("full-reliable", fullReliableHandler, emitter.Void)
+
+	serverPacketReader.LayerEmitter.On("simple", simpleHandler, emitter.Void)
+	serverPacketReader.LayerEmitter.On("reliable", reliableHandler, emitter.Void)
+	serverPacketReader.LayerEmitter.On("full-reliable", fullReliableHandler, emitter.Void)
+	serverPacketReader.ErrorEmitter.On("simple", simpleHandler, emitter.Void)
+	serverPacketReader.ErrorEmitter.On("reliable", reliableHandler, emitter.Void)
+	serverPacketReader.ErrorEmitter.On("full-reliable", fullReliableHandler, emitter.Void)
+
+	for {
 		select {
-		case e := <- packetAggregate.On():
-			switch e.OriginalTopic {
-			case "simple":
-				simpleHandler(e.Args[0].(*PacketLayers))
-			case "full-reliable":
-				fullReliableHandler(e.Args[0].(*PacketLayers))
-			case "reliable":
-				reliableHandler(e.Args[0].(*PacketLayers))
-				// ACK and reliabilitylayer are nops
-			}
 		case <-captureJobContext.Done():
 			return
 		case packet := <-packetChannel:

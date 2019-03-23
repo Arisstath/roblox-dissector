@@ -98,12 +98,12 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 	clientHalf.LayerEmitter.On("simple", func(e *emitter.Event) {
 		layers := e.Args[0].(*PacketLayers)
 		println("client simple", layers.PacketType)
-		if packetType == 5 {
+		if layers.PacketType == 5 {
 			println("recv 5, protocol type", layers.Main.(*Packet05Layer).ProtocolVersion)
 		}
 		serverHalf.WriteSimple(layers.Main)
 	}, emitter.Void)
-	serverHalf.LayerEmitter.On("simple", func(e *emitter.New) {
+	serverHalf.LayerEmitter.On("simple", func(e *emitter.Event) {
 		layers := e.Args[0].(*PacketLayers)
 		println("server simple", layers.PacketType)
 		clientHalf.WriteSimple(layers.Main)
@@ -145,17 +145,17 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 				switch subpacket.(type) {
 				case *Packet83_07:
 					evtPacket := subpacket.(*Packet83_07)
-					if evtPacket.EventName == "StatsAvailable" {
+					if evtPacket.Schema.Name == "StatsAvailable" {
 						println("(RobloxApp has detected a hacker) permanently dropping statspacket, codename = ", evtPacket.Event.Arguments[0].String())
 					} else {
 						modifiedSubpackets = append(modifiedSubpackets, subpacket)
 					}
 				case *Packet83_02:
 					instPacket := subpacket.(*Packet83_02)
-					if instPacket.Child.ClassName == "Player" {
-						println("patching osplatform", instPacket.Child.Name())
+					if instPacket.Schema.Name == "Player" {
+						println("patching osplatform", instPacket.Instance.Name())
 						// patch OsPlatform!
-						instPacket.Child.Set("OsPlatform", rbxfile.ValueString(writer.SecuritySettings.OsPlatform()))
+						instPacket.Instance.Set("OsPlatform", rbxfile.ValueString(writer.SecuritySettings.OsPlatform()))
 					}
 					modifiedSubpackets = append(modifiedSubpackets, subpacket)
 				case *Packet83_09:
@@ -245,8 +245,8 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 	// nop ack handler
 
 	// bind default packet handlers so the DataModel is updated accordingly
-	clientHalf.BindDefaultHandlers()
-	serverHalf.BindDefaultHandlers()
+	clientHalf.BindDataModelHandlers()
+	serverHalf.BindDataModelHandlers()
 
 	writer.ClientHalf = clientHalf
 	writer.ServerHalf = serverHalf
