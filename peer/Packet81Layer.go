@@ -199,3 +199,7 @@ func (layer *Packet81Layer) Serialize(writer PacketWriter, stream *extendedWrite
 func (layer *Packet81Layer) String() string {
 	return fmt.Sprintf("ID_SET_GLOBALS: %d services", len(layer.Items))
 }
+
+func (Packet81Layer) TypeString() string {
+	return "ID_SET_GLOBALS"
+}

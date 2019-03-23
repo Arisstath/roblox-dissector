@@ -132,6 +132,9 @@ func (layer *Packet05Layer) Serialize(writer PacketWriter, stream *extendedWrite
 func (layer *Packet05Layer) String() string {
 	return fmt.Sprintf("ID_OPEN_CONNECTION_REQUEST_1: Version %d", layer.ProtocolVersion)
 }
+func (Packet05Layer) TypeString() string {
+	return "ID_OPEN_CONNECTION_REQUEST_1"
+}
 
 func (thisBitstream *extendedReader) DecodePacket06Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket06Layer()
@@ -177,6 +180,9 @@ func (layer *Packet06Layer) Serialize(writer PacketWriter, stream *extendedWrite
 func (layer *Packet06Layer) String() string {
 	return "ID_OPEN_CONNECTION_REPLY_1"
 }
+func (Packet06Layer) TypeString() string {
+	return "ID_OPEN_CONNECTION_REPLY_1"
+}
 
 func (thisBitstream *extendedReader) DecodePacket07Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket07Layer()
@@ -220,6 +226,9 @@ func (layer *Packet07Layer) Serialize(writer PacketWriter, stream *extendedWrite
 	return err
 }
 func (layer *Packet07Layer) String() string {
+	return "ID_OPEN_CONNECTION_REQUEST_2"
+}
+func (Packet07Layer) TypeString() string {
 	return "ID_OPEN_CONNECTION_REQUEST_2"
 }
 
@@ -275,6 +284,9 @@ func (layer *Packet08Layer) Serialize(writer PacketWriter, stream *extendedWrite
 func (layer *Packet08Layer) String() string {
 	return "ID_OPEN_CONNECTION_REPLY_2"
 }
+func (Packet08Layer) TypeString() string {
+	return "ID_OPEN_CONNECTION_REPLY_2"
+}
 
 func (thisBitstream *extendedReader) DecodePacket09Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket09Layer()
@@ -322,6 +334,9 @@ func (layer *Packet09Layer) Serialize(writer PacketWriter, stream *extendedWrite
 }
 func (layer *Packet09Layer) String() string {
 	return fmt.Sprintf("ID_CONNECTION_REQUEST: Password %X", layer.Password)
+}
+func (Packet09Layer) TypeString() string {
+	return "ID_CONNECTION_REQUEST"
 }
 
 func (thisBitstream *extendedReader) DecodePacket10Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
@@ -383,6 +398,9 @@ func (layer *Packet10Layer) Serialize(writer PacketWriter, stream *extendedWrite
 func (layer *Packet10Layer) String() string {
 	return "ID_CONNECTION_ACCEPTED"
 }
+func (Packet10Layer) TypeString() string {
+	return "ID_CONNECTION_ACCEPTED"
+}
 
 func (thisBitstream *extendedReader) DecodePacket13Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket13Layer()
@@ -433,5 +451,9 @@ func (layer *Packet13Layer) Serialize(writer PacketWriter, stream *extendedWrite
 	return err
 }
 func (layer *Packet13Layer) String() string {
+	return "ID_NEW_INCOMING_CONNECTION"
+}
+
+func (Packet13Layer) TypeString() string {
 	return "ID_NEW_INCOMING_CONNECTION"
 }

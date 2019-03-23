@@ -270,3 +270,7 @@ func (layer *Packet85Layer) Serialize(writer PacketWriter, stream *extendedWrite
 func (layer *Packet85Layer) String() string {
 	return fmt.Sprintf("ID_PHYSICS: %d items", len(layer.SubPackets))
 }
+
+func (Packet85Layer) TypeString() string {
+	return "ID_PHYSICS"
+}

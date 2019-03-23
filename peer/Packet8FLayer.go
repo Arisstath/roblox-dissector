@@ -31,3 +31,7 @@ func (layer *Packet8FLayer) Serialize(writer PacketWriter, stream *extendedWrite
 func (layer *Packet8FLayer) String() string {
 	return fmt.Sprintf("ID_PREFERRED_SPAWN_NAME: %s", layer.SpawnName)
 }
+
+func (Packet8FLayer) TypeString() string {
+	return "ID_PREFERRED_SPAWN_NAME"
+}

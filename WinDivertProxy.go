@@ -48,14 +48,16 @@ func captureFromWinDivertProxy(realServerAddr string, captureJobContext context.
 	proxyWriter.SecuritySettings = peer.Win10Settings()
 	proxyWriter.RuntimeContext, proxyWriter.CancelFunc = context.WithCancel(captureJobContext)
 
-	proxyWriter.ClientHalf.OutputHandler = func(p []byte) { // writes TO client
+	proxyWriter.ClientHalf.Output.On("udp", func(e *emitter.Event) { // writes TO client
+		p := e.Args[0].([]byte)
 		err := divertConnection.SendUDP(p, proxyWriter.ServerAddr, proxyWriter.ClientAddr, false, ifIdx, subIfIdx)
 		if err != nil {
 			fmt.Println("write fail to client %s/%d/%d: %s", proxyWriter.ClientAddr.String(), ifIdx, subIfIdx, err.Error())
 			return
 		}
 	}
-	proxyWriter.ServerHalf.OutputHandler = func(p []byte) { // writes TO server
+	proxyWriter.ServerHalf.Output.On("udp", func(e *emitter.Event) { // writes TO server
+		p := e.Args[0].([]byte)
 		err := divertConnection.SendUDP(p, proxyWriter.ClientAddr, proxyWriter.ServerAddr, true, ifIdx, subIfIdx)
 		if err != nil {
 			fmt.Println("write fail to server %d/%d: %s", ifIdx, subIfIdx, err.Error())

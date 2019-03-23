@@ -19,6 +19,7 @@ const DEBUG bool = true
 type RakNetPacket interface {
 	fmt.Stringer
 	Serialize(writer PacketWriter, stream *extendedWriter) error
+	TypeString() string
 }
 
 type RootLayer struct {
@@ -48,9 +49,12 @@ type PacketLayers struct {
 	// Timestamped packets (i.e. physics packets) may have a Timestamp layer.
 	Timestamp *Packet1BLayer
 	// Almost all packets have a Main layer. The exceptions to this are ACKs and NAKs.
-	Main interface{}
+	Main RakNetPacket
 	// Possible parsing error?
 	Error error
+
+	PacketType byte
+	Subpacket  Packet83Subpacket
 }
 
 // ACKRange describes the range of an ACK or an NAK.

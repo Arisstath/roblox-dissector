@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gskartwii/roblox-dissector/datamodel"
+	"github.com/olebedev/emitter"
 )
 
 // TODO: Filtering?
@@ -38,12 +39,12 @@ func (client *ServerClient) ReadPacket(buf []byte) {
 }
 
 func (client *ServerClient) createWriter() {
-	client.OutputHandler = func(payload []byte) {
-		num, err := client.Connection.WriteToUDP(payload, client.Address)
+	client.Output.On("udp", func(e *emitter.Event) {
+		num, err := client.Connection.WriteToUDP(e.Args[0].([]byte), client.Address)
 		if err != nil {
 			fmt.Printf("Wrote %d bytes, err: %s\n", num, err.Error())
 		}
-	}
+	})
 }
 
 func (client *ServerClient) Init() {

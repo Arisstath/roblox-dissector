@@ -44,20 +44,22 @@ func captureFromInjectionProxy(src string, dst string, captureJobContext context
 	proxyWriter.SecuritySettings = peer.Win10Settings()
 	proxyWriter.RuntimeContext, proxyWriter.CancelFunc = context.WithCancel(captureJobContext)
 
-	proxyWriter.ClientHalf.OutputHandler = func(p []byte) {
+	proxyWriter.ClientHalf.Output.On("udp", func(e *emitter.Event) {
+		p := e.Args[0].([]byte)
 		_, err := conn.WriteToUDP(p, proxyWriter.ClientAddr)
 		if err != nil {
 			fmt.Println("write fail to client %s: %s", proxyWriter.ClientAddr.String(), err.Error())
 			return
 		}
-	}
-	proxyWriter.ServerHalf.OutputHandler = func(p []byte) {
+	}, emitter.Void)
+	proxyWriter.ServerHalf.Output.On("udp", func(e *emitter.Event) {
+		p := e.Args[0].([]byte)
 		_, err := dstConn.Write(p)
 		if err != nil {
 			fmt.Println("write fail to server: %s", err.Error())
 			return
 		}
-	}
+	}, emitter.Void)
 
 	var n int
 	packetChan := make(chan ProxiedPacket, 100)

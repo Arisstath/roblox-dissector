@@ -31,13 +31,13 @@ func captureJob(handle *pcap.Handle, useIPv4 bool, captureJobContext context.Con
 		}
 	}()
 
-	simpleHandler := func(packetType byte, layers *peer.PacketLayers) {
+	simpleHandler := func(layers *peer.PacketLayers) {
 		packetViewer.AddFullPacket(packetType, context, layers, ActivationCallbacks[packetType])
 	}
-	reliableHandler := func(packetType byte, layers *peer.PacketLayers) {
+	reliableHandler := func(layers *peer.PacketLayers) {
 		packetViewer.AddSplitPacket(packetType, context, layers)
 	}
-	fullReliableHandler := func(packetType byte, layers *peer.PacketLayers) {
+	fullReliableHandler := func(layers *peer.PacketLayers) {
 		// special hook: we do not have a way to send specific security settings to the parser
 		if packetType == 0x8A && layers.Error == nil {
 			layer := layers.Main.(*peer.Packet8ALayer)
@@ -49,12 +49,15 @@ func captureJob(handle *pcap.Handle, useIPv4 bool, captureJobContext context.Con
 	clientPacketReader := peer.NewPacketReader()
 	serverPacketReader := peer.NewPacketReader()
 
-	clientPacketReader.SimpleHandler.BindAll(simpleHandler)
-	clientPacketReader.ReliableHandler.BindAll(reliableHandler)
-	clientPacketReader.FullReliableHandler.BindAll(fullReliableHandler)
-	serverPacketReader.SimpleHandler.BindAll(simpleHandler)
-	serverPacketReader.ReliableHandler.BindAll(reliableHandler)
-	serverPacketReader.FullReliableHandler.BindAll(fullReliableHandler)
+	packetAggregate := &emitter.Group{Cap: 0}
+	// even errors can be grouped to the same channel! they are handled by GUIManager
+	packetAggregate.Add(
+		clientPacketReader.LayerEmitter.On("*", emitter.Sync),
+		clientPacketReader.ErrorEmitter.On("*", emitter.Sync),
+		serverPacketReader.LayerEmitter.On("*", emitter.Sync),
+		serverPacketReader.ErrorEmitter.On("*", emitter.Sync),
+	)
+	
 	// ACK and ReliabilityLayer are nops
 
 	clientPacketReader.SetContext(context)
@@ -65,6 +68,16 @@ func captureJob(handle *pcap.Handle, useIPv4 bool, captureJobContext context.Con
 
 	for true {
 		select {
+		case e := <- packetAggregate.On():
+			switch e.OriginalTopic {
+			case "simple":
+				simpleHandler(e.Args[0].(*PacketLayers))
+			case "full-reliable":
+				fullReliableHandler(e.Args[0].(*PacketLayers))
+			case "reliable":
+				reliableHandler(e.Args[0].(*PacketLayers))
+				// ACK and reliabilitylayer are nops
+			}
 		case <-captureJobContext.Done():
 			return
 		case packet := <-packetChannel:

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gskartwii/roblox-dissector/datamodel"
+	"github.com/olebedev/emitter"
 	"github.com/robloxapi/rbxfile"
 )
 
@@ -99,7 +100,7 @@ func (logicHandler *PacketLogicHandler) sendDataPingBack() {
 		println("Failed to send datapingback:", err.Error())
 	}
 }
-func (logicHandler *PacketLogicHandler) dataPingHandler(packetType uint8, layers *PacketLayers, item Packet83Subpacket) {
+func (logicHandler *PacketLogicHandler) dataPingHandler(e *emitter.Event) {
 	logicHandler.sendDataPingBack()
 }
 
@@ -140,11 +141,14 @@ func (logicHandler *PacketLogicHandler) pingHandler(packetType byte, layers *Pac
 
 func (logicHandler *PacketLogicHandler) bindDefaultHandlers() {
 	// common to all peers
-	dataHandlers := logicHandler.DataHandler
-	dataHandlers.Bind(5, logicHandler.dataPingHandler)
+	dataHandlers := logicHandler.DataEmitter
+	dataHandlers.On("ID_REPLIC_PING", logicHandler.dataPingHandler)
 
-	basicHandlers := logicHandler.FullReliableHandler
-	basicHandlers.Bind(0x15, logicHandler.disconnectHandler)
+	basicHandlers := logicHandler.PacketEmitter
+	basicHandlers.On("ID_DISCONNECTION_NOTIFICATION", logicHandler.disconnectHandler)
+
+	// do NOT call PacketReader.BindDefaultHandlers() here!
+	// ServerClients are packet readers which don't want that
 }
 
 func (logicHandler *PacketLogicHandler) WriteDataPackets(packets ...Packet83Subpacket) error {
@@ -214,4 +218,14 @@ func (logicHandler *PacketLogicHandler) ReplicateJoinData(rootInstance *datamode
 
 func (logicHandler *PacketLogicHandler) SendHackFlag(player *datamodel.Instance, flag string) error {
 	return logicHandler.SendEvent(player, "StatsAvailable", rbxfile.ValueString(flag))
+}
+
+func (logicHandler *PacketLogicHandler) ReplicateInstance(inst *datamodel.Instance, deleteOnDisconnect bool) {
+	repInstance := &ReplicationInstance{}
+	repInstance.DeleteOnDisconnect = deleteOnDisconnect
+	repInstance.Instance = inst
+	repInstance.Parent = inst.Parent()
+	repInstance.Schema = logicHandler.Context.StaticSchema.SchemaForClass(inst.ClassName)
+
+	return client.WriteDataPackets(&Packet83_02{repInstance})
 }

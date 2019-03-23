@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gskartwii/roblox-dissector/datamodel"
+	"github.com/olebedev/emitter"
 	"github.com/robloxapi/rbxfile"
 )
 
@@ -35,18 +36,19 @@ func (myClient *CustomClient) disconnectionLogger(packetType uint8, layers *Pack
 }
 
 func (myClient *CustomClient) bindDefaultHandlers() {
+	// let the DataModel be updated properly
+	myClient.DefaultPacketReader.BindDefaultHandlers()
 	myClient.PacketLogicHandler.bindDefaultHandlers()
 
-	simpleHandlers := myClient.SimpleHandler
-	simpleHandlers.Bind(6, myClient.simple6Handler)
-	simpleHandlers.Bind(8, myClient.simple8Handler)
-	basicHandlers := myClient.FullReliableHandler
-	basicHandlers.Bind(0x10, myClient.packet10Handler)
-	basicHandlers.Bind(0x15, myClient.disconnectionLogger)
-	basicHandlers.Bind(0x81, myClient.topReplicationHandler)
+	emitter := myClient.PacketEmitter
+	emitter.On("ID_OPEN_CONNECTION_REPLY_1", myClient.simple6Handler)
+	emitter.On("ID_OPEN_CONNECTION_REPLY_2", myClient.simple8Handler)
+	emitter.On("ID_CONNECTION_ACCEPTED", myClient.packet10Handler)
+	emitter.On("ID_DISCONNECTION_NOTIFICATION", myClient.disconnectionLogger)
+	emitter.On("ID_SET_GLOBALS", myClient.topReplicationHandler)
 
-	dataHandlers := myClient.DataHandler
-	dataHandlers.Bind(9, myClient.idChallengeHandler)
+	dataHandlers := myClient.DataEmitter
+	dataHandlers.On("ID_REPLIC_ROCKY", myClient.idChallengeHandler)
 
 	// Even though this could be compressed into a single function call,
 	// we won't do that because the chan receive MUST be executed inside
@@ -64,7 +66,7 @@ func (myClient *CustomClient) sendResponse7() {
 		IPAddress: &myClient.ServerAddress,
 	})
 }
-func (myClient *CustomClient) simple6Handler(packetType byte, layers *PacketLayers) {
+func (myClient *CustomClient) simple6Handler(e *emitter.Event) {
 	myClient.Connected = true
 	myClient.sendResponse7()
 }
@@ -82,7 +84,7 @@ func (myClient *CustomClient) sendResponse9() {
 		println("Failed to write response9: ", err.Error())
 	}
 }
-func (myClient *CustomClient) simple8Handler(packetType byte, layers *PacketLayers) {
+func (myClient *CustomClient) simple8Handler(e *emitter.Event) {
 	myClient.sendResponse9()
 }
 
@@ -175,8 +177,8 @@ func (myClient *CustomClient) sendSpawnName() {
 		println("Failed to write response8F: ", err.Error())
 	}
 }
-func (myClient *CustomClient) packet10Handler(packetType uint8, layers *PacketLayers) {
-	mainLayer := layers.Main.(*Packet10Layer)
+func (myClient *CustomClient) packet10Handler(e *emitter.Event) {
+	mainLayer := e.Args[0].(*Packet10Layer)
 
 	myClient.sendResponse13(mainLayer.SendPongTime)
 	// RakNet sends two pings when connecting
@@ -370,8 +372,8 @@ func (myClient *CustomClient) StalkPlayer(name string) {
 	currentPosition := myRootPart.Get("CFrame").(rbxfile.ValueCFrame).Position
 	currentHumanoidState := uint8(8)
 
-	myClient.RegisterPacketHandler(0x85, func(packetType uint8, layers *PacketLayers) {
-		mainLayer := layers.Main.(*Packet85Layer)
+	myClient.PacketEmitter.On("ID_PHYSICS", func(e *emitter.Event) {
+		mainLayer := e.Args[0].(*Packet85Layer)
 		for _, packet := range mainLayer.SubPackets {
 			if packet.Data.Instance == targetRootPart {
 				if len(packet.History) > 0 {

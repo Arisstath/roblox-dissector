@@ -55,3 +55,7 @@ func (layer *Packet87Layer) Serialize(writer PacketWriter, stream *extendedWrite
 func (layer *Packet87Layer) String() string {
 	return fmt.Sprintf("ID_CHAT_ALL: <%s>", layer.Instance.GetFullName())
 }
+
+func (Packet87Layer) TypeString() string {
+	return "ID_CHAT_ALL"
+}

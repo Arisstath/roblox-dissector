@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/gskartwii/roblox-dissector/datamodel"
+	"github.com/olebedev/emitter"
 	"github.com/pierrec/xxHash/xxHash32"
 	"github.com/robloxapi/rbxfile"
 )
@@ -491,12 +492,12 @@ func (myClient *CustomClient) mainReadLoop() error {
 }
 
 func (myClient *CustomClient) createWriter() {
-	myClient.OutputHandler = func(payload []byte) {
-		num, err := myClient.Connection.Write(payload)
+	myClient.Output.On("udp", func(e *emitter.Event) {
+		num, err := myClient.Connection.Write(e.Args[0].([]byte))
 		if err != nil {
 			fmt.Printf("Wrote %d bytes, err: %s\n", num, err.Error())
 		}
-	}
+	})
 }
 
 // TODO: Implement with contexts

@@ -110,3 +110,7 @@ func (layer *Packet93Layer) Serialize(writer PacketWriter, stream *extendedWrite
 func (layer *Packet93Layer) String() string {
 	return fmt.Sprintf("ID_DICTIONARY_FORMAT: %d flags", len(layer.Params))
 }
+
+func (Packet93Layer) TypeString() string {
+	return "ID_DICTIONARY_FORMAT"
+}

@@ -5,6 +5,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/olebedev/emitter"
 	"github.com/robloxapi/rbxfile"
 )
 
@@ -94,42 +95,32 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 	clientHalf := NewProxyHalf(context, true)
 	serverHalf := NewProxyHalf(context, false)
 
-	clientHalf.SimpleHandler.BindAll(func(packetType byte, layers *PacketLayers) {
-		if layers.Error != nil {
-			println("client error: ", layers.Error.Error())
-			return
-		}
-		println("client simple", packetType)
+	clientHalf.LayerEmitter.On("simple", func(e *emitter.Event) {
+		layers := e.Args[0].(*PacketLayers)
+		println("client simple", layers.PacketType)
 		if packetType == 5 {
 			println("recv 5, protocol type", layers.Main.(*Packet05Layer).ProtocolVersion)
 		}
-		serverHalf.WriteSimple(layers.Main.(RakNetPacket))
-	})
-	serverHalf.SimpleHandler.BindAll(func(packetType byte, layers *PacketLayers) {
-		if layers.Error != nil {
-			println("server error: ", layers.Error.Error())
-			return
-		}
-		println("server simple", packetType)
-		clientHalf.WriteSimple(layers.Main.(RakNetPacket))
-	})
+		serverHalf.WriteSimple(layers.Main)
+	}, emitter.Void)
+	serverHalf.LayerEmitter.On("simple", func(e *emitter.New) {
+		layers := e.Args[0].(*PacketLayers)
+		println("server simple", layers.PacketType)
+		clientHalf.WriteSimple(layers.Main)
+	}, emitter.Void)
 
-	clientHalf.ReliabilityLayerHandler.BindAll(func(_ uint8, layers *PacketLayers) {
-		if layers.Error != nil {
-			println("client error: ", layers.Error.Error())
-			return
-		}
+	clientHalf.LayerEmitter.On("reliability", func(e *emitter.Event) {
+		layers := e.Args[0].(*PacketLayers)
 		clientHalf.mustACK = append(clientHalf.mustACK, int(layers.RakNet.DatagramNumber))
-	})
-	serverHalf.ReliabilityLayerHandler.BindAll(func(_ uint8, layers *PacketLayers) {
-		if layers.Error != nil {
-			println("server error: ", layers.Error.Error())
-			return
-		}
+	}, emitter.Void)
+	serverHalf.LayerEmitter.On("reliability", func(e *emitter.Event) {
+		layers := e.Args[0].(*PacketLayers)
 		serverHalf.mustACK = append(serverHalf.mustACK, int(layers.RakNet.DatagramNumber))
-	})
+	}, emitter.Void)
 
-	clientHalf.FullReliableHandler.BindAll(func(packetType byte, layers *PacketLayers) {
+	clientHalf.LayerEmitter.On("full-reliable", func(e *emitter.Event) {
+		layers := e.Args[0].(*PacketLayers)
+		packetType := layers.PacketType
 		// FIXME: No streaming support
 		//println("client fullreliable", packetType)
 		var err error
@@ -218,8 +209,11 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 		if err != nil {
 			println("client error:", err.Error())
 		}
-	})
-	serverHalf.FullReliableHandler.BindAll(func(packetType byte, layers *PacketLayers) {
+	}, emitter.Void)
+
+	serverHalf.LayerEmitter.On("full-reliable", func(e *emitter.Event) {
+		layers := e.Args[0].(*PacketLayers)
+		packetType := layers.PacketType
 		if layers.Error != nil {
 			println("server error: ", layers.Error.Error())
 			return
@@ -241,20 +235,18 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 			println("Disconnected by server!!")
 			writer.CancelFunc()
 		}
-	})
-	clientHalf.ReliableHandler.BindAll(func(packetType byte, layers *PacketLayers) {
-		if layers.Error != nil {
-			println("client error: ", layers.Error.Error())
-			return
-		}
-	})
-	serverHalf.ReliableHandler.BindAll(func(packetType byte, layers *PacketLayers) {
-		if layers.Error != nil {
-			println("server error: ", layers.Error.Error())
-			return
-		}
-	})
+	}, emitter.Void)
+	clientHalf.ErrorEmitter.On("*", func(e *emitter.Event) {
+		println("client error on topic", e.OriginalTopic+":", e.Args[0].(*PacketLayers).Error.Error())
+	}, emitter.Void)
+	serverHalf.ErrorEmitter.On("*", func(e *emitter.Event) {
+		println("server error on topic", e.OriginalTopic+":", e.Args[0].(*PacketLayers).Error.Error())
+	}, emitter.Void)
 	// nop ack handler
+
+	// bind default packet handlers so the DataModel is updated accordingly
+	clientHalf.BindDefaultHandlers()
+	serverHalf.BindDefaultHandlers()
 
 	writer.ClientHalf = clientHalf
 	writer.ServerHalf = serverHalf
@@ -273,21 +265,3 @@ func (writer *ProxyWriter) ProxyClient(payload []byte, layers *PacketLayers) {
 func (writer *ProxyWriter) ProxyServer(payload []byte, layers *PacketLayers) {
 	writer.ServerHalf.ReadPacket(payload, layers)
 }
-
-// InjectServer should be called when an injected packet should be sent to
-// the server. [WIP]
-/*func (writer *ProxyWriter) InjectServer(packet RakNetPacket) {
-	olddn := writer.ServerHalf.Writer.datagramNumber
-	writer.ServerHalf.Writer.WriteGeneric(
-		writer.ServerHalf.Reader.Context,
-		0x83,
-		packet,
-		0,
-		writer.ServerAddr,
-	) // Unreliable packets, might improve this sometime
-	for i := olddn; i < writer.ServerHalf.Writer.datagramNumber; i++ {
-		println("adding fakepacket", i)
-		writer.ServerHalf.fakePackets = append(writer.ServerHalf.fakePackets, i)
-	}
-}
-*/

@@ -1,10 +1,13 @@
 package peer
 
-import "errors"
-import "fmt"
+import (
+	"errors"
+	"fmt"
+	"log"
+	"strings"
 
-import "strings"
-import "log"
+	"github.com/olebedev/emitter"
+)
 
 type decoderFunc func(*extendedReader, PacketReader, *PacketLayers) (RakNetPacket, error)
 
@@ -74,25 +77,21 @@ func (handler *contextualHandler) SetContext(val *CommunicationContext) {
 // to receive the results
 type DefaultPacketReader struct {
 	contextualHandler
-	// Callback for "simple" packets (pre-connection offline packets).
-	SimpleHandler RawPacketHandlerMap
-	// Callback for ReliabilityLayer subpackets. This callback is invoked for every
-	// split of every packets, possible duplicates, etc.
-	ReliableHandler RawPacketHandlerMap
-	// Callback for generic packets (anything that is sent when a connection has been
-	// established. You definitely want to bind to this.
-	FullReliableHandler RawPacketHandlerMap
-	// Callback for ACKs and NAKs. Not very useful if you're just parsing packets.
-	// However, you want to bind to this if you are writing a peer.
-	// ACKHandler uses a packet type of 0, but you can just use BindAll()
-	ACKHandler RawPacketHandlerMap
-	// Callback for ReliabilityLayer full packets. This callback is invoked for every
-	// real ReliabilityLayer.
-	// ReliabilityLayerHandler uses a packet type of 0, but you can just use BindAll()
-	ReliabilityLayerHandler RawPacketHandlerMap
+	// LayerEmitter provides a low-level interface for receiving packets
+	// Topics: full-reliable, simple, reliable, reliability, ack
+	LayerEmitter *emitter.Emitter
+	// ErrorEmitter is the same as LayerEmitter, except invoked when layers.Error != nil ErrorEmitter *emitter.Emitter
+	ErrorEmitter *emitter.Emitter
 
-	DataHandler DataPacketHandlerMap
-	isClient    bool
+	// PacketEmitter provides a high-level interface for receiving simple and reliable packets
+	// Channels correspond to TypeString() return values
+	PacketEmitter *emitter.Emitter
+
+	// DataEmitter provides a high-level interface for receiving ID_REPLICATION_DATA subpackets
+	// These channels correspond to TypeString() return values
+	DataEmitter *emitter.Emitter
+
+	isClient bool
 
 	queues       *queues
 	splitPackets splitPacketList
@@ -107,22 +106,25 @@ func (reader *DefaultPacketReader) SetIsClient(val bool) {
 
 func NewPacketReader() *DefaultPacketReader {
 	reader := &DefaultPacketReader{
-		queues:                  newPeerQueues(),
-		SimpleHandler:           NewRawPacketHandlerMap(),
-		ACKHandler:              NewRawPacketHandlerMap(),
-		FullReliableHandler:     NewRawPacketHandlerMap(),
-		ReliabilityLayerHandler: NewRawPacketHandlerMap(),
-		ReliableHandler:         NewRawPacketHandlerMap(),
-		DataHandler:             NewDataHandlerMap(),
+		queues:        newPeerQueues(),
+		LayerEmitter:  emitter.New(8),
+		ErrorEmitter:  emitter.New(8),
+		PacketEmitter: emitter.New(8),
+		DataEmitter:   emitter.New(8),
 	}
 
-	reader.FullReliableHandler.Bind(0x83, func(_ uint8, layers *PacketLayers) {
-		for _, sub := range layers.Main.(*Packet83Layer).SubPackets {
-			reader.DataHandler.Fire(sub.Type(), sub)
-		}
-	})
+	go reader.bindBasicPacketHandler()
+	go reader.bindDataPacketHandler()
 
 	return reader
+}
+
+func (reader *DefaultPacketReader) emitLayers(topic string, layers *PacketLayers) {
+	if layers.Error != nil {
+		reader.ErrorEmitter.Emit(topic, layers)
+	} else {
+		reader.LayerEmitter.Emit(topic, layers)
+	}
 }
 
 func (reader *DefaultPacketReader) readSimple(stream *extendedReader, packetType uint8, layers *PacketLayers) {
@@ -137,12 +139,12 @@ func (reader *DefaultPacketReader) readSimple(stream *extendedReader, packetType
 		}
 	}
 
-	reader.SimpleHandler.Fire(packetType, layers)
+	reader.emitLayers("simple", layers)
 }
 
-func (reader *DefaultPacketReader) readGeneric(stream *extendedReader, packetType uint8, layers *PacketLayers) {
+func (reader *DefaultPacketReader) readGeneric(stream *extendedReader, layers *PacketLayers) {
 	var err error
-	if packetType == 0x1B { // ID_TIMESTAMP
+	if layers.PacketType == 0x1B { // ID_TIMESTAMP
 		tsLayer, err := packetDecoders[0x1B](stream, reader, layers)
 		if err != nil {
 			println("timestamp fail")
@@ -160,8 +162,9 @@ func (reader *DefaultPacketReader) readGeneric(stream *extendedReader, packetTyp
 		}
 		layers.Reliability.SplitBuffer.PacketType = packetType
 		layers.Reliability.SplitBuffer.HasPacketType = true
+		layers.PacketType = PacketType
 	}
-	decoder := packetDecoders[layers.Reliability.SplitBuffer.PacketType]
+	decoder := packetDecoders[layers.PacketType]
 	// TODO: Should we really void partial deserializations?
 	if decoder != nil {
 		layers.Main, err = decoder(stream, reader, layers)
@@ -170,7 +173,7 @@ func (reader *DefaultPacketReader) readGeneric(stream *extendedReader, packetTyp
 			println("parser error, setting main to nil", err.Error())
 			layers.Main = nil
 			layers.Reliability.SplitBuffer.Logger.Println("error:", err.Error())
-			layers.Error = fmt.Errorf("Failed to decode reliable packet %02X: %s", layers.Reliability.SplitBuffer.PacketType, err.Error())
+			layers.Error = fmt.Errorf("Failed to decode reliable packet %02X: %s", layers.PacketType, err.Error())
 		}
 	}
 }
@@ -187,12 +190,13 @@ func (reader *DefaultPacketReader) readOrdered(layers *PacketLayers) {
 			subPacket.SplitBuffer.Logger.Println("error:", err.Error())
 			layers.Error = fmt.Errorf("Failed to decode reliablePacket type %d: %s", packetType, err.Error())
 		} else {
+			layers.PacketType = packetType
 			reader.readGeneric(buffer.dataReader, packetType, layers)
 		}
 
 		// fullreliablehandler, regardless of whether the parsing succeeded or not!
 		// this is because readGeneric will have set the Error and Main layers accordingly
-		reader.FullReliableHandler.Fire(layers.Reliability.SplitBuffer.PacketType, layers)
+		reader.emitLayers("full-reliable", layers)
 	}
 }
 
@@ -201,27 +205,29 @@ func (reader *DefaultPacketReader) readReliable(layers *PacketLayers) {
 	reliabilityLayer, err := stream.DecodeReliabilityLayer(reader, layers)
 	if err != nil {
 		layers.Error = errors.New("Failed to decode reliable packet: " + err.Error())
-		reader.ReliabilityLayerHandler(0, layers)
+		reader.emitLayers("reliability", layers)
 		return
 	}
 
 	queues := reader.queues
 
-	reader.ReliabilityLayerHandler(0, layers)
+	reader.emitLayers("reliability", layers)
 	for _, subPacket := range reliabilityLayer.Packets {
 		reliablePacketLayers := &PacketLayers{Root: layers.Root, RakNet: layers.RakNet, Reliability: subPacket}
 
 		buffer, err := reader.handleSplitPacket(reliablePacketLayers)
 		subPacket.SplitBuffer = buffer
+		reliablePacketLayers.PacketType = buffer.PacketType
+
 		if err != nil {
 			println("error while handling split")
 			subPacket.SplitBuffer.Logger.Println("error while handling split:", err.Error())
 			reliablePacketLayers.Error = fmt.Errorf("Error while handling split packet: %s", err.Error())
-			reader.ReliableHandler.Fire(buffer.PacketType, reliablePacketLayers)
+			reader.emitLayers("reliable", reliablePacketLayers)
 			return
 		}
 
-		reader.ReliableHandler.Fire(buffer.PacketType, reliablePacketLayers)
+		reader.emitLayers("reliable", reliablePacketLayers)
 		queues.add(reliablePacketLayers)
 		if reliablePacketLayers.Reliability.Reliability == 0 {
 			reader.readOrdered(reliablePacketLayers)
@@ -244,21 +250,24 @@ func (reader *DefaultPacketReader) readReliable(layers *PacketLayers) {
 func (reader *DefaultPacketReader) ReadPacket(payload []byte, layers *PacketLayers) {
 	stream := bufferToStream(payload)
 	rakNetLayer, err := stream.DecodeRakNetLayer(reader, payload[0], layers)
+	layers.PacketType = payload[0]
 	if err != nil {
 		layers.Error = err
-		reader.SimpleHandler.Fire(payload[0], layers)
+		// packetType = payload[0]
+		reader.emitLayers("simple", layers)
 		return
 	}
 
 	layers.RakNet = rakNetLayer
 	if rakNetLayer.IsSimple {
 		packetType := rakNetLayer.SimpleLayerID
+		layers.PacketType = packetType
 		reader.readSimple(stream, packetType, layers)
 	} else if !rakNetLayer.IsValid {
 		layers.Error = fmt.Errorf("Sent invalid packet (packet header %x)", payload[0])
-		reader.SimpleHandler.Fire(payload[0], layers)
+		reader.emitLayers("simple", layers)
 	} else if rakNetLayer.IsACK || rakNetLayer.IsNAK {
-		reader.ACKHandler.Fire(0, layers)
+		reader.emitLayers("ack", layers)
 	} else {
 		reader.readReliable(layers)
 	}
@@ -308,11 +317,59 @@ func (reader *DefaultPacketReader) HandlePacket81(packet Packet81Layer) error {
 	return nil
 }
 
-func (reader *DefaultPacketReader) BindDefaultHandlers() {
-	reader.FullReliableHandler.Bind(0x81, reader.HandlePacket81)
-	reader.DataHandler.Bind(1, reader.HandlePacket01)
-	reader.DataHandler.Bind(2, reader.HandlePacket02)
-	reader.DataHandler.Bind(3, reader.HandlePacket03)
-	reader.DataHandler.Bind(7, reader.HandlePacket07)
-	reader.DataHandler.Bind(0xB, reader.HandlePacket0B)
+func (reader *DefaultPacketReader) BindDataModelHandlers() {
+	topReplicHandler := reader.PacketEmitter.On("ID_SET_GLOBALS", emitter.Sync)
+	deleteInstance := reader.DataEmitter.On("ID_REPLIC_DELETE_INSTANCE", reader.HandlePacket01)
+	newInstance := reader.DataEmitter.On("ID_REPLIC_NEW_INSTANCE", reader.HandlePacket02)
+	prop := reader.DataEmitter.On("ID_REPLIC_PROP", reader.HandlePacket03)
+	event := reader.DataEmitter.On("ID_REPLIC_EVENT", reader.HandlePacket07)
+	joinData := reader.DataEmitter.On("ID_REPLIC_JOIN_DATA", reader.HandlePacket0B)
+	for {
+		select {
+		case e := <-topReplicHandler:
+			reader.HandlePacket81(e.Args[0].(*Packet81Layer))
+		case e := <-deleteInstance:
+			reader.HandlePacket01(e.Args[0].(*Packet83_01))
+		case e := <-newInstance:
+			reader.HandlePacket02(e.Args[0].(*Packet83_02))
+		case e := <-prop:
+			reader.HandlePacket03(e.Args[0].(*Packet83_03))
+		case e := <-event:
+			reader.HandlePacket07(e.Args[0].(*Packet83_07))
+		case e := <-joinData:
+			reader.HandlePacket0B(e.Args[0].(*Packet83_0B))
+		}
+	}
+}
+
+func (reader *DefaultPacketReader) bindBasicPacketHandler() {
+	// important: sync!
+	packetEmitterChan := reader.LayerEmitter.On("full-reliable", emitter.Sync)
+	for e := range packetEmitterChan {
+		layers := e.Args[0].(*PacketLayers)
+		<-reader.PacketEmitter.Emit(layers.Main.TypeString(), layers.Main, layers)
+	}
+}
+
+func (reader *DefaultPacketReader) bindDataPacketHandler() {
+	// important: sync!
+	dataEmitterChan := reader.PacketEmitter.On("ID_REPLICATION_DATA", emitter.Sync)
+
+	for e := range dataEmitterChan {
+		layers := e.Args[0].(*PacketLayers)
+		for _, sub := range layers.Main.(*Packet83Layer).SubPackets {
+			subLayers := &PacketLayers{
+				Root:        layers.Root,
+				RakNet:      layers.RakNet,
+				Reliability: layers.Reliability,
+				SplitPacket: layers.SplitPacket,
+				Timestamp:   layers.Timestamp,
+				Main:        layers.Main,
+				Error:       layers.Error,
+				PacketType:  sub.Type(),
+				Subpacket:   sub,
+			}
+			<-reader.DataEmitter.Emit(sub.TypeString(), sub, subLayers)
+		}
+	}
 }

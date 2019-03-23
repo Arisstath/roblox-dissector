@@ -42,3 +42,7 @@ func (layer *Packet96Layer) Serialize(writer PacketWriter, stream *extendedWrite
 func (layer *Packet96Layer) String() string {
 	return fmt.Sprintf("ID_REQUEST_STATS: Version %d", layer.Version)
 }
+
+func (Packet96Layer) TypeString() string {
+	return "ID_REQUEST_STATS"
+}

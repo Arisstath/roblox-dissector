@@ -190,3 +190,7 @@ func (layer *Packet8DLayer) Serialize(writer PacketWriter, stream *extendedWrite
 func (layer *Packet8DLayer) String() string {
 	return fmt.Sprintf("ID_CLUSTER: WIP")
 }
+
+func (Packet8DLayer) TypeString() string {
+	return "ID_CLUSTER"
+}

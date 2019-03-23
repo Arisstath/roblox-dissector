@@ -76,3 +76,7 @@ func (layer *Packet90Layer) Serialize(writer PacketWriter, stream *extendedWrite
 func (layer *Packet90Layer) String() string {
 	return fmt.Sprintf("ID_PROTOCOL_SYNC: Version %d, %d flags", layer.SchemaVersion, len(layer.RequestedFlags))
 }
+
+func (Packet90Layer) TypeString() string {
+	return "ID_PROTOCOL_SYNC"
+}

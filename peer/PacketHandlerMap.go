@@ -6,7 +6,7 @@ import (
 )
 
 // ReceiveHandler is a function that can receive a deserialized packet's layers
-type ReceiveHandler func(byte, *PacketLayers)
+type ReceiveHandler func(*PacketLayers)
 
 type packetHandlerWildCard struct{}
 

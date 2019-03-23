@@ -30,3 +30,7 @@ func (layer *Packet84Layer) Serialize(writer PacketWriter, stream *extendedWrite
 func (layer *Packet84Layer) String() string {
 	return fmt.Sprintf("ID_MARKER: %d", layer.MarkerId)
 }
+
+func (Packet84Layer) TypeString() string {
+	return "ID_MARKER"
+}

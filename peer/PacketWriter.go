@@ -1,7 +1,11 @@
 package peer
 
-import "github.com/gskartwii/go-bitstream"
-import "bytes"
+import (
+	"bytes"
+
+	bitstream "github.com/gskartwii/go-bitstream"
+	"github.com/olebedev/emitter"
+)
 
 func min(x, y uint) uint {
 	if x < y {
@@ -26,8 +30,8 @@ type PacketWriter interface {
 // and bind to the given callbacks
 type DefaultPacketWriter struct {
 	contextualHandler
-	// OutputHandler sends the data for all packets to be written.
-	OutputHandler   func([]byte)
+	// Output sends the byte slice to be sent via UDP
+	Output          *emitter.Emitter
 	orderingIndex   uint32
 	sequencingIndex uint32
 	splitPacketID   uint16
@@ -40,13 +44,17 @@ type DefaultPacketWriter struct {
 }
 
 func NewPacketWriter() *DefaultPacketWriter {
-	return &DefaultPacketWriter{}
+	return &DefaultPacketWriter{Output: emitter.New()}
 }
 func (writer *DefaultPacketWriter) ToClient() bool {
 	return writer.toClient
 }
 func (writer *DefaultPacketWriter) SetToClient(val bool) {
 	writer.toClient = val
+}
+
+func (writer *DefaultPacketWriter) output(bytes []byte) {
+	writer.Output.Emit("udp", bytes)
 }
 
 // WriteSimple is used to write pre-connection packets (IDs 5-8). It doesn't use a
@@ -61,7 +69,7 @@ func (writer *DefaultPacketWriter) WriteSimple(packet RakNetPacket) error {
 	}
 
 	stream.Flush(bitstream.Bit(false))
-	writer.OutputHandler(buffer.Bytes())
+	writer.output(buffer.Bytes())
 	return nil
 }
 
@@ -77,7 +85,7 @@ func (writer *DefaultPacketWriter) WriteRakNet(packet *RakNetLayer) error {
 	}
 
 	stream.Flush(bitstream.Bit(false))
-	writer.OutputHandler(buffer.Bytes())
+	writer.output(buffer.Bytes())
 	return nil
 }
 func (writer *DefaultPacketWriter) writeReliable(packet *ReliabilityLayer) error {

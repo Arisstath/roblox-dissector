@@ -41,7 +41,7 @@ var joinDataConfiguration = []JoinDataConfig{
 	JoinDataConfig{"LocalizationService", true, true},
 }
 
-func (client *ServerClient) simple5Handler(packetType byte, layers *PacketLayers) {
+func (client *ServerClient) simple5Handler(e *emitter.Event) {
 	println("Received connection!", client.Address.String())
 	client.WriteSimple(&Packet06Layer{
 		GUID:        client.Server.GUID,
@@ -49,7 +49,7 @@ func (client *ServerClient) simple5Handler(packetType byte, layers *PacketLayers
 		MTU:         1492,
 	})
 }
-func (client *ServerClient) simple7Handler(packetType byte, layers *PacketLayers) {
+func (client *ServerClient) simple7Handler(e *emitter.Event) {
 	println("Received reply 7!", client.Address.String())
 	client.WriteSimple(&Packet08Layer{
 		GUID:      client.Server.GUID,
@@ -57,7 +57,7 @@ func (client *ServerClient) simple7Handler(packetType byte, layers *PacketLayers
 		MTU:       1492,
 	})
 }
-func (client *ServerClient) connectionRequestHandler(packetType byte, layers *PacketLayers) {
+func (client *ServerClient) connectionRequestHandler(e *emitter.Event) {
 	nullIP, _ := net.ResolveUDPAddr("udp", "0.0.0.0:0")
 	println("received connection request!", client.Address.String())
 	client.WritePacket(&Packet10Layer{
@@ -80,10 +80,10 @@ func (client *ServerClient) connectionRequestHandler(packetType byte, layers *Pa
 	})
 }
 
-func (client *ServerClient) requestParamsHandler(packetType byte, layers *PacketLayers) {
+func (client *ServerClient) requestParamsHandler(e *emitter.Event) {
 	params := make(map[string]bool)
 
-	for _, flag := range layers.Main.(*Packet90Layer).RequestedFlags {
+	for _, flag := range e.Args[0].(*Packet90Layer).RequestedFlags {
 		value := false
 		switch flag {
 		case "UseNativePathWaypoint",
@@ -106,9 +106,9 @@ func (client *ServerClient) requestParamsHandler(packetType byte, layers *Packet
 	})
 }
 
-func (client *ServerClient) authHandler(packetType byte, layers *PacketLayers) {
+func (client *ServerClient) authHandler(e *emitter.Event) {
 	_, err := client.WritePacket(&Packet97Layer{
-		Schema: *client.Context.StaticSchema,
+		Schema: client.Context.StaticSchema,
 	})
 	if err != nil {
 		println("schema error: ", err.Error())
@@ -150,7 +150,7 @@ func (client *ServerClient) authHandler(packetType byte, layers *PacketLayers) {
 		return
 	}
 
-	err = client.WriteDataPackets(&Packet83_02{partTest})
+	err = client.ReplicateInstance(partTest)
 	if err != nil {
 		println("parttest error: ", err.Error())
 		return
@@ -201,11 +201,10 @@ func (client *ServerClient) authHandler(packetType byte, layers *PacketLayers) {
 
 func (client *ServerClient) bindDefaultHandlers() {
 	// TODO: Error handling?
-	simpleHandlers := client.SimpleHandler
-	simpleHandlers.Bind(0x05, client.simple5Handler)
-	simpleHandlers.Bind(0x07, client.simple7Handler)
-	basicHandlers := client.FullReliableHandler
-	basicHandlers.Bind(0x09, client.connectionRequestHandler)
-	basicHandlers.Bind(0x90, client.requestParamsHandler)
-	basicHandlers.Bind(0x8A, client.authHandler)
+	emitter := client.PacketEmitter
+	emitter.On("ID_OPEN_CONNECTION_REQUEST_1", client.simple5Handler)
+	emitter.On("ID_OPEN_CONNECTION_REQUEST_2", client.simple7Handler)
+	emitter.On("ID_CONNECTION_REQUEST", client.connectionRequestHandler)
+	emitter.On("ID_PROTOCOL_SYNC", client.requestParamsHandler)
+	emitter.On("ID_SUBMIT_TICKET", client.authHandler)
 }

@@ -160,3 +160,7 @@ func (layer *Packet8ALayer) Serialize(writer PacketWriter, stream *extendedWrite
 func (layer *Packet8ALayer) String() string {
 	return fmt.Sprintf("ID_SUBMIT_TICKET: %s", layer.Platform)
 }
+
+func (Packet8ALayer) TypeString() string {
+	return "ID_SUBMIT_TICKET"
+}
