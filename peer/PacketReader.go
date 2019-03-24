@@ -125,6 +125,9 @@ func (reader *DefaultPacketReader) emitLayers(topic string, layers *PacketLayers
 	if layers.Error != nil {
 		<-reader.ErrorEmitter.Emit(topic, layers)
 	} else {
+		/*if layers.Main != nil {
+			println("emitting layers for", topic, layers.Main.TypeString())
+		}*/
 		<-reader.LayerEmitter.Emit(topic, layers)
 	}
 }
@@ -345,7 +348,15 @@ func (reader *DefaultPacketReader) bindBasicPacketHandler() {
 	// important: sync!
 	reader.LayerEmitter.On("full-reliable", func(e *emitter.Event) {
 		layers := e.Args[0].(*PacketLayers)
+		//println("will emit packet", layers.Main.TypeString())
 		<-reader.PacketEmitter.Emit(layers.Main.TypeString(), layers.Main, layers)
+		//println("finished emitting packet")
+	}, emitter.Void)
+	reader.LayerEmitter.On("simple", func(e *emitter.Event) {
+		layers := e.Args[0].(*PacketLayers)
+		//println("will emit packet", layers.Main.TypeString())
+		<-reader.PacketEmitter.Emit(layers.Main.TypeString(), layers.Main, layers)
+		//println("finished emitting packet")
 	}, emitter.Void)
 }
 

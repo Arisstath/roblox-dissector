@@ -72,6 +72,10 @@ func (logicHandler *PacketLogicHandler) startAcker() {
 	}()
 }
 
+func (logicHandler *PacketLogicHandler) defaultReliabilityLayerHandler(e *emitter.Event) {
+	logicHandler.mustACK = append(logicHandler.mustACK, int(e.Args[0].(*PacketLayers).RakNet.DatagramNumber))
+}
+
 func (logicHandler *PacketLogicHandler) disconnectInternal() {
 	if logicHandler.ackTicker != nil {
 		logicHandler.ackTicker.Stop()
@@ -141,11 +145,12 @@ func (logicHandler *PacketLogicHandler) pingHandler(packetType byte, layers *Pac
 
 func (logicHandler *PacketLogicHandler) bindDefaultHandlers() {
 	// common to all peers
+	logicHandler.LayerEmitter.On("reliability", logicHandler.defaultReliabilityLayerHandler, emitter.Void)
 	dataHandlers := logicHandler.DataEmitter
-	dataHandlers.On("ID_REPLIC_PING", logicHandler.dataPingHandler)
+	dataHandlers.On("ID_REPLIC_PING", logicHandler.dataPingHandler, emitter.Void)
 
 	basicHandlers := logicHandler.PacketEmitter
-	basicHandlers.On("ID_DISCONNECTION_NOTIFICATION", logicHandler.disconnectHandler)
+	basicHandlers.On("ID_DISCONNECTION_NOTIFICATION", logicHandler.disconnectHandler, emitter.Void)
 
 	// do NOT call PacketReader.BindDefaultHandlers() here!
 	// ServerClients are packet readers which don't want that

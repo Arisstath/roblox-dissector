@@ -19,7 +19,6 @@ import "io/ioutil"
 import "strings"
 import "errors"
 import "context"
-import "regexp"
 
 var window *widgets.QMainWindow
 
@@ -892,33 +891,6 @@ func GUIMain() {
 	})
 
 	window.Show()
-
-	if len(os.Args) > 1 {
-		println("Received protocol invocation?")
-		protocolRegex := regexp.MustCompile(`roblox-dissector:([0-9A-Fa-f]+):(\d+):(\d+)`)
-		uri := os.Args[1]
-		parts := protocolRegex.FindStringSubmatch(uri)
-		if len(parts) < 4 {
-			println("invalid protocol invocation: ", os.Args[1])
-		} else {
-			customClient := peer.NewCustomClient()
-			authTicket := parts[1]
-			placeID, _ := strconv.Atoi(parts[2])
-			browserTrackerId, _ := strconv.Atoi(parts[3])
-			NewClientConsole(window, customClient)
-			customClient.SecuritySettings = peer.Win10Settings()
-			customClient.BrowserTrackerId = uint64(browserTrackerId)
-			// No more guests! Roblox won't let us connect as one.
-			go func() {
-				if err != nil {
-					widgets.QMessageBox_Critical(window, "Failed to start client", "While getting authticket: "+err.Error(), widgets.QMessageBox__Ok, widgets.QMessageBox__NoButton)
-				} else {
-					// Todo: int64 placeID
-					customClient.ConnectWithAuthTicket(uint32(placeID), authTicket)
-				}
-			}()
-		}
-	}
 
 	widgets.QApplication_Exec()
 }

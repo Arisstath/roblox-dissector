@@ -44,7 +44,7 @@ func (client *ServerClient) createWriter() {
 		if err != nil {
 			fmt.Printf("Wrote %d bytes, err: %s\n", num, err.Error())
 		}
-	})
+	}, emitter.Void)
 }
 
 func (client *ServerClient) Init() {

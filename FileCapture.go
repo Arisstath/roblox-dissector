@@ -7,7 +7,6 @@ import (
 
 	"github.com/Gskartwii/roblox-dissector/peer"
 
-	"github.com/fatih/color"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
@@ -85,7 +84,7 @@ func captureJob(handle *pcap.Handle, useIPv4 bool, captureJobContext context.Con
 			return
 		case packet := <-packetChannel:
 			if packet.ApplicationLayer() == nil {
-				color.Red("Ignoring packet because ApplicationLayer can't be decoded")
+				println("Ignoring packet because ApplicationLayer can't be decoded")
 				continue
 			}
 			payload := packet.ApplicationLayer().Payload()

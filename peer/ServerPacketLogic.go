@@ -202,10 +202,10 @@ func (client *ServerClient) authHandler(e *emitter.Event) {
 
 func (client *ServerClient) bindDefaultHandlers() {
 	// TODO: Error handling?
-	emitter := client.PacketEmitter
-	emitter.On("ID_OPEN_CONNECTION_REQUEST_1", client.simple5Handler)
-	emitter.On("ID_OPEN_CONNECTION_REQUEST_2", client.simple7Handler)
-	emitter.On("ID_CONNECTION_REQUEST", client.connectionRequestHandler)
-	emitter.On("ID_PROTOCOL_SYNC", client.requestParamsHandler)
-	emitter.On("ID_SUBMIT_TICKET", client.authHandler)
+	pEmitter := client.PacketEmitter
+	pEmitter.On("ID_OPEN_CONNECTION_REQUEST_1", client.simple5Handler, emitter.Void)
+	pEmitter.On("ID_OPEN_CONNECTION_REQUEST_2", client.simple7Handler, emitter.Void)
+	pEmitter.On("ID_CONNECTION_REQUEST", client.connectionRequestHandler, emitter.Void)
+	pEmitter.On("ID_PROTOCOL_SYNC", client.requestParamsHandler, emitter.Void)
+	pEmitter.On("ID_SUBMIT_TICKET", client.authHandler, emitter.Void)
 }

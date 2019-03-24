@@ -497,7 +497,7 @@ func (myClient *CustomClient) createWriter() {
 		if err != nil {
 			fmt.Printf("Wrote %d bytes, err: %s\n", num, err.Error())
 		}
-	})
+	}, emitter.Void)
 }
 
 // TODO: Implement with contexts

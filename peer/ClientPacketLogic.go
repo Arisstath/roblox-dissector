@@ -2,6 +2,7 @@ package peer
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"net"
 	"time"
@@ -40,15 +41,15 @@ func (myClient *CustomClient) bindDefaultHandlers() {
 	myClient.DefaultPacketReader.BindDataModelHandlers()
 	myClient.PacketLogicHandler.bindDefaultHandlers()
 
-	emitter := myClient.PacketEmitter
-	emitter.On("ID_OPEN_CONNECTION_REPLY_1", myClient.simple6Handler)
-	emitter.On("ID_OPEN_CONNECTION_REPLY_2", myClient.simple8Handler)
-	emitter.On("ID_CONNECTION_ACCEPTED", myClient.packet10Handler)
-	emitter.On("ID_DISCONNECTION_NOTIFICATION", myClient.disconnectionLogger)
-	emitter.On("ID_SET_GLOBALS", myClient.topReplicationHandler)
+	pEmitter := myClient.PacketEmitter
+	pEmitter.On("ID_OPEN_CONNECTION_REPLY_1", myClient.simple6Handler, emitter.Void)
+	pEmitter.On("ID_OPEN_CONNECTION_REPLY_2", myClient.simple8Handler, emitter.Void)
+	pEmitter.On("ID_CONNECTION_ACCEPTED", myClient.packet10Handler, emitter.Void)
+	pEmitter.On("ID_DISCONNECTION_NOTIFICATION", myClient.disconnectionLogger, emitter.Void)
+	pEmitter.On("ID_SET_GLOBALS", myClient.topReplicationHandler, emitter.Void)
 
 	dataHandlers := myClient.DataEmitter
-	dataHandlers.On("ID_REPLIC_ROCKY", myClient.idChallengeHandler)
+	dataHandlers.On("ID_REPLIC_ROCKY", myClient.idChallengeHandler, emitter.Void)
 
 	// Even though this could be compressed into a single function call,
 	// we won't do that because the chan receive MUST be executed inside
@@ -67,6 +68,7 @@ func (myClient *CustomClient) sendResponse7() {
 	})
 }
 func (myClient *CustomClient) simple6Handler(e *emitter.Event) {
+	println("receive 6")
 	myClient.Connected = true
 	myClient.sendResponse7()
 }
@@ -184,7 +186,7 @@ func (myClient *CustomClient) packet10Handler(e *emitter.Event) {
 	// RakNet sends two pings when connecting
 	myClient.sendPing()
 	myClient.sendPing()
-	myClient.sendProtocolSync() // This is broken and I have no clue why
+	// myClient.sendProtocolSync() // This is broken and I have no clue why
 	myClient.sendPlaceIdVerification(0)
 	myClient.submitTicket()
 	myClient.sendSpawnName()
@@ -387,49 +389,65 @@ func (myClient *CustomClient) StalkPlayer(name string) {
 				}
 			}
 		}
-	})
+	}, emitter.Void)
 
 	stalkTicker := time.NewTicker(time.Second / 30)
 
-	animationEmitter, animationChan := targetAnimator.MakeEventChan("OnPlay", false)
-	charEmitter := myClient.GetLocalPlayer().PropertyEmitter.On("Character")
+	animationEmitter, animationChan := targetAnimator.MakeEventChan("OnCombinedUpdate", false)
 	myHumanoid := <-myCharacter.WaitForChild("Humanoid")
-	healthEmitter := myHumanoid.PropertyEmitter.On("Health_XML")
-	targetEmitter := targetPlayer.PropertyEmitter.On("Character")
-	for {
-		select {
-		case value := <-healthEmitter:
-			if value.Args[0].(rbxfile.ValueFloat) <= 0.0 {
-				currentHumanoidState = 15
-			}
-		case newChar := <-charEmitter:
-			myHumanoid.PropertyEmitter.Off("Health_XML", healthEmitter)
-			println("localca, updating")
-			myCharacter = newChar.Args[0].(datamodel.ValueReference).Instance
+	healthHandler := func(e *emitter.Event) {
+		if e.Args[0].(rbxfile.ValueFloat) <= 0.0 {
+			currentHumanoidState = 15
+		}
+	}
+	healthCh := myHumanoid.PropertyEmitter.On("Health_XML", healthHandler, emitter.Void)
+	targetHandler := func(e *emitter.Event) {
+		animationChan = nil
+		targetAnimator.EventEmitter.Off("OnPlay", animationEmitter)
+		println("targetca, updating")
+		targetCharacter = e.Args[0].(datamodel.ValueReference).Instance
+		if targetCharacter == nil {
+			println("Stalk process finished!")
+			return
+		}
+		// this "middleware is called async, hence we don't want to block"
+		go func() {
+			targetRootPart = <-targetCharacter.WaitForChild("HumanoidRootPart")
+			targetAnimator = <-targetCharacter.WaitForChild("Humanoid", "Animator")
+			animationEmitter, animationChan = targetAnimator.MakeEventChan("OnCombinedUpdate", false)
+		}()
+	}
+	charHandler := func(e *emitter.Event) {
+		myHumanoid.PropertyEmitter.Off("Health_XML", healthCh)
+		println("localca, updating")
+		myCharacter = e.Args[0].(datamodel.ValueReference).Instance
+		// this "middleware is called async, hence we don't want to block"
+		go func() {
 			myRootPart = <-myCharacter.WaitForChild("HumanoidRootPart")
 			myHumanoid = <-myCharacter.WaitForChild("Humanoid")
 			myAnimator = <-myHumanoid.WaitForChild("Animator")
 			currentPosition = myRootPart.Get("CFrame").(rbxfile.ValueCFrame).Position
-			healthEmitter = myHumanoid.PropertyEmitter.On("Health_XML")
+			healthCh = myHumanoid.PropertyEmitter.On("Health_XML")
 			currentHumanoidState = 8
-		case newTarget := <-targetEmitter:
-			targetAnimator.EventEmitter.Off("OnPlay", animationEmitter)
-			println("targetca, updating")
-			targetCharacter = newTarget.Args[0].(datamodel.ValueReference).Instance
-			if targetCharacter == nil {
-				println("Stalk process finished!")
-				return
-			}
-			targetRootPart = <-targetCharacter.WaitForChild("HumanoidRootPart")
-			targetAnimator = <-targetCharacter.WaitForChild("Humanoid", "Animator")
-			animationEmitter, animationChan = targetAnimator.MakeEventChan("OnPlay", false)
+		}()
+	}
+	myClient.GetLocalPlayer().PropertyEmitter.On("Character", charHandler, emitter.Void)
+	targetPlayer.PropertyEmitter.On("Character", targetHandler, emitter.Void)
+	for {
+		// TODO: Break out of this loop?
+		select {
 		case <-stalkTicker.C:
 			currentPosition = interpolateVector(currentPosition, targetPosition.Position, 16.0/10.0)
 			currentVelocity := scaleVector(scaleDelta(currentPosition, targetPosition.Position, 16.0), 30.0)
 
 			myClient.stalkPart(myRootPart, rbxfile.ValueCFrame{Position: currentPosition, Rotation: targetPosition.Rotation}, currentVelocity, rbxfile.ValueVector3{}, currentHumanoidState)
-		case event := <-animationChan: // Thankfully, this should receive from the updated animationChan
-			err := myClient.SendEvent(myAnimator, "OnPlay", event...)
+		case event, received := <-animationChan: // Thankfully, this should receive from the updated animationChan
+			println("receiving animationChan event")
+			fmt.Println(event)
+			if !received {
+				continue
+			}
+			err := myClient.SendEvent(myAnimator, "OnCombinedUpdate", event...)
 			if err != nil {
 				println("Failed to send onplay event: ", err.Error())
 			}

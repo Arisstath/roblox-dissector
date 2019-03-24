@@ -1,6 +1,10 @@
 package peer
 
-import "github.com/robloxapi/rbxfile"
+import (
+	"errors"
+
+	"github.com/robloxapi/rbxfile"
+)
 
 // ReplicationEvent describes an event invocation replication packet.
 type ReplicationEvent struct {
@@ -25,6 +29,9 @@ func (schema *StaticEventSchema) Decode(reader PacketReader, thisBitstream Seria
 }
 
 func (schema *StaticEventSchema) Serialize(event *ReplicationEvent, writer PacketWriter, stream SerializeWriter) error {
+	if len(event.Arguments) != len(schema.Arguments) {
+		return errors.New("invalid number of event arguments")
+	}
 	for i, argSchema := range schema.Arguments {
 		//println("Writing argument", argSchema.Type)
 		err := stream.WriteSerializedValue(event.Arguments[i], writer, argSchema.Type)

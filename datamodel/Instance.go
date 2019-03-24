@@ -104,12 +104,14 @@ func (instance *Instance) waitForChild(name string) <-chan *Instance {
 	}
 	emitterChan := instance.ChildEmitter.Once(name)
 	go func() {
-		defer instance.ChildEmitter.Off(name, emitterChan)
 		// If the child is added while we created the emitter
 		if child := instance.FindFirstChild(name); child != nil {
 			childChan <- child
+			instance.ChildEmitter.Off(name, emitterChan)
+			return
 		}
-		childChan <- (<-emitterChan).Args[0].(*Instance)
+		child := (<-emitterChan).Args[0].(*Instance)
+		childChan <- child
 	}()
 	return childChan
 }

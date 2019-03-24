@@ -1,11 +1,20 @@
 package main
 
 import (
+	"log"
 	"net"
 
 	"github.com/Gskartwii/roblox-dissector/peer"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
+
+	"os"
+	"regexp"
+	"strconv"
+
+	"net/http"
+	_ "net/http"
+	_ "net/http/pprof"
 )
 
 const DEBUG bool = false
@@ -32,10 +41,10 @@ var PacketNames map[byte]string = map[byte]string{
 	0x82: "ID_ROBLOX_DICTIONARIES",   // ID_TEACH_DESCRIPTOR_DICTIONARIES
 	0x83: "ID_ROBLOX_REPLICATION",    // ID_DATA
 	0x84: "ID_ROBLOX_MARKER",
-	0x85: "ID_ROBLOX_PHYSICS",        // ID_PHYSICS
-	0x86: "ID_ROBLOX_TOUCH",          // ID_TOUCHES
-	0x87: "ID_ROBLOX_CHAT",           // unused
-	0x88: "ID_ROBLOX_CHAT_TEAM",      // unused
+	0x85: "ID_ROBLOX_PHYSICS",   // ID_PHYSICS
+	0x86: "ID_ROBLOX_TOUCH",     // ID_TOUCHES
+	0x87: "ID_ROBLOX_CHAT",      // unused
+	0x88: "ID_ROBLOX_CHAT_TEAM", // unused
 	0x89: "ID_ROBLOX_REPORT_ABUSE",
 	0x8A: "ID_ROBLOX_AUTH",        // ID_SUBMIT_TICKET
 	0x8B: "ID_ROBLOX_CHAT_GAME",   // unused
@@ -93,5 +102,29 @@ func SrcAndDestFromGoPacket(packet gopacket.Packet) (*net.UDPAddr, *net.UDPAddr)
 }
 
 func main() {
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
+	if len(os.Args) > 1 {
+		println("Received protocol invocation?")
+		protocolRegex := regexp.MustCompile(`roblox-dissector:([0-9A-Fa-f]+):(\d+):(\d+)`)
+		uri := os.Args[1]
+		parts := protocolRegex.FindStringSubmatch(uri)
+		if len(parts) < 4 {
+			println("invalid protocol invocation: ", os.Args[1])
+		} else {
+			customClient := peer.NewCustomClient()
+			authTicket := parts[1]
+			placeID, _ := strconv.Atoi(parts[2])
+			browserTrackerId, _ := strconv.Atoi(parts[3])
+			customClient.SecuritySettings = peer.Win10Settings()
+			customClient.BrowserTrackerId = uint64(browserTrackerId)
+			// No more guests! Roblox won't let us connect as one.
+
+			customClient.Logger = log.New(os.Stdout, "", log.Ltime|log.Lmicroseconds)
+			customClient.ConnectWithAuthTicket(uint32(placeID), authTicket)
+		}
+		return
+	}
 	GUIMain()
 }
