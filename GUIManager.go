@@ -89,6 +89,13 @@ type MyPacketListView struct {
 	Context             *peer.CommunicationContext
 
 	//FilterSettings FilterSettings
+	DefaultPacketWindow *PacketDetailsViewer
+}
+
+func NewTopAlignLayout() *widgets.QVBoxLayout {
+	layout := widgets.NewQVBoxLayout()
+	layout.SetAlign(core.Qt__AlignTop)
+	return layout
 }
 
 func NewMyPacketListView(parent widgets.QWidget_ITF) *MyPacketListView {
@@ -144,17 +151,6 @@ func NewQStandardItemF(format string, args ...interface{}) *gui.QStandardItem {
 	return ret
 }
 
-func NewBasicPacketViewer(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) *widgets.QVBoxLayout {
-	tabWidget := NewDefaultPacketViewer(packetType, context, layers)
-
-	layerWidget := widgets.NewQWidget(tabWidget, 0)
-	layerLayout := widgets.NewQVBoxLayout()
-	layerWidget.SetLayout(layerLayout)
-	tabWidget.InsertTab(0, layerWidget, PacketNames[packetType])
-
-	return layerLayout
-}
-
 func paintItems(row []*gui.QStandardItem, color *gui.QColor) {
 	for i := 0; i < len(row); i++ {
 		row[i].SetBackground(gui.NewQBrush3(color, core.Qt__SolidPattern))
@@ -180,11 +176,7 @@ func (m *MyPacketListView) BindCallback(packetType byte, context *peer.Communica
 
 	m.MSelectionHandlers.Lock()
 	m.SelectionHandlers[uint64(index)] = func() {
-		if activationCallback != nil && layers.Main != nil {
-			activationCallback(packetType, context, layers)
-		} else {
-			NewDefaultPacketViewer(packetType, context, layers)
-		}
+		m.DefaultPacketWindow.Update(context, layers, activationCallback)
 	}
 	m.MSelectionHandlers.Unlock()
 	packetName := PacketNames[packetType]
@@ -215,121 +207,13 @@ func (m *MyPacketListView) BindCallback(packetType byte, context *peer.Communica
 	}
 }
 
-func NewDefaultPacketViewer(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) *widgets.QTabWidget {
-	subWindow := widgets.NewQWidget(window, core.Qt__Window)
-	subWindowLayout := widgets.NewQVBoxLayout2(subWindow)
-
-	isClient := layers.Root.FromClient
-	isServer := layers.Root.FromServer
-
-	var direction string
-	if isClient {
-		direction = "Direction: Client -> Server"
-	} else if isServer {
-		direction = "Direction: Server -> Client"
-	} else {
-		direction = "Direction: Unknown"
-	}
-	directionLabel := widgets.NewQLabel2(direction, nil, 0)
-	subWindowLayout.AddWidget(directionLabel, 0, 0)
-
-	var datagramNumberLabel *widgets.QLabel
-	if layers.Reliability != nil && layers.Reliability.HasSplitPacket {
-		allRakNetLayers := layers.Reliability.SplitBuffer.RakNetPackets
-		datagramNumberLabel = NewQLabelF("Datagrams: %d - %d", allRakNetLayers[0].DatagramNumber, allRakNetLayers[len(allRakNetLayers)-1].DatagramNumber)
-	} else {
-		datagramNumberLabel = NewQLabelF("Datagram: %d", layers.RakNet.DatagramNumber)
-	}
-
-	subWindowLayout.AddWidget(datagramNumberLabel, 0, 0)
-
-	tabWidget := widgets.NewQTabWidget(subWindow)
-	subWindowLayout.AddWidget(tabWidget, 0, 0)
-
-	logWidget := widgets.NewQWidget(tabWidget, 0)
-	logLayout := widgets.NewQVBoxLayout()
-
-	logBox := widgets.NewQTextEdit(logWidget)
-	logBox.SetReadOnly(true)
-	if layers.Reliability != nil {
-		logBox.SetPlainText(layers.Reliability.GetLog())
-	}
-	if layers.Error != nil {
-		logBox.SetPlainText(logBox.ToPlainText() + "\nError: " + layers.Error.Error())
-	}
-	logLayout.AddWidget(logBox, 0, 0)
-
-	logWidget.SetLayout(logLayout)
-	tabWidget.AddTab(logWidget, "Parser log")
-
-	subWindow.SetWindowTitle("Packet Window: " + PacketNames[packetType])
-	subWindow.Show()
-
-	if layers.Reliability != nil {
-		splitBuffer := layers.Reliability.SplitBuffer
-		rakNets := splitBuffer.RakNetPackets
-		reliables := splitBuffer.ReliablePackets
-
-		relWidget := widgets.NewQWidget(tabWidget, 0)
-		relLayout := widgets.NewQVBoxLayout()
-
-		datagramInfo := new(strings.Builder)
-		for _, rakNetLayer := range rakNets {
-			fmt.Fprintf(datagramInfo, "%d,", rakNetLayer.DatagramNumber)
-		}
-		relLayout.AddWidget(NewQLabelF("Datagrams: %s", datagramInfo.String()), 0, 0)
-
-		relLayout.AddWidget(NewQLabelF("Reliability: %d", layers.Reliability.Reliability), 0, 0)
-		if layers.Reliability.IsReliable() {
-			rmnInfo := new(strings.Builder)
-			for _, reliable := range reliables {
-				if reliable != nil {
-					fmt.Fprintf(rmnInfo, "%d,", reliable.ReliableMessageNumber)
-				} else {
-					rmnInfo.WriteString("nil,")
-				}
-			}
-			relLayout.AddWidget(NewQLabelF("Reliable MNs: %s", rmnInfo.String()), 0, 0)
-		}
-
-		if layers.Reliability.IsOrdered() {
-			ordInfo := new(strings.Builder)
-			for _, reliable := range reliables {
-				if reliable != nil {
-					fmt.Fprintf(ordInfo, "%d,", reliable.OrderingIndex)
-				} else {
-					ordInfo.WriteString("nil,")
-				}
-			}
-			relLayout.AddWidget(NewQLabelF("Ordering channel: %d, indices: %s", layers.Reliability.OrderingChannel, ordInfo.String()), 0, 0)
-		}
-
-		if layers.Reliability.IsSequenced() {
-			seqInfo := new(strings.Builder)
-			for _, reliable := range reliables {
-				if reliable != nil {
-					fmt.Fprintf(seqInfo, "%d,", reliable.SequencingIndex)
-				} else {
-					seqInfo.WriteString("nil,")
-				}
-			}
-			relLayout.AddWidget(NewQLabelF("Sequencing indices: %s", layers.Reliability.OrderingChannel, seqInfo.String()), 0, 0)
-		}
-
-		relWidget.SetLayout(relLayout)
-		tabWidget.AddTab(relWidget, "Reliability Layer Debug")
-	}
-
-	return tabWidget
-}
-
 func (m *MyPacketListView) BindDefaultCallback(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) {
 	row := m.packetRowsByUniqueID[layers.Reliability.SplitBuffer.UniqueID]
 	index, _ := strconv.Atoi(row[0].Data(0).ToString())
 
 	m.MSelectionHandlers.Lock()
 	m.SelectionHandlers[uint64(index)] = func() {
-		NewDefaultPacketViewer(packetType, context, layers)
+		m.DefaultPacketWindow.Update(context, layers, nil)
 	}
 	m.MSelectionHandlers.Unlock()
 }
@@ -373,11 +257,11 @@ func (m *MyPacketListView) AddFullPacket(packetType byte, context *peer.Communic
 
 	var direction *gui.QStandardItem
 	if isClient {
-		direction = NewQStandardItemF("Client -> Server")
+		direction = NewQStandardItemF("C->S")
 	} else if isServer {
-		direction = NewQStandardItemF("Server -> Client")
+		direction = NewQStandardItemF("S->C")
 	} else {
-		direction = NewQStandardItemF("Unknown direction")
+		direction = NewQStandardItemF("???")
 	}
 
 	rootRow = append(rootRow, direction)
@@ -430,11 +314,7 @@ func (m *MyPacketListView) AddFullPacket(packetType byte, context *peer.Communic
 	if layers.Reliability == nil { // Only bind if we're done parsing the packet
 		m.MSelectionHandlers.Lock()
 		m.SelectionHandlers[index] = func() {
-			if activationCallback != nil && layers.Main != nil {
-				activationCallback(packetType, context, layers)
-			} else {
-				NewDefaultPacketViewer(packetType, context, layers)
-			}
+			m.DefaultPacketWindow.Update(context, layers, activationCallback)
 		}
 		m.MSelectionHandlers.Unlock()
 	} else {
@@ -486,17 +366,24 @@ func (m *MyPacketListView) AddFullPacket(packetType byte, context *peer.Communic
 	m.MSelectionHandlers.Unlock()
 }*/
 
-func GUIMain() {
+func GUIMain(openFile string) {
 	widgets.NewQApplication(len(os.Args), os.Args)
 	window = widgets.NewQMainWindow(nil, 0)
 	window.SetWindowTitle("Roblox PCAP Dissector")
 
-	layout := widgets.NewQVBoxLayout()
-	widget := widgets.NewQWidget(nil, 0)
+	layout := NewTopAlignLayout()
+	widget := widgets.NewQWidget(window, 0)
 	widget.SetLayout(layout)
 
-	packetViewer := NewMyPacketListView(nil)
-	layout.AddWidget(packetViewer, 0, 0)
+	mainSplitter := widgets.NewQSplitter(window)
+	packetViewer := NewMyPacketListView(window)
+	packetDetailsViewer := NewPacketDetailsViewer(window)
+	mainSplitter.SetOrientation(core.Qt__Vertical)
+	mainSplitter.AddWidget(packetViewer)
+	mainSplitter.AddWidget(packetDetailsViewer)
+	packetViewer.DefaultPacketWindow = packetDetailsViewer
+
+	layout.AddWidget(mainSplitter, 0, 0)
 	window.SetCentralWidget(widget)
 
 	standardModel, proxy := NewFilteringModel(packetViewer)
@@ -563,6 +450,22 @@ func GUIMain() {
 			packetViewer.IsCapturing = false
 		}()
 	})
+
+	// React to command line arg
+	if openFile != "" {
+		packetViewer.IsCapturing = true
+
+		context := peer.NewCommunicationContext()
+		packetViewer.Context = context
+
+		packetViewer.Reset()
+
+		go func() {
+			captureFromFile(openFile, false, packetViewer.CaptureJobContext, packetViewer, context)
+			packetViewer.IsCapturing = false
+		}()
+	}
+
 	capture4FileAction.ConnectTriggered(func(checked bool) {
 		if packetViewer.IsCapturing {
 			packetViewer.StopCaptureJob()
@@ -806,8 +709,8 @@ func GUIMain() {
 		println("chose player", player.Name())
 		chatEvent := replicatedStorage.FindFirstChild("DefaultChatSystemChatEvents").FindFirstChild("SayMessageRequest")
 		subpacket := &peer.Packet83_07{
-			Instance:  chatEvent,
-			Schema: packetViewer.Context.StaticSchema.SchemaForClass("RemoteEvent").SchemaForEvent("OnServerEvent"),
+			Instance: chatEvent,
+			Schema:   packetViewer.Context.StaticSchema.SchemaForClass("RemoteEvent").SchemaForEvent("OnServerEvent"),
 			Event: &peer.ReplicationEvent{
 				Arguments: []rbxfile.Value{
 					datamodel.ValueReference{Instance: player, Reference: player.Ref},
@@ -890,7 +793,7 @@ func GUIMain() {
 		})
 	})
 
-	window.Show()
+	window.ShowMaximized()
 
 	widgets.QApplication_Exec()
 }

@@ -8,7 +8,7 @@ import "time"
 func NewServerConsole(parent widgets.QWidget_ITF, server *peer.CustomServer) {
 	window := widgets.NewQWidget(parent, 1)
 	window.SetWindowTitle("Server watch console")
-	layout := widgets.NewQVBoxLayout()
+	layout := NewTopAlignLayout()
 
 	clientsLabel := NewQLabelF("Clients:")
 	clients := widgets.NewQTreeView(window)

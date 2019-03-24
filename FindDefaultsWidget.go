@@ -1,15 +1,16 @@
 package main
+
 import "github.com/therecipe/qt/widgets"
 import "github.com/therecipe/qt/gui"
 import "github.com/therecipe/qt/core"
 
-func NewFindDefaultsWidget(parent widgets.QWidget_ITF, settings *DefaultsSettings, callback func(*DefaultsSettings)()) {
+func NewFindDefaultsWidget(parent widgets.QWidget_ITF, settings *DefaultsSettings, callback func(*DefaultsSettings)) {
 	window := widgets.NewQWidget(parent, 1)
 	window.SetWindowTitle("Find default property values...")
-	layout := widgets.NewQVBoxLayout()
+	layout := NewTopAlignLayout()
 
 	filesLabel := NewQLabelF("Property value locations:")
-	files := widgets.NewQTreeView(nil)
+	files := widgets.NewQTreeView(window)
 	standardModel := NewProperSortModel(files)
 	standardModel.SetHorizontalHeaderLabels([]string{"File"})
 	rootNode := standardModel.InvisibleRootItem()

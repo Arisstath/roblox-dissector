@@ -4,20 +4,16 @@ import "github.com/therecipe/qt/widgets"
 import "github.com/therecipe/qt/gui"
 import "github.com/Gskartwii/roblox-dissector/peer"
 
-func ShowPacket05(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) {
+func ShowPacket05(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationContext, layers *peer.PacketLayers) {
 	MainLayer := layers.Main.(*peer.Packet05Layer)
-
-	layerLayout := NewBasicPacketViewer(packetType, context, layers)
 
 	versionLabel := NewQLabelF("Version: %d", MainLayer.ProtocolVersion)
 	layerLayout.AddWidget(versionLabel, 0, 0)
 }
 
-func ShowPacket06(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) {
+func ShowPacket06(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationContext, layers *peer.PacketLayers) {
 	MainLayer := layers.Main.(*peer.Packet06Layer)
 
-	layerLayout := NewBasicPacketViewer(packetType, context, layers)
-
 	guidLabel := NewQLabelF("GUID: %08X", MainLayer.GUID)
 	layerLayout.AddWidget(guidLabel, 0, 0)
 
@@ -28,11 +24,9 @@ func ShowPacket06(packetType byte, context *peer.CommunicationContext, layers *p
 	layerLayout.AddWidget(mtuLabel, 0, 0)
 }
 
-func ShowPacket07(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) {
+func ShowPacket07(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationContext, layers *peer.PacketLayers) {
 	MainLayer := layers.Main.(*peer.Packet07Layer)
 
-	layerLayout := NewBasicPacketViewer(packetType, context, layers)
-
 	addressLabel := NewQLabelF("IP address: %s", MainLayer.IPAddress.String())
 	layerLayout.AddWidget(addressLabel, 0, 0)
 
@@ -43,10 +37,8 @@ func ShowPacket07(packetType byte, context *peer.CommunicationContext, layers *p
 	layerLayout.AddWidget(guidLabel, 0, 0)
 }
 
-func ShowPacket08(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) {
+func ShowPacket08(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationContext, layers *peer.PacketLayers) {
 	MainLayer := layers.Main.(*peer.Packet08Layer)
-
-	layerLayout := NewBasicPacketViewer(packetType, context, layers)
 
 	guidLabel := NewQLabelF("GUID: %08X", MainLayer.GUID)
 	layerLayout.AddWidget(guidLabel, 0, 0)
@@ -61,10 +53,8 @@ func ShowPacket08(packetType byte, context *peer.CommunicationContext, layers *p
 	layerLayout.AddWidget(useSecurityLabel, 0, 0)
 }
 
-func ShowPacket09(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) {
+func ShowPacket09(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationContext, layers *peer.PacketLayers) {
 	MainLayer := layers.Main.(*peer.Packet09Layer)
-
-	layerLayout := NewBasicPacketViewer(packetType, context, layers)
 
 	guidLabel := NewQLabelF("GUID: %08X", MainLayer.GUID)
 	layerLayout.AddWidget(guidLabel, 0, 0)
@@ -79,10 +69,8 @@ func ShowPacket09(packetType byte, context *peer.CommunicationContext, layers *p
 	layerLayout.AddWidget(passwordLabel, 0, 0)
 }
 
-func ShowPacket10(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) {
+func ShowPacket10(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationContext, layers *peer.PacketLayers) {
 	MainLayer := layers.Main.(*peer.Packet10Layer)
-
-	layerLayout := NewBasicPacketViewer(packetType, context, layers)
 
 	addressLabel := NewQLabelF("IP address: %s", MainLayer.IPAddress.String())
 	layerLayout.AddWidget(addressLabel, 0, 0)
@@ -113,10 +101,8 @@ func ShowPacket10(packetType byte, context *peer.CommunicationContext, layers *p
 	layerLayout.AddWidget(sendPongTimeLabel, 0, 0)
 }
 
-func ShowPacket13(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) {
+func ShowPacket13(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationContext, layers *peer.PacketLayers) {
 	MainLayer := layers.Main.(*peer.Packet13Layer)
-
-	layerLayout := NewBasicPacketViewer(packetType, context, layers)
 
 	addressLabel := NewQLabelF("IP address: %s", MainLayer.IPAddress.String())
 	layerLayout.AddWidget(addressLabel, 0, 0)

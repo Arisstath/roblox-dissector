@@ -8,10 +8,9 @@ import (
 	"github.com/therecipe/qt/widgets"
 )
 
-func ShowPacket90(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) {
+func ShowPacket90(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationContext, layers *peer.PacketLayers) {
 	MainLayer := layers.Main.(*peer.Packet90Layer)
 
-	layerLayout := NewBasicPacketViewer(packetType, context, layers)
 	layerLayout.AddWidget(NewQLabelF("Schema version: %d", MainLayer.SchemaVersion), 0, 0)
 
 	requestList := widgets.NewQTreeView(nil)

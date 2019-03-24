@@ -121,7 +121,7 @@ func normalizeTypes(children []*datamodel.Instance, schema *peer.StaticSchema) {
 func NewServerStartWidget(parent widgets.QWidget_ITF, settings *ServerSettings, callback func(*ServerSettings)) {
 	window := widgets.NewQWidget(parent, 1)
 	window.SetWindowTitle("Start server...")
-	layout := widgets.NewQVBoxLayout()
+	layout := NewTopAlignLayout()
 
 	rbxlLabel := NewQLabelF("RBXLX location:")
 	rbxlTextBox := widgets.NewQLineEdit2(settings.RBXLLocation, nil)

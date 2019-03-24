@@ -8,7 +8,7 @@ func NewSelectInterfaceWidget(parent widgets.QWidget_ITF, callback func (string,
 	window := widgets.NewQWidget(parent, core.Qt__Window)
 	window.SetWindowTitle("Choose network interface")
 
-	layout := widgets.NewQVBoxLayout()
+	layout := NewTopAlignLayout()
 	usePromisc := widgets.NewQCheckBox2("Use promiscuous mode", nil)
 	layout.AddWidget(usePromisc, 0, 0)
 

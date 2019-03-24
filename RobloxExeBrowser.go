@@ -4,7 +4,7 @@ import "github.com/therecipe/qt/widgets"
 func NewStudioChooser(parent widgets.QWidget_ITF, settings *StudioSettings, callback func(*StudioSettings)()) {
 	window := widgets.NewQWidget(parent, 1)
 	window.SetWindowTitle("Choose Studio location...")
-	layout := widgets.NewQVBoxLayout()
+	layout := NewTopAlignLayout()
 
 	fileLabel := NewQLabelF("Studio location:")
 	fileTextBox := widgets.NewQLineEdit2(settings.Location, nil)
@@ -60,7 +60,7 @@ func NewStudioChooser(parent widgets.QWidget_ITF, settings *StudioSettings, call
 func NewPlayerChooser(parent widgets.QWidget_ITF, settings *PlayerSettings, callback func(*PlayerSettings)()) {
 	window := widgets.NewQWidget(parent, 1)
 	window.SetWindowTitle("Choose Player location...")
-	layout := widgets.NewQVBoxLayout()
+	layout := NewTopAlignLayout()
 	
 	fileLabel := NewQLabelF("Player location:")
 	fileTextBox := widgets.NewQLineEdit2(settings.Location, nil)

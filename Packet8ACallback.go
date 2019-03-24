@@ -4,10 +4,8 @@ import "github.com/Gskartwii/roblox-dissector/peer"
 import "github.com/therecipe/qt/widgets"
 import "fmt"
 
-func ShowPacket8A(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) {
+func ShowPacket8A(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationContext, layers *peer.PacketLayers) {
 	MainLayer := layers.Main.(*peer.Packet8ALayer)
-
-	layerLayout := NewBasicPacketViewer(packetType, context, layers)
 
 	int1Label := widgets.NewQTextEdit2(fmt.Sprintf("Player Id: %d", MainLayer.PlayerId), nil)
 	string1Label := widgets.NewQTextEdit2(fmt.Sprintf("Client ticket: %s", MainLayer.ClientTicket), nil)

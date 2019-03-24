@@ -4,7 +4,7 @@ import "github.com/therecipe/qt/widgets"
 func NewProxyCaptureWidget(parent widgets.QWidget_ITF, callback func(string, string)()) {
 	window := widgets.NewQWidget(parent, 1)
 	window.SetWindowTitle("Set up proxy...")
-	layout := widgets.NewQVBoxLayout()
+	layout := NewTopAlignLayout()
 
 	srcLabel := NewQLabelF("Source port:")
 	srcTextBox := widgets.NewQLineEdit2("53640", nil)

@@ -1,13 +1,12 @@
 package main
+
 import "github.com/therecipe/qt/widgets"
 import "github.com/therecipe/qt/gui"
 import "github.com/Gskartwii/roblox-dissector/peer"
 import "os"
 
-func ShowPacket97(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) {
+func ShowPacket97(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationContext, layers *peer.PacketLayers) {
 	MainLayer := layers.Main.(*peer.Packet97Layer)
-
-	layerLayout := NewBasicPacketViewer(packetType, context, layers)
 
 	labelForEnumSchema := NewQLabelF("Enum schema (%d entries):", len(MainLayer.Schema.Enums))
 	layerLayout.AddWidget(labelForEnumSchema, 0, 0)
@@ -27,7 +26,6 @@ func ShowPacket97(packetType byte, context *peer.CommunicationContext, layers *p
 	enumSchemaList.SetSelectionMode(0)
 	enumSchemaList.SetSortingEnabled(true)
 	layerLayout.AddWidget(enumSchemaList, 0, 0)
-
 
 	labelForInstanceSchema := NewQLabelF("Instance schema (%d entries):", len(MainLayer.Schema.Instances))
 	layerLayout.AddWidget(labelForInstanceSchema, 0, 0)

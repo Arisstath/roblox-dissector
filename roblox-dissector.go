@@ -1,12 +1,14 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"net"
 
 	"github.com/Gskartwii/roblox-dissector/peer"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
+	"github.com/therecipe/qt/widgets"
 
 	"os"
 	"regexp"
@@ -62,9 +64,11 @@ var PacketNames map[byte]string = map[byte]string{
 	0x97: "ID_ROBLOX_NEW_SCHEMA",
 }
 
-type ActivationCallback func(byte, *peer.CommunicationContext, *peer.PacketLayers)
+type ActivationCallback func(*widgets.QVBoxLayout, *peer.CommunicationContext, *peer.PacketLayers)
 
 var ActivationCallbacks map[byte]ActivationCallback = map[byte]ActivationCallback{
+	0x00: ShowPacket00,
+	0x03: ShowPacket03,
 	0x05: ShowPacket05,
 	0x06: ShowPacket06,
 	0x07: ShowPacket07,
@@ -72,8 +76,6 @@ var ActivationCallbacks map[byte]ActivationCallback = map[byte]ActivationCallbac
 	0x09: ShowPacket09,
 	0x10: ShowPacket10,
 	0x13: ShowPacket13,
-	0x00: ShowPacket00,
-	0x03: ShowPacket03,
 	0x15: ShowPacket15,
 
 	0x81: ShowPacket81,
@@ -102,13 +104,14 @@ func SrcAndDestFromGoPacket(packet gopacket.Packet) (*net.UDPAddr, *net.UDPAddr)
 }
 
 func main() {
+	joinFlag := flag.String("join", "", "roblox-dissector:<authTicket>:<placeID>:<browserTrackerID>")
 	go func() {
 		log.Println(http.ListenAndServe("localhost:6060", nil))
 	}()
-	if len(os.Args) > 1 {
+	if *joinFlag != "" {
 		println("Received protocol invocation?")
 		protocolRegex := regexp.MustCompile(`roblox-dissector:([0-9A-Fa-f]+):(\d+):(\d+)`)
-		uri := os.Args[1]
+		uri := *joinFlag
 		parts := protocolRegex.FindStringSubmatch(uri)
 		if len(parts) < 4 {
 			println("invalid protocol invocation: ", os.Args[1])
@@ -126,5 +129,5 @@ func main() {
 		}
 		return
 	}
-	GUIMain()
+	GUIMain(flag.Arg(0))
 }

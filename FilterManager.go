@@ -9,7 +9,7 @@ import "github.com/therecipe/qt/widgets"
 func NewFilterManager(parent widgets.QWidget_ITF, filters FilterSettings) {
 	window := widgets.NewQWidget(parent, 1)
 	window.SetWindowTitle("Manage packet view filters")
-	layout := widgets.NewQVBoxLayout()
+	layout := NewTopAlignLayout()
 
 	ruleList := widgets.NewQListWidget(window)
 	ruleList.SetSortingEnabled(false)

@@ -18,7 +18,7 @@ func NewClientConsole(parent widgets.QWidget_ITF, client *peer.CustomClient) {
 
 	window := widgets.NewQWidget(parent, 1)
 	window.SetWindowTitle("Client watch console")
-	layout := widgets.NewQVBoxLayout()
+	layout := NewTopAlignLayout()
 
 	logLabel := NewQLabelF("Client log:")
 	log := widgets.NewQPlainTextEdit(window)

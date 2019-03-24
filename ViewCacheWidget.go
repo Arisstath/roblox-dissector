@@ -3,7 +3,7 @@ package main
 /*
 func NewCacheList(cache *peer.StringCache) widgets.QWidget_ITF {
 	cacheWidget := widgets.NewQWidget(nil, 0)
-	cacheLayout := widgets.NewQVBoxLayout()
+	cacheLayout := NewTopAlignLayout()
 	cacheList := widgets.NewQTreeView(nil)
 	standardModel := NewProperSortModel(nil)
 	standardModel.SetHorizontalHeaderLabels([]string{"Key", "Value"})

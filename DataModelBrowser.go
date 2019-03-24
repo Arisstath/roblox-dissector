@@ -15,7 +15,7 @@ import (
 
 func showChildren(rootNode *gui.QStandardItem, children []*datamodel.Instance) {
 	for _, instance := range children {
-		row := showReplicationInstance(instance)
+		row := showReplicationInstance(instance, instance.Parent())
 		if len(instance.Children) > 0 {
 			childrenRootItem := NewQStandardItemF("%d children", len(instance.Children))
 			showChildren(childrenRootItem, instance.Children)
@@ -57,6 +57,7 @@ func dumpScripts(instances []*rbxfile.Instance, i int) int {
 func NewDataModelBrowser(context *peer.CommunicationContext, dataModel *datamodel.DataModel, defaultValues DefaultValues) {
 	subWindow := widgets.NewQWidget(window, core.Qt__Window)
 	subWindowLayout := widgets.NewQVBoxLayout2(subWindow)
+	subWindowLayout.SetAlign(core.Qt__AlignTop)
 
 	subWindow.SetWindowTitle("Data Model")
 
@@ -95,8 +96,8 @@ func NewDataModelBrowser(context *peer.CommunicationContext, dataModel *datamode
 	})
 	subWindowLayout.AddWidget(takeSnapshotButton, 0, 0)
 
-	instanceList := widgets.NewQTreeView(nil)
-	standardModel := NewProperSortModel(nil)
+	instanceList := widgets.NewQTreeView(subWindow)
+	standardModel := NewProperSortModel(subWindow)
 	standardModel.SetHorizontalHeaderLabels([]string{"Name", "Type", "Value", "Referent", "Parent"})
 
 	rootNode := standardModel.InvisibleRootItem()

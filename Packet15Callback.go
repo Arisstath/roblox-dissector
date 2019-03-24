@@ -47,7 +47,7 @@ func init() {
 	}()
 }
 
-func ShowPacket15(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) {
+func ShowPacket15(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationContext, layers *peer.PacketLayers) {
 	MainLayer := layers.Main.(*peer.Packet15Layer)
 
 	var reasonLabel *widgets.QLabel
@@ -86,6 +86,5 @@ func ShowPacket15(packetType byte, context *peer.CommunicationContext, layers *p
 			reasonFail(fmt.Sprintf("Unknown disconnection %d", MainLayer.Reason))
 		}()
 	}
-	layerLayout := NewBasicPacketViewer(packetType, context, layers)
 	layerLayout.AddWidget(reasonLabel, 0, 0)
 }

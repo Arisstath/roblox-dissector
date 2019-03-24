@@ -5,7 +5,7 @@ import "github.com/therecipe/qt/widgets"
 func NewPlayerProxyWidget(parent widgets.QWidget_ITF, settings *PlayerProxySettings, callback func(*PlayerProxySettings)()) {
 	window := widgets.NewQWidget(parent, 1)
 	window.SetWindowTitle("Choose HTTPS server settings...")
-	layout := widgets.NewQVBoxLayout()
+	layout := NewTopAlignLayout()
 
 	certfileLabel := NewQLabelF("Certfile location:")
 	certfileTextBox := widgets.NewQLineEdit2(settings.Certfile, nil)

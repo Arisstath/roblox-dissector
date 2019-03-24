@@ -32,13 +32,16 @@ var Callbacks83_09 = map[uint8](func(peer.Packet83_09Subpacket) widgets.QWidget_
 	0x6: show83_09_06,
 }
 
-func showReplicationInstance(this *datamodel.Instance) []*gui.QStandardItem {
+// Allow caller to manually pass Parent.
+// This is because the Parent() stored in datamodel.Instance isn't necessarily
+// the Parent we want.
+func showReplicationInstance(this *datamodel.Instance, parent *datamodel.Instance) []*gui.QStandardItem {
 	rootNameItem := NewQStandardItemF("Name: %s", this.Name())
 	typeItem := NewQStandardItemF(this.ClassName)
 	referentItem := NewQStandardItemF(this.Ref.String())
 	var parentItem *gui.QStandardItem
-	if this.Parent() != nil {
-		parentItem = NewQStandardItemF(this.Parent().Ref.String())
+	if parent != nil {
+		parentItem = NewQStandardItemF(parent.Ref.String())
 	} else {
 		parentItem = NewQStandardItemF("DataModel/NULL")
 	}
@@ -101,7 +104,7 @@ func show83_0B(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	rootNode := standardModel.InvisibleRootItem()
 	if this != nil && this.Instances != nil { // if arraylen == 0, this is nil
 		for _, instance := range this.Instances {
-			rootNode.AppendRow(showReplicationInstance(instance.Instance))
+			rootNode.AppendRow(showReplicationInstance(instance.Instance, instance.Parent))
 		}
 	}
 	instanceList.SetModel(standardModel)
@@ -114,6 +117,8 @@ func show83_01(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_01)
 	return NewQLabelF("Delete instance: %s, %s", this.Instance.Ref.String(), this.Instance.GetFullName())
 }
+
+// TODO: Properties may be changed later by 83_03?
 func show83_02(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_02)
 	instanceList := widgets.NewQTreeView(nil)
@@ -121,7 +126,7 @@ func show83_02(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	standardModel.SetHorizontalHeaderLabels([]string{"Name", "Type", "Value", "Referent", "Parent", "Path"})
 
 	rootNode := standardModel.InvisibleRootItem()
-	rootNode.AppendRow(showReplicationInstance(this.Instance))
+	rootNode.AppendRow(showReplicationInstance(this.Instance, this.Parent))
 	instanceList.SetModel(standardModel)
 	instanceList.SetSelectionMode(0)
 	instanceList.SetSortingEnabled(true)
@@ -131,7 +136,7 @@ func show83_02(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 func show83_03(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_03)
 	widget := widgets.NewQWidget(nil, 0)
-	layout := widgets.NewQVBoxLayout()
+	layout := NewTopAlignLayout()
 	if this.Instance != nil {
 		layout.AddWidget(NewQLabelF("Object: %s", this.Instance.GetFullName()), 0, 0)
 	} else {
@@ -157,7 +162,7 @@ func show83_03(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 func show83_0A(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_0A)
 	widget := widgets.NewQWidget(nil, 0)
-	layout := widgets.NewQVBoxLayout()
+	layout := NewTopAlignLayout()
 	if this.Instance != nil {
 		layout.AddWidget(NewQLabelF("Object: %s", this.Instance.GetFullName()), 0, 0)
 	} else {
@@ -176,7 +181,7 @@ func show83_04(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 func show83_05(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_05)
 	widget := widgets.NewQWidget(nil, 0)
-	layout := widgets.NewQVBoxLayout()
+	layout := NewTopAlignLayout()
 	layout.AddWidget(NewQLabelF("Packet version: %d", this.PacketVersion), 0, 0)
 	layout.AddWidget(NewQLabelF("Timestamp: %d", this.Timestamp), 0, 0)
 	layout.AddWidget(NewQLabelF("Fps: %f, %f, %f", this.Fps1, this.Fps2, this.Fps3), 0, 0)
@@ -189,7 +194,7 @@ func show83_05(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 func show83_06(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_06)
 	widget := widgets.NewQWidget(nil, 0)
-	layout := widgets.NewQVBoxLayout()
+	layout := NewTopAlignLayout()
 	layout.AddWidget(NewQLabelF("Is ping back: %v", this.IsPingBack), 0, 0)
 	layout.AddWidget(NewQLabelF("Timestamp: %d", this.Timestamp), 0, 0)
 	layout.AddWidget(NewQLabelF("Stats 1: %d", this.SendStats), 0, 0)
@@ -201,7 +206,7 @@ func show83_06(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 func show83_07(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_07)
 	widget := widgets.NewQWidget(nil, 0)
-	layout := widgets.NewQVBoxLayout()
+	layout := NewTopAlignLayout()
 	if this.Instance != nil {
 		layout.AddWidget(NewQLabelF("Object: %s", this.Instance.GetFullName()), 0, 0)
 	} else {
@@ -246,7 +251,7 @@ func show83_09_06(t peer.Packet83_09Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_09_06)
 
 	widget := widgets.NewQWidget(nil, 0)
-	layout := widgets.NewQVBoxLayout()
+	layout := NewTopAlignLayout()
 	layout.AddWidget(NewQLabelF("Int 1: %d", this.Int1), 0, 0)
 	layout.AddWidget(NewQLabelF("Int 2: %d", this.Int2), 0, 0)
 	widget.SetLayout(layout)
@@ -256,7 +261,7 @@ func show83_09_06(t peer.Packet83_09Subpacket) widgets.QWidget_ITF {
 func show83_09(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_09)
 	widget := widgets.NewQWidget(nil, 0)
-	layout := widgets.NewQVBoxLayout()
+	layout := NewTopAlignLayout()
 	layout.AddWidget(NewQLabelF("Type: %d", this.SubpacketType), 0, 0)
 
 	callback := Callbacks83_09[this.SubpacketType]
@@ -278,7 +283,7 @@ func show83_10(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 func show83_11(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_11)
 	widget := widgets.NewQWidget(nil, 0)
-	layout := widgets.NewQVBoxLayout()
+	layout := NewTopAlignLayout()
 
 	n, pref := humanize.ComputeSI(this.MemoryStats.TotalServerMemory)
 	layout.AddWidget(NewQLabelF("Total server memory: %G %sB", n, pref), 0, 0)
@@ -370,7 +375,7 @@ func show83_11(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 func show83_12(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_12)
 	widget := widgets.NewQWidget(nil, 0)
-	layerLayout := widgets.NewQVBoxLayout()
+	layerLayout := NewTopAlignLayout()
 	hashListLabel := NewQLabelF("Hashes:")
 	layerLayout.AddWidget(hashListLabel, 0, 0)
 
@@ -403,13 +408,15 @@ func showPacket83Subpacket(this Packet83Subpacket) widgets.QWidget_ITF {
 	return SubpacketCallbacks[this.Type()](this)
 }
 
-func ShowPacket83(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) {
+func ShowPacket83(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationContext, layers *peer.PacketLayers) {
 	MainLayer := layers.Main.(*peer.Packet83Layer)
 
-	layerLayout := NewBasicPacketViewer(packetType, context, layers)
+	mainSplitter := widgets.NewQSplitter(nil)
+	mainSplitter.SetOrientation(core.Qt__Horizontal)
 
-	packetListLabel := NewQLabelF("Replication subpackets:")
-	layerLayout.AddWidget(packetListLabel, 0, 0)
+	subWindow := widgets.NewQWidget(nil, 0)
+	subWindowLayout := NewTopAlignLayout()
+	subWindowLayout.AddWidget(NewQLabelF("No replication subpacket selected!"), 0, 0)
 
 	packetList := widgets.NewQTreeView(nil)
 	standardModel := NewProperSortModel(nil)
@@ -427,33 +434,23 @@ func ShowPacket83(packetType byte, context *peer.CommunicationContext, layers *p
 	packetList.ConnectClicked(func(index *core.QModelIndex) {
 		thisIndex, _ := strconv.Atoi(standardModel.Item(index.Row(), 0).Data(0).ToString())
 		subpacket := MainLayer.SubPackets[thisIndex]
-
-		subWindow := widgets.NewQWidget(packetList, core.Qt__Window)
+		subWindow.DestroyQWidget()
+		subWindow = widgets.NewQWidget(mainSplitter, 0)
 		subWindowLayout := widgets.NewQVBoxLayout2(subWindow)
-
-		isClient := layers.Root.FromClient
-		isServer := layers.Root.FromServer
-
-		var direction string
-		if isClient {
-			direction = "Direction: Client -> Server"
-		} else if isServer {
-			direction = "Direction: Server -> Client"
-		} else {
-			direction = "Direction: Unknown"
-		}
-		directionLabel := widgets.NewQLabel2(direction, nil, 0)
-		subWindowLayout.AddWidget(directionLabel, 0, 0)
+		subWindowLayout.SetAlign(core.Qt__AlignTop)
 
 		showCallback, ok := SubpacketCallbacks[subpacket.Type()]
 		if !ok {
-			println("unsupported type:", subpacket.Type())
+			subWindowLayout.AddWidget(NewQLabelF("Unsupported packet type %d", subpacket.Type()), 0, 0)
 		} else {
 			subWindowLayout.AddWidget(showCallback(subpacket), 0, 0)
 		}
 
-		subWindow.SetWindowTitle("Replication Packet Window: " + subpacket.TypeString())
-		subWindow.Show()
+		subWindow.SetLayout(subWindowLayout)
+		mainSplitter.AddWidget(subWindow)
 	})
-	layerLayout.AddWidget(packetList, 0, 0)
+	mainSplitter.AddWidget(packetList)
+	mainSplitter.AddWidget(subWindow)
+
+	layerLayout.AddWidget(mainSplitter, 0, 0)
 }

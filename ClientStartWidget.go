@@ -8,7 +8,7 @@ import "strconv"
 func NewClientStartWidget(parent widgets.QWidget_ITF, settings *peer.CustomClient, callback func(uint32, string, string)) {
 	window := widgets.NewQWidget(parent, 1)
 	window.SetWindowTitle("Start self client...")
-	layout := widgets.NewQVBoxLayout()
+	layout := NewTopAlignLayout()
 
 	placeIdLabel := NewQLabelF("Place id:")
 	placeId := widgets.NewQLineEdit2("12109643", window)

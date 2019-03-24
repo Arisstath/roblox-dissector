@@ -1,0 +1,143 @@
+package main
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/Gskartwii/roblox-dissector/peer"
+	"github.com/therecipe/qt/core"
+	"github.com/therecipe/qt/widgets"
+)
+
+type PacketDetailsViewer struct {
+	*widgets.QWidget
+	TabLayout      *widgets.QTabWidget
+	LogBox         *widgets.QTextEdit
+	ReliabilityTab *widgets.QWidget
+	MainTab        *widgets.QWidget
+}
+
+func NewPacketDetailsViewer(parent widgets.QWidget_ITF) *PacketDetailsViewer {
+	basicWidget := widgets.NewQWidget(parent, 0)
+	layout := widgets.NewQVBoxLayout2(basicWidget)
+	layout.SetAlign(core.Qt__AlignTop)
+
+	detailsViewer := &PacketDetailsViewer{QWidget: basicWidget}
+
+	mainScrollArea := widgets.NewQScrollArea(detailsViewer)
+	mainScrollArea.SetWidgetResizable(true)
+	tabWidget := widgets.NewQTabWidget(basicWidget)
+	detailsViewer.TabLayout = tabWidget
+
+	logWidget := widgets.NewQWidget(tabWidget, 0)
+	logLayout := NewTopAlignLayout()
+	logBox := widgets.NewQTextEdit(logWidget)
+	logBox.SetReadOnly(true)
+	logLayout.AddWidget(logBox, 0, 0)
+	logWidget.SetLayout(logLayout)
+	tabWidget.AddTab(logWidget, "Parser log")
+	detailsViewer.LogBox = logBox
+
+	relWidget := widgets.NewQWidget(tabWidget, 0)
+	relLayout := NewTopAlignLayout()
+	relLayout.AddWidget(NewQLabelF("No ReliabilityLayer selected!"), 0, 0)
+	relWidget.SetLayout(relLayout)
+	tabWidget.AddTab(relWidget, "Reliability Layer")
+	detailsViewer.ReliabilityTab = relWidget
+
+	mainWidget := widgets.NewQWidget(tabWidget, 0)
+	mainLayout := NewTopAlignLayout()
+	mainLayout.AddWidget(NewQLabelF("No packets selected!"), 0, 0)
+	mainWidget.SetLayout(mainLayout)
+	tabWidget.AddTab(mainWidget, "Main Layer")
+	detailsViewer.MainTab = mainWidget
+
+	mainScrollArea.SetWidget(tabWidget)
+	layout.AddWidget(mainScrollArea, 0, 0)
+
+	return detailsViewer
+}
+
+func (viewer *PacketDetailsViewer) Update(context *peer.CommunicationContext, layers *peer.PacketLayers, activationCallback ActivationCallback) {
+	originalIndex := viewer.TabLayout.CurrentIndex()
+
+	// TODO: improve this layout
+	// We must destroy the entire widget here, because
+	// AddWidget() on the layout will parent child widgets
+	// to the QWidget
+	reliabilityIndex := viewer.TabLayout.IndexOf(viewer.ReliabilityTab)
+	viewer.ReliabilityTab.DestroyQWidget()
+	viewer.ReliabilityTab = widgets.NewQWidget(viewer, 0)
+	if layers.Reliability != nil {
+		relLayout := NewTopAlignLayout()
+		splitBuffer := layers.Reliability.SplitBuffer
+		rakNets := splitBuffer.RakNetPackets
+		reliables := splitBuffer.ReliablePackets
+
+		datagramInfo := new(strings.Builder)
+		for _, rakNetLayer := range rakNets {
+			fmt.Fprintf(datagramInfo, "%d,", rakNetLayer.DatagramNumber)
+		}
+		relLayout.AddWidget(NewQLabelF("Datagrams: %s", datagramInfo.String()), 0, 0)
+
+		relLayout.AddWidget(NewQLabelF("Reliability: %d", layers.Reliability.Reliability), 0, 0)
+		if layers.Reliability.IsReliable() {
+			rmnInfo := new(strings.Builder)
+			for _, reliable := range reliables {
+				if reliable != nil {
+					fmt.Fprintf(rmnInfo, "%d,", reliable.ReliableMessageNumber)
+				} else {
+					rmnInfo.WriteString("nil,")
+				}
+			}
+			relLayout.AddWidget(NewQLabelF("Reliable MNs: %s", rmnInfo.String()), 0, 0)
+		}
+
+		if layers.Reliability.IsOrdered() {
+			ordInfo := new(strings.Builder)
+			for _, reliable := range reliables {
+				if reliable != nil {
+					fmt.Fprintf(ordInfo, "%d,", reliable.OrderingIndex)
+				} else {
+					ordInfo.WriteString("nil,")
+				}
+			}
+			relLayout.AddWidget(NewQLabelF("Ordering channel: %d, indices: %s", layers.Reliability.OrderingChannel, ordInfo.String()), 0, 0)
+		}
+
+		if layers.Reliability.IsSequenced() {
+			seqInfo := new(strings.Builder)
+			for _, reliable := range reliables {
+				if reliable != nil {
+					fmt.Fprintf(seqInfo, "%d,", reliable.SequencingIndex)
+				} else {
+					seqInfo.WriteString("nil,")
+				}
+			}
+			relLayout.AddWidget(NewQLabelF("Sequencing indices: %s", layers.Reliability.OrderingChannel, seqInfo.String()), 0, 0)
+		}
+
+		viewer.ReliabilityTab.SetLayout(relLayout)
+	} else {
+		newRelLayout := NewTopAlignLayout()
+		newRelLayout.AddWidget(NewQLabelF("No ReliabilityLayer selected!"), 0, 0)
+		viewer.ReliabilityTab.SetLayout(newRelLayout)
+	}
+	viewer.TabLayout.InsertTab(reliabilityIndex, viewer.ReliabilityTab, "Reliability Layer")
+
+	mainIndex := viewer.TabLayout.IndexOf(viewer.MainTab)
+	viewer.MainTab.DestroyQWidget()
+	viewer.MainTab = widgets.NewQWidget(viewer, 0)
+	if activationCallback != nil && layers.Main != nil {
+		newMainLayout := NewTopAlignLayout()
+		activationCallback(newMainLayout, context, layers)
+		viewer.MainTab.SetLayout(newMainLayout)
+	} else {
+		newMainLayout := NewTopAlignLayout()
+		newMainLayout.AddWidget(NewQLabelF("No main layer selected!"), 0, 0)
+		viewer.MainTab.SetLayout(newMainLayout)
+	}
+	viewer.TabLayout.InsertTab(mainIndex, viewer.MainTab, "Main Layer")
+
+	viewer.TabLayout.SetCurrentIndex(originalIndex)
+}
