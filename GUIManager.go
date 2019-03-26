@@ -59,17 +59,17 @@ type PlayerProxySettings struct {
 	Keyfile  string
 }
 
-type SelectionHandlerList map[uint64](func())
+type PacketLayerList map[uint64]*peer.PacketLayers
 type MyPacketListView struct {
 	*widgets.QTreeView
 	packetRowsByUniqueID PacketList
 
-	SelectionHandlers SelectionHandlerList
+	Packets PacketLayerList
 	RootNode          *gui.QStandardItem
 	PacketIndex       uint64
 	StandardModel     *gui.QStandardItemModel
 
-	MSelectionHandlers *sync.Mutex
+	MPacketList *sync.Mutex
 	MGUI               *sync.Mutex
 
 	IsCapturing       bool
@@ -104,10 +104,10 @@ func NewMyPacketListView(parent widgets.QWidget_ITF) *MyPacketListView {
 		QTreeView:            widgets.NewQTreeView(parent),
 		packetRowsByUniqueID: make(PacketList),
 
-		SelectionHandlers: make(SelectionHandlerList),
+		Packets: make(PacketLayerList),
 
-		MSelectionHandlers: &sync.Mutex{},
-		MGUI:               &sync.Mutex{},
+		MPacketList: &sync.Mutex{},
+		MGUI:        &sync.Mutex{},
 
 		CaptureJobContext: captureContext,
 		StopCaptureJob:    captureCancel,
@@ -128,7 +128,7 @@ func (m *MyPacketListView) Reset() {
 	m.StandardModel.SetHorizontalHeaderLabels([]string{"Index", "Type", "Direction", "Length in Bytes", "Datagram Numbers", "Ordered Splits", "Total Splits"})
 
 	m.packetRowsByUniqueID = make(PacketList)
-	m.SelectionHandlers = make(SelectionHandlerList)
+	m.Packets = make(PacketLayerList)
 	m.RootNode = m.StandardModel.InvisibleRootItem()
 	m.PacketIndex = 0
 	m.CaptureJobContext, m.StopCaptureJob = context.WithCancel(context.Background())
@@ -174,11 +174,9 @@ func (m *MyPacketListView) BindCallback(packetType byte, context *peer.Communica
 	row := m.packetRowsByUniqueID[layers.Reliability.SplitBuffer.UniqueID]
 	index, _ := strconv.Atoi(row[0].Data(0).ToString())
 
-	m.MSelectionHandlers.Lock()
-	m.SelectionHandlers[uint64(index)] = func() {
-		m.DefaultPacketWindow.Update(context, layers, activationCallback)
-	}
-	m.MSelectionHandlers.Unlock()
+	m.MPacketList.Lock()
+	m.Packets[uint64(index)] = layers
+	m.MPacketList.Unlock()
 	packetName := PacketNames[packetType]
 	if packetName == "" {
 		packetName = fmt.Sprintf("0x%02X", packetType)
@@ -211,11 +209,9 @@ func (m *MyPacketListView) BindDefaultCallback(packetType byte, context *peer.Co
 	row := m.packetRowsByUniqueID[layers.Reliability.SplitBuffer.UniqueID]
 	index, _ := strconv.Atoi(row[0].Data(0).ToString())
 
-	m.MSelectionHandlers.Lock()
-	m.SelectionHandlers[uint64(index)] = func() {
-		m.DefaultPacketWindow.Update(context, layers, nil)
-	}
-	m.MSelectionHandlers.Unlock()
+	m.MPacketList.Lock()
+	m.Packets[uint64(index)] = layers
+	m.MPacketList.Unlock()
 }
 
 func (m *MyPacketListView) handleSplitPacket(packetType byte, context *peer.CommunicationContext, layers *peer.PacketLayers) {
@@ -234,7 +230,7 @@ func (m *MyPacketListView) handleSplitPacket(packetType byte, context *peer.Comm
 
 	row[3].SetData(core.NewQVariant7(int(layers.Reliability.SplitBuffer.RealLength)), 0)
 	if layers.Reliability.SplitBuffer.RakNetPackets[0] == nil {
-		panic(errors.New("encountered nil first raknet!!"))
+		panic(errors.New("encountered nil first raknet"))
 	}
 	row[4].SetData(core.NewQVariant14(fmt.Sprintf("%d - %d", layers.Reliability.SplitBuffer.RakNetPackets[0].DatagramNumber, layers.RakNet.DatagramNumber)), 0)
 	row[5].SetData(core.NewQVariant14(fmt.Sprintf("%d/%d", layers.Reliability.SplitBuffer.NumReceivedSplits, layers.Reliability.SplitPacketCount)), 0)
@@ -312,11 +308,9 @@ func (m *MyPacketListView) AddFullPacket(packetType byte, context *peer.Communic
 	}
 
 	if layers.Reliability == nil { // Only bind if we're done parsing the packet
-		m.MSelectionHandlers.Lock()
-		m.SelectionHandlers[index] = func() {
-			m.DefaultPacketWindow.Update(context, layers, activationCallback)
-		}
-		m.MSelectionHandlers.Unlock()
+		m.MPacketList.Lock()
+		m.Packets[index] = layers
+		m.MPacketList.Unlock()
 	} else {
 		paintItems(rootRow, gui.NewQColor3(255, 255, 0, 127))
 	}
@@ -377,7 +371,7 @@ func GUIMain(openFile string) {
 
 	mainSplitter := widgets.NewQSplitter(window)
 	packetViewer := NewMyPacketListView(window)
-	packetDetailsViewer := NewPacketDetailsViewer(window)
+	packetDetailsViewer := NewPacketDetailsViewer(window, core.Qt__Widget)
 	mainSplitter.SetOrientation(core.Qt__Vertical)
 	mainSplitter.AddWidget(packetViewer)
 	mainSplitter.AddWidget(packetDetailsViewer)
@@ -399,8 +393,21 @@ func GUIMain(openFile string) {
 	packetViewer.SetSortingEnabled(true)
 	packetViewer.ConnectClicked(func(index *core.QModelIndex) {
 		realSelectedValue, _ := strconv.Atoi(standardModel.Item(proxy.MapToSource(index).Row(), 0).Data(0).ToString())
-		if packetViewer.SelectionHandlers[uint64(realSelectedValue)] != nil {
-			packetViewer.SelectionHandlers[uint64(realSelectedValue)]()
+		if packetViewer.Packets[uint64(realSelectedValue)] != nil {
+			thisPacket := packetViewer.Packets[uint64(realSelectedValue)]
+			packetViewer.DefaultPacketWindow.Update(packetViewer.Context, thisPacket, ActivationCallbacks[thisPacket.PacketType])
+		}
+	})
+	packetViewer.SetContextMenuPolicy(core.Qt__CustomContextMenu)
+	packetViewer.ConnectCustomContextMenuRequested(func(position *core.QPoint) {
+		index := packetViewer.IndexAt(position)
+		if index.IsValid() {
+			realSelectedValue, _ := strconv.Atoi(standardModel.Item(proxy.MapToSource(index).Row(), 0).Data(0).ToString())
+			if packetViewer.Packets[uint64(realSelectedValue)] != nil {
+				thisPacket := packetViewer.Packets[uint64(realSelectedValue)]
+				customPacketMenu := NewPacketViewerMenu(packetViewer, packetViewer.Context, thisPacket, ActivationCallbacks[thisPacket.PacketType])
+				customPacketMenu.Exec2(packetViewer.Viewport().MapToGlobal(position), nil)
+			}
 		}
 	})
 

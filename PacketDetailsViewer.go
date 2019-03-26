@@ -17,8 +17,8 @@ type PacketDetailsViewer struct {
 	MainTab        *widgets.QWidget
 }
 
-func NewPacketDetailsViewer(parent widgets.QWidget_ITF) *PacketDetailsViewer {
-	basicWidget := widgets.NewQWidget(parent, 0)
+func NewPacketDetailsViewer(parent widgets.QWidget_ITF, flags core.Qt__WindowType) *PacketDetailsViewer {
+	basicWidget := widgets.NewQWidget(parent, flags)
 	layout := widgets.NewQVBoxLayout2(basicWidget)
 	layout.SetAlign(core.Qt__AlignTop)
 
@@ -140,4 +140,16 @@ func (viewer *PacketDetailsViewer) Update(context *peer.CommunicationContext, la
 	viewer.TabLayout.InsertTab(mainIndex, viewer.MainTab, "Main Layer")
 
 	viewer.TabLayout.SetCurrentIndex(originalIndex)
+}
+
+func NewPacketViewerMenu(parent widgets.QWidget_ITF, context *peer.CommunicationContext, layers *peer.PacketLayers, activationCallback ActivationCallback) *widgets.QMenu {
+	menu := widgets.NewQMenu(parent)
+	showPacketAction := menu.AddAction("View in new window")
+	showPacketAction.ConnectToggled(func(_ bool) {
+		window := NewPacketDetailsViewer(parent, core.Qt__Window)
+		window.Update(context, layers, activationCallback)
+		window.Show()
+	})
+
+	return menu
 }
