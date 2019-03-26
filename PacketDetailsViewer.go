@@ -155,16 +155,7 @@ func NewPacketViewerMenu(parent widgets.QWidget_ITF, context *peer.Communication
 	showPacketAction.ConnectTriggered(func(_ bool) {
 		window := NewPacketDetailsViewer(parent, core.Qt__Window)
 		window.Update(context, layers, activationCallback)
-		var title string
-		if layers.Main != nil {
-			title = layers.Main.String()
-		} else {
-			title = PacketNames[layers.PacketType]
-			if title == "" {
-				title = fmt.Sprintf("0x%02X", layers.PacketType)
-			}
-		}
-		window.SetWindowTitle(fmt.Sprintf("Packet window: %s", title))
+		window.SetWindowTitle(fmt.Sprintf("Packet window: %s", layers.String()))
 		window.Show()
 	})
 

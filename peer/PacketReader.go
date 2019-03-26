@@ -113,6 +113,9 @@ func NewPacketReader() *DefaultPacketReader {
 		ErrorEmitter:  emitter.New(0),
 		PacketEmitter: emitter.New(0),
 		DataEmitter:   emitter.New(0),
+		contextualHandler: contextualHandler{
+			caches: new(Caches),
+		},
 	}
 
 	reader.bindBasicPacketHandler()

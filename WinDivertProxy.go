@@ -1,5 +1,6 @@
 package main
 
+/*
 import (
 	"context"
 	"crypto/tls"
@@ -23,7 +24,7 @@ type ProxiedPacket struct {
 	Layers  *peer.PacketLayers
 }
 
-func captureFromWinDivertProxy(realServerAddr string, captureJobContext context.Context, injectPacket chan peer.RakNetPacket, packetViewer *MyPacketListView, commContext *peer.CommunicationContext) {
+func captureFromWinDivertProxy(realServerAddr string, captureJobContext context.Context, injectPacket chan peer.RakNetPacket, packetViewer *PacketListViewer, commContext *peer.CommunicationContext) {
 	fmt.Printf("Will capture from windivert proxy ??? -> %s\n", realServerAddr)
 
 	dstAddr, err := net.ResolveUDPAddr("udp", realServerAddr)
@@ -137,7 +138,7 @@ func captureFromWinDivertProxy(realServerAddr string, captureJobContext context.
 	return
 }
 
-func autoDetectWinDivertProxy(settings *PlayerProxySettings, captureJobContext context.Context, injectPacket chan peer.RakNetPacket, packetViewer *MyPacketListView, commContext *peer.CommunicationContext) {
+func autoDetectWinDivertProxy(settings *PlayerProxySettings, captureJobContext context.Context, injectPacket chan peer.RakNetPacket, packetViewer *PacketListViewer, commContext *peer.CommunicationContext) {
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
@@ -232,3 +233,4 @@ func autoDetectWinDivertProxy(settings *PlayerProxySettings, captureJobContext c
 	}()
 
 }
+*/

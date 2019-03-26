@@ -1,5 +1,6 @@
 package main
 
+/*
 import (
 	"context"
 	"fmt"
@@ -9,29 +10,23 @@ import (
 	"github.com/olebedev/emitter"
 )
 
-func captureFromInjectionProxy(src string, dst string, captureJobContext context.Context, injectPacket chan peer.RakNetPacket, packetViewer *MyPacketListView, commContext *peer.CommunicationContext) {
-	fmt.Printf("Will capture from injproxy %s -> %s\n", src, dst)
-
+func captureFromInjectionProxy(captureJobContext context.Context, src string, dst string, window *DissectorWindow) {
 	srcAddr, err := net.ResolveUDPAddr("udp", src)
 	if err != nil {
-		fmt.Printf("Failed to start proxy: %s", err.Error())
-		return
+		return err
 	}
 	dstAddr, err := net.ResolveUDPAddr("udp", dst)
 	if err != nil {
-		fmt.Printf("Failed to start proxy: %s", err.Error())
-		return
+		return err
 	}
 	conn, err := net.ListenUDP("udp", srcAddr)
 	if err != nil {
-		fmt.Printf("Failed to start proxy: %s", err.Error())
-		return
+		return err
 	}
 	defer conn.Close()
 	dstConn, err := net.DialUDP("udp", nil, dstAddr)
 	if err != nil {
-		fmt.Printf("Failed to start proxy: %s", err.Error())
-		return
+		return err
 	}
 	defer dstConn.Close()
 
@@ -126,3 +121,4 @@ func captureFromInjectionProxy(src string, dst string, captureJobContext context
 	}
 	return
 }
+*/

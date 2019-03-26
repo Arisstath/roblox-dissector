@@ -55,7 +55,7 @@ func dumpScripts(instances []*rbxfile.Instance, i int) int {
 }
 
 func NewDataModelBrowser(context *peer.CommunicationContext, dataModel *datamodel.DataModel, defaultValues DefaultValues) {
-	subWindow := widgets.NewQWidget(window, core.Qt__Window)
+	subWindow := widgets.NewQWidget(nil, core.Qt__Window)
 	subWindowLayout := widgets.NewQVBoxLayout2(subWindow)
 	subWindowLayout.SetAlign(core.Qt__AlignTop)
 

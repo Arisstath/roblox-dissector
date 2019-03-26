@@ -1,5 +1,6 @@
 package main
 
+/*
 import (
 	"bytes"
 	"compress/gzip"
@@ -17,7 +18,7 @@ import (
 )
 
 // Requires you to patch the player with memcheck bypass and rbxsig ignoring! But it could work...
-func captureFromPlayerProxy(settings *PlayerProxySettings, captureJobContext context.Context, injectPacket chan peer.RakNetPacket, packetViewer *MyPacketListView, commContext *peer.CommunicationContext) {
+func captureFromPlayerProxy(settings *PlayerProxySettings, captureJobContext context.Context, injectPacket chan peer.RakNetPacket, packetViewer *PacketListViewer, commContext *peer.CommunicationContext) {
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
@@ -124,3 +125,4 @@ func captureFromPlayerProxy(settings *PlayerProxySettings, captureJobContext con
 		proxyContextCancel()
 	}()
 }
+*/

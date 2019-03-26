@@ -119,9 +119,9 @@ func (layer *Packet83Layer) Serialize(writer PacketWriter, stream *extendedWrite
 }
 
 func (Packet83Layer) TypeString() string {
-	return "ID_REPLICATION_DATA"
+	return "ID_DATA"
 }
 
 func (layer *Packet83Layer) String() string {
-	return fmt.Sprintf("ID_REPLICATION_DATA: %d items", len(layer.SubPackets))
+	return fmt.Sprintf("ID_DATA: %d items", len(layer.SubPackets))
 }

@@ -3,146 +3,129 @@ package main
 import (
 	"context"
 	"fmt"
-	"time"
+	"net"
 
 	"github.com/Gskartwii/roblox-dissector/peer"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
-	"github.com/google/gopacket/pcap"
-	"github.com/olebedev/emitter"
 )
 
-// TODO: Can this use ConnectedPeer?
-func captureJob(handle *pcap.Handle, useIPv4 bool, captureJobContext context.Context, packetViewer *MyPacketListView, context *peer.CommunicationContext) {
-	clientPacketReader := peer.NewPacketReader()
-	serverPacketReader := peer.NewPacketReader()
+type Conversation struct {
+	ClientAddress *net.UDPAddr
+	ServerAddress *net.UDPAddr
+	ClientReader  *peer.DefaultPacketReader
+	ServerReader  *peer.DefaultPacketReader
+	Context       *peer.CommunicationContext
+}
+type CaptureContext []*Conversation
 
-	settings := peer.Win10Settings()
-	handle.SetBPFFilter("udp")
-	var packetSource *gopacket.PacketSource
-	if useIPv4 {
-		packetSource = gopacket.NewPacketSource(handle, layers.LayerTypeIPv4)
-	} else {
-		packetSource = gopacket.NewPacketSource(handle, handle.LinkType())
-	}
-	packetChannel := make(chan gopacket.Packet, 0x100) // Buffer the packets to avoid dropping them
-
-	go func() {
-		for packet := range packetSource.Packets() {
-			packetChannel <- packet
+func (ctx CaptureContext) FindClient(client *net.UDPAddr) *Conversation {
+	for _, conv := range ctx {
+		if conv.ClientAddress.IP.Equal(client.IP) && conv.ClientAddress.Port == client.Port {
+			return conv
 		}
-	}()
-
-	simpleHandler := func(e *emitter.Event) {
-		layers := e.Args[0].(*peer.PacketLayers)
-		//println("simple: ", layers.PacketType)
-		packetViewer.AddFullPacket(layers.PacketType, context, layers, ActivationCallbacks[layers.PacketType])
 	}
-	reliableHandler := func(e *emitter.Event) {
-		layers := e.Args[0].(*peer.PacketLayers)
-		//println("reliable: ", layers.Reliability.SplitBuffer.UniqueID)
-		packetViewer.AddSplitPacket(layers.PacketType, context, layers)
-	}
-	fullReliableHandler := func(e *emitter.Event) {
-		layers := e.Args[0].(*peer.PacketLayers)
-		//println("full-reliable: ", layers.Reliability.SplitBuffer.UniqueID)
-		// special hook: we do not have a way to send specific security settings to the parser
-		if layers.PacketType == 0x8A && layers.Error == nil {
-			layer := layers.Main.(*peer.Packet8ALayer)
-			layers.Root.Logger.Printf("hash = %8X, computed = %8X\n", settings.GenerateTicketHash(layer.ClientTicket), layer.TicketHash)
+	return nil
+}
+func (ctx CaptureContext) FindServer(server *net.UDPAddr) *Conversation {
+	for _, conv := range ctx {
+		if conv.ServerAddress.IP.Equal(server.IP) && conv.ServerAddress.Port == server.Port {
+			return conv
 		}
-		packetViewer.BindCallback(layers.PacketType, context, layers, ActivationCallbacks[layers.PacketType])
 	}
-	// ACK and ReliabilityLayer are nops
+	return nil
+}
+func (ctx CaptureContext) Find(src *net.UDPAddr, dst *net.UDPAddr) (*Conversation, bool) {
+	conv := ctx.FindClient(src)
+	if conv != nil {
+		return conv, true
+	}
+	conv = ctx.FindClient(dst)
+	if conv != nil {
+		return conv, false
+	}
 
-	clientPacketReader.SetContext(context)
-	clientPacketReader.SetCaches(new(peer.Caches))
-	clientPacketReader.SetIsClient(true)
-	clientPacketReader.BindDataModelHandlers()
-	serverPacketReader.SetContext(context)
-	serverPacketReader.SetCaches(new(peer.Caches))
-	serverPacketReader.BindDataModelHandlers()
+	return nil, false
+}
 
-	clientPacketReader.LayerEmitter.On("simple", simpleHandler, emitter.Void)
-	clientPacketReader.LayerEmitter.On("reliable", reliableHandler, emitter.Void)
-	clientPacketReader.LayerEmitter.On("full-reliable", fullReliableHandler, emitter.Void)
-	clientPacketReader.ErrorEmitter.On("simple", simpleHandler, emitter.Void)
-	clientPacketReader.ErrorEmitter.On("reliable", reliableHandler, emitter.Void)
-	clientPacketReader.ErrorEmitter.On("full-reliable", fullReliableHandler, emitter.Void)
+func NewConversation(client *net.UDPAddr, server *net.UDPAddr) *Conversation {
+	context := peer.NewCommunicationContext()
+	// TODO: Remove?
+	context.Client = client
+	context.Server = server
 
-	serverPacketReader.LayerEmitter.On("simple", simpleHandler, emitter.Void)
-	serverPacketReader.LayerEmitter.On("reliable", reliableHandler, emitter.Void)
-	serverPacketReader.LayerEmitter.On("full-reliable", fullReliableHandler, emitter.Void)
-	serverPacketReader.ErrorEmitter.On("simple", simpleHandler, emitter.Void)
-	serverPacketReader.ErrorEmitter.On("reliable", reliableHandler, emitter.Void)
-	serverPacketReader.ErrorEmitter.On("full-reliable", fullReliableHandler, emitter.Void)
+	clientReader := peer.NewPacketReader()
+	clientReader.SetIsClient(true)
+	clientReader.SetContext(context)
+	serverReader := peer.NewPacketReader()
+	serverReader.SetContext(context)
+	// We do not automatically bind DataModel handlers here
+	// the user can do that manually
 
-	for {
+	conv := &Conversation{
+		ClientAddress: client,
+		ServerAddress: server,
+		ClientReader:  clientReader,
+		ServerReader:  serverReader,
+		Context:       context,
+	}
+
+	return conv
+}
+
+func captureJob(captureJobContext context.Context, name string, packetSource *gopacket.PacketSource, window *DissectorWindow) error {
+	conversations := CaptureContext(make([]*Conversation, 0, 1))
+	for packet := range packetSource.Packets() {
 		select {
 		case <-captureJobContext.Done():
-			return
-		case packet := <-packetChannel:
-			if packet.ApplicationLayer() == nil {
-				println("Ignoring packet because ApplicationLayer can't be decoded")
-				continue
-			}
-			payload := packet.ApplicationLayer().Payload()
-			if len(payload) == 0 {
-				//println("Ignoring 0 payload")
-				continue
-			}
-			if packet.Layer(layers.LayerTypeIPv4) == nil {
-				continue
-			}
-			src, dst := SrcAndDestFromGoPacket(packet)
-			layers := &peer.PacketLayers{
-				Root: peer.RootLayer{
-					Source:      src,
-					Destination: dst,
-				},
-			}
-			if context.Client == nil && !peer.IsOfflineMessage(payload) {
-				//println("Ignoring non5")
-				continue
-			} else if context.Client == nil {
-				if payload[0]%2 == 1 { // hack: detect packets 5 and 7
-					context.Client, context.Server = src, dst
-				} else {
-					context.Client, context.Server = dst, src
-				}
-			} else if context.Client != nil && !context.IsClient(src) && !context.IsServer(src) {
-				continue
-			}
-			layers.Root.FromClient = context.IsClient(src)
-			layers.Root.FromServer = context.IsServer(src)
+			return nil
+		default:
+		}
+		if packet.ApplicationLayer() == nil || packet.Layer(layers.LayerTypeIPv4) == nil {
+			continue
+		}
+		payload := packet.ApplicationLayer().Payload()
+		if len(payload) == 0 {
+			continue
+		}
 
-			if layers.Root.FromClient {
-				clientPacketReader.ReadPacket(payload, layers)
-			} else {
-				serverPacketReader.ReadPacket(payload, layers)
+		src, dst := SrcAndDestFromGoPacket(packet)
+		conv, fromClient := conversations.Find(src, dst)
+		layers := &peer.PacketLayers{
+			Root: peer.RootLayer{
+				Source:      src,
+				Destination: dst,
+				// Do not set FromClient or FromServer yet
+				// fromClient may be false if conv is nil!
+			},
+		}
+
+		if conv == nil {
+			if !peer.IsOfflineMessage(payload) {
+				// Conversation not recognized and not an offline message:
+				// skip this packet
+				continue
 			}
+			if payload[0] != 5 {
+				println("Warning: receiving unknown offline message: ", payload[0])
+				continue
+			}
+			fromClient = true
+
+			conv = NewConversation(src, dst)
+			conversations = append(conversations, conv)
+			window.AddConversation(fmt.Sprintf("%s#%d", name, len(conversations)), conv)
+		} else {
+			layers.Root.FromClient = fromClient
+			layers.Root.FromServer = !fromClient
+		}
+
+		if fromClient {
+			conv.ClientReader.ReadPacket(payload, layers)
+		} else {
+			conv.ServerReader.ReadPacket(payload, layers)
 		}
 	}
-	return
-}
-
-func captureFromFile(filename string, useIPv4 bool, captureJobContext context.Context, packetViewer *MyPacketListView, context *peer.CommunicationContext) {
-	fmt.Printf("Will capture from file %s\n", filename)
-	handle, err := pcap.OpenOffline(filename)
-	if err != nil {
-		println(err.Error())
-		return
-	}
-	captureJob(handle, useIPv4, captureJobContext, packetViewer, context)
-}
-
-func captureFromLive(livename string, useIPv4 bool, usePromisc bool, captureJobContext context.Context, packetViewer *MyPacketListView, context *peer.CommunicationContext) {
-	fmt.Printf("Will capture from live device %s\n", livename)
-	handle, err := pcap.OpenLive(livename, 2000, usePromisc, 10*time.Second)
-	if err != nil {
-		println(err.Error())
-		return
-	}
-	captureJob(handle, useIPv4, captureJobContext, packetViewer, context)
+	return nil
 }
