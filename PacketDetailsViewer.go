@@ -59,6 +59,13 @@ func NewPacketDetailsViewer(parent widgets.QWidget_ITF, flags core.Qt__WindowTyp
 }
 
 func (viewer *PacketDetailsViewer) Update(context *peer.CommunicationContext, layers *peer.PacketLayers, activationCallback ActivationCallback) {
+	if layers.Reliability != nil {
+		viewer.LogBox.SetPlainText(layers.Reliability.GetLog())
+	}
+	if layers.Error != nil {
+		viewer.LogBox.SetPlainText(viewer.LogBox.ToPlainText() + "\nError: " + layers.Error.Error())
+	}
+
 	originalIndex := viewer.TabLayout.CurrentIndex()
 
 	// TODO: improve this layout
@@ -145,9 +152,19 @@ func (viewer *PacketDetailsViewer) Update(context *peer.CommunicationContext, la
 func NewPacketViewerMenu(parent widgets.QWidget_ITF, context *peer.CommunicationContext, layers *peer.PacketLayers, activationCallback ActivationCallback) *widgets.QMenu {
 	menu := widgets.NewQMenu(parent)
 	showPacketAction := menu.AddAction("View in new window")
-	showPacketAction.ConnectToggled(func(_ bool) {
+	showPacketAction.ConnectTriggered(func(_ bool) {
 		window := NewPacketDetailsViewer(parent, core.Qt__Window)
 		window.Update(context, layers, activationCallback)
+		var title string
+		if layers.Main != nil {
+			title = layers.Main.String()
+		} else {
+			title = PacketNames[layers.PacketType]
+			if title == "" {
+				title = fmt.Sprintf("0x%02X", layers.PacketType)
+			}
+		}
+		window.SetWindowTitle(fmt.Sprintf("Packet window: %s", title))
 		window.Show()
 	})
 
