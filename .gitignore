@@ -6,3 +6,4 @@ dumps
 *.idb
 *.exe
 *.dll
+moc*
