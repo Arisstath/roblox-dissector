@@ -74,14 +74,19 @@ func NewConversation(client *net.UDPAddr, server *net.UDPAddr) *Conversation {
 	return conv
 }
 
-func captureJob(captureJobContext context.Context, name string, packetSource *gopacket.PacketSource, window *DissectorWindow) error {
+func captureJob(captureJobContext context.Context, name string, packetSource *gopacket.PacketSource, window *DissectorWindow, progressChan chan int) error {
+	var progress int
+	defer close(progressChan)
 	conversations := CaptureContext(make([]*Conversation, 0, 1))
+	listViewers := make([]*PacketListViewer, 0, 1)
 	for packet := range packetSource.Packets() {
 		select {
 		case <-captureJobContext.Done():
 			return nil
+		case progressChan <- progress:
 		default:
 		}
+		progress++
 		if packet.ApplicationLayer() == nil || packet.Layer(layers.LayerTypeIPv4) == nil {
 			continue
 		}
@@ -115,7 +120,8 @@ func captureJob(captureJobContext context.Context, name string, packetSource *go
 
 			conv = NewConversation(src, dst)
 			conversations = append(conversations, conv)
-			window.AddConversation(fmt.Sprintf("%s#%d", name, len(conversations)), conv)
+			newListViewer := window.AddConversation(fmt.Sprintf("%s#%d", name, len(conversations)), conv)
+			listViewers = append(listViewers, newListViewer)
 		} else {
 			layers.Root.FromClient = fromClient
 			layers.Root.FromServer = !fromClient
@@ -126,6 +132,10 @@ func captureJob(captureJobContext context.Context, name string, packetSource *go
 		} else {
 			conv.ServerReader.ReadPacket(payload, layers)
 		}
+	}
+
+	for _, viewer := range listViewers {
+		viewer.UpdateModel()
 	}
 	return nil
 }

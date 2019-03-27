@@ -9,6 +9,33 @@ import "os"
 import "fmt"
 import "strconv"
 
+// Cheating
+type mainThreadHelper struct {
+	core.QObject
+
+	_    func()       `constructor:"init`
+	_    func(func()) `signal:"runOnMain"`
+	Wait chan struct{}
+}
+
+func (helper *mainThreadHelper) init() {
+	// send doesn't need to block, only receive
+	// that's why we can make the cap 1
+	// this also helps prevent deadlocks
+	helper.Wait = make(chan struct{}, 1)
+}
+
+func (helper *mainThreadHelper) runOnMain(f func()) {
+	f()
+	helper.Wait <- struct{}{}
+}
+
+var MainThreadRunner = NewMainThreadHelper(nil)
+
+func init() {
+	MainThreadRunner.ConnectRunOnMain(MainThreadRunner.runOnMain)
+}
+
 type DefaultValues map[string](map[string]rbxfile.Value)
 
 func NewTopAlignLayout() *widgets.QVBoxLayout {
