@@ -22,7 +22,6 @@ func NewPacket83_0BLayer() *Packet83_0B {
 func (thisBitstream *extendedReader) DecodePacket83_0B(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
 	layer := NewPacket83_0BLayer()
 
-	thisBitstream.Align()
 	arrayLen, err := thisBitstream.readUint32BE()
 	if err != nil {
 		return layer, err
@@ -49,17 +48,12 @@ func (thisBitstream *extendedReader) DecodePacket83_0B(reader PacketReader, laye
 			return layer, err
 		}
 
-		zstdStream.Align()
 	}
 	return layer, nil
 }
 
 func (layer *Packet83_0B) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
-	err = stream.Align()
-	if err != nil {
-		return err
-	}
 	if layer.Instances == nil || len(layer.Instances) == 0 { // bail
 		err = stream.writeUint32BE(0)
 		return err
@@ -73,11 +67,6 @@ func (layer *Packet83_0B) Serialize(writer PacketWriter, stream *extendedWriter)
 
 	for i := 0; i < len(layer.Instances); i++ {
 		err = layer.Instances[i].Serialize(writer, &JoinSerializeWriter{zstdStream})
-		if err != nil {
-			middleStream.Close()
-			return err
-		}
-		err = zstdStream.Align()
 		if err != nil {
 			middleStream.Close()
 			return err

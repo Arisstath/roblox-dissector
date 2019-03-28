@@ -441,7 +441,6 @@ func (b *extendedReader) readLengthAndString() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	b.Align()
 	ret, err = b.readString(int(thisLen))
 	return string(ret), err
 }

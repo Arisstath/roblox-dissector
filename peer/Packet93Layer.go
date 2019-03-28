@@ -28,7 +28,6 @@ func (thisBitstream *extendedReader) DecodePacket93Layer(reader PacketReader, la
 	if err != nil {
 		return layer, err
 	}
-	thisBitstream.Align()
 
 	numParams, err := thisBitstream.readUint16BE()
 	if err != nil {
@@ -72,10 +71,6 @@ func (layer *Packet93Layer) Serialize(writer PacketWriter, stream *extendedWrite
 		return err
 	}
 	err = stream.writeBool(layer.ApiDictionaryCompression)
-	if err != nil {
-		return err
-	}
-	err = stream.Align()
 	if err != nil {
 		return err
 	}
