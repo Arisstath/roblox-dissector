@@ -2,13 +2,14 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"net"
 
 	"github.com/Gskartwii/roblox-dissector/peer"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
+	"github.com/google/gopacket/pcap"
+	"github.com/olebedev/emitter"
 )
 
 type Conversation struct {
@@ -18,25 +19,35 @@ type Conversation struct {
 	ServerReader  *peer.DefaultPacketReader
 	Context       *peer.CommunicationContext
 }
-type CaptureContext []*Conversation
+type CaptureContext struct {
+	Conversations       []*Conversation
+	ConversationEmitter *emitter.Emitter
+}
 
-func (ctx CaptureContext) FindClient(client *net.UDPAddr) *Conversation {
-	for _, conv := range ctx {
+func NewCaptureContext() *CaptureContext {
+	return &CaptureContext{
+		Conversations:       make([]*Conversation, 0, 1),
+		ConversationEmitter: emitter.New(8),
+	}
+}
+
+func (ctx *CaptureContext) FindClient(client *net.UDPAddr) *Conversation {
+	for _, conv := range ctx.Conversations {
 		if conv.ClientAddress.IP.Equal(client.IP) && conv.ClientAddress.Port == client.Port {
 			return conv
 		}
 	}
 	return nil
 }
-func (ctx CaptureContext) FindServer(server *net.UDPAddr) *Conversation {
-	for _, conv := range ctx {
+func (ctx *CaptureContext) FindServer(server *net.UDPAddr) *Conversation {
+	for _, conv := range ctx.Conversations {
 		if conv.ServerAddress.IP.Equal(server.IP) && conv.ServerAddress.Port == server.Port {
 			return conv
 		}
 	}
 	return nil
 }
-func (ctx CaptureContext) Find(src *net.UDPAddr, dst *net.UDPAddr) (*Conversation, bool) {
+func (ctx *CaptureContext) Find(src *net.UDPAddr, dst *net.UDPAddr) (*Conversation, bool) {
 	conv := ctx.FindClient(src)
 	if conv != nil {
 		return conv, true
@@ -47,6 +58,10 @@ func (ctx CaptureContext) Find(src *net.UDPAddr, dst *net.UDPAddr) (*Conversatio
 	}
 
 	return nil, false
+}
+func (ctx *CaptureContext) AddConversation(conv *Conversation) {
+	ctx.Conversations = append(ctx.Conversations, conv)
+	<-ctx.ConversationEmitter.Emit("conversation", conv)
 }
 
 func NewConversation(client *net.UDPAddr, server *net.UDPAddr) *Conversation {
@@ -70,14 +85,11 @@ func NewConversation(client *net.UDPAddr, server *net.UDPAddr) *Conversation {
 	return conv
 }
 
-func captureJob(captureJobContext context.Context, name string, packetSource *gopacket.PacketSource, window *DissectorWindow, progressChan chan int) error {
+func (captureContext *CaptureContext) Capture(ctx context.Context, packetSource *gopacket.PacketSource, progressChan chan int) error {
 	var progress int
-	defer close(progressChan)
-	conversations := CaptureContext(make([]*Conversation, 0, 1))
-	listViewers := make([]*PacketListViewer, 0, 1)
 	for packet := range packetSource.Packets() {
 		select {
-		case <-captureJobContext.Done():
+		case <-ctx.Done():
 			return nil
 		case progressChan <- progress:
 		default:
@@ -92,7 +104,7 @@ func captureJob(captureJobContext context.Context, name string, packetSource *go
 		}
 
 		src, dst := SrcAndDestFromGoPacket(packet)
-		conv, fromClient := conversations.Find(src, dst)
+		conv, fromClient := captureContext.Find(src, dst)
 		layers := &peer.PacketLayers{
 			Root: peer.RootLayer{
 				Source:      src,
@@ -115,9 +127,7 @@ func captureJob(captureJobContext context.Context, name string, packetSource *go
 			fromClient = true
 
 			conv = NewConversation(src, dst)
-			conversations = append(conversations, conv)
-			newListViewer := window.AddConversation(fmt.Sprintf("%s#%d", name, len(conversations)), conv)
-			listViewers = append(listViewers, newListViewer)
+			captureContext.AddConversation(conv)
 		}
 		layers.Root.FromClient = fromClient
 		layers.Root.FromServer = !fromClient
@@ -129,8 +139,21 @@ func captureJob(captureJobContext context.Context, name string, packetSource *go
 		}
 	}
 
-	for _, viewer := range listViewers {
-		viewer.UpdateModel()
-	}
 	return nil
+}
+
+func (captureContext *CaptureContext) CaptureFromHandle(ctx context.Context, handle *pcap.Handle, isIPv4 bool, progressChan chan int) error {
+	err := handle.SetBPFFilter("udp")
+	if err != nil {
+		return err
+	}
+
+	var packetSource *gopacket.PacketSource
+	if isIPv4 {
+		packetSource = gopacket.NewPacketSource(handle, layers.LayerTypeIPv4)
+	} else {
+		packetSource = gopacket.NewPacketSource(handle, handle.LinkType())
+	}
+
+	return captureContext.Capture(ctx, packetSource, progressChan)
 }

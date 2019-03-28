@@ -7,3 +7,4 @@ dumps
 *.exe
 *.dll
 moc*
+rcc*

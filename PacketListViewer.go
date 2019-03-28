@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"strconv"
@@ -29,29 +28,24 @@ type PacketListViewer struct {
 	Packets              PacketLayerList
 	PacketIndex          uint64
 
-	IsCapturing       bool
-	CaptureJobContext context.Context
-	StopCaptureJob    context.CancelFunc
-	InjectPacket      chan peer.RakNetPacket
+	InjectPacket chan peer.RakNetPacket
 
-	Context *peer.CommunicationContext
+	Context      *peer.CommunicationContext
+	Conversation *Conversation
 
 	DefaultPacketWindow *PacketDetailsViewer
 }
 
-func NewPacketListViewer(parent widgets.QWidget_ITF, flags core.Qt__WindowType) *PacketListViewer {
-	captureContext, captureCancel := context.WithCancel(context.Background())
+func NewPacketListViewer(conversation *Conversation, parent widgets.QWidget_ITF, flags core.Qt__WindowType) *PacketListViewer {
 	listViewer := &PacketListViewer{
 		QWidget:              widgets.NewQWidget(parent, flags),
 		packetRowsByUniqueID: make(PacketList),
 
 		Packets: make(PacketLayerList),
 
-		CaptureJobContext: captureContext,
-		StopCaptureJob:    captureCancel,
-
 		InjectPacket: make(chan peer.RakNetPacket, 1),
 		Context:      peer.NewCommunicationContext(),
+		Conversation: conversation,
 	}
 
 	layout := NewTopAlignLayout()
@@ -276,9 +270,6 @@ func (viewer *PacketListViewer) BindToConversation(conv *Conversation) {
 }
 
 func (m *PacketListViewer) UpdateModel() {
-	MainThreadRunner.RunOnMain(func() {
-		m.TreeView.SetModel(m.ProxyModel)
-		m.TreeView.SortByColumn(0, core.Qt__AscendingOrder)
-	})
-	<-MainThreadRunner.Wait
+	m.TreeView.SetModel(m.ProxyModel)
+	m.TreeView.SortByColumn(0, core.Qt__AscendingOrder)
 }

@@ -49,7 +49,8 @@ func NewPacketDetailsViewer(parent widgets.QWidget_ITF, flags core.Qt__WindowTyp
 	mainLayout := NewTopAlignLayout()
 	mainLayout.AddWidget(NewLabel("No packets selected!"), 0, 0)
 	mainWidget.SetLayout(mainLayout)
-	tabWidget.AddTab(mainWidget, "Main Layer")
+	mainTabIndex := tabWidget.AddTab(mainWidget, "Main Layer")
+	tabWidget.SetCurrentIndex(mainTabIndex)
 	detailsViewer.MainTab = mainWidget
 
 	mainScrollArea.SetWidget(tabWidget)
