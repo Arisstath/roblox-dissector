@@ -2,6 +2,7 @@ package main
 
 import "github.com/therecipe/qt/widgets"
 import "github.com/therecipe/qt/gui"
+import "github.com/therecipe/qt/core"
 import "github.com/Gskartwii/roblox-dissector/peer"
 
 func ShowPacket81(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationContext, layers *peer.PacketLayers) {
@@ -16,22 +17,24 @@ func ShowPacket81(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 	layerLayout.AddWidget(NewQLabelF("Int 1: %X", MainLayer.Int1), 0, 0)
 	layerLayout.AddWidget(NewQLabelF("Int 2: %X", MainLayer.Int2), 0, 0)
 
-	deletedList := widgets.NewQTreeView(nil)
+	containerList := widgets.NewQTreeView(nil)
 	standardModel := NewProperSortModel(nil)
-	standardModel.SetHorizontalHeaderLabels([]string{"Class name", "Referent", "Replicate properties", "Replicate children"})
+	standardModel.SetHorizontalHeaderLabels([]string{"Index", "Class name", "Referent", "Replicate properties", "Replicate children"})
 
-	deletedListRootNode := standardModel.InvisibleRootItem()
-	for i := 0; i < len(MainLayer.Items); i++ {
-		classNameItem := NewQStandardItemF("%s", MainLayer.Items[i].Schema.Name)
-		referenceItem := NewQStandardItemF("%s", MainLayer.Items[i].Instance.Ref.String())
-		repPropertiesItem := NewQStandardItemF("%v", MainLayer.Items[i].Bool1)
-		repChildrenItem := NewQStandardItemF("%v", MainLayer.Items[i].Bool2)
-		deletedListRootNode.AppendRow([]*gui.QStandardItem{classNameItem, referenceItem, repPropertiesItem, repChildrenItem})
+	containerListRootNode := standardModel.InvisibleRootItem()
+	for i, item := range MainLayer.Items {
+		indexItem := NewUintItem(i)
+		classNameItem := NewStringItem(item.Schema.Name)
+		referenceItem := NewStringItem(item.Instance.Ref.String())
+		repPropertiesItem := NewQStandardItemF("%v", item.Bool1)
+		repChildrenItem := NewQStandardItemF("%v", item.Bool2)
+		containerListRootNode.AppendRow([]*gui.QStandardItem{indexItem, classNameItem, referenceItem, repPropertiesItem, repChildrenItem})
 	}
 
-	deletedList.SetModel(standardModel)
-	deletedList.SetSelectionMode(0)
-	deletedList.SetSortingEnabled(true)
+	containerList.SetModel(standardModel)
+	containerList.SetSelectionMode(0)
+	containerList.SetSortingEnabled(true)
+	containerList.SortByColumn(0, core.Qt__AscendingOrder)
 
-	layerLayout.AddWidget(deletedList, 0, 0)
+	layerLayout.AddWidget(containerList, 0, 0)
 }

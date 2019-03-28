@@ -17,19 +17,19 @@ func ShowPacket86(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 	rootNode := standardModel.InvisibleRootItem()
 	for _, item := range MainLayer.SubPackets {
 		if item.Instance1 == nil || item.Instance2 == nil {
-			rootNode.AppendRow([]*gui.QStandardItem{NewQStandardItemF("nil!!")})
+			rootNode.AppendRow([]*gui.QStandardItem{NewStringItem("nil!!")})
 			continue
 		}
 		var name1Item, name2Item *gui.QStandardItem
-		name1Item = NewQStandardItemF(item.Instance1.GetFullName())
-		reference1Item := NewQStandardItemF(item.Instance1.Ref.String())
-		name2Item = NewQStandardItemF(item.Instance2.GetFullName())
-		reference2Item := NewQStandardItemF(item.Instance2.Ref.String())
+		name1Item = NewStringItem(item.Instance1.GetFullName())
+		reference1Item := NewStringItem(item.Instance1.Ref.String())
+		name2Item = NewStringItem(item.Instance2.GetFullName())
+		reference2Item := NewStringItem(item.Instance2.Ref.String())
 		var typeItem *gui.QStandardItem
 		if item.IsTouch {
-			typeItem = NewQStandardItemF("Start touch")
+			typeItem = NewStringItem("Start touch")
 		} else {
-			typeItem = NewQStandardItemF("End touch")
+			typeItem = NewStringItem("End touch")
 		}
 
 		rootNode.AppendRow([]*gui.QStandardItem{name1Item, reference1Item, name2Item, reference2Item, typeItem})

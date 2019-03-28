@@ -16,8 +16,8 @@ func NewCacheList(cache *peer.StringCache) widgets.QWidget_ITF {
 		}
 
 		rootNode.AppendRow([]*gui.QStandardItem{
-			NewQStandardItemF("%d", i),
-			NewQStandardItemF("%s", value.(string)),
+			NewUintItem(i),
+			NewStringItem(value.(string)),
 		})
 	}
 	cacheList.SetModel(standardModel)

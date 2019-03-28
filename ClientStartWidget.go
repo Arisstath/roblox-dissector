@@ -10,13 +10,13 @@ func NewClientStartWidget(parent widgets.QWidget_ITF, settings *peer.CustomClien
 	window.SetWindowTitle("Start self client...")
 	layout := NewTopAlignLayout()
 
-	placeIdLabel := NewQLabelF("Place id:")
+	placeIdLabel := NewLabel("Place id:")
 	placeId := widgets.NewQLineEdit2("12109643", window)
 	layout.AddWidget(placeIdLabel, 0, 0)
 	layout.AddWidget(placeId, 0, 0)
 
-	usernameLabel := NewQLabelF("Username:")
-	passwordLabel := NewQLabelF("Password:")
+	usernameLabel := NewLabel("Username:")
+	passwordLabel := NewLabel("Password:")
 	username := widgets.NewQLineEdit(window)
 	password := widgets.NewQLineEdit(window)
 	password.SetEchoMode(widgets.QLineEdit__Password)

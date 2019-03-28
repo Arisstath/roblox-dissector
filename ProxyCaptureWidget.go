@@ -6,12 +6,12 @@ func NewProxyCaptureWidget(parent widgets.QWidget_ITF, callback func(string, str
 	window.SetWindowTitle("Set up proxy...")
 	layout := NewTopAlignLayout()
 
-	srcLabel := NewQLabelF("Source port:")
+	srcLabel := NewLabel("Source port:")
 	srcTextBox := widgets.NewQLineEdit2("53640", nil)
 	layout.AddWidget(srcLabel, 0, 0)
 	layout.AddWidget(srcTextBox, 0, 0)
 
-	dstLabel := NewQLabelF("Destination port:")
+	dstLabel := NewLabel("Destination port:")
 	dstTextBox := widgets.NewQLineEdit2("53641", nil)
 	layout.AddWidget(dstLabel, 0, 0)
 	layout.AddWidget(dstTextBox, 0, 0)

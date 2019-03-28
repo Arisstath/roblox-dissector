@@ -75,7 +75,7 @@ func ShowPacket10(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 	addressLabel := NewQLabelF("IP address: %s", MainLayer.IPAddress.String())
 	layerLayout.AddWidget(addressLabel, 0, 0)
 
-	labelForIPAddressList := NewQLabelF("Remote IP addresses:")
+	labelForIPAddressList := NewLabel("Remote IP addresses:")
 	layerLayout.AddWidget(labelForIPAddressList, 0, 0)
 
 	systemIndexLabel := NewQLabelF("System index: %d", MainLayer.SystemIndex)
@@ -107,7 +107,7 @@ func ShowPacket13(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 	addressLabel := NewQLabelF("IP address: %s", MainLayer.IPAddress.String())
 	layerLayout.AddWidget(addressLabel, 0, 0)
 
-	labelForIPAddressList := NewQLabelF("Remote IP addresses:")
+	labelForIPAddressList := NewLabel("Remote IP addresses:")
 	layerLayout.AddWidget(labelForIPAddressList, 0, 0)
 
 	ipAddressList := widgets.NewQListWidget(nil)

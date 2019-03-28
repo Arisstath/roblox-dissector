@@ -40,14 +40,14 @@ func NewPacketDetailsViewer(parent widgets.QWidget_ITF, flags core.Qt__WindowTyp
 
 	relWidget := widgets.NewQWidget(tabWidget, 0)
 	relLayout := NewTopAlignLayout()
-	relLayout.AddWidget(NewQLabelF("No ReliabilityLayer selected!"), 0, 0)
+	relLayout.AddWidget(NewLabel("No ReliabilityLayer selected!"), 0, 0)
 	relWidget.SetLayout(relLayout)
 	tabWidget.AddTab(relWidget, "Reliability Layer")
 	detailsViewer.ReliabilityTab = relWidget
 
 	mainWidget := widgets.NewQWidget(tabWidget, 0)
 	mainLayout := NewTopAlignLayout()
-	mainLayout.AddWidget(NewQLabelF("No packets selected!"), 0, 0)
+	mainLayout.AddWidget(NewLabel("No packets selected!"), 0, 0)
 	mainWidget.SetLayout(mainLayout)
 	tabWidget.AddTab(mainWidget, "Main Layer")
 	detailsViewer.MainTab = mainWidget
@@ -127,7 +127,7 @@ func (viewer *PacketDetailsViewer) Update(context *peer.CommunicationContext, la
 		viewer.ReliabilityTab.SetLayout(relLayout)
 	} else {
 		newRelLayout := NewTopAlignLayout()
-		newRelLayout.AddWidget(NewQLabelF("No ReliabilityLayer selected!"), 0, 0)
+		newRelLayout.AddWidget(NewLabel("No ReliabilityLayer selected!"), 0, 0)
 		viewer.ReliabilityTab.SetLayout(newRelLayout)
 	}
 	viewer.TabLayout.InsertTab(reliabilityIndex, viewer.ReliabilityTab, "Reliability Layer")
@@ -141,7 +141,7 @@ func (viewer *PacketDetailsViewer) Update(context *peer.CommunicationContext, la
 		viewer.MainTab.SetLayout(newMainLayout)
 	} else {
 		newMainLayout := NewTopAlignLayout()
-		newMainLayout.AddWidget(NewQLabelF("No main layer selected!"), 0, 0)
+		newMainLayout.AddWidget(NewLabel("No main layer selected!"), 0, 0)
 		viewer.MainTab.SetLayout(newMainLayout)
 	}
 	viewer.TabLayout.InsertTab(mainIndex, viewer.MainTab, "Main Layer")

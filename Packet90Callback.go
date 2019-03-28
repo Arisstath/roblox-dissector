@@ -19,14 +19,14 @@ func ShowPacket90(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 
 	requestListRootNode := standardModel.InvisibleRootItem()
 	for i := 0; i < len(MainLayer.RequestedFlags); i++ {
-		requestListRootNode.AppendRow([]*gui.QStandardItem{NewQStandardItemF("%s", MainLayer.RequestedFlags[i])})
+		requestListRootNode.AppendRow([]*gui.QStandardItem{NewStringItem(MainLayer.RequestedFlags[i])})
 	}
 
 	requestList.SetModel(standardModel)
 	requestList.SetSelectionMode(0)
 	requestList.SetSortingEnabled(true)
 
-	layerLayout.AddWidget(NewQLabelF("Requested flags:"), 0, 0)
+	layerLayout.AddWidget(NewLabel("Requested flags:"), 0, 0)
 	layerLayout.AddWidget(requestList, 0, 0)
 
 	layerLayout.AddWidget(widgets.NewQTextEdit2(fmt.Sprintf("Join data: %s", MainLayer.JoinData), nil), 0, 0)

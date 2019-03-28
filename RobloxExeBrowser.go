@@ -6,7 +6,7 @@ func NewStudioChooser(parent widgets.QWidget_ITF, settings *StudioSettings, call
 	window.SetWindowTitle("Choose Studio location...")
 	layout := NewTopAlignLayout()
 
-	fileLabel := NewQLabelF("Studio location:")
+	fileLabel := NewLabel("Studio location:")
 	fileTextBox := widgets.NewQLineEdit2(settings.Location, nil)
 	browseButton := widgets.NewQPushButton2("Browse...", nil)
 	browseButton.ConnectPressed(func() {
@@ -16,22 +16,22 @@ func NewStudioChooser(parent widgets.QWidget_ITF, settings *StudioSettings, call
 	layout.AddWidget(fileTextBox, 0, 0)
 	layout.AddWidget(browseButton, 0, 0)
 
-	flagsLabel := NewQLabelF("Command line flags:")
+	flagsLabel := NewLabel("Command line flags:")
 	flags := widgets.NewQLineEdit2(settings.Flags, nil)
 	layout.AddWidget(flagsLabel, 0, 0)
 	layout.AddWidget(flags, 0, 0)
 
-	addressLabel := NewQLabelF("Server address:")
+	addressLabel := NewLabel("Server address:")
 	address := widgets.NewQLineEdit2(settings.Address, nil)
 	layout.AddWidget(addressLabel, 0, 0)
 	layout.AddWidget(address, 0, 0)
 
-	portLabel := NewQLabelF("Port number:")
+	portLabel := NewLabel("Port number:")
 	port := widgets.NewQLineEdit2(settings.Port, nil)
 	layout.AddWidget(portLabel, 0, 0)
 	layout.AddWidget(port, 0, 0)
 
-	rbxlFileLabel := NewQLabelF("RBXL location:")
+	rbxlFileLabel := NewLabel("RBXL location:")
 	rbxlFileTextBox := widgets.NewQLineEdit2(settings.RBXL, nil)
 	browseRBXLButton := widgets.NewQPushButton2("Browse...", nil)
 	browseRBXLButton.ConnectPressed(func() {
@@ -62,7 +62,7 @@ func NewPlayerChooser(parent widgets.QWidget_ITF, settings *PlayerSettings, call
 	window.SetWindowTitle("Choose Player location...")
 	layout := NewTopAlignLayout()
 	
-	fileLabel := NewQLabelF("Player location:")
+	fileLabel := NewLabel("Player location:")
 	fileTextBox := widgets.NewQLineEdit2(settings.Location, nil)
 	browseButton := widgets.NewQPushButton2("Browse...", nil)
 	browseButton.ConnectPressed(func() {
@@ -72,22 +72,22 @@ func NewPlayerChooser(parent widgets.QWidget_ITF, settings *PlayerSettings, call
 	layout.AddWidget(fileTextBox, 0, 0)
 	layout.AddWidget(browseButton, 0, 0)
 
-	flagsLabel := NewQLabelF("Command line flags:")
+	flagsLabel := NewLabel("Command line flags:")
 	flags := widgets.NewQLineEdit2(settings.Flags, nil)
 	layout.AddWidget(flagsLabel, 0, 0)
 	layout.AddWidget(flags, 0, 0)
 
-	gameIDLabel := NewQLabelF("Game ID:")
+	gameIDLabel := NewLabel("Game ID:")
 	gameID := widgets.NewQLineEdit2(settings.GameID, nil)
 	layout.AddWidget(gameIDLabel, 0, 0)
 	layout.AddWidget(gameID, 0, 0)
 
-	trackerIDLabel := NewQLabelF("Browser tracker ID:")
+	trackerIDLabel := NewLabel("Browser tracker ID:")
 	trackerID := widgets.NewQLineEdit2(settings.TrackerID, nil)
 	layout.AddWidget(trackerIDLabel, 0, 0)
 	layout.AddWidget(trackerID, 0, 0)
 
-	authTicketLabel := NewQLabelF("Auth ticket:")
+	authTicketLabel := NewLabel("Auth ticket:")
 	authTicket := widgets.NewQLineEdit2(settings.AuthTicket, nil)
 	layout.AddWidget(authTicketLabel, 0, 0)
 	layout.AddWidget(authTicket, 0, 0)

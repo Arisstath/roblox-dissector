@@ -12,7 +12,7 @@ func NewSelectInterfaceWidget(parent widgets.QWidget_ITF, callback func (string,
 	usePromisc := widgets.NewQCheckBox2("Use promiscuous mode", nil)
 	layout.AddWidget(usePromisc, 0, 0)
 
-	itfLabel := NewQLabelF("Interface:")
+	itfLabel := NewLabel("Interface:")
 	layout.AddWidget(itfLabel, 0, 0)
 
 	interfaces := widgets.NewQTreeView(nil)
@@ -33,8 +33,8 @@ func NewSelectInterfaceWidget(parent widgets.QWidget_ITF, callback func (string,
 			continue
 		}
 		rootNode.AppendRow([]*gui.QStandardItem{
-			NewQStandardItemF(dev.Name),
-			NewQStandardItemF(dev.Addresses[0].IP.String()),
+			NewStringItem(dev.Name),
+			NewStringItem(dev.Addresses[0].IP.String()),
 		})
 
 	}

@@ -51,7 +51,7 @@ func ShowPacket15(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 	MainLayer := layers.Main.(*peer.Packet15Layer)
 
 	var reasonLabel *widgets.QLabel
-	reasonLabel = NewQLabelF("")
+	reasonLabel = NewLabel("")
 	reasonSuccess := func(r string) {
 		reasonLabel.SetText("Disconnection reason: " + r)
 	}

@@ -73,7 +73,7 @@ func NewPacketListViewer(parent widgets.QWidget_ITF, flags core.Qt__WindowType) 
 	})
 	listViewer.StandardModel = standardModel
 	listViewer.ProxyModel = proxy
-	standardModel.SetHorizontalHeaderLabels([]string{"Index", "Type", "Direction", "Length in Bytes", "Datagram Numbers", "Ordered Splits", "Total Splits"})
+	standardModel.SetHorizontalHeaderLabels([]string{"Index", "Packet", "Direction", "Length in Bytes", "Datagram Numbers", "Ordered Splits", "Total Splits"})
 	treeView.SetSelectionMode(widgets.QAbstractItemView__SingleSelection)
 	treeView.SetSortingEnabled(true)
 	listViewer.RootNode = standardModel.InvisibleRootItem()
@@ -98,6 +98,7 @@ func NewPacketListViewer(parent widgets.QWidget_ITF, flags core.Qt__WindowType) 
 		}
 	})
 
+	listViewer.SetLayout(layout)
 	return listViewer
 }
 
@@ -152,32 +153,32 @@ func (m *PacketListViewer) handleSplitPacket(context *peer.CommunicationContext,
 }
 
 func (m *PacketListViewer) AddFullPacket(context *peer.CommunicationContext, layers *peer.PacketLayers, activationCallback ActivationCallback) []*gui.QStandardItem {
-	m.PacketIndex++
 	index := m.PacketIndex
+	m.PacketIndex++
 	isClient := layers.Root.FromClient
 	isServer := layers.Root.FromServer
 
-	indexItem := NewQStandardItemF("%d", index)
-	packetTypeItem := NewQStandardItemF(layers.String())
+	indexItem := NewUintItem(index)
+	packetTypeItem := NewStringItem(layers.String())
 
 	rootRow := []*gui.QStandardItem{indexItem, packetTypeItem}
 
 	var direction *gui.QStandardItem
 	if isClient {
-		direction = NewQStandardItemF("C->S")
+		direction = NewStringItem("C->S")
 	} else if isServer {
-		direction = NewQStandardItemF("S->C")
+		direction = NewStringItem("S->C")
 	} else {
-		direction = NewQStandardItemF("???")
+		direction = NewStringItem("???")
 	}
 
 	rootRow = append(rootRow, direction)
 
 	var length *gui.QStandardItem
 	if layers.Reliability != nil {
-		length = NewQStandardItemF("%d", layers.Reliability.LengthInBits/8)
+		length = NewUintItem(layers.Reliability.LengthInBits / 8)
 	} else {
-		length = NewQStandardItemF("???")
+		length = NewStringItem("???")
 	}
 	rootRow = append(rootRow, length)
 	var datagramNumber *gui.QStandardItem
@@ -202,7 +203,7 @@ func (m *PacketListViewer) AddFullPacket(context *peer.CommunicationContext, lay
 
 		datagramNumber = NewQStandardItemF("%d - %d", firstLayerNumber, lastLayerNumber)
 	} else {
-		datagramNumber = NewQStandardItemF("%d", layers.RakNet.DatagramNumber)
+		datagramNumber = NewUintItem(layers.RakNet.DatagramNumber)
 	}
 	rootRow = append(rootRow, datagramNumber)
 
@@ -212,7 +213,7 @@ func (m *PacketListViewer) AddFullPacket(context *peer.CommunicationContext, lay
 	} else {
 		rootRow = append(rootRow, nil)
 	}
-	rootRow = append(rootRow, NewQStandardItemF("???"))
+	rootRow = append(rootRow, NewStringItem("???"))
 
 	if layers.Reliability != nil {
 		m.registerSplitPacketRow(rootRow, context, layers)
@@ -277,6 +278,7 @@ func (viewer *PacketListViewer) BindToConversation(conv *Conversation) {
 func (m *PacketListViewer) UpdateModel() {
 	MainThreadRunner.RunOnMain(func() {
 		m.TreeView.SetModel(m.ProxyModel)
+		m.TreeView.SortByColumn(0, core.Qt__AscendingOrder)
 	})
 	<-MainThreadRunner.Wait
 }

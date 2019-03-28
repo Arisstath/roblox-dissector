@@ -122,10 +122,9 @@ func captureJob(captureJobContext context.Context, name string, packetSource *go
 			conversations = append(conversations, conv)
 			newListViewer := window.AddConversation(fmt.Sprintf("%s#%d", name, len(conversations)), conv)
 			listViewers = append(listViewers, newListViewer)
-		} else {
-			layers.Root.FromClient = fromClient
-			layers.Root.FromServer = !fromClient
 		}
+		layers.Root.FromClient = fromClient
+		layers.Root.FromServer = !fromClient
 
 		if fromClient {
 			conv.ClientReader.ReadPacket(payload, layers)

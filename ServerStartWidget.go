@@ -123,7 +123,7 @@ func NewServerStartWidget(parent widgets.QWidget_ITF, settings *ServerSettings, 
 	window.SetWindowTitle("Start server...")
 	layout := NewTopAlignLayout()
 
-	rbxlLabel := NewQLabelF("RBXLX location:")
+	rbxlLabel := NewLabel("RBXLX location:")
 	rbxlTextBox := widgets.NewQLineEdit2(settings.RBXLLocation, nil)
 	browseButton := widgets.NewQPushButton2("Browse...", nil)
 	browseButton.ConnectPressed(func() {
@@ -133,7 +133,7 @@ func NewServerStartWidget(parent widgets.QWidget_ITF, settings *ServerSettings, 
 	layout.AddWidget(rbxlTextBox, 0, 0)
 	layout.AddWidget(browseButton, 0, 0)
 
-	enumLabel := NewQLabelF("Enum schema location:")
+	enumLabel := NewLabel("Enum schema location:")
 	enumTextBox := widgets.NewQLineEdit2(settings.EnumSchemaLocation, nil)
 	browseButton = widgets.NewQPushButton2("Browse...", nil)
 	browseButton.ConnectPressed(func() {
@@ -143,7 +143,7 @@ func NewServerStartWidget(parent widgets.QWidget_ITF, settings *ServerSettings, 
 	layout.AddWidget(enumTextBox, 0, 0)
 	layout.AddWidget(browseButton, 0, 0)
 
-	instanceLabel := NewQLabelF("Instance schema location:")
+	instanceLabel := NewLabel("Instance schema location:")
 	instanceTextBox := widgets.NewQLineEdit2(settings.InstanceSchemaLocation, nil)
 	browseButton = widgets.NewQPushButton2("Browse...", nil)
 	browseButton.ConnectPressed(func() {
@@ -157,7 +157,7 @@ func NewServerStartWidget(parent widgets.QWidget_ITF, settings *ServerSettings, 
 	if settings.Port == "" {
 		settings.Port = "53640"
 	}
-	portLabel := NewQLabelF("Port number:")
+	portLabel := NewLabel("Port number:")
 	port := widgets.NewQLineEdit2(settings.Port, nil)
 	layout.AddWidget(portLabel, 0, 0)
 	layout.AddWidget(port, 0, 0)

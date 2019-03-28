@@ -74,18 +74,12 @@ func (window *DissectorWindow) AddConversation(name string, conv *Conversation) 
 	MainThreadRunner.RunOnMain(func() {
 		viewer = NewPacketListViewer(window, 0)
 
-		if viewer == nil {
-			panic("viewer is nil")
-		}
 		viewer.BindToConversation(conv)
 
 		window.PacketListViewers = append(window.PacketListViewers, viewer)
 		window.TabWidget.AddTab(viewer, "Conversation: "+name)
 	})
 	<-MainThreadRunner.Wait
-	if viewer == nil {
-		panic("viewer is nil")
-	}
 	return viewer
 }
 

@@ -12,7 +12,7 @@ func ShowPacket93(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 	layerLayout.AddWidget(unknownBool1Label, 0, 0)
 	layerLayout.AddWidget(unknownBool2Label, 0, 0)
 
-	labelForParamList := NewQLabelF("Network params:")
+	labelForParamList := NewLabel("Network params:")
 	layerLayout.AddWidget(labelForParamList, 0, 0)
 
 	paramList := widgets.NewQTreeView(nil)
@@ -21,7 +21,7 @@ func ShowPacket93(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 
 	paramListRootNode := standardModel.InvisibleRootItem()
 	for Name, Value := range MainLayer.Params {
-		nameItem := NewQStandardItemF(Name)
+		nameItem := NewStringItem(Name)
 		valueItem := NewQStandardItemF("%v", Value)
 		paramListRootNode.AppendRow([]*gui.QStandardItem{nameItem, valueItem})
 	}

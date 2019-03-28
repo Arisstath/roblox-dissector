@@ -1,12 +1,23 @@
 package main
 
-import "github.com/therecipe/qt/widgets"
-import "github.com/therecipe/qt/gui"
-import "github.com/Gskartwii/roblox-dissector/peer"
-import "os"
+import (
+	"fmt"
+	"os"
+
+	"github.com/Gskartwii/roblox-dissector/peer"
+	"github.com/therecipe/qt/core"
+	"github.com/therecipe/qt/gui"
+	"github.com/therecipe/qt/widgets"
+)
 
 func ShowPacket97(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationContext, layers *peer.PacketLayers) {
 	MainLayer := layers.Main.(*peer.Packet97Layer)
+
+	progress := 0
+	maxProgress := len(MainLayer.Schema.Enums) + len(MainLayer.Schema.Instances)
+	progressDialog := widgets.NewQProgressDialog2(fmt.Sprintf("Building schema view (%d enums, %d classes)", len(MainLayer.Schema.Enums), len(MainLayer.Schema.Instances)), "", 0, maxProgress, nil, 0)
+	progressDialog.SetCancelButton(nil)
+	progressDialog.SetWindowFilePath("Building schema view")
 
 	labelForEnumSchema := NewQLabelF("Enum schema (%d entries):", len(MainLayer.Schema.Enums))
 	layerLayout.AddWidget(labelForEnumSchema, 0, 0)
@@ -17,14 +28,17 @@ func ShowPacket97(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 
 	enumSchemaRootNode := standardModel.InvisibleRootItem()
 	for _, item := range MainLayer.Schema.Enums {
-		nameItem := NewQStandardItemF(item.Name)
-		sizeItem := NewQStandardItemF("%d", item.BitSize)
+		nameItem := NewStringItem(item.Name)
+		sizeItem := NewUintItem(item.BitSize)
 		enumSchemaRootNode.AppendRow([]*gui.QStandardItem{nameItem, sizeItem})
+		progress++
+		progressDialog.SetValue(progress)
 	}
 
 	enumSchemaList.SetModel(standardModel)
 	enumSchemaList.SetSelectionMode(0)
 	enumSchemaList.SetSortingEnabled(true)
+	enumSchemaList.SortByColumn(0, core.Qt__AscendingOrder)
 	layerLayout.AddWidget(enumSchemaList, 0, 0)
 
 	labelForInstanceSchema := NewQLabelF("Instance schema (%d entries):", len(MainLayer.Schema.Instances))
@@ -35,14 +49,14 @@ func ShowPacket97(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 	instanceSchemaRootNode := instanceModel.InvisibleRootItem()
 
 	for _, item := range MainLayer.Schema.Instances {
-		nameItem := NewQStandardItemF(item.Name)
+		nameItem := NewStringItem(item.Name)
 		instanceRow := []*gui.QStandardItem{nameItem, nil}
 
 		propertySchemaItem := NewQStandardItemF("Property schema (%d entries)", len(item.Properties))
 
 		for _, property := range item.Properties {
-			propertyNameItem := NewQStandardItemF(property.Name)
-			propertyTypeItem := NewQStandardItemF(property.TypeString)
+			propertyNameItem := NewStringItem(property.Name)
+			propertyTypeItem := NewStringItem(property.TypeString)
 
 			propertyRow := []*gui.QStandardItem{propertyNameItem, propertyTypeItem}
 			propertySchemaItem.AppendRow(propertyRow)
@@ -59,7 +73,7 @@ func ShowPacket97(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 
 			for index, thisArgument := range event.Arguments {
 				eventArgumentNameItem := NewQStandardItemF("Event argument %d", index)
-				eventArgumentTypeItem := NewQStandardItemF(thisArgument.TypeString)
+				eventArgumentTypeItem := NewStringItem(thisArgument.TypeString)
 
 				eventSubIntRow := []*gui.QStandardItem{eventArgumentNameItem, eventArgumentTypeItem}
 				eventNameItem.AppendRow(eventSubIntRow)
@@ -69,11 +83,14 @@ func ShowPacket97(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 		}
 
 		instanceSchemaRootNode.AppendRow(instanceRow)
+		progress++
+		progressDialog.SetValue(progress)
 	}
 
 	instanceSchemaList.SetModel(instanceModel)
 	instanceSchemaList.SetSelectionMode(0)
 	instanceSchemaList.SetSortingEnabled(true)
+	instanceSchemaList.SortByColumn(0, core.Qt__AscendingOrder)
 	layerLayout.AddWidget(instanceSchemaList, 0, 0)
 
 	dumpButton := widgets.NewQPushButton2("Dump...", nil)

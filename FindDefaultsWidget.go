@@ -9,14 +9,14 @@ func NewFindDefaultsWidget(parent widgets.QWidget_ITF, settings *DefaultsSetting
 	window.SetWindowTitle("Find default property values...")
 	layout := NewTopAlignLayout()
 
-	filesLabel := NewQLabelF("Property value locations:")
+	filesLabel := NewLabel("Property value locations:")
 	files := widgets.NewQTreeView(window)
 	standardModel := NewProperSortModel(files)
 	standardModel.SetHorizontalHeaderLabels([]string{"File"})
 	rootNode := standardModel.InvisibleRootItem()
 
 	for _, file := range settings.Files {
-		rootNode.AppendRow([]*gui.QStandardItem{NewQStandardItemF("%s", file)})
+		rootNode.AppendRow([]*gui.QStandardItem{NewStringItem(file)})
 	}
 	files.SetSelectionMode(3)
 	files.SetModel(standardModel)
@@ -30,7 +30,7 @@ func NewFindDefaultsWidget(parent widgets.QWidget_ITF, settings *DefaultsSetting
 	addButton.ConnectPressed(func() {
 		names := widgets.QFileDialog_GetOpenFileNames(window, "Find property dump...", "", "Roblox model files (*.rbxm)", "", 0)
 		for _, file := range names {
-			rootNode.AppendRow([]*gui.QStandardItem{NewQStandardItemF("%s", file)})
+			rootNode.AppendRow([]*gui.QStandardItem{NewStringItem(file)})
 		}
 	})
 	delButton.ConnectPressed(func() {

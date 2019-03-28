@@ -7,7 +7,7 @@ func NewPlayerProxyWidget(parent widgets.QWidget_ITF, settings *PlayerProxySetti
 	window.SetWindowTitle("Choose HTTPS server settings...")
 	layout := NewTopAlignLayout()
 
-	certfileLabel := NewQLabelF("Certfile location:")
+	certfileLabel := NewLabel("Certfile location:")
 	certfileTextBox := widgets.NewQLineEdit2(settings.Certfile, nil)
 	certbrowseButton := widgets.NewQPushButton2("Browse...", nil)
 	certbrowseButton.ConnectPressed(func() {
@@ -17,7 +17,7 @@ func NewPlayerProxyWidget(parent widgets.QWidget_ITF, settings *PlayerProxySetti
 	layout.AddWidget(certfileTextBox, 0, 0)
 	layout.AddWidget(certbrowseButton, 0, 0)
 
-	keyfileLabel := NewQLabelF("Keyfile location:")
+	keyfileLabel := NewLabel("Keyfile location:")
 	keyfileTextBox := widgets.NewQLineEdit2(settings.Keyfile, nil)
 	keybrowseButton := widgets.NewQPushButton2("Browse...", nil)
 	keybrowseButton.ConnectPressed(func() {

@@ -39,20 +39,20 @@ func ShowPacket85(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 	rootNode := standardModel.InvisibleRootItem()
 	for _, item := range MainLayer.SubPackets {
 		if item.Data.Instance == nil {
-			rootNode.AppendRow([]*gui.QStandardItem{NewQStandardItemF("nil!!")})
+			rootNode.AppendRow([]*gui.QStandardItem{NewStringItem("nil!!")})
 			continue
 		}
-		nameItem := NewQStandardItemF(item.Data.Instance.GetFullName())
-		referenceItem := NewQStandardItemF(item.Data.Instance.Ref.String())
-		humanoidStateItem := NewQStandardItemF("%s", NetworkHumanoidStates[item.NetworkHumanoidState])
-		cframeItem := NewQStandardItemF(item.Data.CFrame.String())
-		linVelItem := NewQStandardItemF(item.Data.LinearVelocity.String())
-		rotVelItem := NewQStandardItemF(item.Data.RotationalVelocity.String())
+		nameItem := NewStringItem(item.Data.Instance.GetFullName())
+		referenceItem := NewStringItem(item.Data.Instance.Ref.String())
+		humanoidStateItem := NewStringItem(NetworkHumanoidStates[item.NetworkHumanoidState])
+		cframeItem := NewStringItem(item.Data.CFrame.String())
+		linVelItem := NewStringItem(item.Data.LinearVelocity.String())
+		rotVelItem := NewStringItem(item.Data.RotationalVelocity.String())
 
 		if item.Data.PlatformChild != nil {
 			nameItem.AppendRow([]*gui.QStandardItem{
-				NewQStandardItemF(item.Data.PlatformChild.GetFullName()),
-				NewQStandardItemF(item.Data.PlatformChild.Ref.String()),
+				NewStringItem(item.Data.PlatformChild.GetFullName()),
+				NewStringItem(item.Data.PlatformChild.Ref.String()),
 			})
 		}
 		if len(item.Data.Motors) > 0 {
@@ -62,7 +62,7 @@ func ShowPacket85(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 					nil,
 					nil,
 					nil,
-					NewQStandardItemF(motor.String()),
+					NewStringItem(motor.String()),
 					nil,
 					nil,
 					nil,
@@ -79,17 +79,17 @@ func ShowPacket85(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 					nil,
 					nil,
 					nil,
-					NewQStandardItemF(history.CFrame.String()),
-					NewQStandardItemF(history.LinearVelocity.String()),
-					NewQStandardItemF(history.RotationalVelocity.String()),
+					NewStringItem(history.CFrame.String()),
+					NewStringItem(history.LinearVelocity.String()),
+					NewStringItem(history.RotationalVelocity.String()),
 					nil,
 					nil,
 					NewQStandardItemF("%f", history.Interval),
 				})
 				if history.PlatformChild != nil {
 					historyItem.AppendRow([]*gui.QStandardItem{
-						NewQStandardItemF(history.PlatformChild.GetFullName()),
-						NewQStandardItemF(history.PlatformChild.Ref.String()),
+						NewStringItem(history.PlatformChild.GetFullName()),
+						NewStringItem(history.PlatformChild.Ref.String()),
 					})
 				}
 			}
@@ -102,19 +102,19 @@ func ShowPacket85(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 					println("WARNING: can't display nonexistent child!")
 					continue
 				}
-				childItem := NewQStandardItemF(child.Instance.Name())
+				childItem := NewStringItem(child.Instance.Name())
 				childrenItem.AppendRow([]*gui.QStandardItem{
 					childItem,
-					NewQStandardItemF(child.Instance.Ref.String()),
+					NewStringItem(child.Instance.Ref.String()),
 					nil,
-					NewQStandardItemF(child.CFrame.String()),
-					NewQStandardItemF(child.LinearVelocity.String()),
-					NewQStandardItemF(child.RotationalVelocity.String()),
+					NewStringItem(child.CFrame.String()),
+					NewStringItem(child.LinearVelocity.String()),
+					NewStringItem(child.RotationalVelocity.String()),
 				})
 				if child.PlatformChild != nil {
 					childItem.AppendRow([]*gui.QStandardItem{
-						NewQStandardItemF(child.PlatformChild.GetFullName()),
-						NewQStandardItemF(child.PlatformChild.Ref.String()),
+						NewStringItem(child.PlatformChild.GetFullName()),
+						NewStringItem(child.PlatformChild.Ref.String()),
 					})
 				}
 				if len(child.Motors) > 0 {
@@ -124,7 +124,7 @@ func ShowPacket85(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 							nil,
 							nil,
 							nil,
-							NewQStandardItemF(motor.String()),
+							NewStringItem(motor.String()),
 							nil,
 							nil,
 							nil,

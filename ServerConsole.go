@@ -10,7 +10,7 @@ func NewServerConsole(parent widgets.QWidget_ITF, server *peer.CustomServer) {
 	window.SetWindowTitle("Server watch console")
 	layout := NewTopAlignLayout()
 
-	clientsLabel := NewQLabelF("Clients:")
+	clientsLabel := NewLabel("Clients:")
 	clients := widgets.NewQTreeView(window)
 	standardModel := NewProperSortModel(clients)
 	standardModel.SetHorizontalHeaderLabels([]string{"Address"})
@@ -22,7 +22,7 @@ func NewServerConsole(parent widgets.QWidget_ITF, server *peer.CustomServer) {
 			standardModel.SetHorizontalHeaderLabels([]string{"Address"})
 			rootNode = standardModel.InvisibleRootItem()
 			for _, client := range server.Clients {
-				rootNode.AppendRow([]*gui.QStandardItem{NewQStandardItemF(client.Address.String())})
+				rootNode.AppendRow([]*gui.QStandardItem{NewStringItem(client.Address.String())})
 			}
 		}
 	}
