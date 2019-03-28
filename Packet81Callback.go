@@ -14,21 +14,21 @@ func ShowPacket81(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 	layerLayout.AddWidget(NewQLabelF("Character auto spawn: %v", MainLayer.CharacterAutoSpawn), 0, 0)
 	referentStringLabel := NewQLabelF("Top replication scope: %s", MainLayer.ReferentString)
 	layerLayout.AddWidget(referentStringLabel, 0, 0)
-	layerLayout.AddWidget(NewQLabelF("Int 1: %X", MainLayer.Int1), 0, 0)
-	layerLayout.AddWidget(NewQLabelF("Int 2: %X", MainLayer.Int2), 0, 0)
+	layerLayout.AddWidget(NewQLabelF("Script key: %X", MainLayer.ScriptKey), 0, 0)
+	layerLayout.AddWidget(NewQLabelF("Core script key: %X", MainLayer.CoreScriptKey), 0, 0)
 
 	containerList := widgets.NewQTreeView(nil)
 	standardModel := NewProperSortModel(nil)
-	standardModel.SetHorizontalHeaderLabels([]string{"Index", "Class name", "Referent", "Replicate properties", "Replicate children"})
+	standardModel.SetHorizontalHeaderLabels([]string{"Index", "Class name", "Referent", "Watch properties", "Watch children"})
 
 	containerListRootNode := standardModel.InvisibleRootItem()
 	for i, item := range MainLayer.Items {
 		indexItem := NewUintItem(i)
 		classNameItem := NewStringItem(item.Schema.Name)
 		referenceItem := NewStringItem(item.Instance.Ref.String())
-		repPropertiesItem := NewQStandardItemF("%v", item.Bool1)
-		repChildrenItem := NewQStandardItemF("%v", item.Bool2)
-		containerListRootNode.AppendRow([]*gui.QStandardItem{indexItem, classNameItem, referenceItem, repPropertiesItem, repChildrenItem})
+		watchChangesItem := NewQStandardItemF("%v", item.WatchChanges)
+		watchChildrenItem := NewQStandardItemF("%v", item.WatchChildren)
+		containerListRootNode.AppendRow([]*gui.QStandardItem{indexItem, classNameItem, referenceItem, watchChangesItem, watchChildrenItem})
 	}
 
 	containerList.SetModel(standardModel)

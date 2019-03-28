@@ -11,10 +11,10 @@ import (
 // Packet83_03 describes an ID_CHANGE_PROPERTY data subpacket.
 type Packet83_03 struct {
 	// Instance that had the property change
-	Instance *datamodel.Instance
-	Bool1    bool
-	Int1     int32
-	Schema   *StaticPropertySchema
+	Instance   *datamodel.Instance
+	HasVersion bool
+	Version    int32
+	Schema     *StaticPropertySchema
 	// New value
 	Value rbxfile.Value
 }
@@ -40,13 +40,13 @@ func (thisBitstream *extendedReader) DecodePacket83_03(reader PacketReader, laye
 		return layer, err
 	}
 
-	layer.Bool1, err = thisBitstream.readBoolByte()
+	layer.HasVersion, err = thisBitstream.readBoolByte()
 	if err != nil {
 		return layer, err
 	}
 	// If this packet was written by the client, read version
-	if layer.Bool1 && reader.IsClient() {
-		layer.Int1, err = thisBitstream.readSintUTF8()
+	if layer.HasVersion && reader.IsClient() {
+		layer.Version, err = thisBitstream.readSintUTF8()
 		if err != nil {
 			return layer, err
 		}
@@ -93,13 +93,13 @@ func (layer *Packet83_03) Serialize(writer PacketWriter, stream *extendedWriter)
 		if err != nil {
 			return err
 		}
-		err = stream.writeBoolByte(layer.Bool1)
+		err = stream.writeBoolByte(layer.HasVersion)
 		if err != nil {
 			return err
 		}
 		// If this packet is to the server, write version
-		if layer.Bool1 && !writer.ToClient() {
-			err = stream.writeSintUTF8(layer.Int1)
+		if layer.HasVersion && !writer.ToClient() {
+			err = stream.writeSintUTF8(layer.Version)
 			if err != nil {
 				return err
 			}
@@ -113,12 +113,12 @@ func (layer *Packet83_03) Serialize(writer PacketWriter, stream *extendedWriter)
 		return err
 	}
 
-	err = stream.writeBoolByte(layer.Bool1)
+	err = stream.writeBoolByte(layer.HasVersion)
 	if err != nil {
 		return err
 	}
-	if layer.Bool1 && !writer.ToClient() {
-		err = stream.writeSintUTF8(layer.Int1)
+	if layer.HasVersion && !writer.ToClient() {
+		err = stream.writeSintUTF8(layer.Version)
 		if err != nil {
 			return err
 		}

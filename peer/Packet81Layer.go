@@ -9,10 +9,10 @@ import (
 
 // Describes a global service from ID_SET_GLOBALS (Packet81Layer)
 type Packet81LayerItem struct {
-	Schema   *StaticInstanceSchema
-	Instance *datamodel.Instance
-	Bool1    bool
-	Bool2    bool
+	Schema        *StaticInstanceSchema
+	Instance      *datamodel.Instance
+	WatchChanges  bool
+	WatchChildren bool
 }
 
 // ID_SET_GLOBALS - server -> client
@@ -25,8 +25,8 @@ type Packet81Layer struct {
 	CharacterAutoSpawn   bool
 	// Server's scope
 	ReferentString string
-	Int1           uint32
-	Int2           uint32
+	ScriptKey      uint32
+	CoreScriptKey  uint32
 	// List of services to be set
 	Items []*Packet81LayerItem
 }
@@ -67,17 +67,17 @@ func (thisBitstream *extendedReader) DecodePacket81Layer(reader PacketReader, la
 	// This assignment is justifiable because a call to readJoinObject() below depends on it
 	reader.Context().InstanceTopScope = layer.ReferentString
 	if !reader.Context().IsStudio {
-		layer.Int1, err = thisBitstream.readUint32BE()
+		layer.ScriptKey, err = thisBitstream.readUint32BE()
 		if err != nil {
 			return layer, err
 		}
-		layer.Int2, err = thisBitstream.readUint32BE()
+		layer.CoreScriptKey, err = thisBitstream.readUint32BE()
 		if err != nil {
 			return layer, err
 		}
 
-		reader.Context().Int1 = layer.Int1
-		reader.Context().Int2 = layer.Int2
+		reader.Context().ScriptKey = layer.ScriptKey
+		reader.Context().CoreScriptKey = layer.CoreScriptKey
 	}
 
 	arrayLen, err := thisBitstream.readUintUTF8()
@@ -117,11 +117,11 @@ func (thisBitstream *extendedReader) DecodePacket81Layer(reader PacketReader, la
 		instance.IsService = true
 		thisItem.Instance = instance
 
-		thisItem.Bool1, err = thisBitstream.readBoolByte()
+		thisItem.WatchChanges, err = thisBitstream.readBoolByte()
 		if err != nil {
 			return layer, err
 		}
-		thisItem.Bool2, err = thisBitstream.readBoolByte()
+		thisItem.WatchChildren, err = thisBitstream.readBoolByte()
 		if err != nil {
 			return layer, err
 		}
@@ -164,11 +164,11 @@ func (layer *Packet81Layer) Serialize(writer PacketWriter, stream *extendedWrite
 	}
 
 	if !writer.Context().IsStudio {
-		err = stream.writeUint32BE(layer.Int1)
+		err = stream.writeUint32BE(layer.ScriptKey)
 		if err != nil {
 			return err
 		}
-		err = stream.writeUint32BE(layer.Int2)
+		err = stream.writeUint32BE(layer.CoreScriptKey)
 		if err != nil {
 			return err
 		}
@@ -184,11 +184,11 @@ func (layer *Packet81Layer) Serialize(writer PacketWriter, stream *extendedWrite
 		if err != nil {
 			return err
 		}
-		err = stream.writeBoolByte(item.Bool1)
+		err = stream.writeBoolByte(item.WatchChanges)
 		if err != nil {
 			return err
 		}
-		err = stream.writeBoolByte(item.Bool2)
+		err = stream.writeBoolByte(item.WatchChildren)
 		if err != nil {
 			return err
 		}

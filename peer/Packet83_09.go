@@ -15,12 +15,12 @@ type Packet83_09 struct {
 }
 
 type Packet83_09_05 struct {
-	Int uint32
+	Challenge uint32
 }
 
 type Packet83_09_06 struct {
-	Int1 uint32
-	Int2 uint32
+	Challenge uint32
+	Response  uint32
 }
 
 func (thisBitstream *extendedReader) DecodePacket83_09(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
@@ -35,18 +35,18 @@ func (thisBitstream *extendedReader) DecodePacket83_09(reader PacketReader, laye
 	switch inner.SubpacketType {
 	case 5: // id challenge
 		thisSubpacket := &Packet83_09_05{}
-		thisSubpacket.Int, err = thisBitstream.readUint32BE()
+		thisSubpacket.Challenge, err = thisBitstream.readUint32BE()
 		if err != nil {
 			return inner, err
 		}
 		subpacket = thisSubpacket
 	case 6: // id response
 		thisSubpacket := &Packet83_09_06{}
-		thisSubpacket.Int1, err = thisBitstream.readUint32BE()
+		thisSubpacket.Challenge, err = thisBitstream.readUint32BE()
 		if err != nil {
 			return inner, err
 		}
-		thisSubpacket.Int2, err = thisBitstream.readUint32BE()
+		thisSubpacket.Response, err = thisBitstream.readUint32BE()
 		if err != nil {
 			return inner, err
 		}
@@ -69,14 +69,14 @@ func (layer *Packet83_09) Serialize(writer PacketWriter, stream *extendedWriter)
 	switch layer.SubpacketType {
 	case 5:
 		subpacket := layer.Subpacket.(*Packet83_09_05)
-		err = stream.writeUint32BE(subpacket.Int)
+		err = stream.writeUint32BE(subpacket.Challenge)
 	case 6:
 		subpacket := layer.Subpacket.(*Packet83_09_06)
-		err = stream.writeUint32BE(subpacket.Int1)
+		err = stream.writeUint32BE(subpacket.Challenge)
 		if err != nil {
 			return err
 		}
-		err = stream.writeUint32BE(subpacket.Int2)
+		err = stream.writeUint32BE(subpacket.Response)
 	default:
 		println("Tried to write rocky packet", layer.Type())
 		return errors.New("rocky packet not implemented")

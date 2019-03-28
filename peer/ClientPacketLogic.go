@@ -200,8 +200,8 @@ func (myClient *CustomClient) sendDataIdResponse(challengeInt uint32) {
 	err := myClient.WriteDataPackets(&Packet83_09{
 		SubpacketType: 6,
 		Subpacket: &Packet83_09_06{
-			Int1: challengeInt,
-			Int2: myClient.SecuritySettings.GenerateIdResponse(challengeInt),
+			Challenge: challengeInt,
+			Response:  myClient.SecuritySettings.GenerateIdResponse(challengeInt),
 		},
 	})
 	if err != nil {
@@ -212,7 +212,7 @@ func (myClient *CustomClient) idChallengeHandler(e *emitter.Event) {
 	mainPacket := e.Args[0].(*Packet83_09)
 	if mainPacket.SubpacketType == 5 {
 		myClient.Logger.Println("recv id challenge!")
-		myClient.sendDataIdResponse(mainPacket.Subpacket.(*Packet83_09_05).Int)
+		myClient.sendDataIdResponse(mainPacket.Subpacket.(*Packet83_09_05).Challenge)
 	}
 }
 

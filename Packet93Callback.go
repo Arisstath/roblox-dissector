@@ -7,10 +7,8 @@ import "github.com/Gskartwii/roblox-dissector/peer"
 func ShowPacket93(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationContext, layers *peer.PacketLayers) {
 	MainLayer := layers.Main.(*peer.Packet93Layer)
 
-	unknownBool1Label := NewQLabelF("Protocol schema sync: %v", MainLayer.ProtocolSchemaSync)
-	unknownBool2Label := NewQLabelF("API dictionary compression: %v", MainLayer.ApiDictionaryCompression)
-	layerLayout.AddWidget(unknownBool1Label, 0, 0)
-	layerLayout.AddWidget(unknownBool2Label, 0, 0)
+	layerLayout.AddWidget(NewQLabelF("Protocol schema sync: %v", MainLayer.ProtocolSchemaSync), 0, 0)
+	layerLayout.AddWidget(NewQLabelF("API dictionary compression: %v", MainLayer.ApiDictionaryCompression), 0, 0)
 
 	labelForParamList := NewLabel("Network params:")
 	layerLayout.AddWidget(labelForParamList, 0, 0)

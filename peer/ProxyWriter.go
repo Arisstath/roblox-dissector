@@ -164,7 +164,7 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 					pmcPacket := subpacket.(*Packet83_09)
 					if pmcPacket.SubpacketType == 6 {
 						pmcSubpacket := pmcPacket.Subpacket.(*Packet83_09_06)
-						pmcSubpacket.Int2 = writer.SecuritySettings.GenerateIdResponse(pmcSubpacket.Int1)
+						pmcSubpacket.Response = writer.SecuritySettings.GenerateIdResponse(pmcSubpacket.Challenge)
 						modifiedSubpackets = append(modifiedSubpackets, subpacket)
 					} // if not type 6, drop it!
 				case *Packet83_12:

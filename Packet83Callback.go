@@ -145,8 +145,10 @@ func show83_03(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	} else {
 		layout.AddWidget(NewLabel("Object: nil"), 0, 0)
 	}
-	layout.AddWidget(NewQLabelF("Unknown bool: %v", this.Bool1), 0, 0)
-	layout.AddWidget(NewQLabelF("Unknown int: %d", this.Int1), 0, 0)
+	layout.AddWidget(NewQLabelF("Has version: %v", this.HasVersion), 0, 0)
+	if this.HasVersion {
+		layout.AddWidget(NewQLabelF("Version: %d", this.Version), 0, 0)
+	}
 	if this.Schema == nil {
 		layout.AddWidget(NewLabel("Property name: Parent"), 0, 0)
 	} else {
@@ -187,6 +189,7 @@ func show83_05(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	layout := NewTopAlignLayout()
 	layout.AddWidget(NewQLabelF("Packet version: %d", this.PacketVersion), 0, 0)
 	layout.AddWidget(NewQLabelF("Timestamp: %d", this.Timestamp), 0, 0)
+	layout.AddWidget(NewQLabelF("Int 1: %d", this.Int1), 0, 0)
 	layout.AddWidget(NewQLabelF("Fps: %f, %f, %f", this.Fps1, this.Fps2, this.Fps3), 0, 0)
 	layout.AddWidget(NewQLabelF("Stats 1: %d", this.SendStats), 0, 0)
 	layout.AddWidget(NewQLabelF("Stats 2: %d", this.ExtraStats), 0, 0)
@@ -248,15 +251,15 @@ func show83_07(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 
 func show83_09_05(t peer.Packet83_09Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_09_05)
-	return NewQLabelF("Int: %d", this.Int)
+	return NewQLabelF("Id challenge: %d", this.Challenge)
 }
 func show83_09_06(t peer.Packet83_09Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_09_06)
 
 	widget := widgets.NewQWidget(nil, 0)
 	layout := NewTopAlignLayout()
-	layout.AddWidget(NewQLabelF("Int 1: %d", this.Int1), 0, 0)
-	layout.AddWidget(NewQLabelF("Int 2: %d", this.Int2), 0, 0)
+	layout.AddWidget(NewQLabelF("Id challenge: %d", this.Challenge), 0, 0)
+	layout.AddWidget(NewQLabelF("Response: %d", this.Response), 0, 0)
 	widget.SetLayout(layout)
 
 	return widget

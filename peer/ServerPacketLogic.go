@@ -119,10 +119,10 @@ func (client *ServerClient) authHandler(e *emitter.Event) {
 	topReplicationItems := make([]*Packet81LayerItem, len(client.Context.DataModel.Instances))
 	for i, instance := range client.Context.DataModel.Instances {
 		topReplicationItems[i] = &Packet81LayerItem{
-			Schema:   client.Context.StaticSchema.SchemaForClass(instance.ClassName),
-			Instance: instance,
-			Bool1:    false,
-			Bool2:    false,
+			Schema:        client.Context.StaticSchema.SchemaForClass(instance.ClassName),
+			Instance:      instance,
+			WatchChanges:  false,
+			WatchChildren: false,
 		}
 	}
 
@@ -133,9 +133,9 @@ func (client *ServerClient) authHandler(e *emitter.Event) {
 		CharacterAutoSpawn:   true,
 		ReferentString:       client.Server.InstanceDictionary.Scope,
 		// TODO: VM ints
-		Int1:  1,
-		Int2:  1,
-		Items: topReplicationItems,
+		ScriptKey:     1,
+		CoreScriptKey: 1,
+		Items:         topReplicationItems,
 	})
 	if err != nil {
 		println("topreplic error: ", err.Error())

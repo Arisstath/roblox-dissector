@@ -143,8 +143,8 @@ type CommunicationContext struct {
 
 	IsStudio bool
 
-	Int1 uint32
-	Int2 uint32
+	ScriptKey     uint32
+	CoreScriptKey uint32
 }
 
 func NewCommunicationContext() *CommunicationContext {

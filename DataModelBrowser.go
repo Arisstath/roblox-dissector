@@ -88,7 +88,7 @@ func NewDataModelBrowser(context *peer.CommunicationContext, dataModel *datamode
 			return
 		}
 
-		_, err = fmt.Fprintf(scriptData, "Int 1: %d\nInt 2: %d", context.Int1, context.Int2)
+		_, err = fmt.Fprintf(scriptData, "Script key: %d\nCore script key: %d", context.ScriptKey, context.CoreScriptKey)
 		if err != nil {
 			println("while dumping script keys:", err.Error())
 			return
