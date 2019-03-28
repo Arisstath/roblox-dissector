@@ -51,10 +51,6 @@ func (ctx CaptureContext) Find(src *net.UDPAddr, dst *net.UDPAddr) (*Conversatio
 
 func NewConversation(client *net.UDPAddr, server *net.UDPAddr) *Conversation {
 	context := peer.NewCommunicationContext()
-	// TODO: Remove?
-	context.Client = client
-	context.Server = server
-
 	clientReader := peer.NewPacketReader()
 	clientReader.SetIsClient(true)
 	clientReader.SetContext(context)

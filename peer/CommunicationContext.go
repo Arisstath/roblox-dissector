@@ -2,7 +2,6 @@ package peer
 
 import (
 	"bytes"
-	"net"
 
 	"github.com/gskartwii/roblox-dissector/datamodel"
 )
@@ -131,10 +130,7 @@ type Caches struct {
 // make it so that it's only used for PCAP captures
 // where the server and client must be stored somewhere
 type CommunicationContext struct {
-	Server *net.UDPAddr
-	Client *net.UDPAddr
-
-	// TODO: Move this to reader and writer
+	// TODO: Move this to reader and writer?
 	InstanceTopScope string
 
 	DataModel           *datamodel.DataModel
@@ -155,13 +151,7 @@ func NewCommunicationContext() *CommunicationContext {
 	return &CommunicationContext{
 		DataModel:           datamodel.New(),
 		InstancesByReferent: datamodel.NewInstanceList(),
-		InstanceTopScope:    "WARNING_UNASSIGNED_TOP_SCOPE",
+		// TODO: Report an error if top scope is accessed before being assigned
+		InstanceTopScope: "WARNING_UNASSIGNED_TOP_SCOPE",
 	}
-}
-
-func (c *CommunicationContext) IsClient(peer *net.UDPAddr) bool {
-	return c.Client.Port == peer.Port && bytes.Compare(c.Client.IP, peer.IP) == 0
-}
-func (c *CommunicationContext) IsServer(peer *net.UDPAddr) bool {
-	return c.Server.Port == peer.Port && bytes.Compare(c.Server.IP, peer.IP) == 0
 }
