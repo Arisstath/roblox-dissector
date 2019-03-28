@@ -74,9 +74,6 @@ type SecuritySettings struct {
 type Windows10SecuritySettings struct {
 	SecuritySettings
 }
-type AndroidSecuritySettings struct {
-	SecuritySettings
-}
 
 type JoinData struct {
 	RawJoinData           string
@@ -425,38 +422,6 @@ func (settings *Windows10SecuritySettings) PatchTicketPacket(packet *Packet8ALay
 	packet.DataModelHash = "ios,ios"
 	packet.Platform = settings.osPlatform
 	packet.TicketHash = settings.GenerateTicketHash(packet.ClientTicket)
-}
-
-func (settings *AndroidSecuritySettings) PatchTicketPacket(packet *Packet8ALayer) {
-	packet.SecurityKey = "2e427f51c4dab762fe9e3471c6cfa1650841723b!10ddf3176164dab2c7b4ba9c0e986001"
-	packet.Platform = settings.osPlatform
-	packet.GoldenHash = 0xC001CAFE
-	packet.DataModelHash = "ios,ios"
-}
-
-// Automatically fills in any needed hashes/key for Android clients
-func AndroidSettings() *AndroidSecuritySettings {
-	settings := &AndroidSecuritySettings{}
-	settings.osPlatform = "Android"
-	settings.userAgent = "Mozilla/5.0 (512MB; 576x480; 300x300; 300x300; Samsung Galaxy S8; 6.0.1 Marshmallow) AppleWebKit/537.36 (KHTML, like Gecko) Roblox Android App 0.334.0.195932 Phone Hybrid()"
-	return settings
-}
-func (settings *AndroidSecuritySettings) GenerateIdResponse(challenge uint32) uint32 {
-	// TODO
-	return 0
-}
-func (settings *AndroidSecuritySettings) GenerateTicketHash(ticket string) uint32 {
-	// TODO
-	return 0
-}
-
-// genderId 1 ==> default genderless
-// genderId 2 ==> Billy
-// genderId 3 ==> Betty
-func (myClient *CustomClient) ConnectGuest(placeId uint32, genderId uint8) error {
-	myClient.PlaceId = placeId
-	myClient.GenderId = genderId
-	return myClient.joinWithPlaceLauncher(fmt.Sprintf("https://assetgame.roblox.com/game/PlaceLauncher.ashx?request=RequestGame&browserTrackerId=%d&placeId=%d&isPartyLeader=false&genderId=%d", myClient.BrowserTrackerId, myClient.PlaceId, myClient.GenderId), []*http.Cookie{})
 }
 
 func (myClient *CustomClient) dial() {

@@ -401,7 +401,7 @@ func (b *extendedReader) readCFrame() (rbxfile.ValueCFrame, error) {
 	return val, err
 }
 
-func (b *JoinSerializeReader) readContent() (rbxfile.ValueContent, error) {
+func (b *joinSerializeReader) readContent() (rbxfile.ValueContent, error) {
 	var result string
 	stringLen, err := b.readUint32BE()
 	if err != nil {
@@ -457,7 +457,7 @@ func (b *extendedReader) readSystemAddress(caches *Caches) (datamodel.ValueSyste
 	return datamodel.ValueSystemAddress(thisAddress), nil
 }
 
-func (b *JoinSerializeReader) readSystemAddress() (datamodel.ValueSystemAddress, error) {
+func (b *joinSerializeReader) readSystemAddress() (datamodel.ValueSystemAddress, error) {
 	var err error
 	thisAddress := datamodel.ValueSystemAddress{IP: make([]byte, 4)}
 	err = b.bytes(thisAddress.IP, 4)
@@ -518,7 +518,7 @@ func (b *extendedReader) readVarLengthString() (string, error) {
 	return b.readASCII(int(stringLen))
 }
 
-func (b *JoinSerializeReader) readNewPString() (rbxfile.ValueString, error) {
+func (b *joinSerializeReader) readNewPString() (rbxfile.ValueString, error) {
 	val, err := b.readVarLengthString()
 	return rbxfile.ValueString(val), err
 }
@@ -527,7 +527,7 @@ func (b *extendedReader) readNewPString(caches *Caches) (rbxfile.ValueString, er
 	return rbxfile.ValueString(val), err
 }
 
-func (b *JoinSerializeReader) readNewProtectedString() (rbxfile.ValueProtectedString, error) {
+func (b *joinSerializeReader) readNewProtectedString() (rbxfile.ValueProtectedString, error) {
 	res, err := b.readNewPString()
 	return rbxfile.ValueProtectedString(res), err
 }
@@ -536,7 +536,7 @@ func (b *extendedReader) readNewProtectedString(caches *Caches) (rbxfile.ValuePr
 	return rbxfile.ValueProtectedString(res), err
 }
 
-func (b *JoinSerializeReader) readNewContent() (rbxfile.ValueContent, error) {
+func (b *joinSerializeReader) readNewContent() (rbxfile.ValueContent, error) {
 	res, err := b.readNewPString()
 	return rbxfile.ValueContent(res), err
 }

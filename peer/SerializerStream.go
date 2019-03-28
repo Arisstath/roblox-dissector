@@ -201,11 +201,11 @@ func (b *extendedWriter) WriteProperties(schema []*StaticPropertySchema, propert
 	return err
 }
 
-type JoinSerializeReader struct {
+type joinSerializeReader struct {
 	*extendedReader
 }
 
-func (b *JoinSerializeReader) ReadSerializedValue(reader PacketReader, valueType uint8, enumId uint16) (rbxfile.Value, error) {
+func (b *joinSerializeReader) ReadSerializedValue(reader PacketReader, valueType uint8, enumId uint16) (rbxfile.Value, error) {
 	var err error
 	var result rbxfile.Value
 	switch valueType {
@@ -243,10 +243,10 @@ func (b *JoinSerializeReader) ReadSerializedValue(reader PacketReader, valueType
 	}
 	return result, err
 }
-func (b *JoinSerializeReader) ReadObject(reader PacketReader) (datamodel.Reference, error) {
+func (b *joinSerializeReader) ReadObject(reader PacketReader) (datamodel.Reference, error) {
 	return b.readJoinObject(reader.Context())
 }
-func (b *JoinSerializeReader) ReadProperties(schema []*StaticPropertySchema, properties map[string]rbxfile.Value, reader PacketReader) error {
+func (b *joinSerializeReader) ReadProperties(schema []*StaticPropertySchema, properties map[string]rbxfile.Value, reader PacketReader) error {
 	propertyIndex, err := b.readUint8()
 	last := "none"
 	for err == nil && propertyIndex != 0xFF {
@@ -265,11 +265,11 @@ func (b *JoinSerializeReader) ReadProperties(schema []*StaticPropertySchema, pro
 	return err
 }
 
-type JoinSerializeWriter struct {
+type joinSerializeWriter struct {
 	*extendedWriter
 }
 
-func (b *JoinSerializeWriter) WriteSerializedValue(val rbxfile.Value, writer PacketWriter, valueType uint8) error {
+func (b *joinSerializeWriter) WriteSerializedValue(val rbxfile.Value, writer PacketWriter, valueType uint8) error {
 	if val == nil {
 		return nil
 	}
@@ -296,10 +296,10 @@ func (b *JoinSerializeWriter) WriteSerializedValue(val rbxfile.Value, writer Pac
 	}
 	return err
 }
-func (b *JoinSerializeWriter) WriteObject(object *datamodel.Instance, writer PacketWriter) error {
+func (b *joinSerializeWriter) WriteObject(object *datamodel.Instance, writer PacketWriter) error {
 	return b.extendedWriter.writeJoinObject(object, writer.Context())
 }
-func (b *JoinSerializeWriter) WriteProperties(schema []*StaticPropertySchema, properties map[string]rbxfile.Value, writer PacketWriter) error {
+func (b *joinSerializeWriter) WriteProperties(schema []*StaticPropertySchema, properties map[string]rbxfile.Value, writer PacketWriter) error {
 	var err error
 	for i := 0; i < len(schema); i++ {
 		name := schema[i].Name

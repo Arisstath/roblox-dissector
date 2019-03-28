@@ -87,7 +87,7 @@ func (stream *extendedReader) DecodePacket8ALayer(reader PacketReader, layers *P
 		return layer, err
 	}
 	layers.Root.Logger.Println("sessid", layer.SessionId)
-	layer.GoldenHash, err = thisBitstream.readUint32BE() // 0xc001cafe on android - cool cafe!
+	layer.GoldenHash, err = thisBitstream.readUint32BE()
 	if err != nil {
 		return layer, err
 	}

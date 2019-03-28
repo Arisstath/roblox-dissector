@@ -227,13 +227,13 @@ func (b *extendedWriter) writeNewContent(val rbxfile.ValueContent, caches *Cache
 	return b.writeCachedContent(string(val), caches)
 }
 
-func (b *JoinSerializeWriter) writeNewPString(val rbxfile.ValueString) error {
+func (b *joinSerializeWriter) writeNewPString(val rbxfile.ValueString) error {
 	return b.extendedWriter.writePStringNoCache(val)
 }
-func (b *JoinSerializeWriter) writeNewProtectedString(val rbxfile.ValueProtectedString) error {
+func (b *joinSerializeWriter) writeNewProtectedString(val rbxfile.ValueProtectedString) error {
 	return b.extendedWriter.writePStringNoCache(rbxfile.ValueString(val))
 }
-func (b *JoinSerializeWriter) writeNewContent(val rbxfile.ValueContent) error {
+func (b *joinSerializeWriter) writeNewContent(val rbxfile.ValueContent) error {
 	return b.writeVarLengthString(string(val))
 }
 
@@ -563,7 +563,7 @@ func (b *extendedWriter) writeSystemAddressRaw(val datamodel.ValueSystemAddress)
 func (b *extendedWriter) writeSystemAddress(val datamodel.ValueSystemAddress, caches *Caches) error {
 	return b.writeCachedSystemAddress(val, caches)
 }
-func (b *JoinSerializeWriter) writeSystemAddress(val datamodel.ValueSystemAddress) error {
+func (b *joinSerializeWriter) writeSystemAddress(val datamodel.ValueSystemAddress) error {
 	return b.writeSystemAddressRaw(val)
 }
 
