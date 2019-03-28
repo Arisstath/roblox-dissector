@@ -65,6 +65,7 @@ func main() {
 	go func() {
 		log.Println(http.ListenAndServe("localhost:6060", nil))
 	}()
+	flag.Parse()
 	if *joinFlag != "" {
 		println("Received protocol invocation?")
 		protocolRegex := regexp.MustCompile(`roblox-dissector:([0-9A-Fa-f]+):(\d+):(\d+)`)

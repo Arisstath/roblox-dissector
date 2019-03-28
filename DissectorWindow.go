@@ -2,7 +2,7 @@ package main
 
 import (
 	"errors"
-	"path"
+	"path/filepath"
 	"time"
 
 	"github.com/dreadl0ck/gopcap"
@@ -76,7 +76,7 @@ func (window *DissectorWindow) CaptureFromFile(file string, isIPv4 bool) {
 		return
 	}
 
-	nameBase := path.Base(file)
+	nameBase := filepath.Base(file)
 	session := NewCaptureSession(nameBase, window)
 	window.Sessions = append(window.Sessions, session)
 
