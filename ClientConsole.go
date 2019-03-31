@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/Gskartwii/roblox-dissector/peer"
-	"github.com/robloxapi/rbxfile/xml"
 	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/widgets"
 )
@@ -74,21 +73,7 @@ func NewClientConsole(parent widgets.QWidget_ITF, client *peer.CustomClient) {
 
 	dumpRbxl := widgets.NewQPushButton2("Dump DataModel...", window)
 	dumpRbxl.ConnectReleased(func() {
-		location := widgets.QFileDialog_GetSaveFileName(window, "Save as RBXL...", "", "Roblox place files (*.rbxl)", "", 0)
-		writer, err := os.OpenFile(location, os.O_RDWR|os.O_CREATE, 0666)
-		if err != nil {
-			println("while opening file:", err.Error())
-			return
-		}
-
-		writableClone := client.Context.DataModel.ToRbxfile()
-		dumpScripts(writableClone.Instances, 0)
-
-		err = xml.Serialize(writer, nil, writableClone)
-		if err != nil {
-			println("while serializing place:", err.Error())
-			return
-		}
+		DumpDataModel(client.Context, window)
 	})
 	layout.AddWidget(dumpSchema, 0, 0)
 	layout.AddWidget(dumpRbxl, 0, 0)

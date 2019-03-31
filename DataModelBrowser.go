@@ -27,74 +27,106 @@ func showChildren(rootNode *gui.QStandardItem, children []*datamodel.Instance) {
 	}
 }
 
-func dumpScripts(instances []*rbxfile.Instance, i int) int {
+type InstanceProperty struct {
+	Instance *rbxfile.Instance
+	Name     string
+}
+
+func findScripts(instances []*rbxfile.Instance, propertyList []InstanceProperty) []InstanceProperty {
 	for _, instance := range instances {
 		for name, property := range instance.Properties {
 			thisType := property.Type()
 			if thisType == rbxfile.TypeProtectedString {
-				println("dumping protectedstring", instance.ClassName, name, thisType.String())
-				file, err := os.Create(fmt.Sprintf("dumps/%s.%d", instance.GetFullName(), i))
-				if err != nil {
-					println(err.Error())
-					continue
-				}
-				i++
-				_, err = file.Write([]byte(instance.Properties[name].(rbxfile.ValueProtectedString)))
-				if err != nil {
-					println(err.Error())
-					continue
-				}
-				err = file.Close()
-				if err != nil {
-					println(err.Error())
-					continue
-				}
+				propertyList = append(propertyList, InstanceProperty{
+					Instance: instance,
+					Name:     name,
+				})
 			}
 		}
-		i = dumpScripts(instance.Children, i)
+		propertyList = findScripts(instance.Children, propertyList)
 	}
-	return i
+	return propertyList
 }
 
-func NewDataModelBrowser(context *peer.CommunicationContext, dataModel *datamodel.DataModel) {
-	subWindow := widgets.NewQWidget(nil, core.Qt__Window)
+func dumpScripts(location string, instances []*rbxfile.Instance, parent widgets.QWidget_ITF) error {
+	instList := findScripts(instances, nil)
+
+	progressDialog := widgets.NewQProgressDialog2("Dumping scripts...", "Cancel", 0, len(instList), parent, 0)
+	progressDialog.SetWindowTitle("Dumping scripts")
+	progressDialog.SetWindowModality(core.Qt__WindowModal)
+
+	for i, instProp := range instList {
+		file, err := os.Create(fmt.Sprintf("%s/%s.%d.rbxc", location, instProp.Instance.GetFullName(), i))
+		if err != nil {
+			progressDialog.Cancel()
+			return err
+		}
+		_, err = file.Write([]byte(instProp.Instance.Properties[instProp.Name].(rbxfile.ValueProtectedString)))
+		if err != nil {
+			progressDialog.Cancel()
+			return err
+		}
+		err = file.Close()
+		if err != nil {
+			progressDialog.Cancel()
+			return err
+		}
+		if progressDialog.WasCanceled() {
+			return nil
+		}
+		progressDialog.SetValue(i)
+	}
+	progressDialog.SetValue(len(instList))
+	return nil
+}
+
+func DumpDataModel(context *peer.CommunicationContext, parent widgets.QWidget_ITF) {
+	writableClone := context.DataModel.ToRbxfile()
+
+	location := widgets.QFileDialog_GetExistingDirectory(parent, "Select directory to dump DataModel to", "", 0)
+	writer, err := os.OpenFile(location+"/datamodel.rbxlx", os.O_RDWR|os.O_CREATE, 0666)
+	defer writer.Close()
+	if err != nil {
+		widgets.QMessageBox_Critical(parent, "Error while creating RBXLX", err.Error(), widgets.QMessageBox__Ok, widgets.QMessageBox__NoButton)
+		return
+	}
+
+	scriptData, err := os.OpenFile(location+"/scriptKeys", os.O_RDWR|os.O_CREATE, 0666)
+	defer scriptData.Close()
+	if err != nil {
+		widgets.QMessageBox_Critical(parent, "Error while dumping script keys", err.Error(), widgets.QMessageBox__Ok, widgets.QMessageBox__NoButton)
+		return
+	}
+
+	_, err = fmt.Fprintf(scriptData, "Script key: %d\nCore script key: %d", context.ScriptKey, context.CoreScriptKey)
+	if err != nil {
+		widgets.QMessageBox_Critical(parent, "Error while dumping script keys", err.Error(), widgets.QMessageBox__Ok, widgets.QMessageBox__NoButton)
+		return
+	}
+
+	err = dumpScripts(location, writableClone.Instances, parent)
+	if err != nil {
+		widgets.QMessageBox_Critical(parent, "Error while dumping scripts", err.Error(), widgets.QMessageBox__Ok, widgets.QMessageBox__NoButton)
+		return
+	}
+
+	err = xml.Serialize(writer, nil, writableClone)
+	if err != nil {
+		widgets.QMessageBox_Critical(parent, "Error while serializing place", err.Error(), widgets.QMessageBox__Ok, widgets.QMessageBox__NoButton)
+		return
+	}
+}
+
+func NewDataModelBrowser(context *peer.CommunicationContext, dataModel *datamodel.DataModel, parent widgets.QWidget_ITF) {
+	subWindow := widgets.NewQWidget(parent, core.Qt__Window)
 	subWindowLayout := widgets.NewQVBoxLayout2(subWindow)
 	subWindowLayout.SetAlign(core.Qt__AlignTop)
 
 	subWindow.SetWindowTitle("Data Model")
 
-	writableClone := dataModel.ToRbxfile()
-
-	takeSnapshotButton := widgets.NewQPushButton2("Save as RBXL...", nil)
+	takeSnapshotButton := widgets.NewQPushButton2("Dump DataModel (RBXLX) and scripts (RBXC)...", nil)
 	takeSnapshotButton.ConnectReleased(func() {
-		location := widgets.QFileDialog_GetSaveFileName(subWindow, "Save as RBXLX...", "", "Roblox place files (*.rbxlx)", "", 0)
-		writer, err := os.OpenFile(location, os.O_RDWR|os.O_CREATE, 0666)
-		defer writer.Close()
-		if err != nil {
-			println("while opening file:", err.Error())
-			return
-		}
-
-		dumpScripts(writableClone.Instances, 0)
-
-		err = xml.Serialize(writer, nil, writableClone)
-		if err != nil {
-			println("while serializing place:", err.Error())
-			return
-		}
-
-		scriptData, err := os.OpenFile("dumps/scriptKeys", os.O_RDWR|os.O_CREATE, 0666)
-		defer scriptData.Close()
-		if err != nil {
-			println("while dumping script keys:", err.Error())
-			return
-		}
-
-		_, err = fmt.Fprintf(scriptData, "Script key: %d\nCore script key: %d", context.ScriptKey, context.CoreScriptKey)
-		if err != nil {
-			println("while dumping script keys:", err.Error())
-			return
-		}
+		DumpDataModel(context, subWindow)
 	})
 	subWindowLayout.AddWidget(takeSnapshotButton, 0, 0)
 

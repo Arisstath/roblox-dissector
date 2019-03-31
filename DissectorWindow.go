@@ -197,7 +197,7 @@ func (window *DissectorWindow) BrowseDataModelHandler(_ bool) {
 	}
 	ctx := window.CurrentConversation.Context
 	// TODO: What to do with default values?
-	NewDataModelBrowser(ctx, ctx.DataModel)
+	NewDataModelBrowser(ctx, ctx.DataModel, window)
 }
 
 func (window *DissectorWindow) SessionSelected(session *CaptureSession, conv *Conversation) {
