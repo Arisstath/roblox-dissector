@@ -1,10 +1,15 @@
 package main
-import "github.com/therecipe/qt/widgets"
-import "github.com/therecipe/qt/gui"
-import "github.com/therecipe/qt/core"
-import "github.com/google/gopacket/pcap"
 
-func NewSelectInterfaceWidget(parent widgets.QWidget_ITF, callback func (string, bool)) {
+import (
+	"strings"
+
+	"github.com/google/gopacket/pcap"
+	"github.com/therecipe/qt/core"
+	"github.com/therecipe/qt/gui"
+	"github.com/therecipe/qt/widgets"
+)
+
+func NewSelectInterfaceWidget(parent widgets.QWidget_ITF, callback func(string, bool)) {
 	window := widgets.NewQWidget(parent, core.Qt__Window)
 	window.SetWindowTitle("Choose network interface")
 
@@ -18,7 +23,7 @@ func NewSelectInterfaceWidget(parent widgets.QWidget_ITF, callback func (string,
 	interfaces := widgets.NewQTreeView(nil)
 
 	standardModel := NewProperSortModel(interfaces)
-	standardModel.SetHorizontalHeaderLabels([]string{"Interface Name", "IP address"})
+	standardModel.SetHorizontalHeaderLabels([]string{"Interface Name", "IP addresses"})
 	rootNode := standardModel.InvisibleRootItem()
 
 	devs, err := pcap.FindAllDevs()
@@ -32,9 +37,15 @@ func NewSelectInterfaceWidget(parent widgets.QWidget_ITF, callback func (string,
 			println("skip", dev.Name)
 			continue
 		}
+		var addrStringBuilder strings.Builder
+		for _, addr := range dev.Addresses {
+			addrStringBuilder.WriteString(addr.IP.String())
+			addrStringBuilder.WriteString(", ")
+		}
 		rootNode.AppendRow([]*gui.QStandardItem{
 			NewStringItem(dev.Name),
-			NewStringItem(dev.Addresses[0].IP.String()),
+			// Remove trailing comma
+			NewStringItem(addrStringBuilder.String()[:addrStringBuilder.Len()-2]),
 		})
 
 	}
@@ -45,7 +56,7 @@ func NewSelectInterfaceWidget(parent widgets.QWidget_ITF, callback func (string,
 
 	okButton := widgets.NewQPushButton2("Capture", nil)
 	layout.AddWidget(okButton, 0, 0)
-	okButton.ConnectReleased(func() {
+	okButton.ConnectPressed(func() {
 		if len(interfaces.SelectedIndexes()) < 1 {
 			return
 		}
