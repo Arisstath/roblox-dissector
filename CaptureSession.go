@@ -32,7 +32,7 @@ func (session *CaptureSession) AddConversation(conv *Conversation) *PacketListVi
 		viewer = session.PacketListViewers[0]
 	} else {
 		window := session.CaptureWindow
-		viewer = NewPacketListViewer(window, 0)
+		viewer = NewPacketListViewer(session.Context, window, 0)
 		session.PacketListViewers = append(session.PacketListViewers, viewer)
 
 		window.TabWidget.AddTab(viewer, fmt.Sprintf("Conversation: %s#%d", session.Name, len(session.PacketListViewers)))
@@ -68,7 +68,7 @@ func NewCaptureSession(name string, window *DissectorWindow) *CaptureSession {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	captureContext := NewCaptureContext()
 
-	initialViewer := NewPacketListViewer(window, 0)
+	initialViewer := NewPacketListViewer(ctx, window, 0)
 
 	session := &CaptureSession{
 		IsCapturing:       true,

@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/Gskartwii/roblox-dissector/peer"
 	"github.com/olebedev/emitter"
@@ -24,6 +26,11 @@ type PacketListViewer struct {
 	ProxyModel    *core.QSortFilterProxyModel
 	RootNode      *gui.QStandardItem
 
+	UpdateInterval    time.Duration
+	PendingRows       [][]*gui.QStandardItem
+	UpdateContext     context.Context
+	UpdatePassthrough bool
+
 	packetRowsByUniqueID PacketList
 	Packets              PacketLayerList
 	PacketIndex          uint64
@@ -36,7 +43,7 @@ type PacketListViewer struct {
 	DefaultPacketWindow *PacketDetailsViewer
 }
 
-func NewPacketListViewer(parent widgets.QWidget_ITF, flags core.Qt__WindowType) *PacketListViewer {
+func NewPacketListViewer(updateContext context.Context, parent widgets.QWidget_ITF, flags core.Qt__WindowType) *PacketListViewer {
 	listViewer := &PacketListViewer{
 		QWidget:              widgets.NewQWidget(parent, flags),
 		packetRowsByUniqueID: make(PacketList),
@@ -45,6 +52,9 @@ func NewPacketListViewer(parent widgets.QWidget_ITF, flags core.Qt__WindowType) 
 
 		InjectPacket: make(chan peer.RakNetPacket, 1),
 		Context:      peer.NewCommunicationContext(),
+
+		UpdateInterval: time.Duration(time.Second / 2),
+		UpdateContext:  updateContext,
 	}
 
 	layout := NewTopAlignLayout()
@@ -93,6 +103,7 @@ func NewPacketListViewer(parent widgets.QWidget_ITF, flags core.Qt__WindowType) 
 	})
 
 	listViewer.SetLayout(layout)
+	go listViewer.UpdateLoop()
 	return listViewer
 }
 
@@ -218,7 +229,11 @@ func (m *PacketListViewer) AddFullPacket(context *peer.CommunicationContext, lay
 	} else {
 		paintItems(rootRow, gui.NewQColor3(255, 255, 0, 127))
 	}
-	m.RootNode.InsertRow(m.RootNode.RowCount(), rootRow)
+	if m.UpdatePassthrough {
+		m.RootNode.InsertRow(m.RootNode.RowCount(), rootRow)
+	} else {
+		m.PendingRows = append(m.PendingRows, rootRow)
+	}
 
 	return rootRow
 }
@@ -273,4 +288,30 @@ func (viewer *PacketListViewer) BindToConversation(conv *Conversation) {
 func (m *PacketListViewer) UpdateModel() {
 	m.TreeView.SetModel(m.ProxyModel)
 	m.TreeView.SortByColumn(0, core.Qt__AscendingOrder)
+}
+
+func (m *PacketListViewer) UpdateLoop() {
+	ticker := time.NewTicker(m.UpdateInterval)
+	for {
+		select {
+		case <-m.UpdateContext.Done():
+			MainThreadRunner.RunOnMain(func() {
+				m.UpdatePassthrough = true
+				for _, row := range m.PendingRows {
+					m.RootNode.InsertRow(m.RootNode.RowCount(), row)
+				}
+				m.PendingRows = nil
+			})
+			return
+		case <-ticker.C:
+			MainThreadRunner.RunOnMain(func() {
+				for _, row := range m.PendingRows {
+					m.RootNode.InsertRow(m.RootNode.RowCount(), row)
+				}
+				m.PendingRows = nil
+			})
+			<-MainThreadRunner.Wait
+			// Clear
+		}
+	}
 }
