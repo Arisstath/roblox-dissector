@@ -139,11 +139,8 @@ func show83_03(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_03)
 	widget := widgets.NewQWidget(nil, 0)
 	layout := NewTopAlignLayout()
-	if this.Instance != nil {
-		layout.AddWidget(NewQLabelF("Object: %s", this.Instance.GetFullName()), 0, 0)
-	} else {
-		layout.AddWidget(NewLabel("Object: nil"), 0, 0)
-	}
+	layout.AddWidget(NewQLabelF("Object: %s", this.Instance.GetFullName()), 0, 0)
+	layout.AddWidget(NewQLabelF("Reference: %s", this.Instance.Ref.String()), 0, 0)
 	layout.AddWidget(NewQLabelF("Has version: %v", this.HasVersion), 0, 0)
 	if this.HasVersion {
 		layout.AddWidget(NewQLabelF("Version: %d", this.Version), 0, 0)
@@ -212,11 +209,8 @@ func show83_07(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_07)
 	widget := widgets.NewQWidget(nil, 0)
 	layout := NewTopAlignLayout()
-	if this.Instance != nil {
-		layout.AddWidget(NewQLabelF("Object: %s", this.Instance.GetFullName()), 0, 0)
-	} else {
-		layout.AddWidget(NewLabel("Object: nil"), 0, 0)
-	}
+	layout.AddWidget(NewQLabelF("Object: %s", this.Instance.GetFullName()), 0, 0)
+	layout.AddWidget(NewQLabelF("Reference: %s", this.Instance.Ref.String()), 0, 0)
 	layout.AddWidget(NewQLabelF("Event name: %s", this.Schema.Name), 0, 0)
 	layout.AddWidget(NewLabel("Arguments:"), 0, 0)
 
