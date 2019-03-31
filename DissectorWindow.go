@@ -96,6 +96,7 @@ func (window *DissectorWindow) CaptureFromFile(file string, isIPv4 bool) {
 
 	progressDialog := widgets.NewQProgressDialog2("Reading packets...", "Cancel", 0, int(countPackets), window, 0)
 	progressDialog.SetWindowTitle("PCAP parsing in progress")
+	progressDialog.SetWindowModality(core.Qt__WindowModal)
 
 	go func() {
 		for newProgress := range progressChan {
