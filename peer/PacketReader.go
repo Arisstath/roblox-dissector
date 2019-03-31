@@ -89,7 +89,7 @@ type DefaultPacketReader struct {
 	// Channels correspond to TypeString() return values
 	PacketEmitter *emitter.Emitter
 
-	// DataEmitter provides a high-level interface for receiving ID_REPLICATION_DATA subpackets
+	// DataEmitter provides a high-level interface for receiving ID_DATA subpackets
 	// These channels correspond to TypeString() return values
 	DataEmitter *emitter.Emitter
 
@@ -381,7 +381,7 @@ func (reader *DefaultPacketReader) bindBasicPacketHandler() {
 
 func (reader *DefaultPacketReader) bindDataPacketHandler() {
 	// important: sync!
-	reader.PacketEmitter.On("ID_REPLICATION_DATA", func(e *emitter.Event) {
+	reader.PacketEmitter.On("ID_DATA", func(e *emitter.Event) {
 		layers := e.Args[1].(*PacketLayers)
 		for _, sub := range layers.Main.(*Packet83Layer).SubPackets {
 			subLayers := &PacketLayers{
