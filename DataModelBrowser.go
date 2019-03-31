@@ -15,7 +15,9 @@ import (
 
 func showChildren(rootNode *gui.QStandardItem, children []*datamodel.Instance) {
 	for _, instance := range children {
-		row := showReplicationInstance(instance, instance.Parent())
+		instance.PropertiesMutex.RLock()
+		row := showReplicationInstance(instance, instance.Properties, instance.Parent())
+		instance.PropertiesMutex.RUnlock()
 		if len(instance.Children) > 0 {
 			childrenRootItem := NewQStandardItemF("%d children", len(instance.Children))
 			showChildren(childrenRootItem, instance.Children)

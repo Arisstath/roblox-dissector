@@ -258,6 +258,30 @@ func NewDissectorWindow(parent widgets.QWidget_ITF, flags core.Qt__WindowType) *
 	captureDivertAction := captureBar.AddAction("From &WinDivert proxy...")
 	captureFromPlayerProxyAction := captureBar.AddAction("From pl&ayer proxy")
 
+	helpBar := window.MenuBar().AddMenu2("&Help")
+	helpBar.AddAction("View &GitHub page").ConnectTriggered(func(_ bool) {
+		url := core.NewQUrl3("https://github.com/gskartwii/roblox-dissector", core.QUrl__TolerantMode)
+		gui.QDesktopServices_OpenUrl(url)
+	})
+	helpBar.AddAction("Report an issue/Get support").ConnectTriggered(func(_ bool) {
+		url := core.NewQUrl3("https://github.com/gskartwii/roblox-dissector/issues/new", core.QUrl__TolerantMode)
+		gui.QDesktopServices_OpenUrl(url)
+	})
+	helpBar.AddAction("About &Qt...").ConnectTriggered(func(_ bool) {
+		widgets.QMessageBox_AboutQt(window, "About Qt")
+	})
+	helpBar.AddAction("&About Roblox Dissector...").ConnectTriggered(func(_ bool) {
+		widgets.QMessageBox_About(window, "About Roblox Dissector", `
+Roblox Dissector
+Version 0.6 [pre]
+Codename “Maailman salaisuudet”
+Copyright © Aleksi “gskw” Hannula 2017–2019
+Licensed under the MIT License (see LICENSE for more information).
+Clarity Icons (© VMWare, Inc.) are licensed under the MIT License (see LICENSE.clarity for more information). 
+Qt is licensed under the LGPLv3 license (see “About Qt...” for more information).
+`)
+	})
+
 	captureFileAction.ConnectTriggered(window.OpenFileHandler)
 
 	capture4FileAction.ConnectTriggered(func(checked bool) {

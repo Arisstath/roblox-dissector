@@ -180,6 +180,12 @@ func (logicHandler *PacketLogicHandler) ReplicationInstance(inst *datamodel.Inst
 	repInstance.Instance = inst
 	repInstance.Parent = inst.Parent()
 	repInstance.Schema = logicHandler.Context.StaticSchema.SchemaForClass(inst.ClassName)
+	inst.PropertiesMutex.RLock()
+	repInstance.Properties = make(map[string]rbxfile.Value, len(inst.Properties))
+	for name, value := range inst.Properties {
+		repInstance.Properties[name] = value
+	}
+	inst.PropertiesMutex.RLock()
 
 	return repInstance
 }

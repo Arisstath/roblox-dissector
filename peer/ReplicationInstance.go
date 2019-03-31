@@ -5,17 +5,19 @@ import (
 	"fmt"
 
 	"github.com/gskartwii/roblox-dissector/datamodel"
+	"github.com/robloxapi/rbxfile"
 )
 
 type ReplicationInstance struct {
 	Instance           *datamodel.Instance
+	Properties         map[string]rbxfile.Value
 	Parent             *datamodel.Instance
 	Schema             *StaticInstanceSchema
 	DeleteOnDisconnect bool
 }
 
 func NewReplicationInstance() *ReplicationInstance {
-	return &ReplicationInstance{}
+	return &ReplicationInstance{Properties: make(map[string]rbxfile.Value)}
 }
 
 func is2ndRoundType(typeId uint8) bool {
@@ -56,7 +58,7 @@ func decodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader
 		return repInstance, err
 	}
 
-	err = thisBitstream.ReadProperties(schema.Properties, thisInstance.Properties, reader)
+	err = thisBitstream.ReadProperties(schema.Properties, repInstance.Properties, reader)
 	if err != nil {
 		return repInstance, err
 	}
@@ -105,7 +107,7 @@ func (instance *ReplicationInstance) Serialize(writer PacketWriter, stream Insta
 		return err
 	}
 
-	err = stream.WriteProperties(instance.Schema.Properties, instance.Instance.Properties, writer)
+	err = stream.WriteProperties(instance.Schema.Properties, instance.Properties, writer)
 	if err != nil {
 		return err
 	}

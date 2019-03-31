@@ -290,10 +290,25 @@ func (reader *DefaultPacketReader) HandlePacket01(e *emitter.Event) {
 	}
 }
 
+func (reader *DefaultPacketReader) handleReplicationInstance(inst *ReplicationInstance) error {
+	// First, assign the properties
+	inst.Instance.PropertiesMutex.Lock()
+	for name, val := range inst.Properties {
+		// Do not call Set() here. Nothing should be listening to PropertyEmitter
+		// and we have the lock
+		inst.Instance.Properties[name] = val
+	}
+	inst.Instance.PropertiesMutex.Unlock()
+
+	// Once they are assigned, we can release this instance to be used by the DataModel
+	return inst.Instance.SetParent(inst.Parent)
+}
+
 // New instance handler
 func (reader *DefaultPacketReader) HandlePacket02(e *emitter.Event) {
 	packet := e.Args[0].(*Packet83_02)
-	err := packet.Instance.SetParent(packet.Parent)
+
+	err := reader.handleReplicationInstance(packet.ReplicationInstance)
 	if err != nil {
 		e.Args[1].(*PacketLayers).Error = err
 	}
@@ -323,9 +338,10 @@ func (reader *DefaultPacketReader) HandlePacket07(e *emitter.Event) {
 func (reader *DefaultPacketReader) HandlePacket0B(e *emitter.Event) {
 	packet := e.Args[0].(*Packet83_0B)
 	for _, inst := range packet.Instances {
-		err := inst.Instance.SetParent(inst.Parent)
+		err := reader.handleReplicationInstance(inst)
 		if err != nil {
 			e.Args[1].(*PacketLayers).Error = err
+			return
 		}
 	}
 }

@@ -35,7 +35,8 @@ var Callbacks83_09 = map[uint8](func(peer.Packet83_09Subpacket) widgets.QWidget_
 // Allow caller to manually pass Parent.
 // This is because the Parent() stored in datamodel.Instance isn't necessarily
 // the Parent we want.
-func showReplicationInstance(this *datamodel.Instance, parent *datamodel.Instance) []*gui.QStandardItem {
+// Remember to lock the properties map!
+func showReplicationInstance(this *datamodel.Instance, properties map[string]rbxfile.Value, parent *datamodel.Instance) []*gui.QStandardItem {
 	rootNameItem := NewStringItem(this.Name())
 	typeItem := NewStringItem(this.ClassName)
 	referentItem := NewStringItem(this.Ref.String())
@@ -47,10 +48,9 @@ func showReplicationInstance(this *datamodel.Instance, parent *datamodel.Instanc
 	}
 	pathItem := NewStringItem(this.GetFullName())
 
-	this.PropertiesMutex.RLock()
-	if len(this.Properties) > 0 {
-		propertyRootItem := NewQStandardItemF("%d properties", len(this.Properties))
-		for name, property := range this.Properties {
+	if len(properties) > 0 {
+		propertyRootItem := NewQStandardItemF("%d properties", len(properties))
+		for name, property := range properties {
 			nameItem := NewStringItem(name)
 			if property != nil {
 				typeItem := NewStringItem(property.Type().String())
@@ -82,7 +82,6 @@ func showReplicationInstance(this *datamodel.Instance, parent *datamodel.Instanc
 		}
 		rootNameItem.AppendRow([]*gui.QStandardItem{propertyRootItem, nil, nil, nil, nil, nil})
 	}
-	this.PropertiesMutex.RUnlock()
 	return []*gui.QStandardItem{
 		rootNameItem,
 		typeItem,
@@ -105,7 +104,7 @@ func show83_0B(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	if this != nil && this.Instances != nil { // if arraylen == 0, this is nil
 		for i, instance := range this.Instances {
 			row := []*gui.QStandardItem{NewUintItem(i)}
-			row = append(row, showReplicationInstance(instance.Instance, instance.Parent)...)
+			row = append(row, showReplicationInstance(instance.Instance, instance.Properties, instance.Parent)...)
 			rootNode.AppendRow(row)
 		}
 	}
@@ -129,7 +128,7 @@ func show83_02(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	standardModel.SetHorizontalHeaderLabels([]string{"Name", "Type", "Value", "Referent", "Parent", "Path"})
 
 	rootNode := standardModel.InvisibleRootItem()
-	rootNode.AppendRow(showReplicationInstance(this.Instance, this.Parent))
+	rootNode.AppendRow(showReplicationInstance(this.Instance, this.Properties, this.Parent))
 	instanceList.SetModel(standardModel)
 	instanceList.SetSelectionMode(0)
 	instanceList.SetSortingEnabled(true)
