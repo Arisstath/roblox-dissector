@@ -98,6 +98,7 @@ func (x ValueTuple) String() string {
 	for _, y := range x {
 		if y == nil {
 			ret.WriteString("nil, ")
+			continue
 		}
 		ret.WriteString(fmt.Sprintf("(%s) %s, ", y.Type().String(), y.String()))
 	}
@@ -115,7 +116,13 @@ func (x ValueDictionary) String() string {
 	ret.WriteString("{")
 
 	for k, v := range x {
-		ret.WriteString(fmt.Sprintf("%s: (%s) %s, ", k, v.Type().String(), v.String()))
+		var thisValue string
+		if v == nil {
+			thisValue = "nil"
+		} else {
+			thisValue = fmt.Sprintf("(%s) %s", v.Type().String(), v.String())
+		}
+		ret.WriteString(fmt.Sprintf("%s: %s, ", k, thisValue))
 	}
 
 	ret.WriteString("}")
