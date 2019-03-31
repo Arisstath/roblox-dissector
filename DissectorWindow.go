@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"path/filepath"
 	"time"
 
@@ -79,6 +80,8 @@ func (window *DissectorWindow) CaptureFromFile(file string, isIPv4 bool) {
 	nameBase := filepath.Base(file)
 	session := NewCaptureSession(nameBase, window)
 	window.Sessions = append(window.Sessions, session)
+	index := window.TabWidget.AddTab(session.PacketListViewers[0], fmt.Sprintf("Conversation: %s#1", nameBase))
+	window.TabWidget.SetCurrentIndex(index)
 
 	countPackets, err := gopcap.Count(file)
 	if err != nil {
@@ -104,6 +107,7 @@ func (window *DissectorWindow) CaptureFromFile(file string, isIPv4 bool) {
 
 	go func() {
 		err := session.CaptureFromHandle(handle, isIPv4, progressChan)
+		handle.Close()
 		MainThreadRunner.RunOnMain(func() {
 			close(progressChan)
 			if err != nil {
@@ -115,12 +119,11 @@ func (window *DissectorWindow) CaptureFromFile(file string, isIPv4 bool) {
 			session.UpdateModels()
 		})
 		<-MainThreadRunner.Wait
-		handle.Close()
 	}()
 }
 
 func (window *DissectorWindow) CaptureFromLive(itfName string, promisc bool) {
-	handle, err := pcap.OpenLive(itfName, 2000, promisc, 10*time.Second)
+	handle, err := pcap.OpenLive(itfName, 2000, promisc, 1*time.Second)
 	if err != nil {
 		window.ShowCaptureError(err)
 		return
@@ -131,9 +134,12 @@ func (window *DissectorWindow) CaptureFromLive(itfName string, promisc bool) {
 	// This must be set for live captures
 	session.SetModel = true
 	window.Sessions = append(window.Sessions, session)
+	index := window.TabWidget.AddTab(session.PacketListViewers[0], fmt.Sprintf("Conversation: %s#1", nameBase))
+	window.TabWidget.SetCurrentIndex(index)
 
 	go func() {
 		err := session.CaptureFromHandle(handle, false, nil)
+		handle.Close()
 		MainThreadRunner.RunOnMain(func() {
 			session.StopCapture()
 			if err != nil {
@@ -141,7 +147,6 @@ func (window *DissectorWindow) CaptureFromLive(itfName string, promisc bool) {
 			}
 		})
 		<-MainThreadRunner.Wait
-		handle.Close()
 	}()
 }
 
@@ -180,6 +185,29 @@ func (window *DissectorWindow) StopActionHandler(_ bool) {
 	if window.CurrentSession.IsCapturing {
 		window.CurrentSession.StopCapture()
 	}
+}
+
+func (window *DissectorWindow) SessionSelected(session *CaptureSession) {
+	if session == nil {
+		window.StopAction.SetEnabled(false)
+		return
+	}
+	window.StopAction.SetEnabled(session.IsCapturing)
+}
+
+func (window *DissectorWindow) TabSelected(index int) {
+	window.CurrentSession = nil
+	if index == -1 {
+		window.SessionSelected(nil)
+		return
+	}
+	widget := window.TabWidget.Widget(index)
+	for _, session := range window.Sessions {
+		if session.HasViewer(widget) {
+			window.CurrentSession = session
+		}
+	}
+	window.SessionSelected(window.CurrentSession)
 }
 
 func NewDissectorWindow(parent widgets.QWidget_ITF, flags core.Qt__WindowType) *DissectorWindow {
@@ -243,20 +271,7 @@ func NewDissectorWindow(parent widgets.QWidget_ITF, flags core.Qt__WindowType) *
 	window.TabWidget = tabWidget
 	window.SetCentralWidget(tabWidget)
 
-	tabWidget.ConnectCurrentChanged(func(index int) {
-		window.CurrentSession = nil
-		if index == -1 {
-			stopAction.SetEnabled(false)
-			return
-		}
-		widget := tabWidget.Widget(index)
-		for _, session := range window.Sessions {
-			if session.HasViewer(widget) {
-				window.CurrentSession = session
-			}
-		}
-		stopAction.SetEnabled(window.CurrentSession.IsCapturing)
-	})
+	tabWidget.ConnectCurrentChanged(window.TabSelected)
 	tabWidget.ConnectTabCloseRequested(func(index int) {
 		widget := tabWidget.Widget(index)
 
@@ -270,9 +285,7 @@ func NewDissectorWindow(parent widgets.QWidget_ITF, flags core.Qt__WindowType) *
 		}
 		isEmpty := thisSession.RemoveViewer(widget)
 		if isEmpty {
-			if thisSession.IsCapturing {
-				thisSession.StopCapture()
-			}
+			thisSession.Destroy()
 			copy(window.Sessions[sessionIndex:], window.Sessions[sessionIndex+1:])
 			window.Sessions[len(window.Sessions)-1] = nil
 			window.Sessions = window.Sessions[:len(window.Sessions)-1]

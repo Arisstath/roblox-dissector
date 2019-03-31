@@ -22,6 +22,7 @@ type Conversation struct {
 type CaptureContext struct {
 	Conversations       []*Conversation
 	ConversationEmitter *emitter.Emitter
+	Close               func()
 }
 
 func NewCaptureContext() *CaptureContext {
@@ -90,7 +91,7 @@ func (captureContext *CaptureContext) Capture(ctx context.Context, packetSource 
 	for packet := range packetSource.Packets() {
 		select {
 		case <-ctx.Done():
-			return nil
+			captureContext.Close()
 		case progressChan <- progress:
 		default:
 		}

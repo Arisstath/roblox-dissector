@@ -36,7 +36,7 @@ type PacketListViewer struct {
 	DefaultPacketWindow *PacketDetailsViewer
 }
 
-func NewPacketListViewer(conversation *Conversation, parent widgets.QWidget_ITF, flags core.Qt__WindowType) *PacketListViewer {
+func NewPacketListViewer(parent widgets.QWidget_ITF, flags core.Qt__WindowType) *PacketListViewer {
 	listViewer := &PacketListViewer{
 		QWidget:              widgets.NewQWidget(parent, flags),
 		packetRowsByUniqueID: make(PacketList),
@@ -45,7 +45,6 @@ func NewPacketListViewer(conversation *Conversation, parent widgets.QWidget_ITF,
 
 		InjectPacket: make(chan peer.RakNetPacket, 1),
 		Context:      peer.NewCommunicationContext(),
-		Conversation: conversation,
 	}
 
 	layout := NewTopAlignLayout()
@@ -70,6 +69,7 @@ func NewPacketListViewer(conversation *Conversation, parent widgets.QWidget_ITF,
 	standardModel.SetHorizontalHeaderLabels([]string{"Index", "Packet", "Direction", "Length in Bytes", "Datagram Numbers", "Ordered Splits", "Total Splits"})
 	treeView.SetSelectionMode(widgets.QAbstractItemView__SingleSelection)
 	treeView.SetSortingEnabled(true)
+	treeView.SetUniformRowHeights(true)
 	listViewer.RootNode = standardModel.InvisibleRootItem()
 
 	treeView.ConnectClicked(func(index *core.QModelIndex) {
@@ -218,12 +218,13 @@ func (m *PacketListViewer) AddFullPacket(context *peer.CommunicationContext, lay
 	} else {
 		paintItems(rootRow, gui.NewQColor3(255, 255, 0, 127))
 	}
-	m.RootNode.AppendRow(rootRow)
+	m.RootNode.InsertRow(m.RootNode.RowCount(), rootRow)
 
 	return rootRow
 }
 
 func (viewer *PacketListViewer) BindToConversation(conv *Conversation) {
+	viewer.Conversation = conv
 	context := conv.Context
 	clientPacketReader := conv.ClientReader
 	serverPacketReader := conv.ServerReader

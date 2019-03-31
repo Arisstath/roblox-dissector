@@ -18,23 +18,30 @@ type CaptureSession struct {
 	CancelFunc        context.CancelFunc
 	Name              string
 	PacketListViewers []*PacketListViewer
+	UsesInitialViewer bool
+	Handle            *pcap.Handle
 
 	SetModel bool
 }
 
 func (session *CaptureSession) AddConversation(conv *Conversation) *PacketListViewer {
 	var viewer *PacketListViewer
-	window := session.CaptureWindow
-	viewer = NewPacketListViewer(conv, window, 0)
-	session.PacketListViewers = append(session.PacketListViewers, viewer)
+	// The very first session window will exist before packets have been captured
+	if !session.UsesInitialViewer {
+		session.UsesInitialViewer = true
+		viewer = session.PacketListViewers[0]
+	} else {
+		window := session.CaptureWindow
+		viewer = NewPacketListViewer(window, 0)
+		session.PacketListViewers = append(session.PacketListViewers, viewer)
 
+		window.TabWidget.AddTab(viewer, fmt.Sprintf("Conversation: %s#%d", session.Name, len(session.PacketListViewers)))
+	}
 	viewer.BindToConversation(conv)
 	if session.SetModel {
 		viewer.TreeView.SetModel(viewer.ProxyModel)
 	}
 
-	index := window.TabWidget.AddTab(viewer, fmt.Sprintf("Conversation: %s#%d", session.Name, len(session.PacketListViewers)))
-	window.TabWidget.SetCurrentIndex(index)
 	return viewer
 }
 
@@ -60,6 +67,9 @@ func (session *CaptureSession) StopCapture() {
 func NewCaptureSession(name string, window *DissectorWindow) *CaptureSession {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	captureContext := NewCaptureContext()
+
+	initialViewer := NewPacketListViewer(window, 0)
+
 	session := &CaptureSession{
 		IsCapturing:       true,
 		CaptureWindow:     window,
@@ -67,7 +77,7 @@ func NewCaptureSession(name string, window *DissectorWindow) *CaptureSession {
 		Context:           ctx,
 		CancelFunc:        cancelFunc,
 		Name:              name,
-		PacketListViewers: make([]*PacketListViewer, 0, 1),
+		PacketListViewers: []*PacketListViewer{initialViewer},
 	}
 	captureContext.ConversationEmitter.On("conversation", func(e *emitter.Event) {
 		conv := e.Args[0].(*Conversation)
@@ -77,10 +87,19 @@ func NewCaptureSession(name string, window *DissectorWindow) *CaptureSession {
 		<-MainThreadRunner.Wait
 	}, emitter.Void)
 
+	// TODO: Too hacky?
+	captureContext.Close = func() {
+		if session.Handle != nil {
+			session.Handle.Close()
+		}
+	}
+
+	// Can't add the tab here because the session isn't on the window yet
 	return session
 }
 
 func (session *CaptureSession) CaptureFromHandle(handle *pcap.Handle, isIPv4 bool, progressChan chan int) error {
+	session.Handle = handle
 	return session.CaptureContext.CaptureFromHandle(session.Context, handle, isIPv4, progressChan)
 }
 
@@ -104,4 +123,14 @@ func (session *CaptureSession) RemoveViewer(viewer *widgets.QWidget) bool {
 	session.PacketListViewers = session.PacketListViewers[:len(session.PacketListViewers)-1]
 
 	return len(session.PacketListViewers) == 0
+}
+
+func (session *CaptureSession) Destroy() {
+	if session.IsCapturing {
+		session.StopCapture()
+	}
+	for _, viewer := range session.PacketListViewers {
+		viewer.DestroyQWidget()
+	}
+	session.PacketListViewers = nil
 }
