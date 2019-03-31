@@ -45,29 +45,26 @@ func (session *CaptureSession) AddConversation(conv *Conversation) *PacketListVi
 	return viewer
 }
 
-func (session *CaptureSession) HasViewer(viewer *widgets.QWidget) bool {
+func (session *CaptureSession) FindViewer(viewer *widgets.QWidget) *PacketListViewer {
 	for _, v := range session.PacketListViewers {
 		// TODO: Too hacky?
 		if v.QWidget.Pointer() == viewer.Pointer() {
-			return true
+			return v
 		}
 	}
-	return false
+	return nil
 }
 
 func (session *CaptureSession) StopCapture() {
 	session.IsCapturing = false
 	session.CancelFunc()
 
-	if session.CaptureWindow.CurrentSession == session {
-		session.CaptureWindow.StopAction.SetEnabled(false)
-	}
+	session.CaptureWindow.UpdateButtons()
 }
 
 func NewCaptureSession(name string, window *DissectorWindow) *CaptureSession {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	captureContext := NewCaptureContext()
-
 	initialViewer := NewPacketListViewer(ctx, window, 0)
 
 	session := &CaptureSession{
@@ -83,6 +80,7 @@ func NewCaptureSession(name string, window *DissectorWindow) *CaptureSession {
 		conv := e.Args[0].(*Conversation)
 		MainThreadRunner.RunOnMain(func() {
 			session.AddConversation(conv)
+			window.UpdateButtons()
 		})
 		<-MainThreadRunner.Wait
 	}, emitter.Void)
@@ -110,6 +108,7 @@ func (session *CaptureSession) UpdateModels() {
 }
 
 func (session *CaptureSession) RemoveViewer(viewer *widgets.QWidget) bool {
+	// TODO: Remove conversation for CaptureContext?
 	var index int
 	for i, v := range session.PacketListViewers {
 		// TODO: Too hacky?

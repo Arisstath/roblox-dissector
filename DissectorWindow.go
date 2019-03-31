@@ -49,14 +49,17 @@ type PlayerProxySettings struct {
 type DissectorWindow struct {
 	*widgets.QMainWindow
 
-	CurrentSession *CaptureSession
-	StopAction     *widgets.QAction
+	CurrentSession        *CaptureSession
+	CurrentConversation   *Conversation
+	StopAction            *widgets.QAction
+	BrowseDataModelAction *widgets.QAction
 
 	TabWidget *widgets.QTabWidget
 	Sessions  []*CaptureSession
 
 	StudioVersion string
 	PlayerVersion string
+	// TODO: Remove?
 	DefaultValues DefaultValues
 
 	StudioSettings      *StudioSettings
@@ -187,27 +190,50 @@ func (window *DissectorWindow) StopActionHandler(_ bool) {
 	}
 }
 
-func (window *DissectorWindow) SessionSelected(session *CaptureSession) {
-	if session == nil {
-		window.StopAction.SetEnabled(false)
+func (window *DissectorWindow) BrowseDataModelHandler(_ bool) {
+	if window.CurrentConversation == nil {
 		return
 	}
-	window.StopAction.SetEnabled(session.IsCapturing)
+	ctx := window.CurrentConversation.Context
+	// TODO: What to do with default values?
+	NewDataModelBrowser(ctx, ctx.DataModel)
+}
+
+func (window *DissectorWindow) SessionSelected(session *CaptureSession, conv *Conversation) {
+	if conv == nil {
+		window.BrowseDataModelAction.SetEnabled(false)
+	} else {
+		window.BrowseDataModelAction.SetEnabled(conv.Context != nil && conv.Context.DataModel != nil)
+	}
+
+	if session == nil {
+		window.StopAction.SetEnabled(false)
+	} else {
+		window.StopAction.SetEnabled(session.IsCapturing)
+	}
+}
+
+// Handy for updating the state when something happens
+func (window *DissectorWindow) UpdateButtons() {
+	window.TabSelected(window.TabWidget.CurrentIndex())
 }
 
 func (window *DissectorWindow) TabSelected(index int) {
 	window.CurrentSession = nil
+	window.CurrentConversation = nil
 	if index == -1 {
-		window.SessionSelected(nil)
+		window.SessionSelected(nil, nil)
 		return
 	}
 	widget := window.TabWidget.Widget(index)
 	for _, session := range window.Sessions {
-		if session.HasViewer(widget) {
+		found := session.FindViewer(widget)
+		if found != nil {
 			window.CurrentSession = session
+			window.CurrentConversation = found.Conversation
 		}
 	}
-	window.SessionSelected(window.CurrentSession)
+	window.SessionSelected(window.CurrentSession, window.CurrentConversation)
 }
 
 func NewDissectorWindow(parent widgets.QWidget_ITF, flags core.Qt__WindowType) *DissectorWindow {
@@ -258,11 +284,18 @@ func NewDissectorWindow(parent widgets.QWidget_ITF, flags core.Qt__WindowType) *
 	liveAction := toolBar.AddAction2(gui.NewQIcon5(":/qml/cloud-network-line.svg"), "Open live interface... (Ctrl+L)")
 	liveAction.SetShortcut(gui.NewQKeySequence2("Ctrl+L", gui.QKeySequence__PortableText))
 	liveAction.ConnectTriggered(window.OpenLiveInterfaceHandler)
+
 	stopAction := toolBar.AddAction2(gui.NewQIcon5(":/qml/stop-line.svg"), "Stop session (Ctrl+T)")
 	stopAction.SetShortcut(gui.NewQKeySequence2("Ctrl+T", gui.QKeySequence__PortableText))
 	stopAction.ConnectTriggered(window.StopActionHandler)
 	stopAction.SetEnabled(false)
 	window.StopAction = stopAction
+
+	browseDataModelAction := toolBar.AddAction2(gui.NewQIcon5(":/qml/tree-view-line.svg"), "Browse DataModel... (Ctrl+D)")
+	browseDataModelAction.SetShortcut(gui.NewQKeySequence2("Ctrl+D", gui.QKeySequence__PortableText))
+	browseDataModelAction.ConnectTriggered(window.BrowseDataModelHandler)
+	browseDataModelAction.SetEnabled(false)
+	window.BrowseDataModelAction = browseDataModelAction
 
 	window.AddToolBar(core.Qt__TopToolBarArea, toolBar)
 
@@ -278,7 +311,7 @@ func NewDissectorWindow(parent widgets.QWidget_ITF, flags core.Qt__WindowType) *
 		var thisSession *CaptureSession
 		var sessionIndex int
 		for i, session := range window.Sessions {
-			if session.HasViewer(widget) {
+			if session.FindViewer(widget) != nil {
 				thisSession = session
 				sessionIndex = i
 			}

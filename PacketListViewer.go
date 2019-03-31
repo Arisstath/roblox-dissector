@@ -302,6 +302,7 @@ func (m *PacketListViewer) UpdateLoop() {
 				}
 				m.PendingRows = nil
 			})
+			<-MainThreadRunner.Wait
 			return
 		case <-ticker.C:
 			MainThreadRunner.RunOnMain(func() {
