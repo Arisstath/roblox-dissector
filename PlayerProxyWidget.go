@@ -10,7 +10,7 @@ func NewPlayerProxyWidget(parent widgets.QWidget_ITF, settings *PlayerProxySetti
 	certfileLabel := NewLabel("Certfile location:")
 	certfileTextBox := widgets.NewQLineEdit2(settings.Certfile, nil)
 	certbrowseButton := widgets.NewQPushButton2("Browse...", nil)
-	certbrowseButton.ConnectPressed(func() {
+	certbrowseButton.ConnectReleased(func() {
 		certfileTextBox.SetText(widgets.QFileDialog_GetOpenFileName(window, "Find certfile...", "", "Certfiles (*.crt)", "", 0))
 	})
 	layout.AddWidget(certfileLabel, 0, 0)
@@ -20,7 +20,7 @@ func NewPlayerProxyWidget(parent widgets.QWidget_ITF, settings *PlayerProxySetti
 	keyfileLabel := NewLabel("Keyfile location:")
 	keyfileTextBox := widgets.NewQLineEdit2(settings.Keyfile, nil)
 	keybrowseButton := widgets.NewQPushButton2("Browse...", nil)
-	keybrowseButton.ConnectPressed(func() {
+	keybrowseButton.ConnectReleased(func() {
 		keyfileTextBox.SetText(widgets.QFileDialog_GetOpenFileName(window, "Find keyfile...", "", "Keyfiles (*.pem)", "", 0))
 	})
 	layout.AddWidget(keyfileLabel, 0, 0)
@@ -28,7 +28,7 @@ func NewPlayerProxyWidget(parent widgets.QWidget_ITF, settings *PlayerProxySetti
 	layout.AddWidget(keybrowseButton, 0, 0)
 
 	startButton := widgets.NewQPushButton2("Start", nil)
-	startButton.ConnectPressed(func() {
+	startButton.ConnectReleased(func() {
 		window.Destroy(true, true)
 		settings.Certfile = certfileTextBox.Text()
 		settings.Keyfile = keyfileTextBox.Text()

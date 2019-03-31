@@ -26,7 +26,7 @@ func NewClientStartWidget(parent widgets.QWidget_ITF, settings *peer.CustomClien
 	layout.AddWidget(password, 0, 0)
 
 	startButton := widgets.NewQPushButton2("Start", window)
-	startButton.ConnectClicked(func(_ bool) {
+	startButton.ConnectReleased(func() {
 		window.Destroy(true, true)
 		placeIdVal, _ := strconv.Atoi(placeId.Text())
 		callback(uint32(placeIdVal), username.Text(), password.Text())

@@ -50,13 +50,13 @@ func NewClientConsole(parent widgets.QWidget_ITF, client *peer.CustomClient) {
 	layout.AddWidget(channel, 0, 0)
 
 	sendMessage := widgets.NewQPushButton2("Send!", window)
-	sendMessage.ConnectPressed(func() {
+	sendMessage.ConnectReleased(func() {
 		client.SendChat(message.Text(), toPlayer.Text(), channel.Text())
 	})
 	layout.AddWidget(sendMessage, 0, 0)
 
 	dumpSchema := widgets.NewQPushButton2("Dump schema...", window)
-	dumpSchema.ConnectPressed(func() {
+	dumpSchema.ConnectReleased(func() {
 		location := widgets.QFileDialog_GetSaveFileName(window, "Save schema...", "", "Text files (*.txt)", "", 0)
 		writer, err := os.OpenFile(location, os.O_RDWR|os.O_CREATE, 0666)
 		if err != nil {
@@ -73,7 +73,7 @@ func NewClientConsole(parent widgets.QWidget_ITF, client *peer.CustomClient) {
 	})
 
 	dumpRbxl := widgets.NewQPushButton2("Dump DataModel...", window)
-	dumpRbxl.ConnectPressed(func() {
+	dumpRbxl.ConnectReleased(func() {
 		location := widgets.QFileDialog_GetSaveFileName(window, "Save as RBXL...", "", "Roblox place files (*.rbxl)", "", 0)
 		writer, err := os.OpenFile(location, os.O_RDWR|os.O_CREATE, 0666)
 		if err != nil {

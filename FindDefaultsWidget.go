@@ -27,13 +27,13 @@ func NewFindDefaultsWidget(parent widgets.QWidget_ITF, settings *DefaultsSetting
 	addButton := widgets.NewQPushButton2("Add", window)
 	delButton := widgets.NewQPushButton2("Remove", window)
 
-	addButton.ConnectPressed(func() {
+	addButton.ConnectReleased(func() {
 		names := widgets.QFileDialog_GetOpenFileNames(window, "Find property dump...", "", "Roblox model files (*.rbxm)", "", 0)
 		for _, file := range names {
 			rootNode.AppendRow([]*gui.QStandardItem{NewStringItem(file)})
 		}
 	})
-	delButton.ConnectPressed(func() {
+	delButton.ConnectReleased(func() {
 		for len(files.SelectionModel().SelectedIndexes()) > 0 {
 			index := files.SelectionModel().SelectedIndexes()[0]
 			standardModel.RemoveRow(index.Row(), index.Parent())
@@ -44,7 +44,7 @@ func NewFindDefaultsWidget(parent widgets.QWidget_ITF, settings *DefaultsSetting
 	layout.AddWidget(delButton, 0, 0)
 
 	okButton := widgets.NewQPushButton2("OK", window)
-	okButton.ConnectPressed(func() {
+	okButton.ConnectReleased(func() {
 		window.Destroy(true, true)
 		settings.Files = make([]string, standardModel.RowCount(core.NewQModelIndex()))
 		for i := 0; i < standardModel.RowCount(core.NewQModelIndex()); i++ {

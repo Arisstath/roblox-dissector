@@ -64,7 +64,7 @@ func NewDataModelBrowser(context *peer.CommunicationContext, dataModel *datamode
 	writableClone := dataModel.ToRbxfile()
 
 	takeSnapshotButton := widgets.NewQPushButton2("Save as RBXL...", nil)
-	takeSnapshotButton.ConnectPressed(func() {
+	takeSnapshotButton.ConnectReleased(func() {
 		location := widgets.QFileDialog_GetSaveFileName(subWindow, "Save as RBXLX...", "", "Roblox place files (*.rbxlx)", "", 0)
 		writer, err := os.OpenFile(location, os.O_RDWR|os.O_CREATE, 0666)
 		defer writer.Close()

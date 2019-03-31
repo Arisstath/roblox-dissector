@@ -94,7 +94,7 @@ func ShowPacket97(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 	layerLayout.AddWidget(instanceSchemaList, 0, 0)
 
 	dumpButton := widgets.NewQPushButton2("Dump...", nil)
-	dumpButton.ConnectPressed(func() {
+	dumpButton.ConnectReleased(func() {
 		iLocation := widgets.QFileDialog_GetSaveFileName(dumpButton, "Save instance schema...", "", "GOB files (*.gob)", "", 0)
 		instances, err := os.OpenFile(iLocation, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 		if err != nil {

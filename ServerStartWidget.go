@@ -126,7 +126,7 @@ func NewServerStartWidget(parent widgets.QWidget_ITF, settings *ServerSettings, 
 	rbxlLabel := NewLabel("RBXLX location:")
 	rbxlTextBox := widgets.NewQLineEdit2(settings.RBXLLocation, nil)
 	browseButton := widgets.NewQPushButton2("Browse...", nil)
-	browseButton.ConnectPressed(func() {
+	browseButton.ConnectReleased(func() {
 		rbxlTextBox.SetText(widgets.QFileDialog_GetOpenFileName(window, "Find place...", "", "RBXLX files (*.rbxlx)", "", 0))
 	})
 	layout.AddWidget(rbxlLabel, 0, 0)
@@ -136,7 +136,7 @@ func NewServerStartWidget(parent widgets.QWidget_ITF, settings *ServerSettings, 
 	enumLabel := NewLabel("Enum schema location:")
 	enumTextBox := widgets.NewQLineEdit2(settings.EnumSchemaLocation, nil)
 	browseButton = widgets.NewQPushButton2("Browse...", nil)
-	browseButton.ConnectPressed(func() {
+	browseButton.ConnectReleased(func() {
 		enumTextBox.SetText(widgets.QFileDialog_GetOpenFileName(window, "Find enum schema...", "", "Text files (*.txt)", "", 0))
 	})
 	layout.AddWidget(enumLabel, 0, 0)
@@ -146,7 +146,7 @@ func NewServerStartWidget(parent widgets.QWidget_ITF, settings *ServerSettings, 
 	instanceLabel := NewLabel("Instance schema location:")
 	instanceTextBox := widgets.NewQLineEdit2(settings.InstanceSchemaLocation, nil)
 	browseButton = widgets.NewQPushButton2("Browse...", nil)
-	browseButton.ConnectPressed(func() {
+	browseButton.ConnectReleased(func() {
 		instanceTextBox.SetText(widgets.QFileDialog_GetOpenFileName(window, "Find instance schema...", "", "Text files (*.txt)", "", 0))
 	})
 	layout.AddWidget(instanceLabel, 0, 0)
@@ -163,7 +163,7 @@ func NewServerStartWidget(parent widgets.QWidget_ITF, settings *ServerSettings, 
 	layout.AddWidget(port, 0, 0)
 
 	startButton := widgets.NewQPushButton2("Start", nil)
-	startButton.ConnectPressed(func() {
+	startButton.ConnectReleased(func() {
 		window.Destroy(true, true)
 		settings.Port = port.Text()
 		settings.EnumSchemaLocation = enumTextBox.Text()

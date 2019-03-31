@@ -9,7 +9,7 @@ func NewStudioChooser(parent widgets.QWidget_ITF, settings *StudioSettings, call
 	fileLabel := NewLabel("Studio location:")
 	fileTextBox := widgets.NewQLineEdit2(settings.Location, nil)
 	browseButton := widgets.NewQPushButton2("Browse...", nil)
-	browseButton.ConnectPressed(func() {
+	browseButton.ConnectReleased(func() {
 		fileTextBox.SetText(widgets.QFileDialog_GetOpenFileName(window, "Find RobloxStudioBeta.exe...", "", "Roblox Studio (*.exe)", "", 0))
 	})
 	layout.AddWidget(fileLabel, 0, 0)
@@ -34,7 +34,7 @@ func NewStudioChooser(parent widgets.QWidget_ITF, settings *StudioSettings, call
 	rbxlFileLabel := NewLabel("RBXL location:")
 	rbxlFileTextBox := widgets.NewQLineEdit2(settings.RBXL, nil)
 	browseRBXLButton := widgets.NewQPushButton2("Browse...", nil)
-	browseRBXLButton.ConnectPressed(func() {
+	browseRBXLButton.ConnectReleased(func() {
 		rbxlFileTextBox.SetText(widgets.QFileDialog_GetOpenFileName(window, "Find place file...", "", "Roblox place files (*.rbxl *.rbxlx)", "", 0))
 	})
 	layout.AddWidget(rbxlFileLabel, 0, 0)
@@ -42,7 +42,7 @@ func NewStudioChooser(parent widgets.QWidget_ITF, settings *StudioSettings, call
 	layout.AddWidget(browseRBXLButton, 0, 0)
 
 	startButton := widgets.NewQPushButton2("Start", nil)
-	startButton.ConnectPressed(func() {
+	startButton.ConnectReleased(func() {
 		window.Destroy(true, true)
 		settings.Location = fileTextBox.Text()
 		settings.Flags = flags.Text()
@@ -65,7 +65,7 @@ func NewPlayerChooser(parent widgets.QWidget_ITF, settings *PlayerSettings, call
 	fileLabel := NewLabel("Player location:")
 	fileTextBox := widgets.NewQLineEdit2(settings.Location, nil)
 	browseButton := widgets.NewQPushButton2("Browse...", nil)
-	browseButton.ConnectPressed(func() {
+	browseButton.ConnectReleased(func() {
 		fileTextBox.SetText(widgets.QFileDialog_GetOpenFileName(window, "Find RobloxPlayerBeta.exe...", "", "Roblox Player (*.exe)", "", 0))
 	})
 	layout.AddWidget(fileLabel, 0, 0)
@@ -93,7 +93,7 @@ func NewPlayerChooser(parent widgets.QWidget_ITF, settings *PlayerSettings, call
 	layout.AddWidget(authTicket, 0, 0)
 
 	startButton := widgets.NewQPushButton2("Start", nil)
-	startButton.ConnectPressed(func() {
+	startButton.ConnectReleased(func() {
 		window.Destroy(true, true)
 		settings.Location = fileTextBox.Text()
 		settings.Flags = flags.Text()
