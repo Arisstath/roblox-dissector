@@ -185,7 +185,7 @@ func (logicHandler *PacketLogicHandler) ReplicationInstance(inst *datamodel.Inst
 	for name, value := range inst.Properties {
 		repInstance.Properties[name] = value
 	}
-	inst.PropertiesMutex.RLock()
+	inst.PropertiesMutex.RUnlock()
 
 	return repInstance
 }
