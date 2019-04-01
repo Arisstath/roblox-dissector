@@ -30,6 +30,7 @@ type PacketListViewer struct {
 	PendingRows       [][]*gui.QStandardItem
 	UpdateContext     context.Context
 	UpdatePassthrough bool
+	UpdatePaused      bool
 
 	packetRowsByUniqueID PacketList
 	Packets              PacketLayerList
@@ -313,10 +314,12 @@ func (m *PacketListViewer) UpdateLoop() {
 			return
 		case <-ticker.C:
 			MainThreadRunner.RunOnMain(func() {
-				for _, row := range m.PendingRows {
-					m.RootNode.InsertRow(m.RootNode.RowCount(), row)
+				if !m.UpdatePaused {
+					for _, row := range m.PendingRows {
+						m.RootNode.InsertRow(m.RootNode.RowCount(), row)
+					}
+					m.PendingRows = nil
 				}
-				m.PendingRows = nil
 			})
 			<-MainThreadRunner.Wait
 			// Clear

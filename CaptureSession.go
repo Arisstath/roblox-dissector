@@ -39,7 +39,7 @@ func (session *CaptureSession) AddConversation(conv *Conversation) *PacketListVi
 	}
 	viewer.BindToConversation(conv)
 	if session.SetModel {
-		viewer.TreeView.SetModel(viewer.ProxyModel)
+		viewer.UpdateModel()
 	}
 
 	return viewer

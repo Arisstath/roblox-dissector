@@ -50,9 +50,10 @@ type DissectorWindow struct {
 	*widgets.QMainWindow
 
 	CurrentSession        *CaptureSession
-	CurrentConversation   *Conversation
+	CurrentViewer         *PacketListViewer
 	StopAction            *widgets.QAction
 	BrowseDataModelAction *widgets.QAction
+	UpdatePauseAction     *widgets.QAction
 
 	TabWidget *widgets.QTabWidget
 	Sessions  []*CaptureSession
@@ -192,18 +193,48 @@ func (window *DissectorWindow) StopActionHandler(_ bool) {
 }
 
 func (window *DissectorWindow) BrowseDataModelHandler(_ bool) {
-	if window.CurrentConversation == nil {
+	if window.CurrentViewer == nil || window.CurrentViewer.Conversation == nil {
 		return
 	}
-	ctx := window.CurrentConversation.Context
+	ctx := window.CurrentViewer.Conversation.Context
 	// TODO: What to do with default values?
 	NewDataModelBrowser(ctx, ctx.DataModel, window)
 }
 
-func (window *DissectorWindow) SessionSelected(session *CaptureSession, conv *Conversation) {
-	if conv == nil {
+func (window *DissectorWindow) SetupPauseAction() {
+	if window.CurrentViewer == nil {
+		window.UpdatePauseAction.SetText("Pause updating view (Ctrl+P)")
+		window.UpdatePauseAction.SetIcon(gui.NewQIcon5(":/qml/pause-line.svg"))
+		window.UpdatePauseAction.SetEnabled(false)
+		return
+	}
+	window.UpdatePauseAction.SetEnabled(true)
+	isPaused := window.CurrentViewer.UpdatePaused
+	if isPaused {
+		window.UpdatePauseAction.SetText("Continue updating view (Ctrl+P)")
+		window.UpdatePauseAction.SetIcon(gui.NewQIcon5(":/qml/play-line.svg"))
+	} else {
+		window.UpdatePauseAction.SetText("Pause updating view (Ctrl+P)")
+		window.UpdatePauseAction.SetIcon(gui.NewQIcon5(":/qml/pause-line.svg"))
+	}
+}
+
+func (window *DissectorWindow) UpdatePauseHandler(_ bool) {
+	if window.CurrentViewer == nil {
+		return
+	}
+	isPaused := !window.CurrentViewer.UpdatePaused
+	window.CurrentViewer.UpdatePaused = isPaused
+
+	window.SetupPauseAction()
+}
+
+func (window *DissectorWindow) SessionSelected(session *CaptureSession, viewer *PacketListViewer) {
+	window.SetupPauseAction()
+	if viewer == nil || viewer.Conversation == nil {
 		window.BrowseDataModelAction.SetEnabled(false)
 	} else {
+		conv := viewer.Conversation
 		window.BrowseDataModelAction.SetEnabled(conv.Context != nil && conv.Context.DataModel != nil)
 	}
 
@@ -221,7 +252,7 @@ func (window *DissectorWindow) UpdateButtons() {
 
 func (window *DissectorWindow) TabSelected(index int) {
 	window.CurrentSession = nil
-	window.CurrentConversation = nil
+	window.CurrentViewer = nil
 	if index == -1 {
 		window.SessionSelected(nil, nil)
 		return
@@ -231,10 +262,10 @@ func (window *DissectorWindow) TabSelected(index int) {
 		found := session.FindViewer(widget)
 		if found != nil {
 			window.CurrentSession = session
-			window.CurrentConversation = found.Conversation
+			window.CurrentViewer = found
 		}
 	}
-	window.SessionSelected(window.CurrentSession, window.CurrentConversation)
+	window.SessionSelected(window.CurrentSession, window.CurrentViewer)
 }
 
 func NewDissectorWindow(parent widgets.QWidget_ITF, flags core.Qt__WindowType) *DissectorWindow {
@@ -310,7 +341,13 @@ Qt is licensed under the LGPLv3 license (see “About Qt...” for more informat
 	liveAction.SetShortcut(gui.NewQKeySequence2("Ctrl+L", gui.QKeySequence__PortableText))
 	liveAction.ConnectTriggered(window.OpenLiveInterfaceHandler)
 
-	stopAction := toolBar.AddAction2(gui.NewQIcon5(":/qml/stop-line.svg"), "Stop session (Ctrl+T)")
+	updatePauseAction := toolBar.AddAction2(gui.NewQIcon5(":/qml/pause-line.svg"), "Pause updating view (Ctrl+P)")
+	updatePauseAction.SetShortcut(gui.NewQKeySequence2("Ctrl+P", gui.QKeySequence__PortableText))
+	updatePauseAction.ConnectTriggered(window.UpdatePauseHandler)
+	updatePauseAction.SetEnabled(false)
+	window.UpdatePauseAction = updatePauseAction
+
+	stopAction := toolBar.AddAction2(gui.NewQIcon5(":/qml/stop-line.svg"), "Stop capturing (Ctrl+T)")
 	stopAction.SetShortcut(gui.NewQKeySequence2("Ctrl+T", gui.QKeySequence__PortableText))
 	stopAction.ConnectTriggered(window.StopActionHandler)
 	stopAction.SetEnabled(false)
