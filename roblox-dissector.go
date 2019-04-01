@@ -1,8 +1,6 @@
 package main
 
 import (
-	"flag"
-	"log"
 	"net"
 
 	"github.com/Gskartwii/roblox-dissector/peer"
@@ -10,11 +8,6 @@ import (
 	"github.com/google/gopacket/layers"
 	"github.com/therecipe/qt/widgets"
 
-	"os"
-	"regexp"
-	"strconv"
-
-	"net/http"
 	_ "net/http"
 	_ "net/http/pprof"
 )
@@ -61,31 +54,5 @@ func SrcAndDestFromGoPacket(packet gopacket.Packet) (*net.UDPAddr, *net.UDPAddr)
 }
 
 func main() {
-	joinFlag := flag.String("join", "", "roblox-dissector:<authTicket>:<placeID>:<browserTrackerID>")
-	go func() {
-		log.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
-	flag.Parse()
-	if *joinFlag != "" {
-		println("Received protocol invocation?")
-		protocolRegex := regexp.MustCompile(`roblox-dissector:([0-9A-Fa-f]+):(\d+):(\d+)`)
-		uri := *joinFlag
-		parts := protocolRegex.FindStringSubmatch(uri)
-		if len(parts) < 4 {
-			println("invalid protocol invocation: ", os.Args[1])
-		} else {
-			customClient := peer.NewCustomClient()
-			authTicket := parts[1]
-			placeID, _ := strconv.Atoi(parts[2])
-			browserTrackerId, _ := strconv.Atoi(parts[3])
-			customClient.SecuritySettings = peer.Win10Settings()
-			customClient.BrowserTrackerId = uint64(browserTrackerId)
-			// No more guests! Roblox won't let us connect as one.
-
-			customClient.Logger = log.New(os.Stdout, "", log.Ltime|log.Lmicroseconds)
-			customClient.ConnectWithAuthTicket(uint32(placeID), authTicket)
-		}
-		return
-	}
-	GUIMain(flag.Arg(0))
+	GUIMain()
 }

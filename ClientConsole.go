@@ -7,16 +7,16 @@ import (
 	"time"
 
 	"github.com/Gskartwii/roblox-dissector/peer"
+	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/widgets"
 )
 
-func NewClientConsole(parent widgets.QWidget_ITF, client *peer.CustomClient) {
+func NewClientConsole(parent widgets.QWidget_ITF, client *peer.CustomClient, flags core.Qt__WindowType) *widgets.QWidget {
 	var logBuffer strings.Builder
 	client.Logger = log.New(&logBuffer, "", log.Ltime|log.Lmicroseconds)
 
-	window := widgets.NewQWidget(parent, 1)
-	window.SetWindowTitle("Client watch console")
+	window := widgets.NewQWidget(parent, flags)
 	layout := NewTopAlignLayout()
 
 	logLabel := NewLabel("Client log:")
@@ -27,10 +27,14 @@ func NewClientConsole(parent widgets.QWidget_ITF, client *peer.CustomClient) {
 
 	ticker := time.NewTicker(500 * time.Millisecond)
 	go func() {
-		for true {
+		for {
 			<-ticker.C
-			log.Clear()
-			log.InsertPlainText(logBuffer.String())
+			MainThreadRunner.RunOnMain(func() {
+				log.Clear()
+				log.InsertPlainText(logBuffer.String())
+				log.VerticalScrollBar().SetValue(log.VerticalScrollBar().Maximum())
+			})
+			<-MainThreadRunner.Wait
 		}
 	}()
 
@@ -79,5 +83,6 @@ func NewClientConsole(parent widgets.QWidget_ITF, client *peer.CustomClient) {
 	layout.AddWidget(dumpRbxl, 0, 0)
 
 	window.SetLayout(layout)
-	window.Show()
+
+	return window
 }

@@ -1,12 +1,20 @@
 package main
 
-import "github.com/therecipe/qt/widgets"
-import "github.com/therecipe/qt/gui"
-import "github.com/therecipe/qt/core"
-import "github.com/robloxapi/rbxfile"
+import (
+	"flag"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"regexp"
+	"strconv"
 
-import "os"
-import "fmt"
+	"github.com/Gskartwii/roblox-dissector/peer"
+	"github.com/robloxapi/rbxfile"
+	"github.com/therecipe/qt/core"
+	"github.com/therecipe/qt/gui"
+	"github.com/therecipe/qt/widgets"
+)
 
 // Cheating
 type mainThreadHelper struct {
@@ -126,10 +134,40 @@ func paintItems(row []*gui.QStandardItem, color *gui.QColor) {
 	}
 }
 
-func GUIMain(openFile string) {
+func GUIMain() {
 	widgets.NewQApplication(len(os.Args), os.Args)
 	window := NewDissectorWindow(nil, 0)
+	window.ShowMaximized()
 
+	joinFlag := flag.String("join", "", "roblox-dissector:<authTicket>:<placeID>:<browserTrackerID>")
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
+	flag.Parse()
+	if *joinFlag != "" {
+		println("Received protocol invocation?")
+		protocolRegex := regexp.MustCompile(`roblox-dissector:([0-9A-Fa-f]+):(\d+):(\d+)`)
+		uri := *joinFlag
+		parts := protocolRegex.FindStringSubmatch(uri)
+		if len(parts) < 4 {
+			widgets.QMessageBox_Critical(window, "Invalid protocol invocation", "Invalid protocol invocation: "+os.Args[1], widgets.QMessageBox__Ok, widgets.QMessageBox__NoButton)
+		} else {
+			customClient := peer.NewCustomClient()
+			authTicket := parts[1]
+			placeID, _ := strconv.Atoi(parts[2])
+			browserTrackerId, _ := strconv.Atoi(parts[3])
+			customClient.SecuritySettings = peer.Win10Settings()
+			customClient.BrowserTrackerId = uint64(browserTrackerId)
+			// No more guests! Roblox won't let us connect as one.
+
+			customClient.Logger = log.New(os.Stdout, "", log.Ltime|log.Lmicroseconds)
+			console := NewClientConsole(window, customClient, 1)
+			console.SetWindowTitle("Custom client console")
+			console.Show()
+			go customClient.ConnectWithAuthTicket(uint32(placeID), authTicket)
+		}
+	}
+	openFile := flag.Arg(0)
 	// React to command line arg
 	if openFile != "" {
 		window.CaptureFromFile(openFile, false)
@@ -297,8 +335,6 @@ func GUIMain(openFile string) {
 			}()
 		})
 	})*/
-
-	window.ShowMaximized()
 
 	widgets.QApplication_Exec()
 }
