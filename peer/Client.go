@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gskartwii/roblox-dissector/datamodel"
@@ -163,21 +164,23 @@ func (myClient *CustomClient) setupStalk() {
 }
 
 // call this asynchronously! it will wait a lot
-func (myClient *CustomClient) setupChat() error {
+func (myClient *CustomClient) setupChat() {
 	chatEvents := <-myClient.DataModel.WaitForChild("ReplicatedStorage", "DefaultChatSystemChatEvents")
 	getInitDataRequest := <-chatEvents.WaitForChild("GetInitDataRequest")
 
-	_, err := myClient.InvokeRemote(getInitDataRequest, []rbxfile.Value{})
+	initData, err := myClient.InvokeRemote(getInitDataRequest, []rbxfile.Value{})
 	if err != nil {
-		return err
+		myClient.Logger.Printf("Chat init error: %s\n", err.Error())
+		return
 	}
-	// unimportant
-	//myClient.Logger.Printf("chat init data 0: %s\n", initData.String())
-
-	/*_, newMessageChan := myClient.MakeEventChan( // never unbind
-		<- myClient.WaitForInstance("ReplicatedStorage", "DefaultChatSystemChatEvents", "OnNewMessage"),
-		"OnClientEvent",
-	)*/
+	data := initData[0].(datamodel.ValueDictionary)
+	channels := data["Channels"].(datamodel.ValueArray)
+	var channelNames strings.Builder
+	for _, channel := range channels {
+		channelNames.WriteString(string(channel.(datamodel.ValueArray)[0].(rbxfile.ValueString)))
+		channelNames.WriteString(", ")
+	}
+	myClient.Logger.Printf("SYSTEM: Channels available: %s\n", channelNames.String()[:channelNames.Len()-2])
 
 	messageFiltered := <-chatEvents.WaitForChild("OnMessageDoneFiltering")
 	_, newFilteredMessageChan := messageFiltered.MakeEventChan("OnClientEvent", false)
@@ -185,6 +188,9 @@ func (myClient *CustomClient) setupChat() error {
 	players := myClient.DataModel.FindService("Players")
 
 	playerJoinEmitter := players.ChildEmitter.On("*")
+	for _, player := range players.Children {
+		myClient.Logger.Printf("SYSTEM: %s is here.\n", player.Name())
+	}
 	playerLeaveChan := make(chan *datamodel.Instance)
 
 	for {
@@ -199,8 +205,8 @@ func (myClient *CustomClient) setupChat() error {
 				parentEmitter := player.PropertyEmitter.On("Parent")
 				for newParent := range parentEmitter {
 					if newParent.Args[0].(*datamodel.Instance) == nil {
-						playerLeaveChan <- player
 						player.PropertyEmitter.Off("Parent", parentEmitter)
+						playerLeaveChan <- player
 						return
 					}
 				}

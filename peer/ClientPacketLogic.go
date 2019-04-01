@@ -275,6 +275,7 @@ func (myClient *CustomClient) InvokeRemote(instance *datamodel.Instance, argumen
 	index := myClient.remoteIndices[instance]
 	myClient.remoteLock.Unlock()
 
+	myClient.Logger.Printf("Sending invocation %s#%d\n", instance.GetFullName(), index)
 	succEmitter, succChan := instance.MakeEventChan("RemoteOnInvokeSuccess", true)
 	errEmitter, errChan := instance.MakeEventChan("RemoteOnInvokeError", true)
 
@@ -290,6 +291,7 @@ func (myClient *CustomClient) InvokeRemote(instance *datamodel.Instance, argumen
 	for {
 		select {
 		case succ := <-succChan:
+			myClient.Logger.Printf("Listener #%d received success on %s#%d", index, instance.GetFullName(), uint32(succ[0].(rbxfile.ValueInt)))
 			// check that this packet was sent for us specifically
 			if uint32(succ[0].(rbxfile.ValueInt)) == index {
 				instance.EventEmitter.Off("RemoteOnInvokeError", errEmitter)
@@ -297,6 +299,7 @@ func (myClient *CustomClient) InvokeRemote(instance *datamodel.Instance, argumen
 				return succ[1].(datamodel.ValueTuple), nil // return any values
 			}
 		case err := <-errChan:
+			myClient.Logger.Printf("Listener #%d received error on %s#%d", index, instance.GetFullName(), uint32(err[0].(rbxfile.ValueInt)))
 			if uint32(err[0].(rbxfile.ValueInt)) == index {
 				instance.EventEmitter.Off("RemoteOnInvokeSuccess", succEmitter)
 

@@ -11,7 +11,7 @@ func (schema StaticPropertySchema) Decode(reader PacketReader, stream SerializeR
 	if err != nil {
 		return val, errors.New("while parsing " + schema.Name + ": " + err.Error())
 	}
-	if val.Type().String() != "ProtectedString" {
+	if val.Type() != rbxfile.TypeProtectedString {
 		layers.Root.Logger.Println("read", schema.Name, val.String())
 	}
 	return val, nil
