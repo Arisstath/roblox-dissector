@@ -53,7 +53,7 @@ func showReplicationInstance(this *datamodel.Instance, properties map[string]rbx
 		for name, property := range properties {
 			nameItem := NewStringItem(name)
 			if property != nil {
-				typeItem := NewStringItem(property.Type().String())
+				typeItem := NewStringItem(datamodel.TypeString(property))
 				var valueItem *gui.QStandardItem
 				if property.Type() == rbxfile.TypeProtectedString {
 					valueItem = NewQStandardItemF("... (len %d)", len(property.String()))
@@ -150,7 +150,7 @@ func show83_03(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	} else {
 		layout.AddWidget(NewQLabelF("Property name: %s", this.Schema.Name), 0, 0)
 	}
-	layout.AddWidget(NewQLabelF("Property type: %s", this.Value.Type().String()), 0, 0)
+	layout.AddWidget(NewQLabelF("Property type: %s", this.Schema.TypeString), 0, 0)
 	if this.Value.Type() == rbxfile.TypeProtectedString {
 		layout.AddWidget(NewQLabelF("Property value: ... (len %d)", len(this.Value.String())), 0, 0)
 	} else {
@@ -216,17 +216,19 @@ func show83_07(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 
 	argumentList := widgets.NewQTreeView(nil)
 	standardModel := NewProperSortModel(nil)
-	standardModel.SetHorizontalHeaderLabels([]string{"Type", "Value"})
+	standardModel.SetHorizontalHeaderLabels([]string{"Index", "Type", "Value"})
 	rootNode := standardModel.InvisibleRootItem()
 
-	for _, argument := range this.Event.Arguments {
+	for i, argument := range this.Event.Arguments {
 		if argument != nil {
 			rootNode.AppendRow([]*gui.QStandardItem{
-				NewStringItem(argument.Type().String()),
+				NewUintItem(i),
+				NewStringItem(datamodel.TypeString(argument)),
 				NewStringItem(argument.String()),
 			})
 		} else {
 			rootNode.AppendRow([]*gui.QStandardItem{
+				NewUintItem(i),
 				NewStringItem("nil"),
 				nil,
 			})

@@ -8,7 +8,6 @@ import (
 	"github.com/robloxapi/rbxfile"
 )
 
-type Value rbxfile.Value
 type Reference struct {
 	IsNull bool
 	Scope  string
@@ -43,6 +42,22 @@ const (
 	TypeToken                               = rbxfile.TypeInt64 + 1 + iota
 )
 
+var CustomTypeNames = map[rbxfile.Type]string{
+	TypeNumberSequenceKeypoint: "NumberSequenceKeypoint",
+	TypeColorSequenceKeypoint:  "ColorSequenceKeypoint",
+	TypeNumberSequence:         "NumberSequence",
+	TypeColorSequence:          "ColorSequence",
+	TypeSystemAddress:          "SystemAddress",
+	TypeMap:                    "Map",
+	TypeDictionary:             "Dictionary",
+	TypeArray:                  "Array",
+	TypeTuple:                  "Tuple",
+	TypeRegion3:                "Region3",
+	TypeRegion3int16:           "Region3int16",
+	TypeReference:              "Reference",
+	TypeToken:                  "Token",
+}
+
 type ValueColorSequenceKeypoint rbxfile.ValueColorSequenceKeypoint
 type ValueNumberSequenceKeypoint rbxfile.ValueNumberSequenceKeypoint
 type ValueColorSequence []ValueColorSequenceKeypoint
@@ -68,6 +83,17 @@ type ValueReference struct {
 type ValueToken struct {
 	ID    uint16
 	Value uint32
+}
+
+func TypeString(val rbxfile.Value) string {
+	if val == nil {
+		return "nil"
+	}
+	thisType := val.Type()
+	if thisType < TypeNumberSequenceKeypoint {
+		return thisType.String()
+	}
+	return CustomTypeNames[thisType]
 }
 
 func (x ValueRegion3) String() string {
@@ -100,7 +126,7 @@ func (x ValueTuple) String() string {
 			ret.WriteString("nil, ")
 			continue
 		}
-		ret.WriteString(fmt.Sprintf("(%s) %s, ", y.Type().String(), y.String()))
+		ret.WriteString(fmt.Sprintf("(%s) %s, ", TypeString(y), y.String()))
 	}
 
 	ret.WriteString("]")
@@ -120,7 +146,7 @@ func (x ValueDictionary) String() string {
 		if v == nil {
 			thisValue = "nil"
 		} else {
-			thisValue = fmt.Sprintf("(%s) %s", v.Type().String(), v.String())
+			thisValue = fmt.Sprintf("(%s) %s", TypeString(v), v.String())
 		}
 		ret.WriteString(fmt.Sprintf("%s: %s, ", k, thisValue))
 	}
