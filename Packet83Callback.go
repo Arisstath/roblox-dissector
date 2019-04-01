@@ -147,10 +147,11 @@ func show83_03(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	}
 	if this.Schema == nil {
 		layout.AddWidget(NewLabel("Property name: Parent"), 0, 0)
+		layout.AddWidget(NewLabel("Property type: Reference"), 0, 0)
 	} else {
 		layout.AddWidget(NewQLabelF("Property name: %s", this.Schema.Name), 0, 0)
+		layout.AddWidget(NewQLabelF("Property type: %s", this.Schema.TypeString), 0, 0)
 	}
-	layout.AddWidget(NewQLabelF("Property type: %s", this.Schema.TypeString), 0, 0)
 	if this.Value.Type() == rbxfile.TypeProtectedString {
 		layout.AddWidget(NewQLabelF("Property value: ... (len %d)", len(this.Value.String())), 0, 0)
 	} else {

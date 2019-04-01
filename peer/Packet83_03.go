@@ -62,6 +62,13 @@ func (thisBitstream *extendedReader) DecodePacket83_03(reader PacketReader, laye
 		result := datamodel.ValueReference{Reference: referent}
 		layer.Value = result
 		layer.Schema = nil
+		// CreateInstance: allow forward references in ID_REPLIC_PROP
+		// TODO: too tolerant?
+		refInstance, err := context.InstancesByReferent.CreateInstance(referent)
+		if err != nil {
+			return layer, err
+		}
+		result.Instance = refInstance
 
 		return layer, err
 	}
@@ -137,5 +144,11 @@ func (Packet83_03) TypeString() string {
 }
 
 func (layer *Packet83_03) String() string {
-	return fmt.Sprintf("ID_REPLIC_PROP: %s[%s]", layer.Instance.GetFullName(), layer.Schema.Name)
+	var propName string
+	if layer.Schema == nil {
+		propName = "Parent"
+	} else {
+		propName = layer.Schema.Name
+	}
+	return fmt.Sprintf("ID_REPLIC_PROP: %s[%s]", layer.Instance.GetFullName(), propName)
 }
