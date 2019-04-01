@@ -78,17 +78,12 @@ func NewPacketListViewer(updateContext context.Context, parent widgets.QWidget_I
 	listViewer.ProxyModel = proxy
 	standardModel.SetHorizontalHeaderLabels([]string{"Index", "Packet", "Direction", "Length in Bytes", "Datagram Numbers", "Ordered Splits", "Total Splits"})
 	treeView.SetSelectionMode(widgets.QAbstractItemView__SingleSelection)
+	treeView.SetSelectionBehavior(widgets.QAbstractItemView__SelectRows)
 	treeView.SetSortingEnabled(true)
 	treeView.SetUniformRowHeights(true)
 	listViewer.RootNode = standardModel.InvisibleRootItem()
 
-	treeView.ConnectClicked(func(index *core.QModelIndex) {
-		realSelectedValue, _ := strconv.Atoi(standardModel.Item(proxy.MapToSource(index).Row(), 0).Data(0).ToString())
-		if listViewer.Packets[uint64(realSelectedValue)] != nil {
-			thisPacket := listViewer.Packets[uint64(realSelectedValue)]
-			listViewer.DefaultPacketWindow.Update(listViewer.Context, thisPacket, ActivationCallbacks[thisPacket.PacketType])
-		}
-	})
+	treeView.SelectionModel().ConnectCurrentRowChanged(listViewer.SelectionChanged)
 	treeView.SetContextMenuPolicy(core.Qt__CustomContextMenu)
 	treeView.ConnectCustomContextMenuRequested(func(position *core.QPoint) {
 		index := treeView.IndexAt(position)
@@ -218,7 +213,7 @@ func (m *PacketListViewer) AddFullPacket(context *peer.CommunicationContext, lay
 	} else {
 		rootRow = append(rootRow, nil)
 	}
-	rootRow = append(rootRow, NewStringItem("???"))
+	rootRow = append(rootRow, NewStringItem("1"))
 
 	if layers.Reliability != nil {
 		m.registerSplitPacketRow(rootRow, context, layers)
@@ -285,8 +280,20 @@ func (viewer *PacketListViewer) BindToConversation(conv *Conversation) {
 	serverPacketReader.ErrorEmitter.On("full-reliable", fullReliableHandler, emitter.Void)
 }
 
+func (m *PacketListViewer) SelectionChanged(index, _ *core.QModelIndex) {
+	proxy := m.ProxyModel
+	standardModel := m.StandardModel
+	listViewer := m
+	realSelectedValue, _ := strconv.Atoi(standardModel.Item(proxy.MapToSource(index).Row(), 0).Data(0).ToString())
+	if listViewer.Packets[uint64(realSelectedValue)] != nil {
+		thisPacket := listViewer.Packets[uint64(realSelectedValue)]
+		listViewer.DefaultPacketWindow.Update(listViewer.Context, thisPacket, ActivationCallbacks[thisPacket.PacketType])
+	}
+}
+
 func (m *PacketListViewer) UpdateModel() {
 	m.TreeView.SetModel(m.ProxyModel)
+	m.TreeView.SelectionModel().ConnectCurrentRowChanged(m.SelectionChanged)
 	m.TreeView.SortByColumn(0, core.Qt__AscendingOrder)
 }
 
