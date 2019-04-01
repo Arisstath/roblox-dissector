@@ -43,20 +43,23 @@ func NewClientConsole(parent widgets.QWidget_ITF, client *peer.CustomClient, fla
 		client.Disconnect()
 	})
 
-	labelForChat := NewQLabelF("Message, [to player, channel]:")
+	chatWidget := widgets.NewQWidget(window, 0)
+	formLayout := widgets.NewQFormLayout(chatWidget)
+
 	message := widgets.NewQLineEdit(window)
 	toPlayer := widgets.NewQLineEdit(window)
 	channel := widgets.NewQLineEdit(window)
-	layout.AddWidget(labelForChat, 0, 0)
-	layout.AddWidget(message, 0, 0)
-	layout.AddWidget(toPlayer, 0, 0)
-	layout.AddWidget(channel, 0, 0)
-
-	sendMessage := widgets.NewQPushButton2("Send!", window)
+	formLayout.AddRow3("Message:", message)
+	formLayout.AddRow3("(To player):", toPlayer)
+	formLayout.AddRow3("(Channel):", channel)
+	sendMessage := widgets.NewQPushButton2("Send", window)
 	sendMessage.ConnectReleased(func() {
 		client.SendChat(message.Text(), toPlayer.Text(), channel.Text())
 	})
-	layout.AddWidget(sendMessage, 0, 0)
+	formLayout.AddRow5(sendMessage)
+
+	chatWidget.SetLayout(formLayout)
+	layout.AddWidget(chatWidget, 0, 0)
 
 	dumpSchema := widgets.NewQPushButton2("Dump schema...", window)
 	dumpSchema.ConnectReleased(func() {
