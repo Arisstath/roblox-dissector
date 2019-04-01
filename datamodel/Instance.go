@@ -147,12 +147,14 @@ func (instance *Instance) WaitForRefProp(name string) <-chan *Instance {
 		return propChan
 	}
 	go func() {
-		for propEvt := range instance.PropertyEmitter.On(name) {
+		propEvtChan := instance.PropertyEmitter.On(name)
+		for propEvt := range propEvtChan {
 			if propEvt.Args[0] == nil {
 				continue
 			}
 			currProp := propEvt.Args[0].(ValueReference)
 			if currProp.Instance != nil {
+				instance.PropertyEmitter.Off(name, propEvtChan)
 				propChan <- currProp.Instance
 				return
 			}
