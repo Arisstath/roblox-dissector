@@ -95,7 +95,9 @@ type DefaultPacketReader struct {
 
 	isClient bool
 
-	queues       *queues
+	rmState      *reliableMessageState
+	sqState      *sequenceState
+	ordQueue     *orderingQueue
 	splitPackets splitPacketList
 }
 
@@ -107,14 +109,26 @@ func (reader *DefaultPacketReader) SetIsClient(val bool) {
 }
 
 func NewPacketReader() *DefaultPacketReader {
+	var thisQ [32]map[uint32]*PacketLayers
+	for i := 0; i < 32; i++ {
+		thisQ[i] = make(map[uint32]*PacketLayers)
+	}
+
 	reader := &DefaultPacketReader{
-		queues:        newPeerQueues(),
 		LayerEmitter:  emitter.New(0),
 		ErrorEmitter:  emitter.New(0),
 		PacketEmitter: emitter.New(0),
 		DataEmitter:   emitter.New(0),
 		contextualHandler: contextualHandler{
 			caches: new(Caches),
+		},
+
+		rmState: &reliableMessageState{
+			hasHandled: make(map[uint32]bool),
+		},
+		sqState: &sequenceState{},
+		ordQueue: &orderingQueue{
+			queue: thisQ,
 		},
 	}
 
@@ -217,8 +231,6 @@ func (reader *DefaultPacketReader) readReliable(layers *PacketLayers) {
 		return
 	}
 
-	queues := reader.queues
-
 	reader.emitLayers("reliability", layers)
 	for _, subPacket := range reliabilityLayer.Packets {
 		reliablePacketLayers := &PacketLayers{Root: layers.Root, RakNet: layers.RakNet, Reliability: subPacket}
@@ -236,20 +248,41 @@ func (reader *DefaultPacketReader) readReliable(layers *PacketLayers) {
 		}
 
 		reader.emitLayers("reliable", reliablePacketLayers)
-		queues.add(reliablePacketLayers)
-		if reliablePacketLayers.Reliability.Reliability == 0 {
+		thisRelPacket := reliablePacketLayers.Reliability
+		hasHandled := reader.rmState.hasHandled
+		switch thisRelPacket.Reliability {
+		case Unreliable:
 			reader.readOrdered(reliablePacketLayers)
-			queues.remove(reliablePacketLayers)
-			// We can skip the code below: unreliable packets can't have released
-			// any pending packets that are on the queue
-			continue
-		}
+		case Reliable:
+			if !hasHandled[thisRelPacket.ReliableMessageNumber] {
+				hasHandled[thisRelPacket.ReliableMessageNumber] = true
+				reader.readOrdered(reliablePacketLayers)
+			}
+		case ReliableSequenced:
+			if !hasHandled[thisRelPacket.ReliableMessageNumber] {
+				hasHandled[thisRelPacket.ReliableMessageNumber] = true
+				if reader.sqState.highestIndex >= thisRelPacket.SequencingIndex {
+					reader.sqState.highestIndex = thisRelPacket.SequencingIndex
+					reader.readOrdered(reliablePacketLayers)
+				}
+			}
+		case ReliableOrdered:
+			if !hasHandled[thisRelPacket.ReliableMessageNumber] {
+				hasHandled[thisRelPacket.ReliableMessageNumber] = true
+				reader.ordQueue.add(reliablePacketLayers)
 
-		reliablePacketLayers = queues.next(subPacket.OrderingChannel)
-		for reliablePacketLayers != nil {
-			reader.readOrdered(reliablePacketLayers)
-			queues.remove(reliablePacketLayers)
-			reliablePacketLayers = queues.next(subPacket.OrderingChannel)
+				reliablePacketLayers = reader.ordQueue.next(subPacket.OrderingChannel)
+				for reliablePacketLayers != nil {
+					reader.readOrdered(reliablePacketLayers)
+					reliablePacketLayers = reader.ordQueue.next(subPacket.OrderingChannel)
+				}
+			}
+		default:
+			println("error while handling reliability")
+			reliablePacketLayers.Error = fmt.Errorf("Unknown reliability: %d", reliablePacketLayers.Reliability.Reliability)
+			// TODO: Is it legal to emit the reliable packet twice?
+			reader.emitLayers("reliable", reliablePacketLayers)
+			return
 		}
 	}
 }

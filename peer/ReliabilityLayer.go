@@ -4,16 +4,11 @@ import "io"
 import "errors"
 
 const (
-	UNRELIABLE              = iota
-	UNRELIABLE_SEQ          = iota
-	RELIABLE                = iota
-	RELIABLE_ORD            = iota
-	RELIABLE_SEQ            = iota
-	UNRELIABLE_ACK_RECP     = iota
-	UNRELIABLE_SEQ_ACK_RECP = iota
-	RELIABLE_ACK_RECP       = iota
-	RELIABLE_ORD_ACK_RECP   = iota
-	RELIABLE_SEQ_ACK_RECP   = iota
+	Unreliable          = iota
+	UnreliableSequenced = iota
+	Reliable            = iota
+	ReliableOrdered     = iota
+	ReliableSequenced   = iota
 )
 
 // ReliablePacket describes a packet within a ReliabilityLayer
@@ -61,13 +56,13 @@ func (packet *ReliablePacket) GetLog() string {
 }
 
 func (packet *ReliablePacket) IsReliable() bool {
-	return packet.Reliability == RELIABLE || packet.Reliability == RELIABLE_SEQ || packet.Reliability == RELIABLE_ORD
+	return packet.Reliability == Reliable || packet.Reliability == ReliableSequenced || packet.Reliability == ReliableOrdered
 }
 func (packet *ReliablePacket) IsSequenced() bool {
-	return packet.Reliability == UNRELIABLE_SEQ || packet.Reliability == RELIABLE_SEQ
+	return packet.Reliability == UnreliableSequenced || packet.Reliability == ReliableSequenced
 }
 func (packet *ReliablePacket) IsOrdered() bool {
-	return packet.Reliability == UNRELIABLE_SEQ || packet.Reliability == RELIABLE_SEQ || packet.Reliability == RELIABLE_ORD || packet.Reliability == RELIABLE_ORD_ACK_RECP
+	return packet.Reliability == UnreliableSequenced || packet.Reliability == ReliableSequenced || packet.Reliability == ReliableOrdered
 }
 
 func (thisBitstream *extendedReader) DecodeReliabilityLayer(reader PacketReader, layers *PacketLayers) (*ReliabilityLayer, error) {
