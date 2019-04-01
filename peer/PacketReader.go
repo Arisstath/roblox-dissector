@@ -197,6 +197,8 @@ func (reader *DefaultPacketReader) readGeneric(stream *extendedReader, layers *P
 			layers.Reliability.SplitBuffer.Logger.Println("error:", err.Error())
 			layers.Error = fmt.Errorf("Failed to decode reliable packet %02X: %s", layers.PacketType, err.Error())
 		}
+	} else {
+		layers.Error = fmt.Errorf("Unknown packetType %d", layers.PacketType)
 	}
 }
 
