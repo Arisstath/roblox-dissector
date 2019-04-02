@@ -388,13 +388,13 @@ func show83_12(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	for index, hash := range this.HashList {
 		rootItem.AppendRow([]*gui.QStandardItem{
 			NewUintItem(index),
-			NewQStandardItemF("%8X", hash),
+			NewQStandardItemF("%08X", hash),
 		})
 	}
 	for index, hash := range this.SecurityTokens {
 		rootItem.AppendRow([]*gui.QStandardItem{
 			NewQStandardItemF("ST%d", index),
-			NewQStandardItemF("%16X", hash),
+			NewQStandardItemF("%016X", hash),
 		})
 	}
 	hashList.SetSortingEnabled(true)
