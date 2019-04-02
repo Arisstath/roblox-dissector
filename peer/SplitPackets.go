@@ -1,9 +1,12 @@
 package peer
 
-import "bytes"
-import "github.com/gskartwii/go-bitstream"
-import "log"
-import "strings"
+import (
+	"bytes"
+	"log"
+	"strings"
+
+	bitstream "github.com/gskartwii/go-bitstream"
+)
 
 // SplitPacketBuffer represents a structure that accumulates every
 // layer that is used to transmit the split packet.
@@ -23,6 +26,7 @@ type SplitPacketBuffer struct {
 	HasPacketType bool
 	PacketType    byte
 
+	byteReader *bytes.Reader
 	dataReader *extendedReader
 	data       []byte
 
@@ -113,7 +117,8 @@ func (reader *DefaultPacketReader) handleSplitPacket(layers *PacketLayers) (*Spl
 	}
 	if shouldClose {
 		packetBuffer.IsFinal = true
-		packetBuffer.dataReader = &extendedReader{bitstream.NewReader(bytes.NewReader(packetBuffer.data))}
+		packetBuffer.byteReader = bytes.NewReader(packetBuffer.data)
+		packetBuffer.dataReader = &extendedReader{bitstream.NewReader(packetBuffer.byteReader)}
 		if reliablePacket.HasSplitPacket {
 			// TODO: Use a linked list
 			reader.splitPackets.delete(layers)

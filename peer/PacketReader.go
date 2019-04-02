@@ -216,6 +216,12 @@ func (reader *DefaultPacketReader) readOrdered(layers *PacketLayers) {
 		} else {
 			layers.PacketType = packetType
 			reader.readGeneric(buffer.dataReader, layers)
+			byteReader := buffer.byteReader
+
+			// The parser "successfully" parsed a packet, but there is still data remaining?
+			if byteReader.Len() != 0 && layers.Error == nil {
+				layers.Error = fmt.Errorf("parsed packet %02X but still have %d bytes remaining", layers.PacketType, byteReader.Len())
+			}
 		}
 
 		// fullreliablehandler, regardless of whether the parsing succeeded or not!

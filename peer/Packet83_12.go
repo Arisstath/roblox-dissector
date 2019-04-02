@@ -91,6 +91,7 @@ func (stream *extendedReader) DecodePacket83_12(reader PacketReader, layers *Pac
 	//nonceDiff := nonce - getRbxNonce(hashList[1], hashList[2])
 
 	//fmt.Println("hashlist", hashList, nonce, nonceDiff)
+	inner.HashList = hashList
 
 	return inner, nil
 }
