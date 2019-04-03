@@ -35,8 +35,7 @@ var Callbacks83_09 = map[uint8](func(peer.Packet83_09Subpacket) widgets.QWidget_
 // Allow caller to manually pass Parent.
 // This is because the Parent() stored in datamodel.Instance isn't necessarily
 // the Parent we want.
-// Remember to lock the properties map!
-func showReplicationInstance(this *datamodel.Instance, properties map[string]rbxfile.Value, parent *datamodel.Instance) []*gui.QStandardItem {
+func showReplicationInstance(this *datamodel.Instance, parent *datamodel.Instance) []*gui.QStandardItem {
 	rootNameItem := NewStringItem(this.Name())
 	typeItem := NewStringItem(this.ClassName)
 	referentItem := NewStringItem(this.Ref.String())
@@ -48,40 +47,6 @@ func showReplicationInstance(this *datamodel.Instance, properties map[string]rbx
 	}
 	pathItem := NewStringItem(this.GetFullName())
 
-	if len(properties) > 0 {
-		propertyRootItem := NewQStandardItemF("%d properties", len(properties))
-		for name, property := range properties {
-			nameItem := NewStringItem(name)
-			if property != nil {
-				typeItem := NewStringItem(datamodel.TypeString(property))
-				var valueItem *gui.QStandardItem
-				if property.Type() == rbxfile.TypeProtectedString {
-					valueItem = NewQStandardItemF("... (len %d)", len(property.String()))
-				} else {
-					valueItem = NewStringItem(property.String())
-				}
-
-				propertyRootItem.AppendRow([]*gui.QStandardItem{
-					nameItem,
-					typeItem,
-					valueItem,
-					nil,
-					nil,
-					nil,
-				})
-			} else {
-				propertyRootItem.AppendRow([]*gui.QStandardItem{
-					nameItem,
-					NewStringItem("!!nil"),
-					nil,
-					nil,
-					nil,
-					nil,
-				})
-			}
-		}
-		rootNameItem.AppendRow([]*gui.QStandardItem{propertyRootItem, nil, nil, nil, nil, nil})
-	}
 	return []*gui.QStandardItem{
 		rootNameItem,
 		typeItem,
@@ -90,6 +55,33 @@ func showReplicationInstance(this *datamodel.Instance, properties map[string]rbx
 		parentItem,
 		pathItem,
 	}
+}
+
+// Remember to lock the properties mutex!
+// TODO: remove numNils hack
+func showProperties(properties map[string]rbxfile.Value, numNils int) *gui.QStandardItem {
+	propertyRootItem := NewQStandardItemF("%d properties", len(properties))
+	for name, property := range properties {
+		nameItem := NewStringItem(name)
+		if property != nil {
+			typeItem := NewStringItem(datamodel.TypeString(property))
+			var valueItem *gui.QStandardItem
+			if property.Type() == rbxfile.TypeProtectedString {
+				valueItem = NewQStandardItemF("... (len %d)", len(property.String()))
+			} else {
+				valueItem = NewStringItem(property.String())
+			}
+
+			baseRow := make([]*gui.QStandardItem, numNils)
+			baseRow = append(baseRow, nameItem, typeItem, valueItem)
+			propertyRootItem.AppendRow(baseRow)
+		} else {
+			baseRow := make([]*gui.QStandardItem, numNils)
+			baseRow = append(baseRow, nameItem, NewStringItem("nil"))
+			propertyRootItem.AppendRow(baseRow)
+		}
+	}
+	return propertyRootItem
 }
 
 type Packet83Subpacket peer.Packet83Subpacket
@@ -103,8 +95,10 @@ func show83_0B(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	rootNode := standardModel.InvisibleRootItem()
 	if this != nil && this.Instances != nil { // if arraylen == 0, this is nil
 		for i, instance := range this.Instances {
-			row := []*gui.QStandardItem{NewUintItem(i)}
-			row = append(row, showReplicationInstance(instance.Instance, instance.Properties, instance.Parent)...)
+			indexItem := NewUintItem(i)
+			row := []*gui.QStandardItem{indexItem}
+			row = append(row, showReplicationInstance(instance.Instance, instance.Parent)...)
+			indexItem.AppendRow([]*gui.QStandardItem{showProperties(instance.Properties, 1)})
 			rootNode.AppendRow(row)
 		}
 	}
@@ -128,7 +122,9 @@ func show83_02(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	standardModel.SetHorizontalHeaderLabels([]string{"Name", "Type", "Value", "Referent", "Parent", "Path"})
 
 	rootNode := standardModel.InvisibleRootItem()
-	rootNode.AppendRow(showReplicationInstance(this.Instance, this.Properties, this.Parent))
+	row := showReplicationInstance(this.Instance, this.Parent)
+	row[0].AppendRow([]*gui.QStandardItem{showProperties(this.Properties, 0)})
+	rootNode.AppendRow(row)
 	instanceList.SetModel(standardModel)
 	instanceList.SetSelectionMode(0)
 	instanceList.SetSortingEnabled(true)
