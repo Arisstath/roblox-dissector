@@ -1,6 +1,8 @@
 package datamodel
 
 import (
+	"context"
+
 	"github.com/olebedev/emitter"
 )
 
@@ -29,40 +31,36 @@ func (model *DataModel) FindService(name string) *Instance {
 	return nil
 }
 
-func (model *DataModel) WaitForService(name string) <-chan *Instance {
-	servChan := make(chan *Instance, 1)
+func (model *DataModel) WaitForService(ctx context.Context, name string) (*Instance, error) {
 	service := model.FindService(name)
 	if service != nil {
-		servChan <- service
-		return servChan
+		return service, nil
 	}
 	emitterChan := model.ServiceEmitter.Once(name)
-	go func(emitterChan <-chan emitter.Event) {
-		// If the service was added while the emitter was being created
-		service := model.FindService(name)
-		if service != nil {
-			model.ServiceEmitter.Off(name, emitterChan)
-			servChan <- service
-			return
-		}
+	// If the service was added while the emitter was being created
+	service = model.FindService(name)
+	if service != nil {
+		model.ServiceEmitter.Off(name, emitterChan)
+		return service, nil
+	}
 
-		servMiddle := (<-emitterChan).Args[0].(*Instance)
-		servChan <- servMiddle
-	}(emitterChan)
-	return servChan
+	select {
+	case e := <-emitterChan:
+		servMiddle := e.Args[0].(*Instance)
+		return servMiddle, nil
+	case <-ctx.Done():
+		model.ServiceEmitter.Off(name, emitterChan)
+		return nil, ctx.Err()
+	}
 }
 
-func (model *DataModel) WaitForChild(names ...string) <-chan *Instance {
-	retChan := make(chan *Instance, 1)
-	go func() {
-		instance := <-model.WaitForService(names[0])
-		if len(names) > 0 {
-			retChan <- (<-instance.WaitForChild(names[1:]...))
-		} else {
-			retChan <- instance
-		}
-	}()
-	return retChan
+func (model *DataModel) WaitForChild(ctx context.Context, names ...string) (*Instance, error) {
+	instance, err := model.WaitForService(ctx, names[0])
+	// If we only have one name, don't need to call WaitForChild()
+	if err != nil || len(names) == 1 {
+		return instance, err
+	}
+	return instance.WaitForChild(ctx, names[1:]...)
 }
 
 func (model *DataModel) Copy() *DataModel {

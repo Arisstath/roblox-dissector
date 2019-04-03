@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -158,12 +159,18 @@ func GUIMain() {
 			browserTrackerId, _ := strconv.Atoi(parts[3])
 			customClient.SecuritySettings = peer.Win10Settings()
 			customClient.BrowserTrackerId = uint64(browserTrackerId)
+			var cancelFunc context.CancelFunc
+			customClient.RunningContext, cancelFunc = context.WithCancel(context.Background())
 			// No more guests! Roblox won't let us connect as one.
 
 			customClient.Logger = log.New(os.Stdout, "", log.Ltime|log.Lmicroseconds)
 			console := NewClientConsole(window, customClient, 1)
 			console.SetWindowTitle("Custom client console")
 			console.Show()
+			console.ConnectCloseEvent(func(_ *gui.QCloseEvent) {
+				println("canceling context")
+				cancelFunc()
+			})
 			go customClient.ConnectWithAuthTicket(uint32(placeID), authTicket)
 		}
 	}

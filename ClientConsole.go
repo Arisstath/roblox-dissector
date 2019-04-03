@@ -28,13 +28,17 @@ func NewClientConsole(parent widgets.QWidget_ITF, client *peer.CustomClient, fla
 	ticker := time.NewTicker(500 * time.Millisecond)
 	go func() {
 		for {
-			<-ticker.C
-			MainThreadRunner.RunOnMain(func() {
-				log.Clear()
-				log.InsertPlainText(logBuffer.String())
-				log.VerticalScrollBar().SetValue(log.VerticalScrollBar().Maximum())
-			})
-			<-MainThreadRunner.Wait
+			select {
+			case <-ticker.C:
+				MainThreadRunner.RunOnMain(func() {
+					log.Clear()
+					log.InsertPlainText(logBuffer.String())
+					log.VerticalScrollBar().SetValue(log.VerticalScrollBar().Maximum())
+				})
+				<-MainThreadRunner.Wait
+			case <-client.RunningContext.Done():
+				return
+			}
 		}
 	}()
 

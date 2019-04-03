@@ -2,6 +2,8 @@ package peer
 
 import (
 	"bytes"
+	"container/list"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,6 +21,11 @@ import (
 	"github.com/pierrec/xxHash/xxHash32"
 	"github.com/robloxapi/rbxfile"
 )
+
+type InstanceEmitterBinding struct {
+	Instance *datamodel.Instance
+	Binding  <-chan emitter.Event
+}
 
 var LauncherStatuses = [...]string{
 	"Wait",
@@ -127,6 +134,8 @@ type CustomClient struct {
 	LocalPlayer        *datamodel.Instance
 	timestamp2Index    uint64
 	InstanceDictionary *datamodel.InstanceDictionary
+
+	writerBinding <-chan emitter.Event
 }
 
 func (myClient *CustomClient) ReadPacket(buf []byte) {
@@ -154,24 +163,35 @@ func NewCustomClient() *CustomClient {
 	return client
 }
 
-func (myClient *CustomClient) GetLocalPlayer() *datamodel.Instance { // may yield! do not call from main thread
-	return <-myClient.DataModel.WaitForChild("Players", myClient.UserName)
+func (myClient *CustomClient) GetLocalPlayer() (*datamodel.Instance, error) { // may yield! do not call from main thread
+	return myClient.DataModel.WaitForChild(myClient.RunningContext, "Players", myClient.UserName)
 }
 
 // call this asynchronously! it will wait a lot
 func (myClient *CustomClient) setupStalk() {
-	myClient.StalkPlayer("gskw")
+	err := myClient.StalkPlayer("gskw")
+	if err != nil {
+		myClient.Logger.Printf("Stalk error: %s\n", err.Error())
+	}
 }
 
 // call this asynchronously! it will wait a lot
-func (myClient *CustomClient) setupChat() {
-	chatEvents := <-myClient.DataModel.WaitForChild("ReplicatedStorage", "DefaultChatSystemChatEvents")
-	getInitDataRequest := <-chatEvents.WaitForChild("GetInitDataRequest")
+func (myClient *CustomClient) setupChat() error {
+	ctx, cancelChat := context.WithCancel(myClient.RunningContext)
+	defer cancelChat()
+
+	chatEvents, err := myClient.DataModel.WaitForChild(ctx, "ReplicatedStorage", "DefaultChatSystemChatEvents")
+	if err != nil {
+		return err
+	}
+	getInitDataRequest, err := chatEvents.WaitForChild(ctx, "GetInitDataRequest")
+	if err != nil {
+		return err
+	}
 
 	initData, err := myClient.InvokeRemote(getInitDataRequest, []rbxfile.Value{})
 	if err != nil {
-		myClient.Logger.Printf("Chat init error: %s\n", err.Error())
-		return
+		return err
 	}
 	data := initData[0].(datamodel.ValueDictionary)
 	channels := data["Channels"].(datamodel.ValueArray)
@@ -182,8 +202,8 @@ func (myClient *CustomClient) setupChat() {
 	}
 	myClient.Logger.Printf("SYSTEM: Channels available: %s\n", channelNames.String()[:channelNames.Len()-2])
 
-	messageFiltered := <-chatEvents.WaitForChild("OnMessageDoneFiltering")
-	_, newFilteredMessageChan := messageFiltered.MakeEventChan("OnClientEvent", false)
+	messageFiltered, err := chatEvents.WaitForChild(ctx, "OnMessageDoneFiltering")
+	newFilteredMessageEvtChan := messageFiltered.EventEmitter.On("OnClientEvent")
 
 	players := myClient.DataModel.FindService("Players")
 
@@ -192,19 +212,29 @@ func (myClient *CustomClient) setupChat() {
 		myClient.Logger.Printf("SYSTEM: %s is here.\n", player.Name())
 	}
 	playerLeaveChan := make(chan *datamodel.Instance)
+	playerLeaveBindings := list.New()
 
 	for {
 		select {
-		case message := <-newFilteredMessageChan:
+		case e, received := <-newFilteredMessageEvtChan:
+			if !received {
+				continue
+			}
+			message := e.Args[0].([]rbxfile.Value)
 			dict := message[0].(datamodel.ValueTuple)[0].(datamodel.ValueDictionary)
 			myClient.Logger.Printf("<%s (%s)> %s\n", dict["FromSpeaker"].(rbxfile.ValueString), dict["MessageType"].(rbxfile.ValueString), dict["Message"].(rbxfile.ValueString))
-		case joinEvent := <-playerJoinEmitter:
+		case joinEvent, received := <-playerJoinEmitter:
+			if !received {
+				continue
+			}
 			player := joinEvent.Args[0].(*datamodel.Instance)
 			myClient.Logger.Printf("SYSTEM: %s has joined the game.\n", player.Name())
 			go func(player *datamodel.Instance) {
 				parentEmitter := player.PropertyEmitter.On("Parent")
+				thisBinding := playerLeaveBindings.PushBack(InstanceEmitterBinding{Instance: player, Binding: parentEmitter})
 				for newParent := range parentEmitter {
 					if newParent.Args[0].(*datamodel.Instance) == nil {
+						playerLeaveBindings.Remove(thisBinding)
 						player.PropertyEmitter.Off("Parent", parentEmitter)
 						playerLeaveChan <- player
 						return
@@ -213,21 +243,32 @@ func (myClient *CustomClient) setupChat() {
 			}(player)
 		case player := <-playerLeaveChan:
 			myClient.Logger.Printf("SYSTEM: %s has left the game.\n", player.Name())
+		case <-myClient.RunningContext.Done():
+			players.ChildEmitter.Off("*", playerJoinEmitter)
+			for thisBind := playerLeaveBindings.Front(); thisBind != nil; thisBind = thisBind.Next() {
+				bind := thisBind.Value.(InstanceEmitterBinding)
+				bind.Instance.PropertyEmitter.Off("Parent", bind.Binding)
+			}
+			return nil
 		}
 	}
 }
 
-func (myClient *CustomClient) SendChat(message string, toPlayer string, channel string) {
+func (myClient *CustomClient) SendChat(message string, toPlayer string, channel string) error {
 	if channel == "" {
 		channel = "All" // assume default channel
 	}
 
-	remote := <-myClient.DataModel.WaitForChild("ReplicatedStorage", "DefaultChatSystemChatEvents", "SayMessageRequest")
+	remote, err := myClient.DataModel.WaitForChild(myClient.RunningContext, "ReplicatedStorage", "DefaultChatSystemChatEvents", "SayMessageRequest")
+	if err != nil {
+		return err
+	}
 	if toPlayer != "" {
 		message = "/w " + toPlayer + " " + message
 	}
 
 	myClient.FireRemote(remote, rbxfile.ValueString(message), rbxfile.ValueString(channel))
+	return nil
 }
 
 func (myClient *CustomClient) joinWithJoinScript(url string, cookies []*http.Cookie) error {
@@ -439,7 +480,11 @@ func (myClient *CustomClient) dial() {
 				return
 			}
 			myClient.WriteSimple(connreqpacket)
-			time.Sleep(5 * time.Second)
+			select {
+			case <-time.After(5 * time.Second):
+			case <-myClient.RunningContext.Done():
+				return
+			}
 			if i > 2 {
 				connreqpacket.maxLength = 576 // try smaller mtu, is this why our packets are getting lost?
 			}
@@ -451,6 +496,8 @@ func (myClient *CustomClient) dial() {
 func (myClient *CustomClient) mainReadLoop() error {
 	buf := make([]byte, 1492)
 	for {
+		// this connection should be closed when the context expires
+		// hence we don't need to select{} RunningContext.Done()
 		n, _, err := myClient.Connection.ReadFromUDP(buf)
 		if err != nil {
 			myClient.Logger.Println("fatal read err:", err.Error(), "read", n, "bytes")
@@ -463,7 +510,7 @@ func (myClient *CustomClient) mainReadLoop() error {
 }
 
 func (myClient *CustomClient) createWriter() {
-	myClient.Output.On("udp", func(e *emitter.Event) {
+	myClient.writerBinding = myClient.Output.On("udp", func(e *emitter.Event) {
 		num, err := myClient.Connection.Write(e.Args[0].([]byte))
 		if err != nil {
 			fmt.Printf("Wrote %d bytes, err: %s\n", num, err.Error())

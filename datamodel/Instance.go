@@ -1,6 +1,7 @@
 package datamodel
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"sync"
@@ -96,71 +97,74 @@ func (instance *Instance) FindFirstChild(name string) *Instance {
 	}
 	return nil
 }
-func (instance *Instance) waitForChild(name string) <-chan *Instance {
-	childChan := make(chan *Instance, 1)
+func (instance *Instance) waitForChild(ctx context.Context, name string) (*Instance, error) {
 	if child := instance.FindFirstChild(name); child != nil {
-		childChan <- child
-		return childChan
+		return child, nil
 	}
 	emitterChan := instance.ChildEmitter.Once(name)
-	go func() {
-		// If the child is added while we created the emitter
-		if child := instance.FindFirstChild(name); child != nil {
-			childChan <- child
-			instance.ChildEmitter.Off(name, emitterChan)
-			return
-		}
-		child := (<-emitterChan).Args[0].(*Instance)
-		childChan <- child
-	}()
-	return childChan
-}
-
-func (instance *Instance) WaitForChild(names ...string) <-chan *Instance {
-	retChan := make(chan *Instance, 1)
-	go func() {
-		for _, name := range names {
-			instance = <-instance.waitForChild(name)
-		}
-		retChan <- instance
-	}()
-	return retChan
-}
-
-func (instance *Instance) WaitForProp(name string) <-chan rbxfile.Value {
-	instance.PropertiesMutex.RLock()
-	propChan := make(chan rbxfile.Value, 1)
-	emitterChan := instance.PropertyEmitter.Once(name)
-
-	go func() {
-		propChan <- (<-emitterChan).Args[0].(rbxfile.Value)
-	}()
-
-	instance.PropertiesMutex.RUnlock()
-	return propChan
-}
-func (instance *Instance) WaitForRefProp(name string) <-chan *Instance {
-	propChan := make(chan *Instance, 1)
-	currProp := instance.Get(name)
-	if currProp != nil && currProp.(ValueReference).Instance != nil {
-		propChan <- currProp.(ValueReference).Instance
-		return propChan
+	// If the child is added while we created the emitter
+	if child := instance.FindFirstChild(name); child != nil {
+		instance.ChildEmitter.Off(name, emitterChan)
+		return child, nil
 	}
-	go func() {
-		propEvtChan := instance.PropertyEmitter.On(name)
-		for propEvt := range propEvtChan {
+	select {
+	case e := <-emitterChan:
+		// No need to unbind because it's Once()
+		child := e.Args[0].(*Instance)
+		return child, nil
+	case <-ctx.Done():
+		instance.ChildEmitter.Off(name, emitterChan)
+		return nil, ctx.Err()
+	}
+}
+
+func (instance *Instance) WaitForChild(ctx context.Context, names ...string) (*Instance, error) {
+	var err error
+	for _, name := range names {
+		instance, err = instance.waitForChild(ctx, name)
+		if err != nil {
+			return instance, err
+		}
+	}
+	return instance, nil
+}
+
+func (instance *Instance) WaitForProp(ctx context.Context, name string) (rbxfile.Value, error) {
+	instance.PropertiesMutex.RLock()
+	emitterChan := instance.PropertyEmitter.Once(name)
+	instance.PropertiesMutex.RUnlock()
+
+	select {
+	case e := <-emitterChan:
+		return e.Args[0].(rbxfile.Value), nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+func (instance *Instance) WaitForRefProp(ctx context.Context, name string) (*Instance, error) {
+	instance.PropertiesMutex.RLock()
+	currProp := instance.Properties[name]
+	if currProp != nil && currProp.(ValueReference).Instance != nil {
+		instance.PropertiesMutex.RUnlock()
+		return currProp.(ValueReference).Instance, nil
+	}
+	propEvtChan := instance.PropertyEmitter.On(name)
+	instance.PropertiesMutex.RUnlock()
+	for {
+		select {
+		case propEvt := <-propEvtChan:
 			if propEvt.Args[0] == nil {
 				continue
 			}
 			currProp := propEvt.Args[0].(ValueReference)
 			if currProp.Instance != nil {
 				instance.PropertyEmitter.Off(name, propEvtChan)
-				propChan <- currProp.Instance
-				return
+				return currProp.Instance, nil
 			}
+		case <-ctx.Done():
+			return nil, ctx.Err()
 		}
-	}()
-	return propChan
+	}
 }
 
 func (instance *Instance) Name() string {
@@ -190,23 +194,6 @@ func (instance *Instance) GetFullName() string {
 		builder.WriteString(part)
 	}
 	return builder.String()
-}
-func (instance *Instance) MakeEventChan(name string, once bool) (<-chan emitter.Event, <-chan []rbxfile.Value) {
-	evChan := make(chan []rbxfile.Value, 1)
-	var emitterChan <-chan emitter.Event
-	if once {
-		emitterChan = instance.EventEmitter.Once(name)
-	} else {
-		emitterChan = instance.EventEmitter.On(name)
-	}
-
-	go func() {
-		for ev := range emitterChan {
-			evChan <- ev.Args[0].([]rbxfile.Value)
-		}
-		close(evChan)
-	}()
-	return emitterChan, evChan
 }
 func (instance *Instance) FireEvent(name string, args ...rbxfile.Value) {
 	<-instance.EventEmitter.Emit(name, []rbxfile.Value(args))

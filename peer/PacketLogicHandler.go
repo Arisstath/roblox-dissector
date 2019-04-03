@@ -1,6 +1,7 @@
 package peer
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"sync"
@@ -13,7 +14,8 @@ import (
 
 type PacketLogicHandler struct {
 	*ConnectedPeer
-	Context *CommunicationContext
+	Context        *CommunicationContext
+	RunningContext context.Context
 
 	ackTicker      *time.Ticker
 	dataPingTicker *time.Ticker
@@ -50,14 +52,17 @@ func (logicHandler *PacketLogicHandler) startDataPing() {
 	logicHandler.dataPingTicker = time.NewTicker(time.Duration(logicHandler.pingInterval) * time.Millisecond)
 	go func() {
 		for {
-			<-logicHandler.dataPingTicker.C
-
-			logicHandler.WritePacket(&Packet83Layer{
-				[]Packet83Subpacket{&Packet83_05{
-					Timestamp:     uint64(time.Now().UnixNano() / int64(time.Millisecond)),
-					PacketVersion: 0,
-				}},
-			})
+			select {
+			case <-logicHandler.dataPingTicker.C:
+				logicHandler.WritePacket(&Packet83Layer{
+					[]Packet83Subpacket{&Packet83_05{
+						Timestamp:     uint64(time.Now().UnixNano() / int64(time.Millisecond)),
+						PacketVersion: 0,
+					}},
+				})
+			case <-logicHandler.RunningContext.Done():
+				return
+			}
 		}
 	}()
 }
@@ -66,8 +71,12 @@ func (logicHandler *PacketLogicHandler) startAcker() {
 	logicHandler.ackTicker = time.NewTicker(500 * time.Millisecond)
 	go func() {
 		for {
-			<-logicHandler.ackTicker.C
-			logicHandler.sendACKs()
+			select {
+			case <-logicHandler.ackTicker.C:
+				logicHandler.sendACKs()
+			case <-logicHandler.RunningContext.Done():
+				return
+			}
 		}
 	}()
 }
@@ -77,6 +86,7 @@ func (logicHandler *PacketLogicHandler) defaultReliabilityLayerHandler(e *emitte
 }
 
 func (logicHandler *PacketLogicHandler) disconnectInternal() {
+	// Note: these will NOT close the channel!
 	if logicHandler.ackTicker != nil {
 		logicHandler.ackTicker.Stop()
 	}

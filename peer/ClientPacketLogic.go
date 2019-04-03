@@ -1,8 +1,8 @@
 package peer
 
 import (
+	"context"
 	"errors"
-	"fmt"
 	"math"
 	"net"
 	"time"
@@ -17,17 +17,20 @@ func (myClient *CustomClient) startDataPing() {
 	myClient.dataPingTicker = time.NewTicker(time.Duration(myClient.pingInterval) * time.Millisecond)
 	go func() {
 		for {
-			<-myClient.dataPingTicker.C
-
-			myClient.WritePacket(&Packet83Layer{
-				[]Packet83Subpacket{&Packet83_05{
-					Timestamp:     uint64(time.Now().UnixNano() / int64(time.Millisecond)),
-					PacketVersion: 2,
-					Fps1:          60,
-					Fps2:          60,
-					Fps3:          60,
-				}},
-			})
+			select {
+			case <-myClient.dataPingTicker.C:
+				myClient.WritePacket(&Packet83Layer{
+					[]Packet83Subpacket{&Packet83_05{
+						Timestamp:     uint64(time.Now().UnixNano() / int64(time.Millisecond)),
+						PacketVersion: 2,
+						Fps1:          60,
+						Fps2:          60,
+						Fps3:          60,
+					}},
+				})
+			case <-myClient.RunningContext.Done():
+				return
+			}
 		}
 	}()
 }
@@ -55,7 +58,11 @@ func (myClient *CustomClient) bindDefaultHandlers() {
 	// we won't do that because the chan receive MUST be executed inside
 	// the go func(){}()
 	go func() {
-		players := <-myClient.DataModel.WaitForService("Players")
+		players, err := myClient.DataModel.WaitForService(myClient.RunningContext, "Players")
+		if err != nil {
+			println("players serv error:", err.Error())
+			return
+		}
 		myClient.handlePlayersService(players)
 	}()
 }
@@ -276,8 +283,10 @@ func (myClient *CustomClient) InvokeRemote(instance *datamodel.Instance, argumen
 	myClient.remoteLock.Unlock()
 
 	myClient.Logger.Printf("Sending invocation %s#%d\n", instance.GetFullName(), index)
-	succEmitter, succChan := instance.MakeEventChan("RemoteOnInvokeSuccess", true)
-	errEmitter, errChan := instance.MakeEventChan("RemoteOnInvokeError", true)
+	succEvtChan := instance.EventEmitter.Once("RemoteOnInvokeSuccess")
+	errEvtChan := instance.EventEmitter.Once("RemoteOnInvokeError")
+	defer instance.EventEmitter.Off("RemoteOnInvokeSuccess", succEvtChan)
+	defer instance.EventEmitter.Off("RemoteOnInvokeError", errEvtChan)
 
 	err := myClient.SendEvent(instance, "RemoteOnInvokeServer",
 		rbxfile.ValueInt(index),
@@ -290,19 +299,23 @@ func (myClient *CustomClient) InvokeRemote(instance *datamodel.Instance, argumen
 
 	for {
 		select {
-		case succ := <-succChan:
+		case e, received := <-succEvtChan:
+			if !received {
+				continue
+			}
+			succ := e.Args[0].([]rbxfile.Value)
 			myClient.Logger.Printf("Listener #%d received success on %s#%d", index, instance.GetFullName(), uint32(succ[0].(rbxfile.ValueInt)))
 			// check that this packet was sent for us specifically
 			if uint32(succ[0].(rbxfile.ValueInt)) == index {
-				instance.EventEmitter.Off("RemoteOnInvokeError", errEmitter)
-
 				return succ[1].(datamodel.ValueTuple), nil // return any values
 			}
-		case err := <-errChan:
+		case e, received := <-errEvtChan:
+			if !received {
+				continue
+			}
+			err := e.Args[0].([]rbxfile.Value)
 			myClient.Logger.Printf("Listener #%d received error on %s#%d", index, instance.GetFullName(), uint32(err[0].(rbxfile.ValueInt)))
 			if uint32(err[0].(rbxfile.ValueInt)) == index {
-				instance.EventEmitter.Off("RemoteOnInvokeSuccess", succEmitter)
-
 				return nil, errors.New(string(err[1].(rbxfile.ValueString)))
 			}
 		}
@@ -367,21 +380,51 @@ func interpolateVector(vec1, vec2 rbxfile.ValueVector3, maxStep float32) rbxfile
 	return addVector(vec1, scaleDelta(vec1, vec2, maxStep))
 }
 
-func (myClient *CustomClient) StalkPlayer(name string) {
-	myCharacter := <-myClient.GetLocalPlayer().WaitForRefProp("Character")
-	myRootPart := <-myCharacter.WaitForChild("HumanoidRootPart")
-	myAnimator := <-myCharacter.WaitForChild("Humanoid", "Animator")
-	targetPlayer := <-myClient.DataModel.WaitForChild("Players", name)
-	targetCharacter := <-targetPlayer.WaitForRefProp("Character")
-	targetRootPart := <-targetCharacter.WaitForChild("HumanoidRootPart")
-	targetAnimator := <-targetCharacter.WaitForChild("Humanoid", "Animator")
+func (myClient *CustomClient) StalkPlayer(name string) error {
+	// We must be able to cancel the process from within this function
+	// while not halting the entire client
+	ctx, stalkEnd := context.WithCancel(myClient.RunningContext)
+	defer stalkEnd()
+
+	localPlayer, err := myClient.GetLocalPlayer()
+	if err != nil {
+		return err
+	}
+	myCharacter, err := localPlayer.WaitForRefProp(ctx, "Character")
+	if err != nil {
+		return err
+	}
+	myRootPart, err := myCharacter.WaitForChild(ctx, "HumanoidRootPart")
+	if err != nil {
+		return err
+	}
+	myAnimator, err := myCharacter.WaitForChild(ctx, "Humanoid", "Animator")
+	if err != nil {
+		return err
+	}
+	targetPlayer, err := myClient.DataModel.WaitForChild(ctx, "Players", name)
+	if err != nil {
+		return err
+	}
+	targetCharacter, err := targetPlayer.WaitForRefProp(ctx, "Character")
+	if err != nil {
+		return err
+	}
+	targetRootPart, err := targetCharacter.WaitForChild(ctx, "HumanoidRootPart")
+	if err != nil {
+		return err
+	}
+	targetAnimator, err := targetCharacter.WaitForChild(ctx, "Humanoid", "Animator")
+	if err != nil {
+		return err
+	}
 	println("got target animator")
 
 	var targetPosition rbxfile.ValueCFrame
 	currentPosition := myRootPart.Get("CFrame").(rbxfile.ValueCFrame).Position
 	currentHumanoidState := uint8(8)
 
-	myClient.PacketEmitter.On("ID_PHYSICS", func(e *emitter.Event) {
+	physicsEvtChan := myClient.PacketEmitter.On("ID_PHYSICS", func(e *emitter.Event) {
 		mainLayer := e.Args[0].(*Packet85Layer)
 		for _, packet := range mainLayer.SubPackets {
 			if packet.Data.Instance == targetRootPart {
@@ -393,11 +436,16 @@ func (myClient *CustomClient) StalkPlayer(name string) {
 			}
 		}
 	}, emitter.Void)
+	defer myClient.PacketEmitter.Off("ID_PHYSICS", physicsEvtChan)
 
 	stalkTicker := time.NewTicker(time.Second / 30)
 
-	animationEmitter, animationChan := targetAnimator.MakeEventChan("OnCombinedUpdate", false)
-	myHumanoid := <-myCharacter.WaitForChild("Humanoid")
+	animationEvtChan := targetAnimator.EventEmitter.On("OnCombinedUpdate")
+	myHumanoid, err := myCharacter.WaitForChild(ctx, "Humanoid")
+	if err != nil {
+		targetAnimator.EventEmitter.Off("OnCombinedUpdate", animationEvtChan)
+		return err
+	}
 	healthHandler := func(e *emitter.Event) {
 		if e.Args[0].(rbxfile.ValueFloat) <= 0.0 {
 			currentHumanoidState = 15
@@ -405,19 +453,28 @@ func (myClient *CustomClient) StalkPlayer(name string) {
 	}
 	healthCh := myHumanoid.PropertyEmitter.On("Health_XML", healthHandler, emitter.Void)
 	targetHandler := func(e *emitter.Event) {
-		animationChan = nil
-		targetAnimator.EventEmitter.Off("OnPlay", animationEmitter)
+		targetAnimator.EventEmitter.Off("OnPlay", animationEvtChan)
+		animationEvtChan = nil
 		println("targetca, updating")
 		targetCharacter = e.Args[0].(datamodel.ValueReference).Instance
 		if targetCharacter == nil {
 			println("Stalk process finished!")
+			stalkEnd()
 			return
 		}
 		// this "middleware is called async, hence we don't want to block"
 		go func() {
-			targetRootPart = <-targetCharacter.WaitForChild("HumanoidRootPart")
-			targetAnimator = <-targetCharacter.WaitForChild("Humanoid", "Animator")
-			animationEmitter, animationChan = targetAnimator.MakeEventChan("OnCombinedUpdate", false)
+			targetRootPart, err = targetCharacter.WaitForChild(ctx, "HumanoidRootPart")
+			if err != nil {
+				println(err.Error())
+				stalkEnd()
+			}
+			targetAnimator, err = targetCharacter.WaitForChild(ctx, "Humanoid", "Animator")
+			if err != nil {
+				println(err.Error())
+				stalkEnd()
+			}
+			animationEvtChan = targetAnimator.EventEmitter.On("OnCombinedUpdate")
 		}()
 	}
 	charHandler := func(e *emitter.Event) {
@@ -426,16 +483,30 @@ func (myClient *CustomClient) StalkPlayer(name string) {
 		myCharacter = e.Args[0].(datamodel.ValueReference).Instance
 		// this "middleware is called async, hence we don't want to block"
 		go func() {
-			myRootPart = <-myCharacter.WaitForChild("HumanoidRootPart")
-			myHumanoid = <-myCharacter.WaitForChild("Humanoid")
-			myAnimator = <-myHumanoid.WaitForChild("Animator")
+			myRootPart, err = myCharacter.WaitForChild(ctx, "HumanoidRootPart")
+			if err != nil {
+				println(err.Error())
+				stalkEnd()
+			}
+			myHumanoid, err = myCharacter.WaitForChild(ctx, "Humanoid")
+			if err != nil {
+				println(err.Error())
+				stalkEnd()
+			}
+			myAnimator, err = myHumanoid.WaitForChild(ctx, "Animator")
+			if err != nil {
+				println(err.Error())
+				stalkEnd()
+			}
 			currentPosition = myRootPart.Get("CFrame").(rbxfile.ValueCFrame).Position
 			healthCh = myHumanoid.PropertyEmitter.On("Health_XML")
 			currentHumanoidState = 8
 		}()
 	}
-	myClient.GetLocalPlayer().PropertyEmitter.On("Character", charHandler, emitter.Void)
-	targetPlayer.PropertyEmitter.On("Character", targetHandler, emitter.Void)
+	localCharEvtChan := localPlayer.PropertyEmitter.On("Character", charHandler, emitter.Void)
+	targetCharEvtChan := targetPlayer.PropertyEmitter.On("Character", targetHandler, emitter.Void)
+	defer localPlayer.PropertyEmitter.Off("Character", localCharEvtChan)
+	defer targetPlayer.PropertyEmitter.Off("Character", targetCharEvtChan)
 	for {
 		// TODO: Break out of this loop?
 		select {
@@ -444,16 +515,18 @@ func (myClient *CustomClient) StalkPlayer(name string) {
 			currentVelocity := scaleVector(scaleDelta(currentPosition, targetPosition.Position, 16.0), 30.0)
 
 			myClient.stalkPart(myRootPart, rbxfile.ValueCFrame{Position: currentPosition, Rotation: targetPosition.Rotation}, currentVelocity, rbxfile.ValueVector3{}, currentHumanoidState)
-		case event, received := <-animationChan: // Thankfully, this should receive from the updated animationChan
-			println("receiving animationChan event")
-			fmt.Println(event)
+		case e, received := <-animationEvtChan: // Thankfully, this should receive from the updated animationChan
 			if !received {
 				continue
 			}
+			event := e.Args[0].([]rbxfile.Value)
 			err := myClient.SendEvent(myAnimator, "OnCombinedUpdate", event...)
 			if err != nil {
 				println("Failed to send onplay event: ", err.Error())
 			}
+		case <-myClient.RunningContext.Done():
+			targetAnimator.EventEmitter.Off("OnCombinedUpdate", animationEvtChan)
+			return myClient.RunningContext.Err()
 		}
 	}
 }
