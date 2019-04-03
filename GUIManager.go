@@ -21,7 +21,7 @@ import (
 type mainThreadHelper struct {
 	core.QObject
 
-	_    func()       `constructor:"init`
+	_    func()       `constructor:"init"`
 	_    func(func()) `signal:"runOnMain"`
 	Wait chan struct{}
 }
