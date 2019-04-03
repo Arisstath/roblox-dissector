@@ -193,7 +193,7 @@ func (instance *Instance) GetFullName() string {
 		builder.WriteByte('.')
 		builder.WriteString(part)
 	}
-	return builder.String()
+	return builder.String()[1:]
 }
 func (instance *Instance) FireEvent(name string, args ...rbxfile.Value) {
 	<-instance.EventEmitter.Emit(name, []rbxfile.Value(args))
