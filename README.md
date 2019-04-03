@@ -54,9 +54,9 @@ Packets for which encoding is not supported: memcheck hash packets
 * Custom Roblox server
 
 ## Screenshots
-![Sala provides a simple interface for exploring PCAP files.](screenshots/screenshot1.png?raw=true)
+![Sala provides a simple interface for exploring PCAP files.](https://user-images.githubusercontent.com/6651822/55480485-0fc92880-5629-11e9-93eb-8431f85dd793.png)
 
-![DataModel browser](screenshots/screenshot2.png?raw=true)
+![DataModel browser](https://user-images.githubusercontent.com/6651822/55480533-35563200-5629-11e9-9b7d-b5ed892a2ff0.png)
 
 ## About the name
 _Sala_ < Finnish _salaisuus_ ‘secret’ (noun). The name refers to how Sala introduces its user to many obscure aspects of the Roblox network protocol.
