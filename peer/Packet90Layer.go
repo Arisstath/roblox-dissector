@@ -17,25 +17,25 @@ func (stream *extendedReader) DecodePacket90Layer(reader PacketReader, layers *P
 	layer := NewPacket90Layer()
 
 	lenBytes := bitsToBytes(uint(layers.Reliability.LengthInBits)) - 1 // -1 for packet id
-	thisBitstream, err := stream.aesDecrypt(int(lenBytes))
+	thisStream, err := stream.aesDecrypt(int(lenBytes))
 	if err != nil {
 		return layer, err
 	}
-	layer.SchemaVersion, err = thisBitstream.readUint32BE()
+	layer.SchemaVersion, err = thisStream.readUint32BE()
 
-	flagsLen, err := thisBitstream.readUint16BE()
+	flagsLen, err := thisStream.readUint16BE()
 	if err != nil {
 		return layer, err
 	}
 
 	layer.RequestedFlags = make([]string, flagsLen)
 	for i := 0; i < int(flagsLen); i++ {
-		layer.RequestedFlags[i], err = thisBitstream.readVarLengthString()
+		layer.RequestedFlags[i], err = thisStream.readVarLengthString()
 		if err != nil {
 			return layer, err
 		}
 	}
-	layer.JoinData, err = thisBitstream.readVarLengthString()
+	layer.JoinData, err = thisStream.readVarLengthString()
 	if err != nil {
 		return layer, err
 	}

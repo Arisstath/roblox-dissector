@@ -11,11 +11,11 @@ func NewPacket8FLayer() *Packet8FLayer {
 	return &Packet8FLayer{}
 }
 
-func (thisBitstream *extendedReader) DecodePacket8FLayer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisStream *extendedReader) DecodePacket8FLayer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket8FLayer()
 
 	var err error
-	spawnName, err := thisBitstream.readVarLengthString()
+	spawnName, err := thisStream.readVarLengthString()
 	layer.SpawnName = string(spawnName)
 	return layer, err
 }

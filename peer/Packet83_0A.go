@@ -15,11 +15,11 @@ type Packet83_0A struct {
 	Versions []uint32
 }
 
-func (thisBitstream *extendedReader) DecodePacket83_0A(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
+func (thisStream *extendedReader) DecodePacket83_0A(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
 	var err error
 	layer := &Packet83_0A{}
 
-	referent, err := thisBitstream.readObject(reader.Caches())
+	referent, err := thisStream.readObject(reader.Caches())
 	if err != nil {
 		return layer, err
 	}
@@ -32,7 +32,7 @@ func (thisBitstream *extendedReader) DecodePacket83_0A(reader PacketReader, laye
 	}
 
 	context := reader.Context()
-	propertyIDx, err := thisBitstream.readUint16BE()
+	propertyIDx, err := thisStream.readUint16BE()
 	if err != nil {
 		return layer, err
 	}
@@ -42,13 +42,13 @@ func (thisBitstream *extendedReader) DecodePacket83_0A(reader PacketReader, laye
 	}
 	layer.Schema = context.StaticSchema.Properties[propertyIDx]
 
-	countVersions, err := thisBitstream.readUint8()
+	countVersions, err := thisStream.readUint8()
 	if err != nil {
 		return layer, err
 	}
 	layer.Versions = make([]uint32, countVersions)
 	for i := 0; i < int(countVersions); i++ {
-		layer.Versions[i], err = thisBitstream.readUintUTF8()
+		layer.Versions[i], err = thisStream.readUintUTF8()
 		if err != nil {
 			return layer, err
 		}

@@ -104,10 +104,10 @@ func NewPacket13Layer() *Packet13Layer {
 
 var voidOfflineMessage []byte = make([]byte, 0x10)
 
-func (thisBitstream *extendedReader) DecodePacket05Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisStream *extendedReader) DecodePacket05Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	var err error
 	layer := NewPacket05Layer()
-	layer.ProtocolVersion, err = thisBitstream.readUint8() // !! RakNetLayer will have read the offline message !!
+	layer.ProtocolVersion, err = thisStream.readUint8() // !! RakNetLayer will have read the offline message !!
 	return layer, err
 }
 
@@ -136,23 +136,23 @@ func (Packet05Layer) TypeString() string {
 	return "ID_OPEN_CONNECTION_REQUEST_1"
 }
 
-func (thisBitstream *extendedReader) DecodePacket06Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisStream *extendedReader) DecodePacket06Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket06Layer()
 
 	var err error
-	err = thisBitstream.bytes(voidOfflineMessage, 0x10)
+	err = thisStream.bytes(voidOfflineMessage, 0x10)
 	if err != nil {
 		return layer, err
 	}
-	layer.GUID, err = thisBitstream.readUint64BE()
+	layer.GUID, err = thisStream.readUint64BE()
 	if err != nil {
 		return layer, err
 	}
-	layer.UseSecurity, err = thisBitstream.readBoolByte()
+	layer.UseSecurity, err = thisStream.readBoolByte()
 	if err != nil {
 		return layer, err
 	}
-	layer.MTU, err = thisBitstream.readUint16BE()
+	layer.MTU, err = thisStream.readUint16BE()
 	return layer, err
 }
 
@@ -184,23 +184,23 @@ func (Packet06Layer) TypeString() string {
 	return "ID_OPEN_CONNECTION_REPLY_1"
 }
 
-func (thisBitstream *extendedReader) DecodePacket07Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisStream *extendedReader) DecodePacket07Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket07Layer()
 
 	var err error
-	err = thisBitstream.bytes(voidOfflineMessage, 0x10)
+	err = thisStream.bytes(voidOfflineMessage, 0x10)
 	if err != nil {
 		return layer, err
 	}
-	layer.IPAddress, err = thisBitstream.readAddress()
+	layer.IPAddress, err = thisStream.readAddress()
 	if err != nil {
 		return layer, err
 	}
-	layer.MTU, err = thisBitstream.readUint16BE()
+	layer.MTU, err = thisStream.readUint16BE()
 	if err != nil {
 		return layer, err
 	}
-	layer.GUID, err = thisBitstream.readUint64BE()
+	layer.GUID, err = thisStream.readUint64BE()
 	return layer, err
 }
 
@@ -232,27 +232,27 @@ func (Packet07Layer) TypeString() string {
 	return "ID_OPEN_CONNECTION_REQUEST_2"
 }
 
-func (thisBitstream *extendedReader) DecodePacket08Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisStream *extendedReader) DecodePacket08Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket08Layer()
 
 	var err error
-	err = thisBitstream.bytes(voidOfflineMessage, 0x10)
+	err = thisStream.bytes(voidOfflineMessage, 0x10)
 	if err != nil {
 		return layer, err
 	}
-	layer.GUID, err = thisBitstream.readUint64BE()
+	layer.GUID, err = thisStream.readUint64BE()
 	if err != nil {
 		return layer, err
 	}
-	layer.IPAddress, err = thisBitstream.readAddress()
+	layer.IPAddress, err = thisStream.readAddress()
 	if err != nil {
 		return layer, err
 	}
-	layer.MTU, err = thisBitstream.readUint16BE()
+	layer.MTU, err = thisStream.readUint16BE()
 	if err != nil {
 		return layer, err
 	}
-	layer.UseSecurity, err = thisBitstream.readBoolByte()
+	layer.UseSecurity, err = thisStream.readBoolByte()
 	return layer, err
 }
 
@@ -288,24 +288,24 @@ func (Packet08Layer) TypeString() string {
 	return "ID_OPEN_CONNECTION_REPLY_2"
 }
 
-func (thisBitstream *extendedReader) DecodePacket09Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisStream *extendedReader) DecodePacket09Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket09Layer()
 
 	var err error
-	layer.GUID, err = thisBitstream.readUint64BE()
+	layer.GUID, err = thisStream.readUint64BE()
 	if err != nil {
 		return layer, err
 	}
-	layer.Timestamp, err = thisBitstream.readUint64BE()
+	layer.Timestamp, err = thisStream.readUint64BE()
 	if err != nil {
 		return layer, err
 	}
-	layer.UseSecurity, err = thisBitstream.readBoolByte()
+	layer.UseSecurity, err = thisStream.readBoolByte()
 	if err != nil {
 		return layer, err
 	}
 	// 2x 64 for timestamps, 8 for UseSecurity and 8 for PacketType
-	layer.Password, err = thisBitstream.readString(int((layers.Reliability.LengthInBits - 64 - 64 - 8 - 8) / 8))
+	layer.Password, err = thisStream.readString(int((layers.Reliability.LengthInBits - 64 - 64 - 8 - 8) / 8))
 	if layer.Password[0] == 0x5E && layer.Password[1] == 0x11 {
 		layers.Root.Logger.Println("Detected Studio!")
 		reader.Context().IsStudio = true
@@ -339,29 +339,29 @@ func (Packet09Layer) TypeString() string {
 	return "ID_CONNECTION_REQUEST"
 }
 
-func (thisBitstream *extendedReader) DecodePacket10Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisStream *extendedReader) DecodePacket10Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket10Layer()
 
 	var err error
-	layer.IPAddress, err = thisBitstream.readAddress()
+	layer.IPAddress, err = thisStream.readAddress()
 	if err != nil {
 		return layer, err
 	}
-	layer.SystemIndex, err = thisBitstream.readUint16BE()
+	layer.SystemIndex, err = thisStream.readUint16BE()
 	if err != nil {
 		return layer, err
 	}
 	for i := 0; i < 10; i++ {
-		layer.Addresses[i], err = thisBitstream.readAddress()
+		layer.Addresses[i], err = thisStream.readAddress()
 		if err != nil {
 			return layer, err
 		}
 	}
-	layer.SendPingTime, err = thisBitstream.readUint64BE()
+	layer.SendPingTime, err = thisStream.readUint64BE()
 	if err != nil {
 		return layer, err
 	}
-	layer.SendPongTime, err = thisBitstream.readUint64BE()
+	layer.SendPongTime, err = thisStream.readUint64BE()
 	return layer, err
 }
 func (layer *Packet10Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
@@ -402,25 +402,25 @@ func (Packet10Layer) TypeString() string {
 	return "ID_CONNECTION_ACCEPTED"
 }
 
-func (thisBitstream *extendedReader) DecodePacket13Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisStream *extendedReader) DecodePacket13Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket13Layer()
 
 	var err error
-	layer.IPAddress, err = thisBitstream.readAddress()
+	layer.IPAddress, err = thisStream.readAddress()
 	if err != nil {
 		return layer, err
 	}
 	for i := 0; i < 10; i++ {
-		layer.Addresses[i], err = thisBitstream.readAddress()
+		layer.Addresses[i], err = thisStream.readAddress()
 		if err != nil {
 			return layer, err
 		}
 	}
-	layer.SendPingTime, err = thisBitstream.readUint64BE()
+	layer.SendPingTime, err = thisStream.readUint64BE()
 	if err != nil {
 		return layer, err
 	}
-	layer.SendPongTime, err = thisBitstream.readUint64BE()
+	layer.SendPongTime, err = thisStream.readUint64BE()
 	return layer, err
 }
 func (layer *Packet13Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {

@@ -11,14 +11,14 @@ type ReplicationEvent struct {
 	Arguments []rbxfile.Value
 }
 
-func (schema *StaticEventSchema) Decode(reader PacketReader, thisBitstream SerializeReader, layers *PacketLayers) (*ReplicationEvent, error) {
+func (schema *StaticEventSchema) Decode(reader PacketReader, thisStream SerializeReader, layers *PacketLayers) (*ReplicationEvent, error) {
 	var err error
 	var thisVal rbxfile.Value
 
 	event := &ReplicationEvent{}
 	event.Arguments = make([]rbxfile.Value, len(schema.Arguments))
 	for i, argSchema := range schema.Arguments {
-		thisVal, err = thisBitstream.ReadSerializedValue(reader, argSchema.Type, argSchema.EnumID)
+		thisVal, err = thisStream.ReadSerializedValue(reader, argSchema.Type, argSchema.EnumID)
 		event.Arguments[i] = thisVal
 		if err != nil {
 			return event, err

@@ -25,13 +25,13 @@ func is2ndRoundType(typeId uint8) bool {
 	return ((id-3) > 0x1F || ((1<<(id-3))&uint32(0xC200000F)) == 0) && (id != 1) // thank you ARM compiler for optimizing this <3
 }
 
-func decodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader, layers *PacketLayers) (*ReplicationInstance, error) {
+func decodeReplicationInstance(reader PacketReader, thisStream InstanceReader, layers *PacketLayers) (*ReplicationInstance, error) {
 	var err error
 	repInstance := NewReplicationInstance()
 	var referent datamodel.Reference
 	context := reader.Context()
 
-	referent, err = thisBitstream.ReadObject(reader)
+	referent, err = thisStream.ReadObject(reader)
 	if err != nil {
 		return nil, errors.New("while parsing self: " + err.Error())
 	}
@@ -44,7 +44,7 @@ func decodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader
 	}
 	repInstance.Instance = thisInstance
 
-	schemaIDx, err := thisBitstream.readUint16BE()
+	schemaIDx, err := thisStream.readUint16BE()
 	if int(schemaIDx) > len(context.StaticSchema.Instances) {
 		return repInstance, fmt.Errorf("class idx %d is higher than %d", schemaIDx, len(context.StaticSchema.Instances))
 	}
@@ -53,17 +53,17 @@ func decodeReplicationInstance(reader PacketReader, thisBitstream InstanceReader
 	thisInstance.ClassName = schema.Name
 	layers.Root.Logger.Println("will parse", referent.String(), schema.Name, len(schema.Properties))
 
-	repInstance.DeleteOnDisconnect, err = thisBitstream.readBoolByte()
+	repInstance.DeleteOnDisconnect, err = thisStream.readBoolByte()
 	if err != nil {
 		return repInstance, err
 	}
 
-	err = thisBitstream.ReadProperties(schema.Properties, repInstance.Properties, reader)
+	err = thisStream.ReadProperties(schema.Properties, repInstance.Properties, reader)
 	if err != nil {
 		return repInstance, err
 	}
 
-	referent, err = thisBitstream.ReadObject(reader)
+	referent, err = thisStream.ReadObject(reader)
 	if err != nil {
 		return repInstance, errors.New("while parsing parent: " + err.Error())
 	}

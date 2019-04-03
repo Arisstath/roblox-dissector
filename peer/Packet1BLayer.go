@@ -12,19 +12,19 @@ func NewPacket1BLayer() *Packet1BLayer {
 	return &Packet1BLayer{}
 }
 
-func (thisBitstream *extendedReader) DecodePacket1BLayer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisStream *extendedReader) DecodePacket1BLayer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket1BLayer()
 
 	var err error
-	layer.Timestamp, err = thisBitstream.readUint64BE()
+	layer.Timestamp, err = thisStream.readUint64BE()
 	if err != nil {
 		return layer, err
 	}
-	layer.Timestamp2, err = thisBitstream.readUint64BE()
+	layer.Timestamp2, err = thisStream.readUint64BE()
 	if err != nil {
 		return layer, err
 	}
-	layer.stream = thisBitstream
+	layer.stream = thisStream
 
 	return layer, err
 }

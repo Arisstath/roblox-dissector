@@ -16,51 +16,51 @@ type Packet83_05 struct {
 	ExtraStats uint32
 }
 
-func (thisBitstream *extendedReader) DecodePacket83_05(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
+func (thisStream *extendedReader) DecodePacket83_05(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
 	var err error
 	inner := &Packet83_05{}
 
-	inner.PacketVersion, err = thisBitstream.readUint8()
+	inner.PacketVersion, err = thisStream.readUint8()
 	if err != nil {
 		return inner, err
 	}
 
 	if inner.PacketVersion <= 1 {
-		inner.Timestamp, err = thisBitstream.readUint64BE()
+		inner.Timestamp, err = thisStream.readUint64BE()
 		if err != nil {
 			return inner, err
 		}
 	} else if inner.PacketVersion == 2 {
-		inner.Int1, err = thisBitstream.readUint32BE()
+		inner.Int1, err = thisStream.readUint32BE()
 		if err != nil {
 			return inner, err
 		}
 		var timestamp uint32
-		timestamp, err = thisBitstream.readUint32BE()
+		timestamp, err = thisStream.readUint32BE()
 		inner.Timestamp = uint64(timestamp)
 		if err != nil {
 			return inner, err
 		}
-		inner.Fps1, err = thisBitstream.readFloat32BE()
+		inner.Fps1, err = thisStream.readFloat32BE()
 		if err != nil {
 			return inner, err
 		}
-		inner.Fps2, err = thisBitstream.readFloat32BE()
+		inner.Fps2, err = thisStream.readFloat32BE()
 		if err != nil {
 			return inner, err
 		}
-		inner.Fps3, err = thisBitstream.readFloat32BE()
+		inner.Fps3, err = thisStream.readFloat32BE()
 		if err != nil {
 			return inner, err
 		}
 	} else {
 		return inner, errors.New("invalid packetversion")
 	}
-	inner.SendStats, err = thisBitstream.readUint32BE()
+	inner.SendStats, err = thisStream.readUint32BE()
 	if err != nil {
 		return inner, err
 	}
-	inner.ExtraStats, err = thisBitstream.readUint32BE()
+	inner.ExtraStats, err = thisStream.readUint32BE()
 	if err != nil {
 		return inner, err
 	}

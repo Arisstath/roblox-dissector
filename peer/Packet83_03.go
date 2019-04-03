@@ -19,11 +19,11 @@ type Packet83_03 struct {
 	Value rbxfile.Value
 }
 
-func (thisBitstream *extendedReader) DecodePacket83_03(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
+func (thisStream *extendedReader) DecodePacket83_03(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
 	var err error
 	layer := &Packet83_03{}
 
-	referent, err := thisBitstream.readObject(reader.Caches())
+	referent, err := thisStream.readObject(reader.Caches())
 	if err != nil {
 		return layer, err
 	}
@@ -35,18 +35,18 @@ func (thisBitstream *extendedReader) DecodePacket83_03(reader PacketReader, laye
 		return layer, err
 	}
 
-	propertyIDx, err := thisBitstream.readUint16BE()
+	propertyIDx, err := thisStream.readUint16BE()
 	if err != nil {
 		return layer, err
 	}
 
-	layer.HasVersion, err = thisBitstream.readBoolByte()
+	layer.HasVersion, err = thisStream.readBoolByte()
 	if err != nil {
 		return layer, err
 	}
 	// If this packet was written by the client, read version
 	if layer.HasVersion && reader.IsClient() {
-		layer.Version, err = thisBitstream.readSintUTF8()
+		layer.Version, err = thisStream.readSintUTF8()
 		if err != nil {
 			return layer, err
 		}
@@ -55,7 +55,7 @@ func (thisBitstream *extendedReader) DecodePacket83_03(reader PacketReader, laye
 	context := reader.Context()
 	if int(propertyIDx) == int(len(context.StaticSchema.Properties)) { // explicit Parent property system
 		var referent datamodel.Reference
-		referent, err = thisBitstream.readObject(reader.Caches())
+		referent, err = thisStream.readObject(reader.Caches())
 		if err != nil {
 			return layer, err
 		}
@@ -79,7 +79,7 @@ func (thisBitstream *extendedReader) DecodePacket83_03(reader PacketReader, laye
 	schema := context.StaticSchema.Properties[propertyIDx]
 	layer.Schema = schema
 
-	layer.Value, err = schema.Decode(reader, thisBitstream, layers)
+	layer.Value, err = schema.Decode(reader, thisStream, layers)
 
 	return layer, err
 }

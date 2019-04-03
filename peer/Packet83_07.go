@@ -16,11 +16,11 @@ type Packet83_07 struct {
 	Event *ReplicationEvent
 }
 
-func (thisBitstream *extendedReader) DecodePacket83_07(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
+func (thisStream *extendedReader) DecodePacket83_07(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
 	var err error
 	layer := &Packet83_07{}
 
-	referent, err := thisBitstream.readObject(reader.Caches())
+	referent, err := thisStream.readObject(reader.Caches())
 	if err != nil {
 		return layer, err
 	}
@@ -32,7 +32,7 @@ func (thisBitstream *extendedReader) DecodePacket83_07(reader PacketReader, laye
 		return layer, err
 	}
 
-	eventIDx, err := thisBitstream.readUint16BE()
+	eventIDx, err := thisStream.readUint16BE()
 	if err != nil {
 		return layer, err
 	}
@@ -45,7 +45,7 @@ func (thisBitstream *extendedReader) DecodePacket83_07(reader PacketReader, laye
 	schema := context.StaticSchema.Events[eventIDx]
 	layer.Schema = schema
 	layers.Root.Logger.Println("Decoding event", schema.Name)
-	layer.Event, err = schema.Decode(reader, thisBitstream, layers)
+	layer.Event, err = schema.Decode(reader, thisStream, layers)
 	if err != nil {
 		return layer, err
 	}

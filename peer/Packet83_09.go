@@ -23,11 +23,11 @@ type Packet83_09_06 struct {
 	Response  uint32
 }
 
-func (thisBitstream *extendedReader) DecodePacket83_09(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
+func (thisStream *extendedReader) DecodePacket83_09(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
 	var err error
 	inner := &Packet83_09{}
 
-	inner.SubpacketType, err = thisBitstream.readUint8()
+	inner.SubpacketType, err = thisStream.readUint8()
 	if err != nil {
 		return inner, err
 	}
@@ -35,18 +35,18 @@ func (thisBitstream *extendedReader) DecodePacket83_09(reader PacketReader, laye
 	switch inner.SubpacketType {
 	case 5: // id challenge
 		thisSubpacket := &Packet83_09_05{}
-		thisSubpacket.Challenge, err = thisBitstream.readUint32BE()
+		thisSubpacket.Challenge, err = thisStream.readUint32BE()
 		if err != nil {
 			return inner, err
 		}
 		subpacket = thisSubpacket
 	case 6: // id response
 		thisSubpacket := &Packet83_09_06{}
-		thisSubpacket.Challenge, err = thisBitstream.readUint32BE()
+		thisSubpacket.Challenge, err = thisStream.readUint32BE()
 		if err != nil {
 			return inner, err
 		}
-		thisSubpacket.Response, err = thisBitstream.readUint32BE()
+		thisSubpacket.Response, err = thisStream.readUint32BE()
 		if err != nil {
 			return inner, err
 		}

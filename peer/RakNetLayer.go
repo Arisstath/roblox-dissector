@@ -162,17 +162,17 @@ func IsOfflineMessage(data []byte) bool {
 	return bytes.Compare(data[1:1+len(OfflineMessageID)], OfflineMessageID) == 0
 }
 
-func (bitstream *extendedReader) DecodeRakNetLayer(reader PacketReader, packetType byte, layers *PacketLayers) (*RakNetLayer, error) {
+func (stream *extendedReader) DecodeRakNetLayer(reader PacketReader, packetType byte, layers *PacketLayers) (*RakNetLayer, error) {
 	layer := NewRakNetLayer()
 
 	var err error
 	if packetType == 0x5 {
-		_, err = bitstream.ReadByte()
+		_, err = stream.ReadByte()
 		if err != nil {
 			return layer, err
 		}
 		thisOfflineMessage := make([]byte, 0x10)
-		err = bitstream.bytes(thisOfflineMessage, 0x10)
+		err = stream.bytes(thisOfflineMessage, 0x10)
 		if err != nil {
 			return layer, err
 		}
@@ -182,21 +182,21 @@ func (bitstream *extendedReader) DecodeRakNetLayer(reader PacketReader, packetTy
 		}
 
 		layer.SimpleLayerID = packetType
-		layer.payload = bitstream
+		layer.payload = stream
 		layer.IsSimple = true
 		return layer, nil
 	} else if packetType >= 0x6 && packetType <= 0x8 {
-		_, err = bitstream.ReadByte()
+		_, err = stream.ReadByte()
 		if err != nil {
 			return layer, err
 		}
 		layer.IsSimple = true
-		layer.payload = bitstream
+		layer.payload = stream
 		layer.SimpleLayerID = packetType
 		return layer, nil
 	}
 
-	layer.Flags, err = bitstream.readRakNetFlags()
+	layer.Flags, err = stream.readRakNetFlags()
 	if err != nil {
 		return layer, err
 	}
@@ -205,7 +205,7 @@ func (bitstream *extendedReader) DecodeRakNetLayer(reader PacketReader, packetTy
 	}
 
 	if layer.Flags.IsACK || layer.Flags.IsNAK {
-		ackCount, err := bitstream.readUint16BE()
+		ackCount, err := stream.readUint16BE()
 		if err != nil {
 			return layer, err
 		}
@@ -213,30 +213,30 @@ func (bitstream *extendedReader) DecodeRakNetLayer(reader PacketReader, packetTy
 		for i = 0; i < ackCount; i++ {
 			var min, max uint32
 
-			minEqualToMax, err := bitstream.readBoolByte()
+			minEqualToMax, err := stream.readBoolByte()
 			if err != nil {
 				return layer, err
 			}
-			min, err = bitstream.readUint24LE()
+			min, err = stream.readUint24LE()
 			if err != nil {
 				return layer, err
 			}
 			if minEqualToMax {
 				max = min
 			} else {
-				max, err = bitstream.readUint24LE()
+				max, err = stream.readUint24LE()
 			}
 
 			layer.ACKs = append(layer.ACKs, ACKRange{min, max})
 		}
 		return layer, nil
 	} else {
-		layer.DatagramNumber, err = bitstream.readUint24LE()
+		layer.DatagramNumber, err = stream.readUint24LE()
 		if err != nil {
 			return layer, err
 		}
 
-		layer.payload = bitstream
+		layer.payload = stream
 		return layer, nil
 	}
 }

@@ -16,10 +16,10 @@ func NewPacket93Layer() *Packet93Layer {
 	return &Packet93Layer{Params: make(map[string]bool)}
 }
 
-func (thisBitstream *extendedReader) DecodePacket93Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisStream *extendedReader) DecodePacket93Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket93Layer()
 
-	flags, err := thisBitstream.ReadByte()
+	flags, err := thisStream.ReadByte()
 	if err != nil {
 		return layer, err
 	}
@@ -29,27 +29,27 @@ func (thisBitstream *extendedReader) DecodePacket93Layer(reader PacketReader, la
 		return layer, err
 	}
 
-	numParams, err := thisBitstream.readUint16BE()
+	numParams, err := thisStream.readUint16BE()
 	if err != nil {
 		return layer, err
 	}
 
 	var i uint16
 	for i = 0; i < numParams; i++ {
-		nameLen, err := thisBitstream.readUint16BE()
+		nameLen, err := thisStream.readUint16BE()
 		if err != nil {
 			return layer, err
 		}
-		name, err := thisBitstream.readString(int(nameLen))
+		name, err := thisStream.readString(int(nameLen))
 		if err != nil {
 			return layer, err
 		}
 
-		valueLen, err := thisBitstream.readUint16BE()
+		valueLen, err := thisStream.readUint16BE()
 		if err != nil {
 			return layer, err
 		}
-		value, err := thisBitstream.readString(int(valueLen))
+		value, err := thisStream.readString(int(valueLen))
 		if err != nil {
 			return layer, err
 		}

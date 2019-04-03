@@ -10,12 +10,12 @@ type Packet83_01 struct {
 	Instance *datamodel.Instance
 }
 
-func (thisBitstream *extendedReader) DecodePacket83_01(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
+func (thisStream *extendedReader) DecodePacket83_01(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
 	var err error
 	inner := &Packet83_01{}
 
 	// NULL deletion is actually legal. Who would have known?
-	reference, err := thisBitstream.readObject(reader.Caches())
+	reference, err := thisStream.readObject(reader.Caches())
 	if err != nil {
 		return inner, err
 	}

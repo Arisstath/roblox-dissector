@@ -30,12 +30,12 @@ func NewPacket8DLayer() *Packet8DLayer {
 	return &Packet8DLayer{}
 }
 
-func (thisBitstream *extendedReader) DecodePacket8DLayer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisStream *extendedReader) DecodePacket8DLayer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket8DLayer()
 
 	context := reader.Context()
 
-	referent, err := thisBitstream.readObject(reader.Caches())
+	referent, err := thisStream.readObject(reader.Caches())
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +48,7 @@ func (thisBitstream *extendedReader) DecodePacket8DLayer(reader PacketReader, la
 	}
 
 	layers.Root.Logger.Printf("Reading cluster for terrain: %s\n", layer.Instance.Name())
-	zstdStream, err := thisBitstream.RegionToZStdStream()
+	zstdStream, err := thisStream.RegionToZStdStream()
 	if err != nil {
 		return layer, err
 	}

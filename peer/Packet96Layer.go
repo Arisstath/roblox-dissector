@@ -11,11 +11,11 @@ func NewPacket96Layer() *Packet96Layer {
 	return &Packet96Layer{}
 }
 
-func (thisBitstream *extendedReader) DecodePacket96Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisStream *extendedReader) DecodePacket96Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket96Layer()
 	var err error
 
-	layer.Request, err = thisBitstream.readBoolByte()
+	layer.Request, err = thisStream.readBoolByte()
 	if err != nil {
 		return layer, err
 	}
@@ -23,7 +23,7 @@ func (thisBitstream *extendedReader) DecodePacket96Layer(reader PacketReader, la
 		return layer, err
 	}
 
-	layer.Version, err = thisBitstream.readUint32BE()
+	layer.Version, err = thisStream.readUint32BE()
 	return layer, err
 }
 

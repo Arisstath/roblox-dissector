@@ -10,24 +10,24 @@ type Packet83_06 struct {
 	ExtraStats uint32
 }
 
-func (thisBitstream *extendedReader) DecodePacket83_06(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
+func (thisStream *extendedReader) DecodePacket83_06(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
 	var err error
 	inner := &Packet83_06{}
 
-	inner.IsPingBack, err = thisBitstream.readBoolByte()
+	inner.IsPingBack, err = thisStream.readBoolByte()
 	if err != nil {
 		return inner, err
 	}
 
-	inner.Timestamp, err = thisBitstream.readUint64BE()
+	inner.Timestamp, err = thisStream.readUint64BE()
 	if err != nil {
 		return inner, err
 	}
-	inner.SendStats, err = thisBitstream.readUint32BE()
+	inner.SendStats, err = thisStream.readUint32BE()
 	if err != nil {
 		return inner, err
 	}
-	inner.ExtraStats, err = thisBitstream.readUint32BE()
+	inner.ExtraStats, err = thisStream.readUint32BE()
 	if err != nil {
 		return inner, err
 	}

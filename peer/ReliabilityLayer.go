@@ -65,20 +65,20 @@ func (packet *ReliablePacket) IsOrdered() bool {
 	return packet.Reliability == UnreliableSequenced || packet.Reliability == ReliableSequenced || packet.Reliability == ReliableOrdered
 }
 
-func (thisBitstream *extendedReader) DecodeReliabilityLayer(reader PacketReader, layers *PacketLayers) (*ReliabilityLayer, error) {
+func (thisStream *extendedReader) DecodeReliabilityLayer(reader PacketReader, layers *PacketLayers) (*ReliabilityLayer, error) {
 	layer := NewReliabilityLayer()
 
 	var reliability uint8
 	var hasSplitPacket bool
 	var err error
-	for reliability, hasSplitPacket, err = thisBitstream.readReliabilityFlags(); err == nil; reliability, hasSplitPacket, err = thisBitstream.readReliabilityFlags() {
+	for reliability, hasSplitPacket, err = thisStream.readReliabilityFlags(); err == nil; reliability, hasSplitPacket, err = thisStream.readReliabilityFlags() {
 		reliablePacket := NewReliablePacket()
 		reliablePacket.RakNetLayer = layers.RakNet
 
 		reliablePacket.Reliability = reliability
 		reliablePacket.HasSplitPacket = hasSplitPacket
 
-		reliablePacket.LengthInBits, err = thisBitstream.readUint16BE()
+		reliablePacket.LengthInBits, err = thisStream.readUint16BE()
 		if err != nil {
 			return layer, err
 		}
@@ -87,42 +87,42 @@ func (thisBitstream *extendedReader) DecodeReliabilityLayer(reader PacketReader,
 		}
 
 		if reliablePacket.IsReliable() {
-			reliablePacket.ReliableMessageNumber, err = thisBitstream.readUint24LE()
+			reliablePacket.ReliableMessageNumber, err = thisStream.readUint24LE()
 			if err != nil {
 				return layer, err
 			}
 		}
 		if reliablePacket.IsSequenced() {
-			reliablePacket.SequencingIndex, err = thisBitstream.readUint24LE()
+			reliablePacket.SequencingIndex, err = thisStream.readUint24LE()
 			if err != nil {
 				return layer, err
 			}
 		}
 		if reliablePacket.IsOrdered() {
-			reliablePacket.OrderingIndex, err = thisBitstream.readUint24LE()
+			reliablePacket.OrderingIndex, err = thisStream.readUint24LE()
 			if err != nil {
 				return layer, err
 			}
-			reliablePacket.OrderingChannel, err = thisBitstream.readUint8()
+			reliablePacket.OrderingChannel, err = thisStream.readUint8()
 			if err != nil {
 				return layer, err
 			}
 		}
 		if reliablePacket.HasSplitPacket {
-			reliablePacket.SplitPacketCount, err = thisBitstream.readUint32BE()
+			reliablePacket.SplitPacketCount, err = thisStream.readUint32BE()
 			if err != nil {
 				return layer, err
 			}
-			reliablePacket.SplitPacketID, err = thisBitstream.readUint16BE()
+			reliablePacket.SplitPacketID, err = thisStream.readUint16BE()
 			if err != nil {
 				return layer, err
 			}
-			reliablePacket.SplitPacketIndex, err = thisBitstream.readUint32BE()
+			reliablePacket.SplitPacketIndex, err = thisStream.readUint32BE()
 			if err != nil {
 				return layer, err
 			}
 		}
-		reliablePacket.SelfData, err = thisBitstream.readString(int((reliablePacket.LengthInBits + 7) / 8))
+		reliablePacket.SelfData, err = thisStream.readString(int((reliablePacket.LengthInBits + 7) / 8))
 		if err != nil {
 			return layer, err
 		}

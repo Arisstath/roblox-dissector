@@ -48,20 +48,20 @@ type Packet83_11 struct {
 	DataThroughputRatio   float32
 }
 
-func (thisBitstream *extendedReader) readMemoryStats() ([]MemoryStatsItem, error) {
-	numItems, err := thisBitstream.readUint32BE()
+func (thisStream *extendedReader) readMemoryStats() ([]MemoryStatsItem, error) {
+	numItems, err := thisStream.readUint32BE()
 	if err != nil {
 		return nil, err
 	}
 	memoryStats := make([]MemoryStatsItem, numItems)
 	for i := range memoryStats {
-		name, err := thisBitstream.readUint32AndString()
+		name, err := thisStream.readUint32AndString()
 		if err != nil {
 			return memoryStats, err
 		}
 		memoryStats[i].Name = name.(string)
 
-		memoryStats[i].Memory, err = thisBitstream.readFloat64BE()
+		memoryStats[i].Memory, err = thisStream.readFloat64BE()
 		if err != nil {
 			return memoryStats, err
 		}
@@ -70,82 +70,82 @@ func (thisBitstream *extendedReader) readMemoryStats() ([]MemoryStatsItem, error
 	return memoryStats, nil
 }
 
-func (thisBitstream *extendedReader) DecodePacket83_11(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
+func (thisStream *extendedReader) DecodePacket83_11(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
 	var err error
 	inner := &Packet83_11{}
-	inner.Version, err = thisBitstream.readUint32BE()
+	inner.Version, err = thisStream.readUint32BE()
 	if err != nil {
 		return inner, err
 	}
 
 	if inner.Version >= 5 {
-		inner.MemoryStats.TotalServerMemory, err = thisBitstream.readFloat64BE()
+		inner.MemoryStats.TotalServerMemory, err = thisStream.readFloat64BE()
 		if err != nil {
 			return inner, err
 		}
 
-		inner.MemoryStats.DeveloperTags, err = thisBitstream.readMemoryStats()
+		inner.MemoryStats.DeveloperTags, err = thisStream.readMemoryStats()
 		if err != nil {
 			return inner, err
 		}
-		inner.MemoryStats.InternalCategories, err = thisBitstream.readMemoryStats()
+		inner.MemoryStats.InternalCategories, err = thisStream.readMemoryStats()
 		if err != nil {
 			return inner, err
 		}
 	}
 
 	if inner.Version >= 3 {
-		inner.DataStoreStats.Enabled, err = thisBitstream.readBoolByte()
+		inner.DataStoreStats.Enabled, err = thisStream.readBoolByte()
 		if err != nil {
 			return inner, err
 		}
 		if inner.DataStoreStats.Enabled {
-			inner.DataStoreStats.GetAsync, err = thisBitstream.readUint32BE()
+			inner.DataStoreStats.GetAsync, err = thisStream.readUint32BE()
 			if err != nil {
 				return inner, err
 			}
-			inner.DataStoreStats.SetAndIncrementAsync, err = thisBitstream.readUint32BE()
+			inner.DataStoreStats.SetAndIncrementAsync, err = thisStream.readUint32BE()
 			if err != nil {
 				return inner, err
 			}
-			inner.DataStoreStats.UpdateAsync, err = thisBitstream.readUint32BE()
+			inner.DataStoreStats.UpdateAsync, err = thisStream.readUint32BE()
 			if err != nil {
 				return inner, err
 			}
-			inner.DataStoreStats.GetSortedAsync, err = thisBitstream.readUint32BE()
+			inner.DataStoreStats.GetSortedAsync, err = thisStream.readUint32BE()
 			if err != nil {
 				return inner, err
 			}
-			inner.DataStoreStats.SetIncrementSortedAsync, err = thisBitstream.readUint32BE()
+			inner.DataStoreStats.SetIncrementSortedAsync, err = thisStream.readUint32BE()
 			if err != nil {
 				return inner, err
 			}
-			inner.DataStoreStats.OnUpdate, err = thisBitstream.readUint32BE()
+			inner.DataStoreStats.OnUpdate, err = thisStream.readUint32BE()
 			if err != nil {
 				return inner, err
 			}
 		}
 	}
 
-	for isEnd, err := thisBitstream.readBoolByte(); !isEnd && err == nil; isEnd, err = thisBitstream.readBoolByte() {
+	for isEnd, err := thisStream.readBoolByte(); !isEnd && err == nil; isEnd, err = thisStream.readBoolByte() {
 		newJobItem := JobStatsItem{}
 		println("reading a job")
-		name, err := thisBitstream.readUint32AndString()
+		name, err := thisStream.readUint32AndString()
 		if err != nil {
 			return inner, err
 		}
 		newJobItem.Name = name.(string)
 		println("job:", newJobItem.Name)
 
-		newJobItem.Stat1, err = thisBitstream.readFloat32BE()
+		newJobItem.Stat1, err = thisStream.readFloat32BE()
 		if err != nil {
 			return inner, err
 		}
-		newJobItem.Stat2, err = thisBitstream.readFloat32BE()
+		newJobItem.Stat2, err = thisStream.readFloat32BE()
 		if err != nil {
 			return inner, err
 		}
-		newJobItem.Stat3, err = thisBitstream.readFloat32BE()
+		newJobItem.Stat3, err = thisStream.readFloat32BE()
 		if err != nil {
 			return inner, err
 		}
@@ -156,21 +156,21 @@ func (thisBitstream *extendedReader) DecodePacket83_11(reader PacketReader, laye
 		return inner, err
 	}
 
-	for isEnd, err := thisBitstream.readBoolByte(); !isEnd && err == nil; isEnd, err = thisBitstream.readBoolByte() {
+	for isEnd, err := thisStream.readBoolByte(); !isEnd && err == nil; isEnd, err = thisStream.readBoolByte() {
 		newScriptItem := ScriptStatsItem{}
 		println("reading a script")
-		name, err := thisBitstream.readUint32AndString()
+		name, err := thisStream.readUint32AndString()
 		if err != nil {
 			return inner, err
 		}
 		newScriptItem.Name = name.(string)
 		println("script name:", newScriptItem.Name)
 
-		newScriptItem.Stat1, err = thisBitstream.readFloat32BE()
+		newScriptItem.Stat1, err = thisStream.readFloat32BE()
 		if err != nil {
 			return inner, err
 		}
-		newScriptItem.Stat2, err = thisBitstream.readUint32BE()
+		newScriptItem.Stat2, err = thisStream.readUint32BE()
 		if err != nil {
 			return inner, err
 		}
@@ -180,23 +180,23 @@ func (thisBitstream *extendedReader) DecodePacket83_11(reader PacketReader, laye
 		return inner, err
 	}
 
-	inner.AvgPingMs, err = thisBitstream.readFloat32BE()
+	inner.AvgPingMs, err = thisStream.readFloat32BE()
 	if err != nil {
 		return inner, err
 	}
-	inner.AvgPhysicsSenderPktPS, err = thisBitstream.readFloat32BE()
+	inner.AvgPhysicsSenderPktPS, err = thisStream.readFloat32BE()
 	if err != nil {
 		return inner, err
 	}
-	inner.TotalDataKBPS, err = thisBitstream.readFloat32BE()
+	inner.TotalDataKBPS, err = thisStream.readFloat32BE()
 	if err != nil {
 		return inner, err
 	}
-	inner.TotalPhysicsKBPS, err = thisBitstream.readFloat32BE()
+	inner.TotalPhysicsKBPS, err = thisStream.readFloat32BE()
 	if err != nil {
 		return inner, err
 	}
-	inner.DataThroughputRatio, err = thisBitstream.readFloat32BE()
+	inner.DataThroughputRatio, err = thisStream.readFloat32BE()
 	if err != nil {
 		return inner, err
 	}

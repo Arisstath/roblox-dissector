@@ -35,43 +35,43 @@ func NewPacket81Layer() *Packet81Layer {
 	return &Packet81Layer{}
 }
 
-func (thisBitstream *extendedReader) DecodePacket81Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisStream *extendedReader) DecodePacket81Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket81Layer()
 
 	var err error
 
-	layer.StreamJob, err = thisBitstream.readBoolByte()
+	layer.StreamJob, err = thisStream.readBoolByte()
 	if err != nil {
 		return layer, err
 	}
-	layer.FilteringEnabled, err = thisBitstream.readBoolByte()
+	layer.FilteringEnabled, err = thisStream.readBoolByte()
 	if err != nil {
 		return layer, err
 	}
-	layer.AllowThirdPartySales, err = thisBitstream.readBoolByte()
+	layer.AllowThirdPartySales, err = thisStream.readBoolByte()
 	if err != nil {
 		return layer, err
 	}
-	layer.CharacterAutoSpawn, err = thisBitstream.readBoolByte()
+	layer.CharacterAutoSpawn, err = thisStream.readBoolByte()
 	if err != nil {
 		return layer, err
 	}
-	stringLen, err := thisBitstream.readUint32BE()
+	stringLen, err := thisStream.readUint32BE()
 	if err != nil {
 		return layer, err
 	}
-	layer.ReferentString, err = thisBitstream.readASCII(int(stringLen))
+	layer.ReferentString, err = thisStream.readASCII(int(stringLen))
 	if err != nil {
 		return layer, err
 	}
 	// This assignment is justifiable because a call to readJoinObject() below depends on it
 	reader.Context().InstanceTopScope = layer.ReferentString
 	if !reader.Context().IsStudio {
-		layer.ScriptKey, err = thisBitstream.readUint32BE()
+		layer.ScriptKey, err = thisStream.readUint32BE()
 		if err != nil {
 			return layer, err
 		}
-		layer.CoreScriptKey, err = thisBitstream.readUint32BE()
+		layer.CoreScriptKey, err = thisStream.readUint32BE()
 		if err != nil {
 			return layer, err
 		}
@@ -80,7 +80,7 @@ func (thisBitstream *extendedReader) DecodePacket81Layer(reader PacketReader, la
 		reader.Context().CoreScriptKey = layer.CoreScriptKey
 	}
 
-	arrayLen, err := thisBitstream.readUintUTF8()
+	arrayLen, err := thisStream.readUintUTF8()
 	if err != nil {
 		return layer, err
 	}
@@ -93,12 +93,12 @@ func (thisBitstream *extendedReader) DecodePacket81Layer(reader PacketReader, la
 	layer.Items = make([]*Packet81LayerItem, arrayLen)
 	for i := 0; i < int(arrayLen); i++ {
 		thisItem := &Packet81LayerItem{}
-		referent, err := thisBitstream.readJoinObject(context)
+		referent, err := thisStream.readJoinObject(context)
 		if err != nil {
 			return layer, err
 		}
 
-		classID, err := thisBitstream.readUint16BE()
+		classID, err := thisStream.readUint16BE()
 		if err != nil {
 			return layer, err
 		}
@@ -117,11 +117,11 @@ func (thisBitstream *extendedReader) DecodePacket81Layer(reader PacketReader, la
 		instance.IsService = true
 		thisItem.Instance = instance
 
-		thisItem.WatchChanges, err = thisBitstream.readBoolByte()
+		thisItem.WatchChanges, err = thisStream.readBoolByte()
 		if err != nil {
 			return layer, err
 		}
-		thisItem.WatchChildren, err = thisBitstream.readBoolByte()
+		thisItem.WatchChildren, err = thisStream.readBoolByte()
 		if err != nil {
 			return layer, err
 		}

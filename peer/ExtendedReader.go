@@ -376,33 +376,33 @@ func (b *extendedReader) aesDecrypt(lenBytes int) (*extendedReader, error) {
 	dest = shuffleSlice(dest)
 
 	checkSum := calculateChecksum(dest[4:])
-	thisBitstream := &extendedReader{bytes.NewReader(dest)}
-	storedChecksum, err := thisBitstream.readUint32LE()
+	thisStream := &extendedReader{bytes.NewReader(dest)}
+	storedChecksum, err := thisStream.readUint32LE()
 	if err != nil {
-		return thisBitstream, err
+		return thisStream, err
 	}
 	if storedChecksum != checkSum {
 		println("checksum check failed!", storedChecksum, checkSum)
-		return thisBitstream, errors.New("checksum check fail")
+		return thisStream, errors.New("checksum check fail")
 	}
 
-	_, err = thisBitstream.ReadByte()
+	_, err = thisStream.ReadByte()
 	if err != nil {
-		return thisBitstream, err
+		return thisStream, err
 	}
-	paddingSizeByte, err := thisBitstream.ReadByte()
+	paddingSizeByte, err := thisStream.ReadByte()
 	if err != nil {
-		return thisBitstream, err
+		return thisStream, err
 	}
 	PaddingSize := paddingSizeByte & 0xF
 
 	void := make([]byte, PaddingSize)
-	err = thisBitstream.bytes(void, int(PaddingSize))
+	err = thisStream.bytes(void, int(PaddingSize))
 	if err != nil {
-		return thisBitstream, err
+		return thisStream, err
 	}
 
-	return thisBitstream, nil
+	return thisStream, nil
 }
 
 type RakNetFlags struct {

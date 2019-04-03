@@ -206,11 +206,11 @@ func NewPacket97Layer() *Packet97Layer {
 	return &Packet97Layer{Schema: NewStaticShema()}
 }
 
-func (thisBitstream *extendedReader) DecodePacket97Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisStream *extendedReader) DecodePacket97Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket97Layer()
 
 	var err error
-	stream, err := thisBitstream.RegionToZStdStream()
+	stream, err := thisStream.RegionToZStdStream()
 	if err != nil {
 		return layer, err
 	}

@@ -27,67 +27,67 @@ func (stream *extendedReader) DecodePacket8ALayer(reader PacketReader, layers *P
 	layer := NewPacket8ALayer()
 
 	lenBytes := bitsToBytes(uint(layers.Reliability.LengthInBits)) - 1 // -1 for packet id
-	thisBitstream, err := stream.aesDecrypt(int(lenBytes))
+	thisStream, err := stream.aesDecrypt(int(lenBytes))
 	if err != nil {
 		return layer, err
 	}
 
-	playerId, err := thisBitstream.readVarsint64()
+	playerId, err := thisStream.readVarsint64()
 	if err != nil {
 		return layer, err
 	}
 	layer.PlayerId = playerId
 	layers.Root.Logger.Println("playerid", playerId)
-	layer.ClientTicket, err = thisBitstream.readVarLengthString()
+	layer.ClientTicket, err = thisStream.readVarLengthString()
 	if err != nil {
 		return layer, err
 	}
 	layers.Root.Logger.Println("ticket", layer.ClientTicket)
-	layer.DataModelHash, err = thisBitstream.readVarLengthString()
+	layer.DataModelHash, err = thisStream.readVarLengthString()
 	if err != nil {
 		return layer, err
 	}
 	layers.Root.Logger.Println("dmhash", layer.DataModelHash)
-	layer.ProtocolVersion, err = thisBitstream.readUint32BE()
+	layer.ProtocolVersion, err = thisStream.readUint32BE()
 	if err != nil {
 		return layer, err
 	}
 	layers.Root.Logger.Println("protvr", layer.ProtocolVersion)
-	layer.SecurityKey, err = thisBitstream.readVarLengthString()
+	layer.SecurityKey, err = thisStream.readVarLengthString()
 	if err != nil {
 		return layer, err
 	}
 	layers.Root.Logger.Println("key", layer.SecurityKey)
-	layer.Platform, err = thisBitstream.readVarLengthString()
+	layer.Platform, err = thisStream.readVarLengthString()
 	if err != nil {
 		return layer, err
 	}
 	layers.Root.Logger.Println("platform", layer.Platform)
-	layer.RobloxProductName, err = thisBitstream.readVarLengthString()
+	layer.RobloxProductName, err = thisStream.readVarLengthString()
 	if err != nil {
 		return layer, err
 	}
 	layers.Root.Logger.Println("prodname", layer.RobloxProductName)
 	if !reader.Context().IsStudio {
-		hash, err := thisBitstream.readUintUTF8()
+		hash, err := thisStream.readUintUTF8()
 		if err != nil {
 			return layer, err
 		}
 		layer.TicketHash = hash
 		layers.Root.Logger.Println("hash", layer.TicketHash)
-		hash2, err := thisBitstream.readUintUTF8()
+		hash2, err := thisStream.readUintUTF8()
 		if err != nil {
 			return layer, err
 		}
 		layers.Root.Logger.Println("hash2", hash2, "badfood check success: ", hash2 == layer.TicketHash-0xbadf00d)
 	}
 
-	layer.SessionId, err = thisBitstream.readVarLengthString()
+	layer.SessionId, err = thisStream.readVarLengthString()
 	if err != nil {
 		return layer, err
 	}
 	layers.Root.Logger.Println("sessid", layer.SessionId)
-	layer.GoldenHash, err = thisBitstream.readUint32BE()
+	layer.GoldenHash, err = thisStream.readUint32BE()
 	if err != nil {
 		return layer, err
 	}

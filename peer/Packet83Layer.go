@@ -64,10 +64,10 @@ func NewPacket83Layer() *Packet83Layer {
 	return &Packet83Layer{}
 }
 
-func (thisBitstream *extendedReader) DecodePacket83Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisStream *extendedReader) DecodePacket83Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket83Layer()
 
-	packetType, err := thisBitstream.readUint8()
+	packetType, err := thisStream.readUint8()
 	if err != nil {
 		return layer, err
 	}
@@ -79,14 +79,14 @@ func (thisBitstream *extendedReader) DecodePacket83Layer(reader PacketReader, la
 		if !ok {
 			return layer, errors.New("don't know how to parse replication subpacket: " + strconv.Itoa(int(packetType)))
 		}
-		inner, err = decoder(thisBitstream, reader, layers)
+		inner, err = decoder(thisStream, reader, layers)
 		if err != nil {
 			return layer, errors.New("parsing subpacket " + Packet83Subpackets[packetType] + ": " + err.Error())
 		}
 
 		layer.SubPackets = append(layer.SubPackets, inner)
 
-		packetType, err = thisBitstream.readUint8()
+		packetType, err = thisStream.readUint8()
 		if err == io.EOF {
 			println("DEPRECATED_WARNING: ignoring packettype read past end")
 			return layer, nil

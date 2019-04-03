@@ -74,12 +74,12 @@ func (b *extendedReader) readPhysicsData(data *PhysicsData, motors bool, reader 
 	return err
 }
 
-func (thisBitstream *extendedReader) DecodePacket85Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisStream *extendedReader) DecodePacket85Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 
 	context := reader.Context()
 	layer := NewPacket85Layer()
 	for {
-		referent, err := thisBitstream.readObject(reader.Caches())
+		referent, err := thisStream.readObject(reader.Caches())
 		// unordered packets may have problems with caches
 		if err != nil && err != CacheReadOOB {
 			return layer, err
@@ -96,23 +96,23 @@ func (thisBitstream *extendedReader) DecodePacket85Layer(reader PacketReader, la
 			})
 		}
 
-		myFlags, err := thisBitstream.readUint8()
+		myFlags, err := thisStream.readUint8()
 		if err != nil {
 			return layer, err
 		}
 		subpacket.NetworkHumanoidState = myFlags & 0x1F
 
 		if reader.IsClient() {
-			err = thisBitstream.readPhysicsData(&subpacket.Data, true, reader)
+			err = thisStream.readPhysicsData(&subpacket.Data, true, reader)
 			if err != nil {
 				return layer, err
 			}
 		} else {
-			subpacket.Data.Motors, err = thisBitstream.readMotors()
+			subpacket.Data.Motors, err = thisStream.readMotors()
 			if err != nil {
 				return layer, err
 			}
-			numEntries, err := thisBitstream.readUint8()
+			numEntries, err := thisStream.readUint8()
 			if err != nil {
 				return layer, err
 			}
@@ -120,11 +120,11 @@ func (thisBitstream *extendedReader) DecodePacket85Layer(reader PacketReader, la
 			subpacket.History = make([]*PhysicsData, numEntries)
 			for i := 0; i < int(numEntries); i++ {
 				subpacket.History[i] = new(PhysicsData)
-				subpacket.History[i].Interval, err = thisBitstream.readFloat32BE()
+				subpacket.History[i].Interval, err = thisStream.readFloat32BE()
 				if err != nil {
 					return layer, err
 				}
-				thisBitstream.readPhysicsData(subpacket.History[i], false, reader)
+				thisStream.readPhysicsData(subpacket.History[i], false, reader)
 				if err != nil {
 					return layer, err
 				}
@@ -133,7 +133,7 @@ func (thisBitstream *extendedReader) DecodePacket85Layer(reader PacketReader, la
 
 		if (myFlags>>5)&1 == 0 { // has children
 			var object datamodel.Reference
-			for object, err = thisBitstream.readObject(reader.Caches()); (err == nil || err == CacheReadOOB) && !object.IsNull; object, err = thisBitstream.readObject(reader.Caches()) {
+			for object, err = thisStream.readObject(reader.Caches()); (err == nil || err == CacheReadOOB) && !object.IsNull; object, err = thisStream.readObject(reader.Caches()) {
 				layers.Root.Logger.Println("reading physics child for ref", object.String())
 				child := new(PhysicsData)
 				if err != CacheReadOOB { // TODO: hack! unordered packets may have problems with caches
@@ -142,7 +142,7 @@ func (thisBitstream *extendedReader) DecodePacket85Layer(reader PacketReader, la
 					})
 				}
 
-				err = thisBitstream.readPhysicsData(child, true, reader)
+				err = thisStream.readPhysicsData(child, true, reader)
 				if err != nil {
 					return layer, err
 				}

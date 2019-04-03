@@ -15,16 +15,16 @@ func NewPacket87Layer() *Packet87Layer {
 	return &Packet87Layer{}
 }
 
-func (thisBitstream *extendedReader) DecodePacket87Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisStream *extendedReader) DecodePacket87Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	context := reader.Context()
 	layer := NewPacket87Layer()
 	var ref datamodel.Reference
 
-	scope, err := thisBitstream.readLengthAndString()
+	scope, err := thisStream.readLengthAndString()
 	if err != nil {
 		return layer, err
 	}
-	id, err := thisBitstream.readUint32BE() // Yes, big-endian
+	id, err := thisStream.readUint32BE() // Yes, big-endian
 	if err != nil {
 		return layer, err
 	}
@@ -36,7 +36,7 @@ func (thisBitstream *extendedReader) DecodePacket87Layer(reader PacketReader, la
 		return layer, err
 	}
 
-	layer.Message, err = thisBitstream.readLengthAndString()
+	layer.Message, err = thisStream.readLengthAndString()
 	return layer, err
 }
 

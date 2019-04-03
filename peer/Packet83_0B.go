@@ -18,10 +18,10 @@ func NewPacket83_0BLayer() *Packet83_0B {
 	return &Packet83_0B{}
 }
 
-func (thisBitstream *extendedReader) DecodePacket83_0B(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
+func (thisStream *extendedReader) DecodePacket83_0B(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
 	layer := NewPacket83_0BLayer()
 
-	arrayLen, err := thisBitstream.readUint32BE()
+	arrayLen, err := thisStream.readUint32BE()
 	if err != nil {
 		return layer, err
 	}
@@ -35,7 +35,7 @@ func (thisBitstream *extendedReader) DecodePacket83_0B(reader PacketReader, laye
 		return layer, nil
 	}
 
-	zstdStream, err := thisBitstream.RegionToZStdStream()
+	zstdStream, err := thisStream.RegionToZStdStream()
 	if err != nil {
 		return layer, err
 	}

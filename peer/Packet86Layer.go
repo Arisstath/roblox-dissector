@@ -24,13 +24,13 @@ func NewPacket86Layer() *Packet86Layer {
 	return &Packet86Layer{}
 }
 
-func (thisBitstream *extendedReader) DecodePacket86Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
+func (thisStream *extendedReader) DecodePacket86Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 
 	layer := NewPacket86Layer()
 	context := reader.Context()
 	for {
 		subpacket := &Packet86LayerSubpacket{}
-		referent, err := thisBitstream.readObject(reader.Caches())
+		referent, err := thisStream.readObject(reader.Caches())
 		// hopefully we don't need to check for CacheReadOOB here
 		if err != nil {
 			return layer, err
@@ -42,7 +42,7 @@ func (thisBitstream *extendedReader) DecodePacket86Layer(reader PacketReader, la
 			subpacket.Instance1 = inst
 		})
 
-		referent, err = thisBitstream.readObject(reader.Caches())
+		referent, err = thisStream.readObject(reader.Caches())
 		if err != nil {
 			return layer, err
 		}
@@ -53,7 +53,7 @@ func (thisBitstream *extendedReader) DecodePacket86Layer(reader PacketReader, la
 			subpacket.Instance2 = inst
 		})
 
-		subpacket.IsTouch, err = thisBitstream.readBoolByte()
+		subpacket.IsTouch, err = thisStream.readBoolByte()
 		if err != nil {
 			return layer, err
 		}
