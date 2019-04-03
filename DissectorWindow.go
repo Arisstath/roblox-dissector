@@ -279,7 +279,8 @@ func NewDissectorWindow(parent widgets.QWidget_ITF, flags core.Qt__WindowType) *
 		PlayerProxySettings: &PlayerProxySettings{},
 	}
 
-	window.SetWindowTitle("Roblox Dissector")
+	window.SetWindowTitle("Sala Roblox Network Suite")
+	window.SetWindowIcon(gui.NewQIcon5(":/qml/app-icon.ico"))
 
 	captureBar := window.MenuBar().AddMenu2("&Capture")
 	captureFileAction := captureBar.AddAction("From &file...")
@@ -301,14 +302,18 @@ func NewDissectorWindow(parent widgets.QWidget_ITF, flags core.Qt__WindowType) *
 	helpBar.AddAction("About &Qt...").ConnectTriggered(func(_ bool) {
 		widgets.QMessageBox_AboutQt(window, "About Qt")
 	})
-	helpBar.AddAction("&About Roblox Dissector...").ConnectTriggered(func(_ bool) {
-		widgets.QMessageBox_About(window, "About Roblox Dissector", `
-Roblox Dissector
-Version 0.6 [pre]
-Codename “Maailman salaisuudet”
-Copyright © Aleksi “gskw” Hannula 2017–2019
-Licensed under the MIT License (see LICENSE for more information).
-Clarity Icons (© VMWare, Inc.) are licensed under the MIT License (see LICENSE.clarity for more information). 
+	helpBar.AddAction("&About Sala...").ConnectTriggered(func(_ bool) {
+		widgets.QMessageBox_About(window, "About Sala", `
+<h1>Sala version 0.6 [pre]</h1>
+<h2>The Essential Roblox Network Suite</h2>
+Codename “Maailman salaisuudet”<br>
+Previously known as “Roblox Dissector”<br>
+<br>
+Copyright © Aleksi “gskw” Hannula 2017–2019<br>
+Licensed under the MIT License (see LICENSE for more information).<br>
+Clarity Icons (© VMWare, Inc.) are licensed under the MIT License (see LICENSE.clarity for more information).<br>
+The application icon is a modified version of a Google Material Icon. Google Material Icons are licensed under the Apache License version 2.0 (see LICENSE.material for more information).<br>
+See the <a href="https://iconfu.com">Iconfu website</a> for more icons.<br>
 Qt is licensed under the LGPLv3 license (see “About Qt...” for more information).
 `)
 	})

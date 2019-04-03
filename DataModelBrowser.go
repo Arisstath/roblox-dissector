@@ -132,7 +132,7 @@ func NewDataModelBrowser(context *peer.CommunicationContext, dataModel *datamode
 
 	instanceList := widgets.NewQTreeView(subWindow)
 	standardModel := NewProperSortModel(subWindow)
-	standardModel.SetHorizontalHeaderLabels([]string{"Name", "Type", "Value", "Referent", "Parent"})
+	standardModel.SetHorizontalHeaderLabels([]string{"Name", "Type", "Value", "Referent", "Parent", "Path"})
 
 	rootNode := standardModel.InvisibleRootItem()
 	showChildren(rootNode, dataModel.Instances)
