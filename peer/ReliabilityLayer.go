@@ -14,7 +14,7 @@ const (
 // ReliablePacket describes a packet within a ReliabilityLayer
 type ReliablePacket struct {
 	// Reliability ID: (un)reliable? ordered? sequenced?
-	Reliability    uint32
+	Reliability    uint8
 	HasSplitPacket bool
 	// Length of this split in bits
 	LengthInBits uint16
@@ -68,25 +68,22 @@ func (packet *ReliablePacket) IsOrdered() bool {
 func (thisBitstream *extendedReader) DecodeReliabilityLayer(reader PacketReader, layers *PacketLayers) (*ReliabilityLayer, error) {
 	layer := NewReliabilityLayer()
 
-	var reliability uint64
+	var reliability uint8
+	var hasSplitPacket bool
 	var err error
-	for reliability, err = thisBitstream.bits(3); err == nil; reliability, err = thisBitstream.bits(3) {
+	for reliability, hasSplitPacket, err = thisBitstream.readReliabilityFlags(); err == nil; reliability, hasSplitPacket, err = thisBitstream.readReliabilityFlags() {
 		reliablePacket := NewReliablePacket()
 		reliablePacket.RakNetLayer = layers.RakNet
 
-		reliablePacket.Reliability = uint32(reliability)
-		reliablePacket.HasSplitPacket, err = thisBitstream.readBool()
-		if err != nil {
-			return layer, err
-		}
-		thisBitstream.Align()
+		reliablePacket.Reliability = reliability
+		reliablePacket.HasSplitPacket = hasSplitPacket
 
 		reliablePacket.LengthInBits, err = thisBitstream.readUint16BE()
 		if err != nil {
 			return layer, err
 		}
 		if reliablePacket.LengthInBits < 8 {
-			return layer, errors.New("Invalid length of 0!")
+			return layer, errors.New("invalid length of 0")
 		}
 
 		if reliablePacket.IsReliable() {
@@ -144,16 +141,8 @@ func (thisBitstream *extendedReader) DecodeReliabilityLayer(reader PacketReader,
 func (layer *ReliabilityLayer) Serialize(writer PacketWriter, outputStream *extendedWriter) error {
 	var err error
 	for _, packet := range layer.Packets {
-		reliability := uint64(packet.Reliability)
-		err = outputStream.bits(3, reliability)
-		if err != nil {
-			return err
-		}
-		err = outputStream.writeBool(packet.HasSplitPacket)
-		if err != nil {
-			return err
-		}
-		err = outputStream.Align()
+		reliability := packet.Reliability
+		err = outputStream.writeReliabilityFlags(reliability, packet.HasSplitPacket)
 		if err != nil {
 			return err
 		}

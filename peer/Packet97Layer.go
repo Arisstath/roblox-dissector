@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/DataDog/zstd"
-	bitstream "github.com/gskartwii/go-bitstream"
 )
 
 const (
@@ -401,7 +400,7 @@ func (layer *Packet97Layer) Serialize(writer PacketWriter, stream *extendedWrite
 	uncompressedBuf := bytes.NewBuffer([]byte{})
 	zstdBuf := bytes.NewBuffer([]byte{})
 	middleStream := zstd.NewWriter(zstdBuf)
-	zstdStream := &extendedWriter{bitstream.NewWriter(uncompressedBuf)}
+	zstdStream := &extendedWriter{uncompressedBuf}
 
 	schema := layer.Schema
 	err = zstdStream.writeUintUTF8(uint32(len(schema.Enums)))
@@ -526,11 +525,6 @@ func (layer *Packet97Layer) Serialize(writer PacketWriter, stream *extendedWrite
 		}
 	}
 
-	err = zstdStream.Flush(bitstream.Zero)
-	if err != nil {
-		middleStream.Close()
-		return err
-	}
 	_, err = middleStream.Write(uncompressedBuf.Bytes())
 	if err != nil {
 		middleStream.Close()

@@ -5,28 +5,26 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"encoding/binary"
+	"errors"
 	"io"
 	"math"
 	"net"
 
-	bitstream "github.com/gskartwii/go-bitstream"
 	"github.com/gskartwii/roblox-dissector/datamodel"
 )
 
 type extendedWriter struct {
-	*bitstream.BitWriter
+	w io.Writer
 }
 
-func (b *extendedWriter) bits(len int, value uint64) error {
-	return b.WriteBits(value, len)
-}
+func (b *extendedWriter) bytes(length int, value []byte) error {
+	if length > len(value) {
+		return errors.New("buffer overflow")
+	}
 
-func (b *extendedWriter) bytes(len int, value []byte) error {
-	for i := 0; i < len; i++ {
-		err := b.WriteByte(value[i])
-		if err != nil {
-			return err
-		}
+	n, err := b.w.Write(value[:length])
+	if n != length {
+		return err
 	}
 	return nil
 }
@@ -35,8 +33,15 @@ func (b *extendedWriter) allBytes(value []byte) error {
 	return b.bytes(len(value), value)
 }
 
-func (b *extendedWriter) writeBool(value bool) error {
-	return b.WriteBit(bitstream.Bit(value))
+func (b *extendedWriter) WriteByte(value byte) error {
+	n, err := b.w.Write([]byte{value})
+	if n != 1 {
+		return err
+	}
+	return nil
+}
+func (b *extendedWriter) Write(value []byte) (int, error) {
+	return b.w.Write(value)
 }
 
 func (b *extendedWriter) writeUint16BE(value uint16) error {
@@ -78,7 +83,7 @@ func (b *extendedWriter) writeFloat32BE(value float32) error {
 }
 
 func (b *extendedWriter) writeFloat64BE(value float64) error {
-	return b.bits(64, math.Float64bits(value))
+	return b.writeUint64BE(math.Float64bits(value))
 }
 
 func (b *extendedWriter) writeFloat16BE(value float32, min float32, max float32) error {
@@ -147,7 +152,7 @@ func (b *extendedWriter) writeWithCache(value interface{}, cache Cache, writeCal
 	if value == nil {
 		return b.WriteByte(0x00)
 	}
-	var matchedIndex byte = 0
+	var matchedIndex byte
 	var i byte
 	for i = 0; i < 0x80; i++ {
 		equal, existed := cache.Equal(i, value)
@@ -268,68 +273,6 @@ func (b *extendedWriter) writeAnyObject(object *datamodel.Instance, writer Packe
 	return b.writeObject(object, writer.Caches())
 }
 
-func (b *extendedWriter) writeHuffman(value []byte) error {
-	encodedBuffer := new(bytes.Buffer)
-	encodedStream := &extendedWriter{bitstream.NewWriter(encodedBuffer)}
-
-	bitLen, err := englishTree.encodeArray(encodedStream, value)
-	if err != nil {
-		return err
-	}
-	err = encodedStream.Flush(bitstream.Bit(false))
-	if err != nil {
-		return err
-	}
-
-	err = b.writeUint32BE(uint32(len(value)))
-	if err != nil {
-		return err
-	}
-	err = b.writeUint32BECompressed(uint32(bitLen))
-	if err != nil {
-		return err
-	}
-	return b.allBytes(encodedBuffer.Bytes())
-}
-
-func (b *extendedWriter) writeCompressed(value []byte, length uint32, isUnsigned bool) error {
-	var byteMatch, halfByteMatch byte
-	var err error
-	if !isUnsigned {
-		byteMatch = 0xFF
-		halfByteMatch = 0xF0
-	}
-	var currentByte uint32
-	for currentByte = length>>3 - 1; currentByte > 0; currentByte-- {
-		isMatch := value[currentByte] == byteMatch
-		err = b.writeBool(isMatch)
-		if err != nil {
-			return err
-		}
-		if !isMatch {
-			return b.allBytes(value[:currentByte+1])
-		}
-	}
-	lastByte := value[0]
-	if lastByte&0xF0 == halfByteMatch {
-		err = b.writeBool(true)
-		if err != nil {
-			return err
-		}
-		return b.bits(4, uint64(lastByte))
-	}
-	err = b.writeBool(false)
-	if err != nil {
-		return err
-	}
-	return b.WriteByte(lastByte)
-}
-func (b *extendedWriter) writeUint32BECompressed(value uint32) error {
-	val := make([]byte, 4)
-	binary.BigEndian.PutUint32(val, value)
-	return b.writeCompressed(val, 32, true)
-}
-
 type aesExtendedWriter struct {
 	*extendedWriter
 	buffer       *bytes.Buffer
@@ -337,9 +280,7 @@ type aesExtendedWriter struct {
 }
 
 func (b *aesExtendedWriter) Close() error {
-	rawStream := b.extendedWriter
 	rawBuffer := b.buffer
-	rawStream.Flush(bitstream.Bit(false))
 
 	// create slice with 6-byte header and padding to align to 0x10-byte blocks
 	length := rawBuffer.Len()
@@ -371,11 +312,50 @@ func (b *aesExtendedWriter) Close() error {
 
 func (b *extendedWriter) aesEncrypt() *aesExtendedWriter {
 	rawBuffer := new(bytes.Buffer)
-	rawStream := &extendedWriter{bitstream.NewWriter(rawBuffer)}
+	rawStream := &extendedWriter{rawBuffer}
 
 	return &aesExtendedWriter{
 		extendedWriter: rawStream,
 		targetStream:   b,
 		buffer:         rawBuffer,
 	}
+}
+
+func (b *extendedWriter) writeRakNetFlags(val RakNetFlags) error {
+	var flags byte
+	if val.IsValid {
+		flags |= 1 << 7
+	}
+	if val.IsACK {
+		flags |= 1 << 6
+		if val.HasBAndAS {
+			flags |= 1 << 5
+		}
+		return b.WriteByte(flags)
+	}
+	if val.IsNAK {
+		flags |= 1 << 5
+		if val.HasBAndAS {
+			flags |= 1 << 4
+		}
+		return b.WriteByte(flags)
+	}
+	if val.IsPacketPair {
+		flags |= 1 << 4
+	}
+	if val.IsContinuousSend {
+		flags |= 1 << 3
+	}
+	if val.NeedsBAndAS {
+		flags |= 1 << 2
+	}
+	return b.WriteByte(flags)
+}
+
+func (b *extendedWriter) writeReliabilityFlags(rel uint8, hasSplit bool) error {
+	flags := rel << 5
+	if hasSplit {
+		flags |= 1 << 4
+	}
+	return b.WriteByte(flags)
 }

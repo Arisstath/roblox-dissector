@@ -91,8 +91,7 @@ func (b *extendedWriter) writeVector3Simple(val rbxfile.ValueVector3) error {
 	return b.writeFloat32BE(val.Z)
 }
 func (b *extendedWriter) writeVector3(val rbxfile.ValueVector3) error {
-	var err error
-	if math.Mod(float64(val.X), 0.5) != 0 ||
+	/*if math.Mod(float64(val.X), 0.5) != 0 ||
 		math.Mod(float64(val.Y), 0.1) != 0 ||
 		math.Mod(float64(val.Z), 0.5) != 0 ||
 		val.X > 511.5 ||
@@ -127,7 +126,8 @@ func (b *extendedWriter) writeVector3(val rbxfile.ValueVector3) error {
 		return err
 	}
 	err = b.bits(11, uint64(zScaled))
-	return err
+	return err*/
+	return errors.New("v3comp not implemented")
 }
 
 func (b *extendedWriter) writeVector2int16(val rbxfile.ValueVector2int16) error {

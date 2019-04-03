@@ -19,12 +19,12 @@ func NewPacket93Layer() *Packet93Layer {
 func (thisBitstream *extendedReader) DecodePacket93Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket93Layer()
 
-	var err error
-	layer.ProtocolSchemaSync, err = thisBitstream.readBool()
+	flags, err := thisBitstream.ReadByte()
 	if err != nil {
 		return layer, err
 	}
-	layer.ApiDictionaryCompression, err = thisBitstream.readBool()
+	layer.ProtocolSchemaSync = flags&1 == 1
+	layer.ApiDictionaryCompression = flags&2 == 2
 	if err != nil {
 		return layer, err
 	}
@@ -66,11 +66,14 @@ func (layer *Packet93Layer) Serialize(writer PacketWriter, stream *extendedWrite
 		return err
 	}
 
-	err = stream.writeBool(layer.ProtocolSchemaSync)
-	if err != nil {
-		return err
+	var flags byte
+	if layer.ProtocolSchemaSync {
+		flags |= 1
 	}
-	err = stream.writeBool(layer.ApiDictionaryCompression)
+	if layer.ApiDictionaryCompression {
+		flags |= 2
+	}
+	err = stream.WriteByte(flags)
 	if err != nil {
 		return err
 	}

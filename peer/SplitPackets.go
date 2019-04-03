@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"log"
 	"strings"
-
-	bitstream "github.com/gskartwii/go-bitstream"
 )
 
 // SplitPacketBuffer represents a structure that accumulates every
@@ -118,7 +116,7 @@ func (reader *DefaultPacketReader) handleSplitPacket(layers *PacketLayers) (*Spl
 	if shouldClose {
 		packetBuffer.IsFinal = true
 		packetBuffer.byteReader = bytes.NewReader(packetBuffer.data)
-		packetBuffer.dataReader = &extendedReader{bitstream.NewReader(packetBuffer.byteReader)}
+		packetBuffer.dataReader = &extendedReader{packetBuffer.byteReader}
 		if reliablePacket.HasSplitPacket {
 			// TODO: Use a linked list
 			reader.splitPackets.delete(layers)

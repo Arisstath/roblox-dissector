@@ -139,14 +139,14 @@ func (b *extendedReader) readVector3Simple() (rbxfile.ValueVector3, error) {
 
 // reads a complicated Vector3 value
 func (b *extendedReader) readVector3() (rbxfile.ValueVector3, error) {
-	isInteger, err := b.readBool()
+	val := rbxfile.ValueVector3{}
+	/*isInteger, err := b.readBool()
 	if err != nil {
 		return rbxfile.ValueVector3{}, err
 	}
 	if !isInteger {
 		return b.readVector3Simple()
 	}
-	val := rbxfile.ValueVector3{}
 	x, err := b.bits(11)
 	if err != nil {
 		return val, err
@@ -174,8 +174,8 @@ func (b *extendedReader) readVector3() (rbxfile.ValueVector3, error) {
 
 	val.X = float32(int16(xShort)) * 0.5
 	val.Y = float32(yShort) * 0.1
-	val.Z = float32(int16(zShort)) * 0.5
-	return val, err
+	val.Z = float32(int16(zShort)) * 0.5*/
+	return val, errors.New("v3comp not implemented")
 }
 
 func (b *extendedReader) readVector2int16() (rbxfile.ValueVector2int16, error) {
@@ -808,7 +808,7 @@ func (b *extendedReader) readCoordsMode1() (rbxfile.ValueVector3, error) {
 }
 func (b *extendedReader) readCoordsMode2() (rbxfile.ValueVector3, error) {
 	val := rbxfile.ValueVector3{}
-	x, err := b.bits(15)
+	/*x, err := b.bits(15)
 	if err != nil {
 		return val, err
 	}
@@ -826,8 +826,8 @@ func (b *extendedReader) readCoordsMode2() (rbxfile.ValueVector3, error) {
 
 	val.X = float32(xShort)*0.0625 - 2048.0
 	val.Y = float32(yShort)*0.0625 - 2048.0
-	val.Z = float32(zShort)*0.0625 - 2048.0
-	return val, nil
+	val.Z = float32(zShort)*0.0625 - 2048.0*/
+	return val, errors.New("coordmode 2 not implemented")
 }
 
 func (b *extendedReader) readPhysicsCoords() (rbxfile.ValueVector3, error) {
@@ -936,8 +936,8 @@ func (b *extendedReader) readMatrixMode0() ([9]float32, error) {
 
 func (b *extendedReader) readMatrixMode1() ([9]float32, error) {
 	q := [4]float32{}
+	/*invertW, err := b.readBool()
 	var val [9]float32
-	invertW, err := b.readBool()
 	if err != nil {
 		return val, err
 	}
@@ -981,8 +981,8 @@ func (b *extendedReader) readMatrixMode1() ([9]float32, error) {
 	if invertW {
 		w = -w
 	}
-	q = [4]float32{xs, ys, zs, w}
-	return quaternionToRotMatrix(q), nil
+	q = [4]float32{xs, ys, zs, w}*/
+	return quaternionToRotMatrix(q), errors.New("matrixmode1 not implemented")
 }
 func (b *extendedReader) readMatrixMode2() ([9]float32, error) {
 	return b.readMatrixMode1()

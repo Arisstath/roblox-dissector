@@ -312,10 +312,10 @@ func (reader *DefaultPacketReader) ReadPacket(payload []byte, layers *PacketLaye
 		packetType := rakNetLayer.SimpleLayerID
 		layers.PacketType = packetType
 		reader.readSimple(stream, packetType, layers)
-	} else if !rakNetLayer.IsValid {
+	} else if !rakNetLayer.Flags.IsValid {
 		layers.Error = fmt.Errorf("Sent invalid packet (packet header %x)", payload[0])
 		reader.emitLayers("simple", layers)
-	} else if rakNetLayer.IsACK || rakNetLayer.IsNAK {
+	} else if rakNetLayer.Flags.IsACK || rakNetLayer.Flags.IsNAK {
 		reader.emitLayers("ack", layers)
 	} else {
 		reader.readReliable(layers)

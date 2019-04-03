@@ -26,7 +26,7 @@ func (thisBitstream *extendedReader) DecodePacket83_05(reader PacketReader, laye
 	}
 
 	if inner.PacketVersion <= 1 {
-		inner.Timestamp, err = thisBitstream.bits(64)
+		inner.Timestamp, err = thisBitstream.readUint64BE()
 		if err != nil {
 			return inner, err
 		}
@@ -35,7 +35,9 @@ func (thisBitstream *extendedReader) DecodePacket83_05(reader PacketReader, laye
 		if err != nil {
 			return inner, err
 		}
-		inner.Timestamp, err = thisBitstream.bits(32)
+		var timestamp uint32
+		timestamp, err = thisBitstream.readUint32BE()
+		inner.Timestamp = uint64(timestamp)
 		if err != nil {
 			return inner, err
 		}
@@ -76,7 +78,7 @@ func (layer *Packet83_05) Serialize(writer PacketWriter, stream *extendedWriter)
 		return err
 	}
 	if layer.PacketVersion <= 1 {
-		err = stream.bits(64, layer.Timestamp)
+		err = stream.writeUint64BE(layer.Timestamp)
 		if err != nil {
 			return err
 		}
@@ -85,7 +87,7 @@ func (layer *Packet83_05) Serialize(writer PacketWriter, stream *extendedWriter)
 		if err != nil {
 			return err
 		}
-		err = stream.bits(32, layer.Timestamp)
+		err = stream.writeUint32BE(uint32(layer.Timestamp))
 		if err != nil {
 			return err
 		}

@@ -8,301 +8,37 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
 	"math"
 	"net"
 
 	"github.com/DataDog/zstd"
-	bitstream "github.com/gskartwii/go-bitstream"
 	"github.com/gskartwii/roblox-dissector/datamodel"
 )
 
-var englishTree *huffmanEncodingTree
-
-func init() {
-	englishTree = generateHuffmanFromFrequencyTable([]uint32{
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		722,
-		0,
-		0,
-		2,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		11084,
-		58,
-		63,
-		1,
-		0,
-		31,
-		0,
-		317,
-		64,
-		64,
-		44,
-		0,
-		695,
-		62,
-		980,
-		266,
-		69,
-		67,
-		56,
-		7,
-		73,
-		3,
-		14,
-		2,
-		69,
-		1,
-		167,
-		9,
-		1,
-		2,
-		25,
-		94,
-		0,
-		195,
-		139,
-		34,
-		96,
-		48,
-		103,
-		56,
-		125,
-		653,
-		21,
-		5,
-		23,
-		64,
-		85,
-		44,
-		34,
-		7,
-		92,
-		76,
-		147,
-		12,
-		14,
-		57,
-		15,
-		39,
-		15,
-		1,
-		1,
-		1,
-		2,
-		3,
-		0,
-		3611,
-		845,
-		1077,
-		1884,
-		5870,
-		841,
-		1057,
-		2501,
-		3212,
-		164,
-		531,
-		2019,
-		1330,
-		3056,
-		4037,
-		848,
-		47,
-		2586,
-		2919,
-		4771,
-		1707,
-		535,
-		1106,
-		152,
-		1243,
-		100,
-		0,
-		2,
-		0,
-		10,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0})
-}
-
-// TODO: Move extendedReader to its own package (roblox-dissector/bitstreams)?
+// TODO: Move extendedReader to its own package (roblox-dissector/parser)?
 type extendedReader struct {
-	*bitstream.BitReader
+	r io.Reader
 }
 
-func (b *extendedReader) bits(len int) (uint64, error) {
-	return b.ReadBits(len)
+func (b *extendedReader) ReadByte() (byte, error) {
+	var byt [1]byte
+	n, err := b.r.Read(byt[:])
+	if n != 1 {
+		return 0, err
+	}
+	return byt[0], nil
+}
+func (b *extendedReader) Read(dest []byte) (int, error) {
+	return b.r.Read(dest)
 }
 
 func (b *extendedReader) bytes(dest []byte, length int) error {
-	var Byte byte
-	for i := 0; i < length; i++ {
-		res, err := b.bits(8)
-		if err != nil {
-			return err
-		}
-		Byte = byte(res)
-		dest[i] = Byte
+	n, err := b.Read(dest[:length])
+	if n != length {
+		return err
 	}
 	return nil
-}
-
-func (b *extendedReader) readBool() (bool, error) {
-	res, err := b.ReadBit()
-	return bool(res), err
 }
 
 func (b *extendedReader) readUint16BE() (uint16, error) {
@@ -318,7 +54,7 @@ func (b *extendedReader) readUint16LE() (uint16, error) {
 }
 
 func (b *extendedReader) readBoolByte() (bool, error) {
-	res, err := b.bits(8)
+	res, err := b.ReadByte()
 	return res == 1, err
 }
 
@@ -345,83 +81,8 @@ func (b *extendedReader) readUint64BE() (uint64, error) {
 	return binary.BigEndian.Uint64(dest), err
 }
 
-func (b *extendedReader) readCompressed(dest []byte, size uint32, unsignedData bool) error {
-	var currentByte uint32 = (size >> 3) - 1
-	var byteMatch, halfByteMatch byte
-
-	if unsignedData {
-		byteMatch = 0
-		halfByteMatch = 0
-	} else {
-		byteMatch = 0xFF
-		halfByteMatch = 0xF0
-	}
-
-	for currentByte > 0 {
-		res, err := b.readBool()
-		if err != nil {
-			return err
-		}
-		if res {
-			dest[currentByte] = byteMatch
-			currentByte--
-		} else {
-			err = b.bytes(dest, int(currentByte+1))
-			return err
-		}
-	}
-
-	res, err := b.readBool()
-	if err != nil {
-		return err
-	}
-
-	if res {
-		res, err := b.bits(4)
-		if err != nil {
-			return err
-		}
-		dest[currentByte] = byte(res) | halfByteMatch
-	} else {
-		err := b.bytes(dest[currentByte:], 1)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (b *extendedReader) readUint32BECompressed(unsignedData bool) (uint32, error) {
-	dest := make([]byte, 4)
-	err := b.readCompressed(dest, 32, unsignedData)
-	if err != nil {
-		return 0, err
-	}
-	return binary.BigEndian.Uint32(dest), nil
-}
-
-func (b *extendedReader) readHuffman() ([]byte, error) {
-	var name []byte
-	maxCharLen, err := b.readUint32BE()
-	if err != nil {
-		return name, err
-	}
-	sizeInBits, err := b.readUint32BECompressed(true)
-	if err != nil {
-		return name, err
-	}
-
-	if maxCharLen > 0x5000 || sizeInBits > 0x50000 {
-		return name, errors.New("sanity check: exceeded maximum sizeinbits/maxcharlen of 0x5000")
-	}
-	name = make([]byte, maxCharLen)
-	err = englishTree.decodeArray(b, uint(sizeInBits), uint(maxCharLen), name)
-
-	return name, err
-}
-
 func (b *extendedReader) readUint8() (uint8, error) {
-	res, err := b.bits(8)
+	res, err := b.ReadByte()
 	return uint8(res), err
 }
 
@@ -491,7 +152,7 @@ func (b *extendedReader) readFloat32BE() (float32, error) {
 }
 
 func (b *extendedReader) readFloat64BE() (float64, error) {
-	intf, err := b.bits(64)
+	intf, err := b.readUint64BE()
 	if err != nil {
 		return 0.0, err
 	}
@@ -517,7 +178,7 @@ func (b *extendedReader) RegionToGZipStream() (*extendedReader, error) {
 		return nil, err
 	}
 
-	return &extendedReader{bitstream.NewReader(gzipStream)}, err
+	return &extendedReader{gzipStream}, err
 }
 
 func (b *extendedReader) RegionToZStdStream() (*extendedReader, error) {
@@ -545,7 +206,7 @@ func (b *extendedReader) RegionToZStdStream() (*extendedReader, error) {
 	}*/
 
 	zstdStream := zstd.NewReader(bytes.NewReader(compressed))
-	return &extendedReader{bitstream.NewReader(zstdStream)}, nil
+	return &extendedReader{zstdStream}, nil
 }
 
 func (b *extendedReader) readJoinObject(context *CommunicationContext) (datamodel.Reference, error) {
@@ -594,7 +255,7 @@ func (b *extendedReader) readFloat16BE(floatMin float32, floatMax float32) (floa
 
 type cacheReadCallback func(*extendedReader) (interface{}, error)
 
-var CacheReadOOB = errors.New("Cache read is out of bounds")
+var CacheReadOOB = errors.New("cache read is out of bounds")
 
 func (b *extendedReader) readWithCache(cache Cache, readCallback cacheReadCallback) (interface{}, error) {
 	var result interface{}
@@ -715,7 +376,7 @@ func (b *extendedReader) aesDecrypt(lenBytes int) (*extendedReader, error) {
 	dest = shuffleSlice(dest)
 
 	checkSum := calculateChecksum(dest[4:])
-	thisBitstream := &extendedReader{bitstream.NewReader(bytes.NewReader(dest))}
+	thisBitstream := &extendedReader{bytes.NewReader(dest)}
 	storedChecksum, err := thisBitstream.readUint32LE()
 	if err != nil {
 		return thisBitstream, err
@@ -742,4 +403,42 @@ func (b *extendedReader) aesDecrypt(lenBytes int) (*extendedReader, error) {
 	}
 
 	return thisBitstream, nil
+}
+
+type RakNetFlags struct {
+	IsValid          bool
+	IsACK            bool
+	IsNAK            bool
+	IsPacketPair     bool
+	IsContinuousSend bool
+	NeedsBAndAS      bool
+	HasBAndAS        bool
+}
+
+func (stream *extendedReader) readRakNetFlags() (RakNetFlags, error) {
+	val := RakNetFlags{}
+	flags, err := stream.ReadByte()
+	if err != nil {
+		return val, err
+	}
+	val.IsValid = flags>>7&1 == 1
+	val.IsACK = flags>>6&1 == 1
+	if val.IsACK {
+		val.HasBAndAS = flags>>5&1 == 1
+		return val, nil
+	}
+	val.IsNAK = flags>>5 == 1
+	if val.IsNAK {
+		val.HasBAndAS = flags>>4&1 == 1
+		return val, nil
+	}
+	val.IsPacketPair = flags>>4&1 == 1
+	val.IsContinuousSend = flags>>3&1 == 1
+	val.NeedsBAndAS = flags>>2&1 == 1
+	return val, nil
+}
+
+func (b *extendedReader) readReliabilityFlags() (uint8, bool, error) {
+	flags, err := b.ReadByte()
+	return flags >> 5, flags>>4&1 == 1, err
 }

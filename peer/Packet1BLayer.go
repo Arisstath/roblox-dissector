@@ -16,11 +16,11 @@ func (thisBitstream *extendedReader) DecodePacket1BLayer(reader PacketReader, la
 	layer := NewPacket1BLayer()
 
 	var err error
-	layer.Timestamp, err = thisBitstream.bits(64)
+	layer.Timestamp, err = thisBitstream.readUint64BE()
 	if err != nil {
 		return layer, err
 	}
-	layer.Timestamp2, err = thisBitstream.bits(64)
+	layer.Timestamp2, err = thisBitstream.readUint64BE()
 	if err != nil {
 		return layer, err
 	}
@@ -35,11 +35,11 @@ func (layer *Packet1BLayer) Serialize(writer PacketWriter, stream *extendedWrite
 	if err != nil {
 		return err
 	}
-	err = stream.bits(64, layer.Timestamp)
+	err = stream.writeUint64BE(layer.Timestamp)
 	if err != nil {
 		return err
 	}
-	err = stream.bits(64, layer.Timestamp2)
+	err = stream.writeUint64BE(layer.Timestamp2)
 	return err
 }
 

@@ -10,12 +10,10 @@ import (
 	"log"
 	"net"
 	"strings"
-
-	bitstream "github.com/gskartwii/go-bitstream"
 )
 
 func bufferToStream(buffer []byte) *extendedReader {
-	return &extendedReader{bitstream.NewReader(bytes.NewReader(buffer))}
+	return &extendedReader{bytes.NewReader(buffer)}
 }
 
 func bitsToBytes(bits uint) uint {
@@ -144,14 +142,8 @@ type RakNetLayer struct {
 	// If IsSimple is true, this is the packet type.
 	SimpleLayerID uint8
 	// Drop any non-simple packets which don't have IsValid set.
-	IsValid          bool
-	IsACK            bool
-	IsNAK            bool
-	HasBAndAS        bool
-	ACKs             []ACKRange
-	IsPacketPair     bool
-	IsContinuousSend bool
-	NeedsBAndAS      bool
+	Flags RakNetFlags
+	ACKs  []ACKRange
 	// A datagram number that is used to keep the packets in order.
 	DatagramNumber uint32
 }
@@ -204,28 +196,15 @@ func (bitstream *extendedReader) DecodeRakNetLayer(reader PacketReader, packetTy
 		return layer, nil
 	}
 
-	layer.IsValid, err = bitstream.readBool()
-	if !layer.IsValid {
-		return layer, nil
-	}
+	layer.Flags, err = bitstream.readRakNetFlags()
 	if err != nil {
 		return layer, err
 	}
-	layer.IsACK, err = bitstream.readBool()
-	if err != nil {
-		return layer, err
-	}
-	if !layer.IsACK {
-		layer.IsNAK, err = bitstream.readBool()
-		if err != nil {
-			return layer, err
-		}
+	if !layer.Flags.IsValid {
+		return layer, errors.New("layer not a valid RakNet packet")
 	}
 
-	if layer.IsACK || layer.IsNAK {
-		layer.HasBAndAS, err = bitstream.readBool()
-		bitstream.Align()
-
+	if layer.Flags.IsACK || layer.Flags.IsNAK {
 		ackCount, err := bitstream.readUint16BE()
 		if err != nil {
 			return layer, err
@@ -252,20 +231,6 @@ func (bitstream *extendedReader) DecodeRakNetLayer(reader PacketReader, packetTy
 		}
 		return layer, nil
 	} else {
-		layer.IsPacketPair, err = bitstream.readBool()
-		if err != nil {
-			return layer, err
-		}
-		layer.IsContinuousSend, err = bitstream.readBool()
-		if err != nil {
-			return layer, err
-		}
-		layer.NeedsBAndAS, err = bitstream.readBool()
-		if err != nil {
-			return layer, err
-		}
-		bitstream.Align()
-
 		layer.DatagramNumber, err = bitstream.readUint24LE()
 		if err != nil {
 			return layer, err
@@ -277,32 +242,12 @@ func (bitstream *extendedReader) DecodeRakNetLayer(reader PacketReader, packetTy
 }
 
 func (layer *RakNetLayer) Serialize(writer PacketWriter, outStream *extendedWriter) error {
-	var err error
-	err = outStream.writeBool(layer.IsValid)
+	err := outStream.writeRakNetFlags(layer.Flags)
 	if err != nil {
 		return err
 	}
-	err = outStream.writeBool(layer.IsACK)
-	if err != nil {
-		return err
-	}
-	if !layer.IsACK {
-		err = outStream.writeBool(layer.IsNAK)
-		if err != nil {
-			return err
-		}
-	}
 
-	if layer.IsACK || layer.IsNAK {
-		err = outStream.writeBool(layer.HasBAndAS)
-		if err != nil {
-			return err
-		}
-		err = outStream.Align()
-		if err != nil {
-			return err
-		}
-
+	if layer.Flags.IsACK || layer.Flags.IsNAK {
 		err = outStream.writeUint16BE(uint16(len(layer.ACKs)))
 		if err != nil {
 			return err
@@ -334,29 +279,12 @@ func (layer *RakNetLayer) Serialize(writer PacketWriter, outStream *extendedWrit
 			}
 		}
 	} else {
-		err = outStream.writeBool(layer.IsPacketPair)
-		if err != nil {
-			return err
-		}
-		err = outStream.writeBool(layer.IsContinuousSend)
-		if err != nil {
-			return err
-		}
-		err = outStream.writeBool(layer.NeedsBAndAS)
-		if err != nil {
-			return err
-		}
-		err = outStream.Align()
-		if err != nil {
-			return err
-		}
-
 		err = outStream.writeUint24LE(layer.DatagramNumber)
 		if err != nil {
 			return err
 		}
 
-		content, err := ioutil.ReadAll(layer.payload.GetReader())
+		content, err := ioutil.ReadAll(layer.payload)
 		if err != nil {
 			return err
 		}

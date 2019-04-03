@@ -3,7 +3,6 @@ package peer
 import (
 	"bytes"
 
-	bitstream "github.com/gskartwii/go-bitstream"
 	"github.com/olebedev/emitter"
 )
 
@@ -63,13 +62,12 @@ func (writer *DefaultPacketWriter) output(bytes []byte) {
 func (writer *DefaultPacketWriter) WriteSimple(packet RakNetPacket) error {
 	output := make([]byte, 0, 1492)
 	buffer := bytes.NewBuffer(output)
-	stream := &extendedWriter{bitstream.NewWriter(buffer)}
+	stream := &extendedWriter{buffer}
 	err := packet.Serialize(writer, stream)
 	if err != nil {
 		return err
 	}
 
-	stream.Flush(bitstream.Bit(false))
 	writer.output(buffer.Bytes())
 	return nil
 }
@@ -79,31 +77,30 @@ func (writer *DefaultPacketWriter) WriteSimple(packet RakNetPacket) error {
 func (writer *DefaultPacketWriter) WriteRakNet(packet *RakNetLayer) error {
 	output := make([]byte, 0, 1492)
 	buffer := bytes.NewBuffer(output)
-	stream := &extendedWriter{bitstream.NewWriter(buffer)}
+	stream := &extendedWriter{buffer}
 	err := packet.Serialize(writer, stream)
 	if err != nil {
 		return err
 	}
 
-	stream.Flush(bitstream.Bit(false))
 	writer.output(buffer.Bytes())
 	return nil
 }
 func (writer *DefaultPacketWriter) writeReliable(packet *ReliabilityLayer) error {
 	output := make([]byte, 0, 1492)
 	buffer := bytes.NewBuffer(output)
-	stream := &extendedWriter{bitstream.NewWriter(buffer)}
+	stream := &extendedWriter{buffer}
 	err := packet.Serialize(writer, stream)
 	if err != nil {
 		return err
 	}
 
-	stream.Flush(bitstream.Bit(false))
-
 	payload := buffer.Bytes()
 	raknet := &RakNetLayer{
-		payload:        bufferToStream(payload),
-		IsValid:        true,
+		payload: bufferToStream(payload),
+		Flags: RakNetFlags{
+			IsValid: true,
+		},
 		DatagramNumber: writer.datagramNumber,
 	}
 	writer.datagramNumber++
@@ -114,18 +111,18 @@ func (writer *DefaultPacketWriter) writeReliable(packet *ReliabilityLayer) error
 func (writer *DefaultPacketWriter) writeReliableWithDN(packet *ReliabilityLayer, dn uint32) error {
 	output := make([]byte, 0, 1492)
 	buffer := bytes.NewBuffer(output)
-	stream := &extendedWriter{bitstream.NewWriter(buffer)}
+	stream := &extendedWriter{buffer}
 	err := packet.Serialize(writer, stream)
 	if err != nil {
 		return err
 	}
 
-	stream.Flush(bitstream.Bit(false))
-
 	payload := buffer.Bytes()
 	raknet := &RakNetLayer{
-		payload:        bufferToStream(payload),
-		IsValid:        true,
+		payload: bufferToStream(payload),
+		Flags: RakNetFlags{
+			IsValid: true,
+		},
 		DatagramNumber: dn,
 	}
 	if dn >= writer.datagramNumber {
@@ -199,10 +196,10 @@ func (writer *DefaultPacketWriter) WriteReliablePacket(data []byte, packet *Reli
 	return nil
 }
 
-func (writer *DefaultPacketWriter) WriteTimestamped(timestamp *Packet1BLayer, generic RakNetPacket, reliability uint32) ([]byte, error) {
+func (writer *DefaultPacketWriter) WriteTimestamped(timestamp *Packet1BLayer, generic RakNetPacket, reliability uint8) ([]byte, error) {
 	output := make([]byte, 0, 1492)
 	buffer := bytes.NewBuffer(output) // Will allocate more if needed
-	stream := &extendedWriter{bitstream.NewWriter(buffer)}
+	stream := &extendedWriter{buffer}
 	err := timestamp.Serialize(writer, stream)
 	if err != nil {
 		return nil, err
@@ -212,7 +209,6 @@ func (writer *DefaultPacketWriter) WriteTimestamped(timestamp *Packet1BLayer, ge
 		return nil, err
 	}
 
-	stream.Flush(bitstream.Bit(false))
 	result := buffer.Bytes()
 
 	packet := &ReliablePacket{
@@ -226,16 +222,15 @@ func (writer *DefaultPacketWriter) WriteTimestamped(timestamp *Packet1BLayer, ge
 
 // WriteGeneric is used to write packets after the pre-connection. You want to use it
 // for most of your packets.
-func (writer *DefaultPacketWriter) WriteGeneric(generic RakNetPacket, reliability uint32) ([]byte, error) {
+func (writer *DefaultPacketWriter) WriteGeneric(generic RakNetPacket, reliability uint8) ([]byte, error) {
 	output := make([]byte, 0, 1492)
 	buffer := bytes.NewBuffer(output) // Will allocate more if needed
-	stream := &extendedWriter{bitstream.NewWriter(buffer)}
+	stream := &extendedWriter{buffer}
 	err := generic.Serialize(writer, stream)
 	if err != nil {
 		return nil, err
 	}
 
-	stream.Flush(bitstream.Bit(false))
 	result := buffer.Bytes()
 
 	packet := &ReliablePacket{

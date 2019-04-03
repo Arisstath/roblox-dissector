@@ -53,9 +53,11 @@ func (peer *ConnectedPeer) sendACKs() {
 	}
 
 	result := &RakNetLayer{
-		IsValid: true,
-		IsACK:   true,
-		ACKs:    ackStructure,
+		Flags: RakNetFlags{
+			IsValid: true,
+			IsACK:   true,
+		},
+		ACKs: ackStructure,
 	}
 
 	peer.WriteRakNet(result)
