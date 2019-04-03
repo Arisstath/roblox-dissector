@@ -5,7 +5,7 @@
 [![Go Report](https://goreportcard.com/badge/github.com/gskartwii/roblox-dissector)](https://goreportcard.com/report/github.com/gskartwii/roblox-dissector)
 [![Release v0.6pre](https://img.shields.io/badge/release-v0.6pre-blue.svg)](https://github.com/gskartwii/roblox-dissector/releases)
 
-Sala is a suite of tools to aid developers, hackers\* and designers in understanding the internal workings of Roblox networking. Currently, Sala development is entering beta stage. Contributions are welcome.
+Sala is a suite of tools to aid developers, hackers\* and designers in understanding the internal workings of Roblox networking. Currently, Sala development is entering the beta stage. Contributions are welcome.
 
 \* The word “hacker” is used here in the same sense as Atom is a “hackable” editor.
 
@@ -54,9 +54,9 @@ Packets for which encoding is not supported: memcheck hash packets
 * Custom Roblox server
 
 ## Screenshots
-![Sala provides a simple interface for exploring PCAP files.](https://github.com/gskartwii/roblox-dissector/tree/master/screenshots/screenshot1.PNG)
+![Sala provides a simple interface for exploring PCAP files.](screenshots/screenshot1.PNG?raw=true)
 
-![DataModel browser](https://github.com/gskartwii/roblox-dissector/tree/master/screenshots/screenshot2.PNG)
+![DataModel browser](screenshots/screenshot2.PNG?raw=true)
 
 ## About the name
 _Sala_ < Finnish _salaisuus_ ‘secret’ (noun). The name refers to how Sala introduces its user to many obscure aspects of the Roblox network protocol.
