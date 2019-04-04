@@ -34,7 +34,7 @@ func ShowPacket85(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 
 	subpacketList := widgets.NewQTreeView(nil)
 	standardModel := NewProperSortModel(nil)
-	standardModel.SetHorizontalHeaderLabels([]string{"Name", "Reference", "Humanoid state", "CFrame", "Linear velocity", "Rotational velocity", "Position", "Precision", "Interval"})
+	standardModel.SetHorizontalHeaderLabels([]string{"Name", "Reference", "Humanoid state", "CFrame", "Linear velocity", "Rotational velocity", "Interval"})
 
 	rootNode := standardModel.InvisibleRootItem()
 	for _, item := range MainLayer.SubPackets {
@@ -63,11 +63,6 @@ func ShowPacket85(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 					nil,
 					nil,
 					NewStringItem(motor.String()),
-					nil,
-					nil,
-					nil,
-					nil,
-					nil,
 				})
 			}
 			nameItem.AppendRow([]*gui.QStandardItem{motorsItem})
@@ -82,8 +77,6 @@ func ShowPacket85(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 					NewStringItem(history.CFrame.String()),
 					NewStringItem(history.LinearVelocity.String()),
 					NewStringItem(history.RotationalVelocity.String()),
-					nil,
-					nil,
 					NewQStandardItemF("%f", history.Interval),
 				})
 				if history.PlatformChild != nil {
@@ -125,11 +118,6 @@ func ShowPacket85(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 							nil,
 							nil,
 							NewStringItem(motor.String()),
-							nil,
-							nil,
-							nil,
-							nil,
-							nil,
 						})
 					}
 					childItem.AppendRow([]*gui.QStandardItem{motorsItem})
