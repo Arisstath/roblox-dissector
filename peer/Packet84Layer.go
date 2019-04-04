@@ -34,3 +34,6 @@ func (layer *Packet84Layer) String() string {
 func (Packet84Layer) TypeString() string {
 	return "ID_MARKER"
 }
+func (Packet84Layer) Type() byte {
+	return 0x84
+}

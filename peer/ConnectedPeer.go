@@ -1,6 +1,5 @@
 package peer
 
-import "sort"
 import "net"
 
 type ErrorHandler func(error)
@@ -18,49 +17,17 @@ type ConnectedPeer struct {
 	mustACK []int
 }
 
-func (peer *ConnectedPeer) sendACKs() {
+func (peer *ConnectedPeer) sendACKs() error {
 	if len(peer.mustACK) == 0 {
-		return
+		return nil
 	}
-	acks := peer.mustACK
+	err := peer.WriteACKs(peer.mustACK, false)
+	if err != nil {
+		return err
+	}
+
 	peer.mustACK = []int{}
-	var ackStructure []ACKRange
-	sort.Ints(acks)
-
-	for _, ack := range acks {
-		if len(ackStructure) == 0 {
-			ackStructure = append(ackStructure, ACKRange{uint32(ack), uint32(ack)})
-			continue
-		}
-
-		inserted := false
-		for i, ackRange := range ackStructure {
-			if int(ackRange.Max) == ack {
-				inserted = true
-				break
-			}
-			if int(ackRange.Max+1) == ack {
-				ackStructure[i].Max++
-				inserted = true
-				break
-			}
-		}
-		if inserted {
-			continue
-		}
-
-		ackStructure = append(ackStructure, ACKRange{uint32(ack), uint32(ack)})
-	}
-
-	result := &RakNetLayer{
-		Flags: RakNetFlags{
-			IsValid: true,
-			IsACK:   true,
-		},
-		ACKs: ackStructure,
-	}
-
-	peer.WriteRakNet(result)
+	return nil
 }
 
 func NewConnectedPeer(context *CommunicationContext, withClient bool) *ConnectedPeer {

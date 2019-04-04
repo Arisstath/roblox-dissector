@@ -32,6 +32,7 @@ type RakNetPacket interface {
 	fmt.Stringer
 	Serialize(writer PacketWriter, stream *extendedWriter) error
 	TypeString() string
+	Type() byte
 }
 
 type RootLayer struct {

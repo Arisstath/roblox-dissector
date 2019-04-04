@@ -59,3 +59,7 @@ func (layer *Packet87Layer) String() string {
 func (Packet87Layer) TypeString() string {
 	return "ID_CHAT_ALL"
 }
+
+func (Packet87Layer) Type() byte {
+	return 0x87
+}

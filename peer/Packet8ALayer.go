@@ -164,3 +164,7 @@ func (layer *Packet8ALayer) String() string {
 func (Packet8ALayer) TypeString() string {
 	return "ID_SUBMIT_TICKET"
 }
+
+func (Packet8ALayer) Type() byte {
+	return 0x8A
+}

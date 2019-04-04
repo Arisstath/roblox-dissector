@@ -36,3 +36,6 @@ func (Packet15Layer) TypeString() string {
 func (layer *Packet15Layer) String() string {
 	return fmt.Sprintf("ID_DISCONNECTION_NOTIFICATION: Reason %d", layer.Reason)
 }
+func (Packet15Layer) Type() byte {
+	return 0x15
+}

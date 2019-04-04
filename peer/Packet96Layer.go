@@ -46,3 +46,7 @@ func (layer *Packet96Layer) String() string {
 func (Packet96Layer) TypeString() string {
 	return "ID_REQUEST_STATS"
 }
+
+func (Packet96Layer) Type() byte {
+	return 0x96
+}

@@ -125,3 +125,6 @@ func (Packet83Layer) TypeString() string {
 func (layer *Packet83Layer) String() string {
 	return fmt.Sprintf("ID_DATA: %d items", len(layer.SubPackets))
 }
+func (Packet83Layer) Type() byte {
+	return 0x83
+}

@@ -35,3 +35,7 @@ func (layer *Packet8FLayer) String() string {
 func (Packet8FLayer) TypeString() string {
 	return "ID_PREFERRED_SPAWN_NAME"
 }
+
+func (Packet8FLayer) Type() byte {
+	return 0x8F
+}

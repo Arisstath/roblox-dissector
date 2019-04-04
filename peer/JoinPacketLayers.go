@@ -135,6 +135,9 @@ func (layer *Packet05Layer) String() string {
 func (Packet05Layer) TypeString() string {
 	return "ID_OPEN_CONNECTION_REQUEST_1"
 }
+func (Packet05Layer) Type() byte {
+	return 5
+}
 
 func (thisStream *extendedReader) DecodePacket06Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket06Layer()
@@ -183,6 +186,9 @@ func (layer *Packet06Layer) String() string {
 func (Packet06Layer) TypeString() string {
 	return "ID_OPEN_CONNECTION_REPLY_1"
 }
+func (Packet06Layer) Type() byte {
+	return 6
+}
 
 func (thisStream *extendedReader) DecodePacket07Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket07Layer()
@@ -230,6 +236,9 @@ func (layer *Packet07Layer) String() string {
 }
 func (Packet07Layer) TypeString() string {
 	return "ID_OPEN_CONNECTION_REQUEST_2"
+}
+func (Packet07Layer) Type() byte {
+	return 7
 }
 
 func (thisStream *extendedReader) DecodePacket08Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
@@ -287,6 +296,9 @@ func (layer *Packet08Layer) String() string {
 func (Packet08Layer) TypeString() string {
 	return "ID_OPEN_CONNECTION_REPLY_2"
 }
+func (Packet08Layer) Type() byte {
+	return 8
+}
 
 func (thisStream *extendedReader) DecodePacket09Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket09Layer()
@@ -337,6 +349,9 @@ func (layer *Packet09Layer) String() string {
 }
 func (Packet09Layer) TypeString() string {
 	return "ID_CONNECTION_REQUEST"
+}
+func (Packet09Layer) Type() byte {
+	return 9
 }
 
 func (thisStream *extendedReader) DecodePacket10Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
@@ -401,6 +416,9 @@ func (layer *Packet10Layer) String() string {
 func (Packet10Layer) TypeString() string {
 	return "ID_CONNECTION_ACCEPTED"
 }
+func (Packet10Layer) Type() byte {
+	return 0x10
+}
 
 func (thisStream *extendedReader) DecodePacket13Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := NewPacket13Layer()
@@ -456,4 +474,7 @@ func (layer *Packet13Layer) String() string {
 
 func (Packet13Layer) TypeString() string {
 	return "ID_NEW_INCOMING_CONNECTION"
+}
+func (Packet13Layer) Type() byte {
+	return 0x13
 }

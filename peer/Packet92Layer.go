@@ -34,3 +34,7 @@ func (layer *Packet92Layer) String() string {
 func (Packet92Layer) TypeString() string {
 	return "ID_PLACEID_VERIFICATION"
 }
+
+func (Packet92Layer) Type() byte {
+	return 0x92
+}

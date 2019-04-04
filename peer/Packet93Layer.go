@@ -112,3 +112,7 @@ func (layer *Packet93Layer) String() string {
 func (Packet93Layer) TypeString() string {
 	return "ID_DICTIONARY_FORMAT"
 }
+
+func (Packet93Layer) Type() byte {
+	return 0x93
+}

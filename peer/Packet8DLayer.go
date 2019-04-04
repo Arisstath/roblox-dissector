@@ -194,3 +194,7 @@ func (layer *Packet8DLayer) String() string {
 func (Packet8DLayer) TypeString() string {
 	return "ID_CLUSTER"
 }
+
+func (Packet8DLayer) Type() byte {
+	return 0x8D
+}

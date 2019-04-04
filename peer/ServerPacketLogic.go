@@ -108,7 +108,7 @@ func (client *ServerClient) requestParamsHandler(e *emitter.Event) {
 }
 
 func (client *ServerClient) authHandler(e *emitter.Event) {
-	_, err := client.WritePacket(&Packet97Layer{
+	err := client.WritePacket(&Packet97Layer{
 		Schema: client.Context.StaticSchema,
 	})
 	if err != nil {
@@ -126,7 +126,7 @@ func (client *ServerClient) authHandler(e *emitter.Event) {
 		}
 	}
 
-	_, err = client.WritePacket(&Packet81Layer{
+	err = client.WritePacket(&Packet81Layer{
 		StreamJob:            false,
 		FilteringEnabled:     true,
 		AllowThirdPartySales: false,

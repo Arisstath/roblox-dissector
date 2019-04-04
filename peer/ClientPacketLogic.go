@@ -88,7 +88,7 @@ func (myClient *CustomClient) sendResponse9() {
 		UseSecurity: false,
 		Password:    []byte{0x37, 0x4F, 0x5E, 0x11, 0x6C, 0x45},
 	}
-	_, err := myClient.WritePacket(response)
+	err := myClient.WritePacket(response)
 	if err != nil {
 		println("Failed to write response9: ", err.Error())
 	}
@@ -118,7 +118,7 @@ func (myClient *CustomClient) sendResponse13(pingTime uint64) {
 		SendPongTime: uint64(time.Now().UnixNano() / int64(time.Millisecond)),
 	}
 
-	_, err := myClient.WritePacket(response)
+	err := myClient.WritePacket(response)
 	if err != nil {
 		println("Failed to write response13: ", err.Error())
 	}
@@ -149,7 +149,7 @@ func (myClient *CustomClient) sendProtocolSync() {
 		},
 		JoinData: string(marshalledJoin),
 	}
-	_, err = myClient.WritePacket(response90)
+	err = myClient.WritePacket(response90)
 	if err != nil {
 		println("Failed to write response90: ", err.Error())
 	}
@@ -158,7 +158,7 @@ func (myClient *CustomClient) sendPlaceIdVerification(placeId int64) {
 	response92 := &Packet92Layer{
 		PlaceId: placeId,
 	}
-	_, err := myClient.WritePacket(response92)
+	err := myClient.WritePacket(response92)
 	if err != nil {
 		println("Failed to write response92: ", err.Error())
 	}
@@ -172,7 +172,7 @@ func (myClient *CustomClient) submitTicket() {
 		SessionId:         myClient.sessionId,
 	}
 	myClient.SecuritySettings.PatchTicketPacket(response8A)
-	_, err := myClient.WritePacket(response8A)
+	err := myClient.WritePacket(response8A)
 	if err != nil {
 		println("Failed to write response8A: ", err.Error())
 	}
@@ -181,7 +181,7 @@ func (myClient *CustomClient) sendSpawnName() {
 	response8F := &Packet8FLayer{
 		SpawnName: "",
 	}
-	_, err := myClient.WritePacket(response8F)
+	err := myClient.WritePacket(response8F)
 	if err != nil {
 		println("Failed to write response8F: ", err.Error())
 	}
@@ -561,7 +561,7 @@ func (myClient *CustomClient) stalkPart(movePart *datamodel.Instance, cframe rbx
 		},
 	}
 
-	_, err := myClient.WritePhysics(myClient.NewTimestamp(), physicsPacket)
+	err := myClient.WriteTimestamped(myClient.NewTimestamp(), physicsPacket)
 	if err != nil {
 		println("Failed to send stalking packet:", err.Error())
 	}

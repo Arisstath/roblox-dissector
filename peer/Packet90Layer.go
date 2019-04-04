@@ -80,3 +80,7 @@ func (layer *Packet90Layer) String() string {
 func (Packet90Layer) TypeString() string {
 	return "ID_PROTOCOL_SYNC"
 }
+
+func (Packet90Layer) Type() byte {
+	return 0x90
+}

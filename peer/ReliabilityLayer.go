@@ -194,3 +194,21 @@ func (layer *ReliabilityLayer) Serialize(writer PacketWriter, outputStream *exte
 	}
 	return nil
 }
+
+// Copy creates a safe copy of a ReliablePacket.
+// It doesn't retain the data or its length.
+func (packet *ReliablePacket) Copy() *ReliablePacket {
+	newPacket := new(ReliablePacket)
+	newPacket.Reliability = packet.Reliability
+	newPacket.HasSplitPacket = packet.HasSplitPacket
+	newPacket.OrderingChannel = packet.OrderingChannel
+	newPacket.OrderingIndex = packet.OrderingIndex
+	newPacket.ReliableMessageNumber = packet.ReliableMessageNumber
+	newPacket.SequencingIndex = packet.SequencingIndex
+	newPacket.SplitPacketCount = packet.SplitPacketCount
+	newPacket.SplitPacketID = packet.SplitPacketID
+	newPacket.SplitPacketIndex = packet.SplitPacketIndex
+	newPacket.SplitBuffer = packet.SplitBuffer
+
+	return newPacket
+}

@@ -79,8 +79,14 @@ func (writer *ProxyWriter) startAcker() {
 		for {
 			select {
 			case <-writer.ackTicker.C:
-				writer.ClientHalf.sendACKs()
-				writer.ServerHalf.sendACKs()
+				err := writer.ClientHalf.sendACKs()
+				if err != nil {
+					println("client ack error", err.Error())
+				}
+				err = writer.ServerHalf.sendACKs()
+				if err != nil {
+					println("server ack error", err.Error())
+				}
 			case <-writer.RuntimeContext.Done():
 				return
 			}
@@ -95,7 +101,7 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 	clientHalf := NewProxyHalf(context, true)
 	serverHalf := NewProxyHalf(context, false)
 
-	clientHalf.LayerEmitter.On("simple", func(e *emitter.Event) {
+	clientHalf.DefaultPacketReader.LayerEmitter.On("simple", func(e *emitter.Event) {
 		layers := e.Args[0].(*PacketLayers)
 		println("client simple", layers.PacketType)
 		if layers.PacketType == 5 {
@@ -103,22 +109,22 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 		}
 		serverHalf.WriteSimple(layers.Main)
 	}, emitter.Void)
-	serverHalf.LayerEmitter.On("simple", func(e *emitter.Event) {
+	serverHalf.DefaultPacketReader.LayerEmitter.On("simple", func(e *emitter.Event) {
 		layers := e.Args[0].(*PacketLayers)
 		println("server simple", layers.PacketType)
 		clientHalf.WriteSimple(layers.Main)
 	}, emitter.Void)
 
-	clientHalf.LayerEmitter.On("reliability", func(e *emitter.Event) {
+	clientHalf.DefaultPacketReader.LayerEmitter.On("reliability", func(e *emitter.Event) {
 		layers := e.Args[0].(*PacketLayers)
 		clientHalf.mustACK = append(clientHalf.mustACK, int(layers.RakNet.DatagramNumber))
 	}, emitter.Void)
-	serverHalf.LayerEmitter.On("reliability", func(e *emitter.Event) {
+	serverHalf.DefaultPacketReader.LayerEmitter.On("reliability", func(e *emitter.Event) {
 		layers := e.Args[0].(*PacketLayers)
 		serverHalf.mustACK = append(serverHalf.mustACK, int(layers.RakNet.DatagramNumber))
 	}, emitter.Void)
 
-	clientHalf.LayerEmitter.On("full-reliable", func(e *emitter.Event) {
+	clientHalf.DefaultPacketReader.LayerEmitter.On("full-reliable", func(e *emitter.Event) {
 		layers := e.Args[0].(*PacketLayers)
 		packetType := layers.PacketType
 		// FIXME: No streaming support
@@ -189,29 +195,29 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 			}
 			mainLayer.SubPackets = modifiedSubpackets
 
-			_, err = serverHalf.WritePacket(mainLayer)
+			err = serverHalf.WritePacket(mainLayer)
 		case 0x8A:
 			mainLayer := layers.Main.(*Packet8ALayer)
 			writer.SecuritySettings.PatchTicketPacket(mainLayer)
 
-			_, err = serverHalf.WritePacket(mainLayer)
+			err = serverHalf.WritePacket(mainLayer)
 		case 0x85:
 			mainLayer := layers.Main.(*Packet85Layer)
-			_, err = serverHalf.WritePhysics(layers.Timestamp, mainLayer)
+			err = serverHalf.WriteTimestamped(layers.Timestamp, mainLayer)
 		case 0x86:
 			println("Dropping touch: test")
 			mainLayer := layers.Main.(*Packet86Layer)
-			_, err = serverHalf.WritePacket(mainLayer)
+			err = serverHalf.WritePacket(mainLayer)
 		default:
 			println("passthrough packet: ", packetType)
-			_, err = serverHalf.WritePacket(layers.Main.(RakNetPacket))
+			err = serverHalf.WritePacket(layers.Main.(RakNetPacket))
 		}
 		if err != nil {
 			println("client error:", err.Error())
 		}
 	}, emitter.Void)
 
-	serverHalf.LayerEmitter.On("full-reliable", func(e *emitter.Event) {
+	serverHalf.DefaultPacketReader.LayerEmitter.On("full-reliable", func(e *emitter.Event) {
 		layers := e.Args[0].(*PacketLayers)
 		packetType := layers.PacketType
 		if layers.Error != nil {
@@ -223,7 +229,7 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 			return
 		}
 		println("server sent reliable, clientHalf writing", packetType)
-		_, err := clientHalf.WritePacket(layers.Main.(RakNetPacket))
+		err := clientHalf.WritePacket(layers.Main.(RakNetPacket))
 		//clientHalf.WriteReliablePacket(layers.Reliability.SplitBuffer.data, layers.Reliability)
 
 		if err != nil {

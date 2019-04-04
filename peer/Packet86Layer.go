@@ -97,3 +97,7 @@ func (layer *Packet86Layer) String() string {
 func (Packet86Layer) TypeString() string {
 	return "ID_TOUCH"
 }
+
+func (Packet86Layer) Type() byte {
+	return 0x86
+}

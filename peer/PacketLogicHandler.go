@@ -12,6 +12,7 @@ import (
 	"github.com/robloxapi/rbxfile"
 )
 
+// TODO: Add Logger to this struct?
 type PacketLogicHandler struct {
 	*ConnectedPeer
 	Context        *CommunicationContext
@@ -73,7 +74,10 @@ func (logicHandler *PacketLogicHandler) startAcker() {
 		for {
 			select {
 			case <-logicHandler.ackTicker.C:
-				logicHandler.sendACKs()
+				err := logicHandler.sendACKs()
+				if err != nil {
+					println("ACK Error:", err.Error())
+				}
 			case <-logicHandler.RunningContext.Done():
 				return
 			}
@@ -130,7 +134,7 @@ func (logicHandler *PacketLogicHandler) sendPing() {
 		SendPingTime: uint64(time.Now().UnixNano() / int64(time.Millisecond)),
 	}
 
-	_, err := logicHandler.WritePacket(packet)
+	err := logicHandler.WritePacket(packet)
 	if err != nil {
 		println("Failed to write ping: ", err.Error())
 	}
@@ -142,7 +146,7 @@ func (logicHandler *PacketLogicHandler) sendPong(pingTime uint64) {
 		SendPongTime: uint64(time.Now().UnixNano() / int64(time.Millisecond)),
 	}
 
-	_, err := logicHandler.WritePacket(response)
+	err := logicHandler.WritePacket(response)
 	if err != nil {
 		println("Failed to write pong: ", err.Error())
 	}
@@ -155,7 +159,7 @@ func (logicHandler *PacketLogicHandler) pingHandler(packetType byte, layers *Pac
 
 func (logicHandler *PacketLogicHandler) bindDefaultHandlers() {
 	// common to all peers
-	logicHandler.LayerEmitter.On("reliability", logicHandler.defaultReliabilityLayerHandler, emitter.Void)
+	logicHandler.DefaultPacketReader.LayerEmitter.On("reliability", logicHandler.defaultReliabilityLayerHandler, emitter.Void)
 	dataHandlers := logicHandler.DataEmitter
 	dataHandlers.On("ID_REPLIC_PING", logicHandler.dataPingHandler, emitter.Void)
 
@@ -167,7 +171,7 @@ func (logicHandler *PacketLogicHandler) bindDefaultHandlers() {
 }
 
 func (logicHandler *PacketLogicHandler) WriteDataPackets(packets ...Packet83Subpacket) error {
-	_, err := logicHandler.WritePacket(&Packet83Layer{
+	err := logicHandler.WritePacket(&Packet83Layer{
 		SubPackets: packets,
 	})
 	return err

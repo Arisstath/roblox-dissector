@@ -274,3 +274,6 @@ func (layer *Packet85Layer) String() string {
 func (Packet85Layer) TypeString() string {
 	return "ID_PHYSICS"
 }
+func (Packet85Layer) Type() byte {
+	return 0x85
+}

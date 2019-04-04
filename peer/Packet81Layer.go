@@ -203,3 +203,7 @@ func (layer *Packet81Layer) String() string {
 func (Packet81Layer) TypeString() string {
 	return "ID_SET_GLOBALS"
 }
+
+func (Packet81Layer) Type() byte {
+	return 0x81
+}

@@ -553,3 +553,7 @@ func (layer *Packet97Layer) String() string {
 func (Packet97Layer) TypeString() string {
 	return "ID_NEW_SCHEMA"
 }
+
+func (Packet97Layer) Type() byte {
+	return 0x97
+}

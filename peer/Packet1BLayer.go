@@ -50,3 +50,6 @@ func (layer *Packet1BLayer) String() string {
 func (Packet1BLayer) TypeString() string {
 	return "ID_TIMESTAMP"
 }
+func (Packet1BLayer) Type() byte {
+	return 0x1B
+}
