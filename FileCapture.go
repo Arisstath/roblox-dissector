@@ -12,11 +12,16 @@ import (
 	"github.com/olebedev/emitter"
 )
 
+type PacketProvider interface {
+	Layers() *emitter.Emitter
+	Errors() *emitter.Emitter
+}
+
 type Conversation struct {
 	ClientAddress *net.UDPAddr
 	ServerAddress *net.UDPAddr
-	ClientReader  *peer.DefaultPacketReader
-	ServerReader  *peer.DefaultPacketReader
+	ClientReader  PacketProvider
+	ServerReader  PacketProvider
 	Context       *peer.CommunicationContext
 }
 type CaptureContext struct {
@@ -65,6 +70,13 @@ func (ctx *CaptureContext) AddConversation(conv *Conversation) {
 	<-ctx.ConversationEmitter.Emit("conversation", conv)
 }
 
+func NewProviderConversation(clientProv PacketProvider, serverProv PacketProvider) *Conversation {
+	return &Conversation{
+		ClientReader: clientProv,
+		ServerReader: serverProv,
+	}
+}
+
 func NewConversation(client *net.UDPAddr, server *net.UDPAddr) *Conversation {
 	context := peer.NewCommunicationContext()
 	clientReader := peer.NewPacketReader()
@@ -72,16 +84,14 @@ func NewConversation(client *net.UDPAddr, server *net.UDPAddr) *Conversation {
 	clientReader.SetContext(context)
 	serverReader := peer.NewPacketReader()
 	serverReader.SetContext(context)
-	// We do not automatically bind DataModel handlers here
-	// the user can do that manually
+	clientReader.BindDataModelHandlers()
+	serverReader.BindDataModelHandlers()
 
-	conv := &Conversation{
-		ClientAddress: client,
-		ServerAddress: server,
-		ClientReader:  clientReader,
-		ServerReader:  serverReader,
-		Context:       context,
-	}
+	conv := NewProviderConversation(clientReader, serverReader)
+
+	conv.ClientAddress = client
+	conv.ServerAddress = server
+	conv.Context = context
 
 	return conv
 }
@@ -134,9 +144,9 @@ func (captureContext *CaptureContext) Capture(ctx context.Context, packetSource 
 		layers.Root.FromServer = !fromClient
 
 		if fromClient {
-			conv.ClientReader.ReadPacket(payload, layers)
+			conv.ClientReader.(*peer.DefaultPacketReader).ReadPacket(payload, layers)
 		} else {
-			conv.ServerReader.ReadPacket(payload, layers)
+			conv.ServerReader.(*peer.DefaultPacketReader).ReadPacket(payload, layers)
 		}
 	}
 

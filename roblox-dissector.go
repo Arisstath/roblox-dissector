@@ -12,8 +12,6 @@ import (
 	_ "net/http/pprof"
 )
 
-const DEBUG bool = false
-
 type ActivationCallback func(*widgets.QVBoxLayout, *peer.CommunicationContext, *peer.PacketLayers)
 
 var ActivationCallbacks map[byte]ActivationCallback = map[byte]ActivationCallback{

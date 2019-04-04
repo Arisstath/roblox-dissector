@@ -38,8 +38,6 @@ func NewConnectedPeer(context *CommunicationContext, withClient bool) *Connected
 
 	reader.SetContext(context)
 	writer.SetContext(context)
-	reader.SetCaches(new(Caches))
-	writer.SetCaches(new(Caches))
 	reader.SetIsClient(withClient)
 	writer.SetToClient(withClient)
 

@@ -135,7 +135,8 @@ type CustomClient struct {
 	timestamp2Index    uint64
 	InstanceDictionary *datamodel.InstanceDictionary
 
-	writerBinding <-chan emitter.Event
+	writerBinding         <-chan emitter.Event
+	rootLayerPatchBinding <-chan emitter.Event
 }
 
 func (myClient *CustomClient) ReadPacket(buf []byte) {
@@ -149,7 +150,7 @@ func (myClient *CustomClient) ReadPacket(buf []byte) {
 	myClient.ConnectedPeer.ReadPacket(buf, layers)
 }
 
-func NewCustomClient() *CustomClient {
+func NewCustomClient(ctx context.Context) *CustomClient {
 	rand.Seed(time.Now().UnixNano())
 	context := NewCommunicationContext()
 
@@ -160,6 +161,11 @@ func NewCustomClient() *CustomClient {
 		PacketLogicHandler: newPacketLogicHandler(context, false),
 		InstanceDictionary: datamodel.NewInstanceDictionary(),
 	}
+
+	client.RunningContext = ctx
+	client.createWriter()
+	client.bindDefaultHandlers()
+
 	return client
 }
 
@@ -516,22 +522,26 @@ func (myClient *CustomClient) createWriter() {
 			fmt.Printf("Wrote %d bytes, err: %s\n", num, err.Error())
 		}
 	}, emitter.Void)
+	myClient.rootLayerPatchBinding = myClient.DefaultPacketWriter.LayerEmitter.On("*", func(e *emitter.Event) {
+		e.Args[0].(*PacketLayers).Root = RootLayer{
+			FromClient:  true,
+			Logger:      nil,
+			Source:      &myClient.Address,
+			Destination: &myClient.ServerAddress,
+		}
+	}, emitter.Void)
 }
 
-// TODO: Implement with contexts
 func (myClient *CustomClient) rakConnect() error {
 	var err error
 	addr := myClient.ServerAddress
 
-	myClient.createReader()
-	myClient.bindDefaultHandlers()
 	myClient.Connection, err = net.DialUDP("udp", nil, &addr)
 	defer myClient.Connection.Close()
 	if err != nil {
 		return err
 	}
 	myClient.Address = *myClient.Connection.LocalAddr().(*net.UDPAddr)
-	myClient.createWriter()
 
 	myClient.dial()
 	myClient.startAcker()

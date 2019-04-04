@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -10,7 +9,6 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/Gskartwii/roblox-dissector/peer"
 	"github.com/robloxapi/rbxfile"
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/gui"
@@ -153,25 +151,11 @@ func GUIMain() {
 		if len(parts) < 4 {
 			widgets.QMessageBox_Critical(window, "Invalid protocol invocation", "Invalid protocol invocation: "+os.Args[1], widgets.QMessageBox__Ok, widgets.QMessageBox__NoButton)
 		} else {
-			customClient := peer.NewCustomClient()
 			authTicket := parts[1]
 			placeID, _ := strconv.Atoi(parts[2])
 			browserTrackerId, _ := strconv.Atoi(parts[3])
-			customClient.SecuritySettings = peer.Win10Settings()
-			customClient.BrowserTrackerId = uint64(browserTrackerId)
-			var cancelFunc context.CancelFunc
-			customClient.RunningContext, cancelFunc = context.WithCancel(context.Background())
-			// No more guests! Roblox won't let us connect as one.
 
-			customClient.Logger = log.New(os.Stdout, "", log.Ltime|log.Lmicroseconds)
-			console := NewClientConsole(window, customClient, 1)
-			console.SetWindowTitle("Custom client console")
-			console.Show()
-			console.ConnectCloseEvent(func(_ *gui.QCloseEvent) {
-				println("canceling context")
-				cancelFunc()
-			})
-			go customClient.ConnectWithAuthTicket(uint32(placeID), authTicket)
+			window.StartClient(uint32(placeID), uint64(browserTrackerId), authTicket)
 		}
 	}
 	openFile := flag.Arg(0)

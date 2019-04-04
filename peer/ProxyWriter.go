@@ -242,10 +242,10 @@ func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
 			writer.CancelFunc()
 		}
 	}, emitter.Void)
-	clientHalf.ErrorEmitter.On("*", func(e *emitter.Event) {
+	clientHalf.DefaultPacketReader.ErrorEmitter.On("*", func(e *emitter.Event) {
 		println("client error on topic", e.OriginalTopic+":", e.Args[0].(*PacketLayers).Error.Error())
 	}, emitter.Void)
-	serverHalf.ErrorEmitter.On("*", func(e *emitter.Event) {
+	serverHalf.DefaultPacketReader.ErrorEmitter.On("*", func(e *emitter.Event) {
 		println("server error on topic", e.OriginalTopic+":", e.Args[0].(*PacketLayers).Error.Error())
 	}, emitter.Void)
 	// nop ack handler

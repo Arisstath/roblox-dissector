@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"strings"
@@ -12,7 +13,7 @@ import (
 	"github.com/therecipe/qt/widgets"
 )
 
-func NewClientConsole(parent widgets.QWidget_ITF, client *peer.CustomClient, flags core.Qt__WindowType) *widgets.QWidget {
+func NewClientConsole(parent widgets.QWidget_ITF, client *peer.CustomClient, flags core.Qt__WindowType, ctx context.Context, cancelFunc context.CancelFunc) *widgets.QWidget {
 	var logBuffer strings.Builder
 	client.Logger = log.New(&logBuffer, "", log.Ltime|log.Lmicroseconds)
 
@@ -36,7 +37,7 @@ func NewClientConsole(parent widgets.QWidget_ITF, client *peer.CustomClient, fla
 					log.VerticalScrollBar().SetValue(log.VerticalScrollBar().Maximum())
 				})
 				<-MainThreadRunner.Wait
-			case <-client.RunningContext.Done():
+			case <-ctx.Done():
 				return
 			}
 		}
@@ -44,7 +45,8 @@ func NewClientConsole(parent widgets.QWidget_ITF, client *peer.CustomClient, fla
 
 	window.ConnectCloseEvent(func(_ *gui.QCloseEvent) {
 		ticker.Stop()
-		client.Disconnect()
+		go client.Disconnect()
+		cancelFunc()
 	})
 
 	chatWidget := widgets.NewQWidget(window, 0)

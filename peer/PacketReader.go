@@ -440,3 +440,10 @@ func (reader *DefaultPacketReader) bindDataPacketHandler() {
 		}
 	}, emitter.Void)
 }
+
+func (reader *DefaultPacketReader) Layers() *emitter.Emitter {
+	return reader.LayerEmitter
+}
+func (reader *DefaultPacketReader) Errors() *emitter.Emitter {
+	return reader.ErrorEmitter
+}

@@ -43,10 +43,6 @@ func newPacketLogicHandler(context *CommunicationContext, withClient bool) Packe
 	}
 }
 
-func (logicHandler *PacketLogicHandler) createReader() {
-	logicHandler.DefaultPacketReader.SetContext(logicHandler.Context)
-}
-
 // only used by server and Studio? client must use ClientPacketLogic.go
 func (logicHandler *PacketLogicHandler) startDataPing() {
 	// boot up dataping

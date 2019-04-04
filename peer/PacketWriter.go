@@ -32,6 +32,10 @@ type DefaultPacketWriter struct {
 	// packet serialization process
 	// Channels: full-reliable, simple, reliable, reliability, ack
 	LayerEmitter *emitter.Emitter
+
+	// ErrorEmitter never emits anything. It exists for compatibility
+	ErrorEmitter *emitter.Emitter
+
 	// Output sends the byte slice to be sent via UDP
 	Output          *emitter.Emitter
 	orderingIndex   uint32
@@ -41,13 +45,19 @@ type DefaultPacketWriter struct {
 	datagramNumber  uint32
 	// Set this to true if the packets produced by this writer are sent to a client.
 	toClient bool
-	caches   *Caches
-	context  *CommunicationContext
 }
 
 func NewPacketWriter() *DefaultPacketWriter {
-	// Ordering on output doesn't matter, hence we can set the cap high
-	return &DefaultPacketWriter{Output: emitter.New(8)}
+	return &DefaultPacketWriter{
+		// Ordering on output doesn't matter, hence we can set the cap high
+		Output:       emitter.New(8),
+		LayerEmitter: emitter.New(0),
+		ErrorEmitter: emitter.New(0),
+
+		contextualHandler: contextualHandler{
+			caches: new(Caches),
+		},
+	}
 }
 func (writer *DefaultPacketWriter) ToClient() bool {
 	return writer.toClient
@@ -339,4 +349,11 @@ func (writer *DefaultPacketWriter) WriteACKs(datagrams []int, isNAK bool) error 
 	<-writer.LayerEmitter.Emit("ack", layers)
 
 	return writer.writeRakNet(layers)
+}
+
+func (writer *DefaultPacketWriter) Layers() *emitter.Emitter {
+	return writer.LayerEmitter
+}
+func (writer *DefaultPacketWriter) Errors() *emitter.Emitter {
+	return writer.ErrorEmitter
 }

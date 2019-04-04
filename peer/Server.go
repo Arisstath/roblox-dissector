@@ -48,7 +48,6 @@ func (client *ServerClient) createWriter() {
 }
 
 func (client *ServerClient) Init() {
-	client.createReader()
 	client.bindDefaultHandlers()
 	// Write to server's connection
 	client.Connection = client.Server.Connection

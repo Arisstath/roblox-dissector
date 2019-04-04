@@ -24,9 +24,6 @@ func bytesToBits(bytes uint) uint {
 	return bytes << 3
 }
 
-// DEBUG decides whether debug mode should be on or not.
-const DEBUG bool = true
-
 // RakNetPacket describes any packet that can be serialized and written to UDP
 type RakNetPacket interface {
 	fmt.Stringer
@@ -45,7 +42,10 @@ type RootLayer struct {
 }
 
 func (layer *RootLayer) GetLog() string {
-	return layer.logBuffer.String()
+	if layer.logBuffer != nil {
+		return layer.logBuffer.String()
+	}
+	return ""
 }
 
 // PacketLayers contains the different layers a packet can have.

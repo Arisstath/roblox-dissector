@@ -52,6 +52,9 @@ func NewReliablePacket() *ReliablePacket {
 }
 
 func (packet *ReliablePacket) GetLog() string {
+	if packet.SplitBuffer.logBuffer == nil {
+		return ""
+	}
 	return packet.SplitBuffer.logBuffer.String()
 }
 

@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"path/filepath"
 	"time"
 
+	"github.com/Gskartwii/roblox-dissector/peer"
 	"github.com/dreadl0ck/gopcap"
 	"github.com/google/gopacket/pcap"
 	"github.com/therecipe/qt/core"
@@ -153,6 +155,27 @@ func (window *DissectorWindow) CaptureFromLive(itfName string, promisc bool) {
 		})
 		<-MainThreadRunner.Wait
 	}()
+}
+
+func (window *DissectorWindow) StartClient(placeID uint32, browserTrackerId uint64, authTicket string) {
+	ctx, cancelFunc := context.WithCancel(context.Background())
+
+	customClient := peer.NewCustomClient(ctx)
+	customClient.SecuritySettings = peer.Win10Settings()
+	customClient.BrowserTrackerId = uint64(browserTrackerId)
+	// No more guests! Roblox won't let us connect as one.
+
+	nameBase := fmt.Sprintf("<CLIENT>:%d", placeID)
+	session := NewCaptureSession(nameBase, window)
+	session.SetModel = true
+	window.Sessions = append(window.Sessions, session)
+	index := window.TabWidget.AddTab(session.PacketListViewers[0], fmt.Sprintf("Conversation: %s#1", nameBase))
+	window.TabWidget.SetCurrentIndex(index)
+
+	console := NewClientConsole(window, customClient, 1, ctx, cancelFunc)
+	console.SetWindowTitle("Custom client console")
+	console.Show()
+	go session.CaptureFromClient(customClient, placeID, authTicket)
 }
 
 func (window *DissectorWindow) CaptureFromInjectionProxy(src string, dst string) {

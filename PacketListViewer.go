@@ -237,8 +237,10 @@ func (m *PacketListViewer) AddFullPacket(context *peer.CommunicationContext, lay
 func (viewer *PacketListViewer) BindToConversation(conv *Conversation) {
 	viewer.Conversation = conv
 	context := conv.Context
-	clientPacketReader := conv.ClientReader
-	serverPacketReader := conv.ServerReader
+	clientPacketEmitter := conv.ClientReader.Layers()
+	clientErrorEmitter := conv.ClientReader.Errors()
+	serverPacketEmitter := conv.ServerReader.Layers()
+	serverErrorEmitter := conv.ServerReader.Errors()
 
 	simpleHandler := func(e *emitter.Event) {
 		layers := e.Args[0].(*peer.PacketLayers)
@@ -261,24 +263,20 @@ func (viewer *PacketListViewer) BindToConversation(conv *Conversation) {
 		})
 		<-MainThreadRunner.Wait
 	}
-	// ACK and ReliabilityLayer are nops
 
-	clientPacketReader.BindDataModelHandlers()
-	serverPacketReader.BindDataModelHandlers()
+	clientPacketEmitter.On("simple", simpleHandler, emitter.Void)
+	clientPacketEmitter.On("reliable", reliableHandler, emitter.Void)
+	clientPacketEmitter.On("full-reliable", fullReliableHandler, emitter.Void)
+	clientErrorEmitter.On("simple", simpleHandler, emitter.Void)
+	clientErrorEmitter.On("reliable", reliableHandler, emitter.Void)
+	clientErrorEmitter.On("full-reliable", fullReliableHandler, emitter.Void)
 
-	clientPacketReader.LayerEmitter.On("simple", simpleHandler, emitter.Void)
-	clientPacketReader.LayerEmitter.On("reliable", reliableHandler, emitter.Void)
-	clientPacketReader.LayerEmitter.On("full-reliable", fullReliableHandler, emitter.Void)
-	clientPacketReader.ErrorEmitter.On("simple", simpleHandler, emitter.Void)
-	clientPacketReader.ErrorEmitter.On("reliable", reliableHandler, emitter.Void)
-	clientPacketReader.ErrorEmitter.On("full-reliable", fullReliableHandler, emitter.Void)
-
-	serverPacketReader.LayerEmitter.On("simple", simpleHandler, emitter.Void)
-	serverPacketReader.LayerEmitter.On("reliable", reliableHandler, emitter.Void)
-	serverPacketReader.LayerEmitter.On("full-reliable", fullReliableHandler, emitter.Void)
-	serverPacketReader.ErrorEmitter.On("simple", simpleHandler, emitter.Void)
-	serverPacketReader.ErrorEmitter.On("reliable", reliableHandler, emitter.Void)
-	serverPacketReader.ErrorEmitter.On("full-reliable", fullReliableHandler, emitter.Void)
+	serverPacketEmitter.On("simple", simpleHandler, emitter.Void)
+	serverPacketEmitter.On("reliable", reliableHandler, emitter.Void)
+	serverPacketEmitter.On("full-reliable", fullReliableHandler, emitter.Void)
+	serverErrorEmitter.On("simple", simpleHandler, emitter.Void)
+	serverErrorEmitter.On("reliable", reliableHandler, emitter.Void)
+	serverErrorEmitter.On("full-reliable", fullReliableHandler, emitter.Void)
 }
 
 func (m *PacketListViewer) SelectionChanged(index, _ *core.QModelIndex) {
