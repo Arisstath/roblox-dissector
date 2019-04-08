@@ -322,6 +322,10 @@ func NewDissectorWindow(parent widgets.QWidget_ITF, flags core.Qt__WindowType) *
 		url := core.NewQUrl3("https://github.com/gskartwii/roblox-dissector/issues/new", core.QUrl__TolerantMode)
 		gui.QDesktopServices_OpenUrl(url)
 	})
+	helpBar.AddAction("Join Discord server").ConnectTriggered(func(_ bool) {
+		url := core.NewQUrl3("https://discord.gg/zPbprKb")
+		gui.QDesktopServices_OpenUrl(url)
+	})
 	helpBar.AddAction("About &Qt...").ConnectTriggered(func(_ bool) {
 		widgets.QMessageBox_AboutQt(window, "About Qt")
 	})
