@@ -5,6 +5,8 @@
 [![Go Report](https://goreportcard.com/badge/github.com/gskartwii/roblox-dissector)](https://goreportcard.com/report/github.com/gskartwii/roblox-dissector)
 [![Release v0.6pre](https://img.shields.io/badge/release-v0.6pre-blue.svg)](https://github.com/gskartwii/roblox-dissector/releases)
 
+[Discord Chat](https://discord.gg/zPbprKb)
+
 Sala is a suite of tools to aid developers, hackers\* and designers in understanding the internal workings of Roblox networking. Currently, Sala development is entering the beta stage. Contributions are welcome.
 
 \* The word “hacker” is used here in the same sense as Atom is a “hackable” editor.
