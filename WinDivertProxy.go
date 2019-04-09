@@ -143,13 +143,6 @@ func (captureContext *CaptureContext) CaptureFromWinDivertProxy(ctx context.Cont
 			} else {
 				proxyWriter.ProxyServer(newPacket.Payload, newPacket.Layers)
 			}
-		/*case inject := <-injectPacket:
-		println("Attempting injection to client")
-		err := proxyWriter.ClientHalf.WritePacket(inject)
-		if err != nil {
-			println("Error while injecting to client: ", err.Error())
-		}
-		println("injection finished")*/
 		case <-ctx.Done():
 			proxyWriter.CancelFunc()
 			return nil
