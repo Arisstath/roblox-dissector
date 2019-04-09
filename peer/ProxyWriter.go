@@ -96,7 +96,8 @@ func (writer *ProxyWriter) startAcker() {
 }
 
 // NewProxyWriter creates and initializes a new ProxyWriter
-func NewProxyWriter(context *CommunicationContext) *ProxyWriter {
+func NewProxyWriter() *ProxyWriter {
+	context := NewCommunicationContext()
 	writer := &ProxyWriter{}
 	clientHalf := NewProxyHalf(context, true)
 	serverHalf := NewProxyHalf(context, false)

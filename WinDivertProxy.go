@@ -1,7 +1,7 @@
 package main
 
-/*
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -9,9 +9,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
-	"os"
 	"regexp"
-	"strings"
 
 	"github.com/Gskartwii/roblox-dissector/peer"
 
@@ -19,18 +17,38 @@ import (
 	"github.com/olebedev/emitter"
 )
 
+type HTTPLayer struct {
+	OriginalHost   string
+	OriginalScheme string
+	Request        *http.Request
+	RequestBody    []byte
+	Response       *http.Response
+	ResponseBody   []byte
+}
+
+type HTTPConversation struct {
+	Name              string
+	ExpectingJoinAshx bool
+	LayerEmitter      *emitter.Emitter
+	ErrorEmitter      *emitter.Emitter
+}
+
+func (conv *HTTPConversation) Layers() *emitter.Emitter {
+	return conv.LayerEmitter
+}
+func (conv *HTTPConversation) Errors() *emitter.Emitter {
+	return conv.ErrorEmitter
+}
+
 type ProxiedPacket struct {
 	Payload []byte
 	Layers  *peer.PacketLayers
 }
 
-func captureFromWinDivertProxy(realServerAddr string, captureJobContext context.Context, injectPacket chan peer.RakNetPacket, packetViewer *PacketListViewer, commContext *peer.CommunicationContext) {
-	fmt.Printf("Will capture from windivert proxy ??? -> %s\n", realServerAddr)
-
+func (captureContext *CaptureContext) CaptureFromWinDivertProxy(ctx context.Context, realServerAddr string) error {
 	dstAddr, err := net.ResolveUDPAddr("udp", realServerAddr)
 	if err != nil {
-		fmt.Printf("Failed to start proxy: %s", err.Error())
-		return
+		return err
 	}
 
 	filter := fmt.Sprintf("(ip.SrcAddr == %s and udp.SrcPort == %d) or (ip.DstAddr == %s and udp.DstPort == %d)",
@@ -39,16 +57,14 @@ func captureFromWinDivertProxy(realServerAddr string, captureJobContext context.
 
 	divertConnection, err := windivert.Open(filter, windivert.LayerNetwork, 405, 0)
 	if err != nil {
-		fmt.Printf("failed to open windivert context: %s\n", err.Error())
-		return
+		return err
 	}
 	var ifIdx, subIfIdx uint32
 
-	commContext.Server = dstAddr
-	proxyWriter := peer.NewProxyWriter(commContext)
+	proxyWriter := peer.NewProxyWriter()
 	proxyWriter.ServerAddr = dstAddr
 	proxyWriter.SecuritySettings = peer.Win10Settings()
-	proxyWriter.RuntimeContext, proxyWriter.CancelFunc = context.WithCancel(captureJobContext)
+	proxyWriter.RuntimeContext, proxyWriter.CancelFunc = context.WithCancel(ctx)
 
 	proxyWriter.ClientHalf.Output.On("udp", func(e *emitter.Event) { // writes TO client
 		p := e.Args[0].([]byte)
@@ -66,6 +82,11 @@ func captureFromWinDivertProxy(realServerAddr string, captureJobContext context.
 			return
 		}
 	}, emitter.Void)
+
+	clientConversation := NewProviderConversation("Proxy", proxyWriter.ClientHalf.DefaultPacketWriter, proxyWriter.ClientHalf.DefaultPacketReader)
+	serverConversation := NewProviderConversation("Proxy", proxyWriter.ServerHalf.DefaultPacketReader, proxyWriter.ServerHalf.DefaultPacketWriter)
+	captureContext.AddConversation(clientConversation)
+	captureContext.AddConversation(serverConversation)
 
 	packetChan := make(chan ProxiedPacket, 100)
 
@@ -89,23 +110,22 @@ func captureFromWinDivertProxy(realServerAddr string, captureJobContext context.
 				fmt.Printf("parse udp fail: %s\n", err.Error())
 				return
 			}
-			// Is this packet for the server?
-			// TODO: Better address comparison?
+
+			// First packet must be from client
 			if proxyWriter.ClientAddr == nil && pktDstAddr.String() == dstAddr.String() {
 				// If so, assign the client to the src address
 				proxyWriter.ClientAddr = pktSrcAddr
-				commContext.Client = pktSrcAddr
-			} else if proxyWriter.ClientAddr == nil {
-				proxyWriter.ClientAddr = pktDstAddr
-				commContext.Client = pktDstAddr
+				clientConversation.ClientAddress = pktSrcAddr
+				serverConversation.ClientAddress = pktSrcAddr
 			}
 
 			layers := &peer.PacketLayers{
 				Root: peer.RootLayer{
 					Source:      pktSrcAddr,
 					Destination: pktDstAddr,
-					FromClient:  commContext.IsClient(pktSrcAddr),
-					FromServer:  commContext.IsServer(pktSrcAddr),
+					// TODO: Can this be improved?
+					FromClient: proxyWriter.ClientAddr.String() == pktSrcAddr.String(),
+					FromServer: proxyWriter.ServerAddr.String() == pktSrcAddr.String(),
 				},
 			}
 			if payload[0] > 0x8 {
@@ -123,57 +143,74 @@ func captureFromWinDivertProxy(realServerAddr string, captureJobContext context.
 			} else {
 				proxyWriter.ProxyServer(newPacket.Payload, newPacket.Layers)
 			}
-		case inject := <-injectPacket:
-			println("Attempting injection to client")
-			injResult, err := proxyWriter.ClientHalf.WritePacket(inject)
-			if err != nil {
-				println("Error while injecting to client: ", err.Error())
-			}
-			fmt.Printf("ProxyWriter injection finished: %X\n", injResult)
-		case <-captureJobContext.Done():
+		/*case inject := <-injectPacket:
+		println("Attempting injection to client")
+		err := proxyWriter.ClientHalf.WritePacket(inject)
+		if err != nil {
+			println("Error while injecting to client: ", err.Error())
+		}
+		println("injection finished")*/
+		case <-ctx.Done():
 			proxyWriter.CancelFunc()
-			return
+			return nil
 		}
 	}
-	return
+	return nil
 }
 
-func autoDetectWinDivertProxy(settings *PlayerProxySettings, captureJobContext context.Context, injectPacket chan peer.RakNetPacket, packetViewer *PacketListViewer, commContext *peer.CommunicationContext) {
+func NewHTTPConversation(name string) *HTTPConversation {
+	return &HTTPConversation{
+		Name:              name,
+		ExpectingJoinAshx: true,
+		LayerEmitter:      emitter.New(0),
+		ErrorEmitter:      emitter.New(0),
+	}
+}
+
+func (conv *HTTPConversation) CaptureForWinDivert(ctx context.Context, captureCtx *CaptureContext, certFile string, keyFile string) {
 	transport := &http.Transport{
+		// FIXME: We must set InsecureSkipVerify because the host will be wrong
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 	mux := http.NewServeMux()
 	acceptNewJoinAshx := true
-	proxyContext, proxyContextCancel := context.WithCancel(captureJobContext)
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
+		thisReq := &HTTPLayer{
+			OriginalHost:   req.URL.Host,
+			OriginalScheme: req.URL.Scheme,
+			Request:        req,
+		}
+
 		req.URL.Host = "209.206.41.230"
 		req.URL.Scheme = "https"
 
-		if req.URL.Path == "/Game/Join.ashx" {
-			//println("patching join.ashx for gzip encoding")
-			req.Header.Set("Accept-Encoding", "none")
-			// We must use a raw setter, because req.AddCookie() "sanitizes" the values in the wrong way
-			req.Header.Set("Cookie", req.Header.Get("Cookie")+"; RBXAppDeviceIdentifier=AppDeviceIdentifier=ROBLOX UWP")
-		} else if req.URL.Path == "/Game/PlaceLauncher.ashx" {
+		// TODO: Bandwidth problem? I can't be bothered to ungzip.
+		req.Header.Set("Accept-Encoding", "none")
+		if req.URL.Path == "/Game/Join.ashx" || req.URL.Path == "/Game/PlaceLauncher.ashx" {
 			// We must use a raw setter, because req.AddCookie() "sanitizes" the values in the wrong way
 			req.Header.Set("Cookie", req.Header.Get("Cookie")+"; RBXAppDeviceIdentifier=AppDeviceIdentifier=ROBLOX UWP")
 		}
 
+		// TODO: Is storing all request bodies too heavy on memory?
+		oldBody := req.Body
+		requestBuf := bytes.NewBuffer(make([]byte, 0, req.ContentLength))
+		requestTee := io.TeeReader(oldBody, requestBuf)
+
+		req.Body = ioutil.NopCloser(requestTee)
 		resp, err := transport.RoundTrip(req)
-		//fmt.Printf("Request: %s/%s %s %v\n%s %v\n", req.Host, req.URL.String(), req.Method, req.Header, resp.Status, resp.Header)
 		if err != nil {
-			println("error:", err.Error())
+			conv.ErrorEmitter.Emit("err", err, thisReq)
 			return
 		}
+		oldBody.Close()
+		thisReq.RequestBody = requestBuf.Bytes()
+
 		if resp.StatusCode == 403 { // CSRF check fail?
 			req.Header.Set("X-Csrf-Token", resp.Header.Get("X-Csrf-Token"))
-			//println("Set csrftoken:", resp.Header.Get("X-Csrf-Token"))
-			//println("retrying")
 			resp, err = transport.RoundTrip(req)
-			//fmt.Printf("Request: %s/%s %s %v\n%s %v\n", req.Host, req.URL.String(), req.Method, req.Header, resp.Status, resp.Header)
 			if err != nil {
-				println("error:", err.Error())
+				conv.ErrorEmitter.Emit("err", err, thisReq)
 				return
 			}
 		}
@@ -185,52 +222,68 @@ func autoDetectWinDivertProxy(settings *PlayerProxySettings, captureJobContext c
 			}
 		}
 		w.WriteHeader(resp.StatusCode)
+		thisReq.Response = resp
 
 		if req.URL.Path == "/Game/Join.ashx" && acceptNewJoinAshx { // TODO: Stop using global variables for this
 			acceptNewJoinAshx = false
 			response, err := ioutil.ReadAll(resp.Body)
 			if err != nil {
-				println("joinashx err:", err.Error())
+				conv.ErrorEmitter.Emit("err", err, thisReq)
 				return
 			}
-			//println("joinashx:", string(response))
+			thisReq.ResponseBody = response
 
 			args := regexp.MustCompile(`MachineAddress":"(\d+.\d+.\d+.\d+)","ServerPort":(\d+)`).FindSubmatch(response)
 
 			serverAddr := string(args[1]) + ":" + string(args[2])
-			//println("joinashx response:", serverAddr)
-			go captureFromWinDivertProxy(serverAddr, proxyContext, injectPacket, packetViewer, commContext)
+			go func() {
+				err := captureCtx.CaptureFromWinDivertProxy(ctx, serverAddr)
+				if err != nil {
+					println("windivert error: ", err.Error())
+				}
+			}()
 
 			w.Write(response)
 		} else {
-			//println("dumping to", "dumps/" + strings.Replace(req.URL.Path, "/", "_", -1))
-			dumpfile, err := os.Create("dumps/" + strings.Replace(req.URL.Path, "/", "_", -1))
+			respBuf := bytes.NewBuffer(make([]byte, 0, resp.ContentLength))
+			tee := io.TeeReader(resp.Body, respBuf)
+
+			_, err := io.Copy(w, tee)
 			if err != nil {
-				println("fail:", err.Error())
+				conv.ErrorEmitter.Emit("err", err, thisReq)
 				return
 			}
-			defer dumpfile.Close()
-			tee := io.TeeReader(resp.Body, dumpfile)
 
-			io.Copy(w, tee)
+			thisReq.ResponseBody = respBuf.Bytes()
 		}
+		<-conv.LayerEmitter.Emit("http", thisReq)
 	})
 	server := &http.Server{Addr: ":443", Handler: mux}
 
 	// HTTP listener must run on its own thread!
 	go func() {
-		err := server.ListenAndServeTLS(settings.Certfile, settings.Keyfile)
+		err := server.ListenAndServeTLS(certFile, keyFile)
 		if err != nil {
 			println("listen err:", err.Error())
 			return
 		}
 	}()
 	go func() {
-		<-captureJobContext.Done()
+		<-ctx.Done()
 		println("closing proxy server")
 		server.Close()
-		proxyContextCancel()
 	}()
-
 }
-*/
+
+func (captureContext *CaptureContext) HookDivert() *HTTPConversation {
+	conversation := NewHTTPConversation("divert-http")
+	<-captureContext.ConversationEmitter.Emit("http", conversation)
+
+	return conversation
+}
+
+func (session *CaptureSession) CaptureFromDivert(certFile string, keyFile string) {
+	conv := session.CaptureContext.HookDivert()
+
+	conv.CaptureForWinDivert(session.Context, session.CaptureContext, certFile, keyFile)
+}

@@ -18,6 +18,7 @@ type CaptureSession struct {
 	CancelFunc        context.CancelFunc
 	Name              string
 	PacketListViewers []*PacketListViewer
+	HTTPViewers       []*HTTPViewer
 	UsesInitialViewer bool
 	Handle            *pcap.Handle
 
@@ -35,13 +36,26 @@ func (session *CaptureSession) AddConversation(conv *Conversation) *PacketListVi
 		viewer = NewPacketListViewer(session.Context, window, 0)
 		session.PacketListViewers = append(session.PacketListViewers, viewer)
 
-		window.TabWidget.AddTab(viewer, fmt.Sprintf("Conversation: %s#%d", session.Name, len(session.PacketListViewers)))
+		window.TabWidget.AddTab(viewer, fmt.Sprintf("%s: %s#%d", conv.Name, session.Name, len(session.PacketListViewers)))
 	}
 	viewer.BindToConversation(conv)
 	if session.SetModel {
 		viewer.UpdateModel()
 	}
 
+	return viewer
+}
+
+func (session *CaptureSession) AddHTTPConversation(conv *HTTPConversation) *HTTPViewer {
+	var viewer *HTTPViewer
+	// TODO: Use initial viewer?
+
+	window := session.CaptureWindow
+	viewer = NewHTTPViewer(window, 0)
+	session.HTTPViewers = append(session.HTTPViewers, viewer)
+
+	window.TabWidget.AddTab(viewer, fmt.Sprintf("%s: %s#%d", conv.Name, session.Name, len(session.HTTPViewers)))
+	viewer.BindToConversation(conv)
 	return viewer
 }
 
@@ -84,6 +98,14 @@ func NewCaptureSession(name string, window *DissectorWindow) *CaptureSession {
 		})
 		<-MainThreadRunner.Wait
 	}, emitter.Void)
+	captureContext.ConversationEmitter.On("http", func(e *emitter.Event) {
+		thisConv := e.Args[0].(*HTTPConversation)
+		MainThreadRunner.RunOnMain(func() {
+			session.AddHTTPConversation(thisConv)
+			window.UpdateButtons()
+		})
+		<-MainThreadRunner.Wait
+	}, emitter.Void)
 
 	// TODO: Too hacky?
 	captureContext.Close = func() {
@@ -107,6 +129,7 @@ func (session *CaptureSession) UpdateModels() {
 	}
 }
 
+// FIXME: HTTPViewer
 func (session *CaptureSession) RemoveViewer(viewer *widgets.QWidget) bool {
 	// TODO: Remove conversation for CaptureContext?
 	var index int

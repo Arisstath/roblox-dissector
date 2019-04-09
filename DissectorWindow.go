@@ -187,8 +187,16 @@ func (window *DissectorWindow) CaptureFromInjectionProxy(src string, dst string)
 	}()*/
 	window.ShowCaptureError(errors.New("injection proxy is disabled (FIXME)"))
 }
-func (window *DissectorWindow) CaptureFromDivertProxy(_ *PlayerProxySettings) {
-	window.ShowCaptureError(errors.New("divert proxy is disabled (FIXME)"))
+func (window *DissectorWindow) CaptureFromDivertProxy(settings *PlayerProxySettings) {
+	nameBase := "<DIVERT>"
+	session := NewCaptureSession(nameBase, window)
+	session.SetModel = true
+	window.Sessions = append(window.Sessions, session)
+	index := window.TabWidget.AddTab(session.PacketListViewers[0], fmt.Sprintf("Conversation: %s#1", nameBase))
+	window.TabWidget.SetCurrentIndex(index)
+
+	// TODO: How to stop capture?
+	go session.CaptureFromDivert(settings.Certfile, settings.Keyfile)
 }
 func (window *DissectorWindow) CaptureFromPlayerProxy(_ *PlayerProxySettings) {
 	window.ShowCaptureError(errors.New("divert proxy is disabled (FIXME)"))
@@ -309,9 +317,7 @@ func NewDissectorWindow(parent widgets.QWidget_ITF, flags core.Qt__WindowType) *
 	captureFileAction := captureBar.AddAction("From &file...")
 	capture4FileAction := captureBar.AddAction("From &RawCap file...")
 	captureLiveAction := captureBar.AddAction("From &live interface...")
-	captureInjectAction := captureBar.AddAction("From &injection proxy...")
 	captureDivertAction := captureBar.AddAction("From &WinDivert proxy...")
-	captureFromPlayerProxyAction := captureBar.AddAction("From pl&ayer proxy")
 
 	helpBar := window.MenuBar().AddMenu2("&Help")
 	helpBar.AddAction("View &GitHub page").ConnectTriggered(func(_ bool) {
@@ -323,7 +329,7 @@ func NewDissectorWindow(parent widgets.QWidget_ITF, flags core.Qt__WindowType) *
 		gui.QDesktopServices_OpenUrl(url)
 	})
 	helpBar.AddAction("Join Discord server").ConnectTriggered(func(_ bool) {
-		url := core.NewQUrl3("https://discord.gg/zPbprKb")
+		url := core.NewQUrl3("https://discord.gg/zPbprKb", core.QUrl__TolerantMode)
 		gui.QDesktopServices_OpenUrl(url)
 	})
 	helpBar.AddAction("About &Qt...").ConnectTriggered(func(_ bool) {
@@ -354,14 +360,8 @@ Qt is licensed under the LGPLv3 license (see “About Qt...” for more informat
 		}
 	})
 	captureLiveAction.ConnectTriggered(window.OpenLiveInterfaceHandler)
-	captureInjectAction.ConnectTriggered(func(checked bool) {
-		NewProxyCaptureWidget(window, window.CaptureFromInjectionProxy)
-	})
 	captureDivertAction.ConnectTriggered(func(checked bool) {
 		NewPlayerProxyWidget(window, window.PlayerProxySettings, window.CaptureFromDivertProxy)
-	})
-	captureFromPlayerProxyAction.ConnectTriggered(func(checked bool) {
-		NewPlayerProxyWidget(window, window.PlayerProxySettings, window.CaptureFromPlayerProxy)
 	})
 
 	toolBar := widgets.NewQToolBar("Basic functions", window)
