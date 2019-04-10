@@ -162,6 +162,7 @@ func (writer *DefaultPacketWriter) writeAsSplits(estHeaderLength int, data []byt
 			Timestamp:   layers.Timestamp,
 			Main:        layers.Main,
 			PacketType:  layers.PacketType,
+			SplitPacket: layers.SplitPacket,
 		}
 
 		thisPacket.SelfData = data[splitBandwidth*i : min(uint(realLen), uint(splitBandwidth*(i+1)))]
@@ -224,6 +225,7 @@ func (writer *DefaultPacketWriter) writeReliablePacket(data []byte, layers *Pack
 	if realLen <= 1492-estHeaderLength { // Don't need to split
 		packet.SelfData = data
 		packet.LengthInBits = uint16(realLen * 8)
+		packet.SplitPacketCount = 1
 
 		thisPacketContainer := []*ReliablePacket{packet}
 		rakNet, err := writer.createRakNet(&ReliabilityLayer{thisPacketContainer}, layers)
