@@ -86,7 +86,7 @@ func (state *JoinDataStreamer) Flush() {
 		buf:         cachedBuffer,
 	}
 
-	state.BufferEmitter.Emit("join-data", thisBuf)
+	<-state.BufferEmitter.Emit("join-data", thisBuf)
 }
 
 func (state *JoinDataStreamer) AddInstance(instance *ReplicationInstance) error {
@@ -94,6 +94,8 @@ func (state *JoinDataStreamer) AddInstance(instance *ReplicationInstance) error 
 		state.Flush()
 		state.makeNewStream()
 	}
+
+	state.rawLayer.Instances = append(state.rawLayer.Instances, instance)
 
 	return instance.Serialize(state.packetWriter, state.writer)
 }
