@@ -47,7 +47,7 @@ func (thisStream *extendedReader) DecodePacket86Layer(reader PacketReader, layer
 			return layer, err
 		}
 		if referent.IsNull {
-			return layer, errors.New("NULL second touch referent!")
+			return layer, errors.New("NULL second touch referent")
 		}
 		context.InstancesByReferent.OnAddInstance(referent, func(inst *datamodel.Instance) {
 			subpacket.Instance2 = inst
