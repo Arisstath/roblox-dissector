@@ -36,7 +36,7 @@ func (session *CaptureSession) AddConversation(conv *Conversation) *PacketListVi
 		viewer = NewPacketListViewer(session.Context, window, 0)
 		session.PacketListViewers = append(session.PacketListViewers, viewer)
 
-		window.TabWidget.AddTab(viewer, fmt.Sprintf("%s: %s#%d", conv.Name, session.Name, len(session.PacketListViewers)))
+		window.TabWidget.AddTab(viewer, fmt.Sprintf("Converation: %s#%d", session.Name, len(session.PacketListViewers)))
 	}
 	viewer.BindToConversation(conv)
 	if session.SetModel {
@@ -54,7 +54,7 @@ func (session *CaptureSession) AddHTTPConversation(conv *HTTPConversation) *HTTP
 	viewer = NewHTTPViewer(window, 0)
 	session.HTTPViewers = append(session.HTTPViewers, viewer)
 
-	window.TabWidget.AddTab(viewer, fmt.Sprintf("%s: %s#%d", conv.Name, session.Name, len(session.HTTPViewers)))
+	window.TabWidget.AddTab(viewer, fmt.Sprintf("HTTP: %s#%d", session.Name, len(session.HTTPViewers)))
 	viewer.BindToConversation(conv)
 	return viewer
 }
@@ -62,6 +62,15 @@ func (session *CaptureSession) AddHTTPConversation(conv *HTTPConversation) *HTTP
 func (session *CaptureSession) FindViewer(viewer *widgets.QWidget) *PacketListViewer {
 	for _, v := range session.PacketListViewers {
 		// TODO: Too hacky?
+		if v.QWidget.Pointer() == viewer.Pointer() {
+			return v
+		}
+	}
+	return nil
+}
+
+func (session *CaptureSession) FindHTTPViewer(viewer *widgets.QWidget) *HTTPViewer {
+	for _, v := range session.HTTPViewers {
 		if v.QWidget.Pointer() == viewer.Pointer() {
 			return v
 		}

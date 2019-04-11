@@ -19,7 +19,6 @@ type PacketProvider interface {
 
 // TODO: Make multiple subclasses? ClientConversation, HTTPConversation?
 type Conversation struct {
-	Name          string
 	ClientAddress *net.UDPAddr
 	ServerAddress *net.UDPAddr
 	ClientReader  PacketProvider
@@ -75,15 +74,14 @@ func (ctx *CaptureContext) AddConversation(conv *Conversation) {
 	<-ctx.ConversationEmitter.Emit("conversation", conv)
 }
 
-func NewProviderConversation(name string, clientProv PacketProvider, serverProv PacketProvider) *Conversation {
+func NewProviderConversation(clientProv PacketProvider, serverProv PacketProvider) *Conversation {
 	return &Conversation{
-		Name:         name,
 		ClientReader: clientProv,
 		ServerReader: serverProv,
 	}
 }
 
-func NewConversation(name string, client *net.UDPAddr, server *net.UDPAddr) *Conversation {
+func NewConversation(client *net.UDPAddr, server *net.UDPAddr) *Conversation {
 	context := peer.NewCommunicationContext()
 	clientReader := peer.NewPacketReader()
 	clientReader.SetIsClient(true)
@@ -93,7 +91,7 @@ func NewConversation(name string, client *net.UDPAddr, server *net.UDPAddr) *Con
 	clientReader.BindDataModelHandlers()
 	serverReader.BindDataModelHandlers()
 
-	conv := NewProviderConversation(name, clientReader, serverReader)
+	conv := NewProviderConversation(clientReader, serverReader)
 
 	conv.ClientAddress = client
 	conv.ServerAddress = server
@@ -143,7 +141,7 @@ func (captureContext *CaptureContext) Capture(ctx context.Context, packetSource 
 			}
 			fromClient = true
 
-			conv = NewConversation("PCAP", src, dst)
+			conv = NewConversation(src, dst)
 			captureContext.AddConversation(conv)
 		}
 		layers.Root.FromClient = fromClient

@@ -68,7 +68,6 @@ type ProxyWriter struct {
 
 	SecuritySettings SecurityHandler
 	RuntimeContext   context.Context
-	CancelFunc       context.CancelFunc
 
 	ackTicker *time.Ticker
 }
@@ -96,11 +95,31 @@ func (writer *ProxyWriter) startAcker() {
 }
 
 // NewProxyWriter creates and initializes a new ProxyWriter
-func NewProxyWriter() *ProxyWriter {
+func NewProxyWriter(ctx context.Context) *ProxyWriter {
 	context := NewCommunicationContext()
-	writer := &ProxyWriter{}
+	writer := &ProxyWriter{
+		RuntimeContext: ctx,
+	}
 	clientHalf := NewProxyHalf(context, true)
 	serverHalf := NewProxyHalf(context, false)
+
+	// Set FromServer/Client appropriately
+	clientHalf.DefaultPacketWriter.LayerEmitter.On("*", func(e *emitter.Event) {
+		e.Args[0].(*PacketLayers).Root = RootLayer{
+			FromServer:  true,
+			Logger:      nil,
+			Source:      writer.ServerAddr,
+			Destination: writer.ClientAddr,
+		}
+	}, emitter.Void)
+	serverHalf.DefaultPacketWriter.LayerEmitter.On("*", func(e *emitter.Event) {
+		e.Args[0].(*PacketLayers).Root = RootLayer{
+			FromClient:  true,
+			Logger:      nil,
+			Source:      writer.ServerAddr,
+			Destination: writer.ClientAddr,
+		}
+	}, emitter.Void)
 
 	clientHalf.DefaultPacketReader.LayerEmitter.On("simple", func(e *emitter.Event) {
 		layers := e.Args[0].(*PacketLayers)
@@ -133,7 +152,6 @@ func NewProxyWriter() *ProxyWriter {
 		var err error
 		if packetType == 0x15 {
 			println("Disconnected by client!!")
-			writer.CancelFunc()
 			return
 		}
 		if layers.Error != nil {
@@ -206,7 +224,6 @@ func NewProxyWriter() *ProxyWriter {
 			mainLayer := layers.Main.(*Packet85Layer)
 			err = serverHalf.WriteTimestamped(layers.Timestamp, mainLayer)
 		case 0x86:
-			println("Dropping touch: test")
 			mainLayer := layers.Main.(*Packet86Layer)
 			err = serverHalf.WritePacket(mainLayer)
 		default:
@@ -229,10 +246,7 @@ func NewProxyWriter() *ProxyWriter {
 			println("dropping nil packet??", packetType)
 			return
 		}
-		println("server sent reliable, clientHalf writing", packetType)
 		err := clientHalf.WritePacket(layers.Main.(RakNetPacket))
-		//clientHalf.WriteReliablePacket(layers.Reliability.SplitBuffer.data, layers.Reliability)
-
 		if err != nil {
 			println("server serialize error: ", err.Error())
 			return
@@ -240,7 +254,6 @@ func NewProxyWriter() *ProxyWriter {
 
 		if packetType == 0x15 {
 			println("Disconnected by server!!")
-			writer.CancelFunc()
 		}
 	}, emitter.Void)
 	clientHalf.DefaultPacketReader.ErrorEmitter.On("*", func(e *emitter.Event) {

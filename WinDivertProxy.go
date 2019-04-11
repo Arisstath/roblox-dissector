@@ -61,10 +61,9 @@ func (captureContext *CaptureContext) CaptureFromWinDivertProxy(ctx context.Cont
 	}
 	var ifIdx, subIfIdx uint32
 
-	proxyWriter := peer.NewProxyWriter()
+	proxyWriter := peer.NewProxyWriter(ctx)
 	proxyWriter.ServerAddr = dstAddr
 	proxyWriter.SecuritySettings = peer.Win10Settings()
-	proxyWriter.RuntimeContext, proxyWriter.CancelFunc = context.WithCancel(ctx)
 
 	proxyWriter.ClientHalf.Output.On("udp", func(e *emitter.Event) { // writes TO client
 		p := e.Args[0].([]byte)
@@ -83,8 +82,8 @@ func (captureContext *CaptureContext) CaptureFromWinDivertProxy(ctx context.Cont
 		}
 	}, emitter.Void)
 
-	clientConversation := NewProviderConversation("Proxy", proxyWriter.ClientHalf.DefaultPacketWriter, proxyWriter.ClientHalf.DefaultPacketReader)
-	serverConversation := NewProviderConversation("Proxy", proxyWriter.ServerHalf.DefaultPacketReader, proxyWriter.ServerHalf.DefaultPacketWriter)
+	clientConversation := NewProviderConversation(proxyWriter.ClientHalf.DefaultPacketWriter, proxyWriter.ClientHalf.DefaultPacketReader)
+	serverConversation := NewProviderConversation(proxyWriter.ServerHalf.DefaultPacketReader, proxyWriter.ServerHalf.DefaultPacketWriter)
 	captureContext.AddConversation(clientConversation)
 	captureContext.AddConversation(serverConversation)
 
@@ -129,7 +128,11 @@ func (captureContext *CaptureContext) CaptureFromWinDivertProxy(ctx context.Cont
 				},
 			}
 			if payload[0] > 0x8 {
-				packetChan <- ProxiedPacket{Layers: layers, Payload: udpPayload}
+				select {
+				case packetChan <- ProxiedPacket{Layers: layers, Payload: udpPayload}:
+				case <-ctx.Done():
+					return
+				}
 			} else { // Need priority for join packets
 				proxyWriter.ProxyClient(udpPayload, layers)
 			}
@@ -144,7 +147,7 @@ func (captureContext *CaptureContext) CaptureFromWinDivertProxy(ctx context.Cont
 				proxyWriter.ProxyServer(newPacket.Payload, newPacket.Layers)
 			}
 		case <-ctx.Done():
-			proxyWriter.CancelFunc()
+			divertConnection.Close()
 			return nil
 		}
 	}
