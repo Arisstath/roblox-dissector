@@ -23,14 +23,14 @@ func (thisStream *extendedReader) DecodePacket83_03(reader PacketReader, layers 
 	var err error
 	layer := &Packet83_03{}
 
-	referent, err := thisStream.readObject(reader.Caches())
+	reference, err := thisStream.readObject(reader.Caches())
 	if err != nil {
 		return layer, err
 	}
-	if referent.IsNull {
+	if reference.IsNull {
 		return layer, errors.New("self is null in repl property")
 	}
-	layer.Instance, err = reader.Context().InstancesByReferent.TryGetInstance(referent)
+	layer.Instance, err = reader.Context().InstancesByReference.TryGetInstance(reference)
 	if err != nil {
 		return layer, err
 	}
@@ -54,17 +54,17 @@ func (thisStream *extendedReader) DecodePacket83_03(reader PacketReader, layers 
 
 	context := reader.Context()
 	if int(propertyIDx) == int(len(context.StaticSchema.Properties)) { // explicit Parent property system
-		var referent datamodel.Reference
-		referent, err = thisStream.readObject(reader.Caches())
+		var reference datamodel.Reference
+		reference, err = thisStream.readObject(reader.Caches())
 		if err != nil {
 			return layer, err
 		}
-		result := datamodel.ValueReference{Reference: referent}
+		result := datamodel.ValueReference{Reference: reference}
 		layer.Value = result
 		layer.Schema = nil
 		// CreateInstance: allow forward references in ID_REPLIC_PROP
 		// TODO: too tolerant?
-		refInstance, err := context.InstancesByReferent.CreateInstance(referent)
+		refInstance, err := context.InstancesByReference.CreateInstance(reference)
 		if err != nil {
 			return layer, err
 		}

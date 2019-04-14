@@ -65,7 +65,7 @@ func (pool *SelfReferencePool) MakeWithRef(ref string) *Instance {
 //
 // The conv argument is required so that
 // the ValueReferences can be converted without creating
-// duplicate referents
+// duplicate references
 func (instance *Instance) ToRbxfile(pool *RbxfileReferencePool) *rbxfile.Instance {
 	inst := pool.Make(instance)
 	inst.ClassName = instance.ClassName

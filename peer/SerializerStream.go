@@ -51,20 +51,20 @@ func (b *extendedReader) ReadSerializedValue(reader PacketReader, valueType uint
 	case PROP_TYPE_PROTECTEDSTRING_3:
 		result, err = b.readNewProtectedString(reader.Caches())
 	case PROP_TYPE_INSTANCE:
-		var referent datamodel.Reference
-		referent, err = b.ReadObject(reader)
+		var reference datamodel.Reference
+		reference, err = b.ReadObject(reader)
 		if err != nil {
 			return nil, err
 		}
-		// Note: NULL is a valid referent!
-		if referent.IsNull {
-			result = datamodel.ValueReference{Instance: nil, Reference: referent}
+		// Note: NULL is a valid reference!
+		if reference.IsNull {
+			result = datamodel.ValueReference{Instance: nil, Reference: reference}
 		} else {
 			// CreateInstance: allow forward references in ID_NEW_INST or ID_PROP
 			// TODO: too tolerant?
 			var instance *datamodel.Instance
-			instance, err = reader.Context().InstancesByReferent.CreateInstance(referent)
-			result = datamodel.ValueReference{Instance: instance, Reference: referent}
+			instance, err = reader.Context().InstancesByReference.CreateInstance(reference)
+			result = datamodel.ValueReference{Instance: instance, Reference: reference}
 		}
 	case PROP_TYPE_CONTENT:
 		result, err = b.readNewContent(reader.Caches())
@@ -220,20 +220,20 @@ func (b *joinSerializeReader) ReadSerializedValue(reader PacketReader, valueType
 	case PROP_TYPE_PROTECTEDSTRING_3:
 		result, err = b.readNewProtectedString()
 	case PROP_TYPE_INSTANCE:
-		var referent datamodel.Reference
-		referent, err = b.readJoinObject(reader.Context())
+		var reference datamodel.Reference
+		reference, err = b.readJoinObject(reader.Context())
 		if err != nil {
-			return datamodel.ValueReference{Instance: nil, Reference: referent}, err
+			return datamodel.ValueReference{Instance: nil, Reference: reference}, err
 		}
-		// Note: NULL is a valid referent!
-		if referent.IsNull {
-			result = datamodel.ValueReference{Instance: nil, Reference: referent}
+		// Note: NULL is a valid reference!
+		if reference.IsNull {
+			result = datamodel.ValueReference{Instance: nil, Reference: reference}
 			break
 		}
 		// CreateInstance: allow forward references
 		var instance *datamodel.Instance
-		instance, err = reader.Context().InstancesByReferent.CreateInstance(referent)
-		result = datamodel.ValueReference{Instance: instance, Reference: referent}
+		instance, err = reader.Context().InstancesByReference.CreateInstance(reference)
+		result = datamodel.ValueReference{Instance: instance, Reference: reference}
 	case PROP_TYPE_CONTENT:
 		result, err = b.readNewContent()
 	case PROP_TYPE_SYSTEMADDRESS:

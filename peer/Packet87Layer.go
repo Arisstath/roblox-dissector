@@ -31,7 +31,7 @@ func (thisStream *extendedReader) DecodePacket87Layer(reader PacketReader, layer
 
 	// This reference will never be null
 	ref = datamodel.Reference{Scope: scope, Id: id}
-	layer.Instance, err = context.InstancesByReferent.TryGetInstance(ref)
+	layer.Instance, err = context.InstancesByReference.TryGetInstance(ref)
 	if err != nil {
 		return layer, err
 	}

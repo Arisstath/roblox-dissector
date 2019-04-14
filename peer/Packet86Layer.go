@@ -30,26 +30,26 @@ func (thisStream *extendedReader) DecodePacket86Layer(reader PacketReader, layer
 	context := reader.Context()
 	for {
 		subpacket := &Packet86LayerSubpacket{}
-		referent, err := thisStream.readObject(reader.Caches())
+		reference, err := thisStream.readObject(reader.Caches())
 		// hopefully we don't need to check for CacheReadOOB here
 		if err != nil {
 			return layer, err
 		}
-		if referent.IsNull {
+		if reference.IsNull {
 			break
 		}
-		context.InstancesByReferent.OnAddInstance(referent, func(inst *datamodel.Instance) {
+		context.InstancesByReference.OnAddInstance(reference, func(inst *datamodel.Instance) {
 			subpacket.Instance1 = inst
 		})
 
-		referent, err = thisStream.readObject(reader.Caches())
+		reference, err = thisStream.readObject(reader.Caches())
 		if err != nil {
 			return layer, err
 		}
-		if referent.IsNull {
-			return layer, errors.New("NULL second touch referent")
+		if reference.IsNull {
+			return layer, errors.New("NULL second touch reference")
 		}
-		context.InstancesByReferent.OnAddInstance(referent, func(inst *datamodel.Instance) {
+		context.InstancesByReference.OnAddInstance(reference, func(inst *datamodel.Instance) {
 			subpacket.Instance2 = inst
 		})
 
@@ -87,7 +87,7 @@ func (layer *Packet86Layer) Serialize(writer PacketWriter, stream *extendedWrite
 			return err
 		}
 	}
-	return stream.WriteByte(0x00) // referent to NULL instance; terminator
+	return stream.WriteByte(0x00) // reference to NULL instance; terminator
 }
 
 func (layer *Packet86Layer) String() string {

@@ -134,7 +134,7 @@ type CommunicationContext struct {
 	InstanceTopScope string
 
 	DataModel           *datamodel.DataModel
-	InstancesByReferent *datamodel.InstanceList
+	InstancesByReference *datamodel.InstanceList
 
 	// TODO: Can we do better?
 	UniqueID uint32
@@ -150,7 +150,7 @@ type CommunicationContext struct {
 func NewCommunicationContext() *CommunicationContext {
 	return &CommunicationContext{
 		DataModel:           datamodel.New(),
-		InstancesByReferent: datamodel.NewInstanceList(),
+		InstancesByReference: datamodel.NewInstanceList(),
 		// TODO: Report an error if top scope is accessed before being assigned
 		InstanceTopScope: "WARNING_UNASSIGNED_TOP_SCOPE",
 	}

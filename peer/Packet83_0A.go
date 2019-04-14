@@ -19,14 +19,14 @@ func (thisStream *extendedReader) DecodePacket83_0A(reader PacketReader, layers 
 	var err error
 	layer := &Packet83_0A{}
 
-	referent, err := thisStream.readObject(reader.Caches())
+	reference, err := thisStream.readObject(reader.Caches())
 	if err != nil {
 		return layer, err
 	}
-	if referent.IsNull {
+	if reference.IsNull {
 		return layer, errors.New("self is null in repl prop ack")
 	}
-	layer.Instance, err = reader.Context().InstancesByReferent.TryGetInstance(referent)
+	layer.Instance, err = reader.Context().InstancesByReference.TryGetInstance(reference)
 	if err != nil {
 		return layer, err
 	}

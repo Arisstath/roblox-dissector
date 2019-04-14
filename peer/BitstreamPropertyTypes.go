@@ -256,12 +256,12 @@ func (b *extendedReader) readBrickColor() (rbxfile.ValueBrickColor, error) {
 }
 
 func (b *extendedReader) readObject(caches *Caches) (datamodel.Reference, error) {
-	referent, err := b.readCachedScope(caches)
+	reference, err := b.readCachedScope(caches)
 	if err != nil && err != CacheReadOOB { // TODO: hack! physics packets may have problems with caches
 		return datamodel.Reference{}, err
 	}
-	reference := datamodel.Reference{Scope: referent}
-	if referent != "NULL" {
+	reference := datamodel.Reference{Scope: reference}
+	if reference != "NULL" {
 		reference.Id, err = b.readUint32LE()
 	} else {
 		reference.IsNull = true

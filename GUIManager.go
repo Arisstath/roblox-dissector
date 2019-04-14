@@ -303,7 +303,7 @@ func GUIMain() {
 				return
 			}
 			server.InstanceDictionary = instanceDictionary
-			server.Context.InstancesByReferent.Populate(thisRoot.Instances)
+			server.Context.InstancesByReference.Populate(thisRoot.Instances)
 
 			NewServerConsole(window, server)
 

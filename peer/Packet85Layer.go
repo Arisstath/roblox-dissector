@@ -64,9 +64,9 @@ func (b *extendedReader) readPhysicsData(data *PhysicsData, motors bool, reader 
 	if err != nil || !hasPlatformChild {
 		return err
 	}
-	referent, err := b.readObject(reader.Caches())
+	reference, err := b.readObject(reader.Caches())
 	if err != CacheReadOOB {
-		reader.Context().InstancesByReferent.OnAddInstance(referent, func(inst *datamodel.Instance) {
+		reader.Context().InstancesByReference.OnAddInstance(reference, func(inst *datamodel.Instance) {
 			data.PlatformChild = inst
 		})
 		return nil
@@ -79,19 +79,19 @@ func (thisStream *extendedReader) DecodePacket85Layer(reader PacketReader, layer
 	context := reader.Context()
 	layer := NewPacket85Layer()
 	for {
-		referent, err := thisStream.readObject(reader.Caches())
+		reference, err := thisStream.readObject(reader.Caches())
 		// unordered packets may have problems with caches
 		if err != nil && err != CacheReadOOB {
 			return layer, err
 		}
-		if referent.IsNull {
+		if reference.IsNull {
 			break
 		}
-		layers.Root.Logger.Println("reading physics for ref", referent.String())
+		layers.Root.Logger.Println("reading physics for ref", reference.String())
 		subpacket := &Packet85LayerSubpacket{}
 		// TODO: generic function for this
 		if err != CacheReadOOB {
-			context.InstancesByReferent.OnAddInstance(referent, func(inst *datamodel.Instance) {
+			context.InstancesByReference.OnAddInstance(reference, func(inst *datamodel.Instance) {
 				subpacket.Data.Instance = inst
 			})
 		}
@@ -137,7 +137,7 @@ func (thisStream *extendedReader) DecodePacket85Layer(reader PacketReader, layer
 				layers.Root.Logger.Println("reading physics child for ref", object.String())
 				child := new(PhysicsData)
 				if err != CacheReadOOB { // TODO: hack! unordered packets may have problems with caches
-					context.InstancesByReferent.OnAddInstance(object, func(inst *datamodel.Instance) {
+					context.InstancesByReference.OnAddInstance(object, func(inst *datamodel.Instance) {
 						child.Instance = inst
 					})
 				}
@@ -264,7 +264,7 @@ func (layer *Packet85Layer) Serialize(writer PacketWriter, stream *extendedWrite
 			return err
 		}
 	}
-	return stream.WriteByte(0x00) // referent to NULL instance; terminator
+	return stream.WriteByte(0x00) // reference to NULL instance; terminator
 }
 
 func (layer *Packet85Layer) String() string {

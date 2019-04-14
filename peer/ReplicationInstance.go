@@ -28,17 +28,17 @@ func is2ndRoundType(typeId uint8) bool {
 func decodeReplicationInstance(reader PacketReader, thisStream InstanceReader, layers *PacketLayers) (*ReplicationInstance, error) {
 	var err error
 	repInstance := NewReplicationInstance()
-	var referent datamodel.Reference
+	var reference datamodel.Reference
 	context := reader.Context()
 
-	referent, err = thisStream.ReadObject(reader)
+	reference, err = thisStream.ReadObject(reader)
 	if err != nil {
 		return nil, errors.New("while parsing self: " + err.Error())
 	}
-	if referent.IsNull {
+	if reference.IsNull {
 		return nil, errors.New("self is nil in decodeReplicationInstance")
 	}
-	thisInstance, err := context.InstancesByReferent.CreateInstance(referent)
+	thisInstance, err := context.InstancesByReference.CreateInstance(reference)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +51,7 @@ func decodeReplicationInstance(reader PacketReader, thisStream InstanceReader, l
 	schema := context.StaticSchema.Instances[schemaIDx]
 	repInstance.Schema = schema
 	thisInstance.ClassName = schema.Name
-	layers.Root.Logger.Println("will parse", referent.String(), schema.Name, len(schema.Properties))
+	layers.Root.Logger.Println("will parse", reference.String(), schema.Name, len(schema.Properties))
 
 	repInstance.DeleteOnDisconnect, err = thisStream.readBoolByte()
 	if err != nil {
@@ -63,19 +63,19 @@ func decodeReplicationInstance(reader PacketReader, thisStream InstanceReader, l
 		return repInstance, err
 	}
 
-	referent, err = thisStream.ReadObject(reader)
+	reference, err = thisStream.ReadObject(reader)
 	if err != nil {
 		return repInstance, errors.New("while parsing parent: " + err.Error())
 	}
-	if referent.IsNull {
+	if reference.IsNull {
 		return repInstance, errors.New("parent is null")
 	}
-	if len(referent.String()) > 0x50 {
-		layers.Root.Logger.Println("Parent: (invalid), ", len(referent.String()))
+	if len(reference.String()) > 0x50 {
+		layers.Root.Logger.Println("Parent: (invalid), ", len(reference.String()))
 	} else {
-		layers.Root.Logger.Println("Parent: ", referent.String())
+		layers.Root.Logger.Println("Parent: ", reference.String())
 	}
-	parent, err := context.InstancesByReferent.TryGetInstance(referent)
+	parent, err := context.InstancesByReference.TryGetInstance(reference)
 	if err != nil {
 		// service parents aren't excepted to exist
 		if err == datamodel.ErrInstanceDoesntExist && thisInstance.IsService {

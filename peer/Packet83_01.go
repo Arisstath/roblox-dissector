@@ -19,7 +19,7 @@ func (thisStream *extendedReader) DecodePacket83_01(reader PacketReader, layers 
 	if err != nil {
 		return inner, err
 	}
-	inner.Instance, err = reader.Context().InstancesByReferent.TryGetInstance(reference)
+	inner.Instance, err = reader.Context().InstancesByReference.TryGetInstance(reference)
 
 	return inner, err
 }

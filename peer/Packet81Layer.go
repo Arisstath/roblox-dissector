@@ -24,7 +24,7 @@ type Packet81Layer struct {
 	AllowThirdPartySales bool
 	CharacterAutoSpawn   bool
 	// Server's scope
-	ReferentString string
+	ReferenceString string
 	ScriptKey      uint32
 	CoreScriptKey  uint32
 	// List of services to be set
@@ -60,12 +60,12 @@ func (thisStream *extendedReader) DecodePacket81Layer(reader PacketReader, layer
 	if err != nil {
 		return layer, err
 	}
-	layer.ReferentString, err = thisStream.readASCII(int(stringLen))
+	layer.ReferenceString, err = thisStream.readASCII(int(stringLen))
 	if err != nil {
 		return layer, err
 	}
 	// This assignment is justifiable because a call to readJoinObject() below depends on it
-	reader.Context().InstanceTopScope = layer.ReferentString
+	reader.Context().InstanceTopScope = layer.ReferenceString
 	if !reader.Context().IsStudio {
 		layer.ScriptKey, err = thisStream.readUint32BE()
 		if err != nil {
@@ -93,7 +93,7 @@ func (thisStream *extendedReader) DecodePacket81Layer(reader PacketReader, layer
 	layer.Items = make([]*Packet81LayerItem, arrayLen)
 	for i := 0; i < int(arrayLen); i++ {
 		thisItem := &Packet81LayerItem{}
-		referent, err := thisStream.readJoinObject(context)
+		reference, err := thisStream.readJoinObject(context)
 		if err != nil {
 			return layer, err
 		}
@@ -109,7 +109,7 @@ func (thisStream *extendedReader) DecodePacket81Layer(reader PacketReader, layer
 
 		schema := context.StaticSchema.Instances[classID]
 		thisItem.Schema = schema
-		instance, err := context.InstancesByReferent.CreateInstance(referent)
+		instance, err := context.InstancesByReference.CreateInstance(reference)
 		if err != nil {
 			return layer, err
 		}
@@ -154,11 +154,11 @@ func (layer *Packet81Layer) Serialize(writer PacketWriter, stream *extendedWrite
 		return err
 	}
 
-	err = stream.writeUint32BE(uint32(len(layer.ReferentString)))
+	err = stream.writeUint32BE(uint32(len(layer.ReferenceString)))
 	if err != nil {
 		return err
 	}
-	err = stream.writeASCII(layer.ReferentString)
+	err = stream.writeASCII(layer.ReferenceString)
 	if err != nil {
 		return err
 	}

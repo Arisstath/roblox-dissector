@@ -62,7 +62,7 @@ func (client *ServerClient) Init() {
 }
 func NewServerClient(clientAddr *net.UDPAddr, server *CustomServer, context *CommunicationContext) *ServerClient {
 	newContext := &CommunicationContext{
-		InstancesByReferent: context.InstancesByReferent,
+		InstancesByReference: context.InstancesByReference,
 		DataModel:           context.DataModel,
 		StaticSchema:        context.StaticSchema,
 		InstanceTopScope:    context.InstanceTopScope,

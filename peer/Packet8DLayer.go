@@ -35,14 +35,14 @@ func (thisStream *extendedReader) DecodePacket8DLayer(reader PacketReader, layer
 
 	context := reader.Context()
 
-	referent, err := thisStream.readObject(reader.Caches())
+	reference, err := thisStream.readObject(reader.Caches())
 	if err != nil {
 		return nil, err
 	}
-	if referent.IsNull {
+	if reference.IsNull {
 		return nil, errors.New("cluster instance is null")
 	}
-	layer.Instance, err = context.InstancesByReferent.TryGetInstance(referent)
+	layer.Instance, err = context.InstancesByReference.TryGetInstance(reference)
 	if err != nil {
 		return layer, err
 	}

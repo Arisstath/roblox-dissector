@@ -248,7 +248,7 @@ func (myClient *CustomClient) handlePlayersService(players *datamodel.Instance) 
 	if err != nil {
 		println("Failed to create localpalyer:", err.Error())
 	}
-	myClient.Context.InstancesByReferent.AddInstance(myPlayer.Ref, myPlayer)
+	myClient.Context.InstancesByReference.AddInstance(myPlayer.Ref, myPlayer)
 	myClient.LocalPlayer = myPlayer
 
 	err = myClient.WriteDataPackets(

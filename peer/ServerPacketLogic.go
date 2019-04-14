@@ -131,7 +131,7 @@ func (client *ServerClient) authHandler(e *emitter.Event) {
 		FilteringEnabled:     true,
 		AllowThirdPartySales: false,
 		CharacterAutoSpawn:   true,
-		ReferentString:       client.Server.InstanceDictionary.Scope,
+		ReferenceString:       client.Server.InstanceDictionary.Scope,
 		// TODO: VM ints
 		ScriptKey:     1,
 		CoreScriptKey: 1,

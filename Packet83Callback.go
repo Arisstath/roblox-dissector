@@ -40,7 +40,7 @@ var Callbacks83_09 = map[uint8](func(peer.Packet83_09Subpacket) widgets.QWidget_
 func showReplicationInstance(this *datamodel.Instance, parent *datamodel.Instance) []*gui.QStandardItem {
 	rootNameItem := NewStringItem(this.Name())
 	typeItem := NewStringItem(this.ClassName)
-	referentItem := NewStringItem(this.Ref.String())
+	referenceItem := NewStringItem(this.Ref.String())
 	var parentItem *gui.QStandardItem
 	if parent != nil {
 		parentItem = NewStringItem(parent.Ref.String())
@@ -53,7 +53,7 @@ func showReplicationInstance(this *datamodel.Instance, parent *datamodel.Instanc
 		rootNameItem,
 		typeItem,
 		nil,
-		referentItem,
+		referenceItem,
 		parentItem,
 		pathItem,
 	}
@@ -92,7 +92,7 @@ func show83_0B(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_0B)
 	instanceList := widgets.NewQTreeView(nil)
 	standardModel := NewProperSortModel(nil)
-	standardModel.SetHorizontalHeaderLabels([]string{"Index", "Name", "Type", "Value", "Referent", "Parent", "Path"})
+	standardModel.SetHorizontalHeaderLabels([]string{"Index", "Name", "Type", "Value", "Reference", "Parent", "Path"})
 
 	rootNode := standardModel.InvisibleRootItem()
 	if this != nil && this.Instances != nil { // if arraylen == 0, this is nil
@@ -121,7 +121,7 @@ func show83_02(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_02)
 	instanceList := widgets.NewQTreeView(nil)
 	standardModel := NewProperSortModel(nil)
-	standardModel.SetHorizontalHeaderLabels([]string{"Name", "Type", "Value", "Referent", "Parent", "Path"})
+	standardModel.SetHorizontalHeaderLabels([]string{"Name", "Type", "Value", "Reference", "Parent", "Path"})
 
 	rootNode := standardModel.InvisibleRootItem()
 	row := showReplicationInstance(this.Instance, this.Parent)
