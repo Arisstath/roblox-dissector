@@ -1,16 +1,47 @@
 package peer
 
 import (
+	"bytes"
 	"fmt"
+	"io/ioutil"
 	"net"
 )
+
+// PasswordType describes a RakNet password type
+type PasswordType int
+
+const (
+	// DefaultPassword refers to the default type used for most connections
+	DefaultPassword PasswordType = iota
+	// StudioPassword refers to the default type used for Roblox Studio connections
+	StudioPassword
+	// InvalidPassword means that the password type couldn't be identified
+	InvalidPassword
+)
+
+// StudioPasswordBytes is the RakNet password used for Studio connections by default
+var StudioPasswordBytes = []byte{0x5E, 0x11}
+
+// DefaultPasswordBytes is the RakNet password used for Roblox connections by default
+var DefaultPasswordBytes = []byte{0x37, 0x4F, 0x5E, 0x11, 0x6C, 0x45}
+
+// IdentifyPassword identifies what RakNet password is being used
+func IdentifyPassword(password []byte) PasswordType {
+	switch {
+	case bytes.Equal(password, StudioPasswordBytes):
+		return StudioPassword
+	case bytes.Equal(password, DefaultPasswordBytes):
+		return DefaultPassword
+	default:
+		return InvalidPassword
+	}
+}
 
 // ID_OPEN_CONNECTION_REQUEST_1 - client -> server
 type Packet05Layer struct {
 	// RakNet protocol version, always 5
-	ProtocolVersion uint8
-	// internal
-	maxLength uint
+	ProtocolVersion  uint8
+	MTUPaddingLength int
 }
 
 // ID_OPEN_CONNECTION_REPLY_1 - server -> client
@@ -108,7 +139,13 @@ func (thisStream *extendedReader) DecodePacket05Layer(reader PacketReader, layer
 	var err error
 	layer := NewPacket05Layer()
 	layer.ProtocolVersion, err = thisStream.readUint8() // !! RakNetLayer will have read the offline message !!
-	return layer, err
+	mtupad, err := ioutil.ReadAll(thisStream)
+	if err != nil {
+		return layer, err
+	}
+	layer.MTUPaddingLength = len(mtupad)
+
+	return layer, nil
 }
 
 func (layer *Packet05Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
@@ -124,7 +161,7 @@ func (layer *Packet05Layer) Serialize(writer PacketWriter, stream *extendedWrite
 	if err != nil {
 		return err
 	}
-	empty := make([]byte, 1492-0x10-2-0x2A)
+	empty := make([]byte, layer.MTUPaddingLength)
 	err = stream.allBytes(empty)
 	return err
 }
@@ -317,8 +354,12 @@ func (thisStream *extendedReader) DecodePacket09Layer(reader PacketReader, layer
 		return layer, err
 	}
 	// 2x 64 for timestamps, 8 for UseSecurity and 8 for PacketType
-	layer.Password, err = thisStream.readString(int((layers.Reliability.LengthInBits - 64 - 64 - 8 - 8) / 8))
-	if layer.Password[0] == 0x5E && layer.Password[1] == 0x11 {
+
+	layer.Password, err = ioutil.ReadAll(thisStream)
+	if err != nil {
+		return layer, err
+	}
+	if IdentifyPassword(layer.Password) == StudioPassword {
 		layers.Root.Logger.Println("Detected Studio!")
 		reader.Context().IsStudio = true
 	}

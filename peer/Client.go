@@ -478,9 +478,12 @@ func (settings *Windows10SecuritySettings) PatchTicketPacket(packet *Packet8ALay
 }
 
 func (myClient *CustomClient) dial() {
-	connreqpacket := &Packet05Layer{ProtocolVersion: 5, maxLength: 1492}
+	maxLength := 1492
+	dataLength := 0x3C
+	connreqpacket := &Packet05Layer{ProtocolVersion: 5}
 	go func() {
 		for i := 0; i < 5; i++ {
+			connreqpacket.MTUPaddingLength = maxLength - dataLength
 			if myClient.Connected {
 				myClient.Logger.Println("successfully dialed")
 				return
@@ -492,7 +495,7 @@ func (myClient *CustomClient) dial() {
 				return
 			}
 			if i > 2 {
-				connreqpacket.maxLength = 576 // try smaller mtu, is this why our packets are getting lost?
+				maxLength = 576
 			}
 		}
 		myClient.Logger.Println("dial failed after 5 attempts")

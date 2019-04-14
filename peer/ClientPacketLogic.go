@@ -86,7 +86,7 @@ func (myClient *CustomClient) sendResponse9() {
 		GUID:        myClient.GUID,
 		Timestamp:   uint64(time.Now().UnixNano() / int64(time.Millisecond)),
 		UseSecurity: false,
-		Password:    []byte{0x37, 0x4F, 0x5E, 0x11, 0x6C, 0x45},
+		Password:    DefaultPasswordBytes,
 	}
 	err := myClient.WritePacket(response)
 	if err != nil {
