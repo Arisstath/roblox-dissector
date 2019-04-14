@@ -347,7 +347,7 @@ func NewDissectorWindow(parent widgets.QWidget_ITF, flags core.Qt__WindowType) *
 		widgets.QMessageBox_AboutQt(window, "About Qt")
 	})
 	helpBar.AddAction("&About Sala...").ConnectTriggered(func(_ bool) {
-		widgets.QMessageBox_About(window, "About Sala", `
+		widgets.QMessageBox_About(window, "About Sala", fmt.Sprintf(`
 <h1>Sala version 0.6 [pre]</h1>
 <h2>The Essential Roblox Network Suite</h2>
 Codename “Maailman salaisuudet”<br>
@@ -358,8 +358,10 @@ Licensed under the MIT License (see LICENSE for more information).<br>
 Clarity Icons (© VMWare, Inc.) are licensed under the MIT License (see LICENSE.clarity for more information).<br>
 The application icon is a modified version of a Google Material Icon. Google Material Icons are licensed under the Apache License version 2.0 (see LICENSE.material for more information).<br>
 See the <a href="https://iconfu.com">Iconfu website</a> for more icons.<br>
-Qt is licensed under the LGPLv3 license (see “About Qt...” for more information).
-`)
+Qt is licensed under the LGPLv3 license (see “About Qt...” for more information).<br>
+<br>
+Running PCAP (%s).
+`, pcap.Version()))
 	})
 
 	captureFileAction.ConnectTriggered(window.OpenFileHandler)
