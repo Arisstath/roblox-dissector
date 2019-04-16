@@ -137,13 +137,7 @@ func (myClient *CustomClient) sendProtocolSync() {
 			"BodyColorsColor3PropertyReplicationEnabled",
 			"FixBallRaycasts",
 			"FixRaysInWedges",
-			"FixHats",
-			"EnableRootPriority",
-			"PartMasslessEnabled",
-			"KeepRedundantWeldsAlways",
-			"KeepRedundantWeldsExplicit",
 			"PgsForAll",
-			"WeldedToAnchoredIsntSpecial",
 			"ReplicateInterpolateRelativeHumanoidPlatformsMotion",
 			"TerrainRaycastsRespectCollisionGroups",
 		},
@@ -193,7 +187,7 @@ func (myClient *CustomClient) packet10Handler(e *emitter.Event) {
 	// RakNet sends two pings when connecting
 	myClient.sendPing()
 	myClient.sendPing()
-	// myClient.sendProtocolSync() // This is broken and I have no clue why
+	myClient.sendProtocolSync() // This is broken and I have no clue why
 	myClient.sendPlaceIdVerification(0)
 	myClient.submitTicket()
 	myClient.sendSpawnName()
