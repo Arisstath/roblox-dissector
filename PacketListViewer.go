@@ -235,6 +235,7 @@ func (m *PacketListViewer) AddFullPacket(context *peer.CommunicationContext, lay
 }
 
 func (viewer *PacketListViewer) BindToConversation(conv *Conversation) {
+	println("binding to conv")
 	viewer.Conversation = conv
 	context := conv.Context
 	clientPacketEmitter := conv.ClientReader.Layers()

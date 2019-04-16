@@ -1,6 +1,7 @@
 package peer
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"net"
@@ -21,10 +22,12 @@ type CustomServer struct {
 	Context            *CommunicationContext
 	Connection         *net.UDPConn
 	Clients            map[string]*ServerClient
+	ClientEmitter      *emitter.Emitter
 	Address            *net.UDPAddr
 	GUID               uint64
 	Schema             *StaticSchema
 	InstanceDictionary *datamodel.InstanceDictionary
+	RunningContext     context.Context
 }
 
 func (client *ServerClient) ReadPacket(buf []byte) {
@@ -63,9 +66,9 @@ func (client *ServerClient) Init() {
 func NewServerClient(clientAddr *net.UDPAddr, server *CustomServer, context *CommunicationContext) *ServerClient {
 	newContext := &CommunicationContext{
 		InstancesByReference: context.InstancesByReference,
-		DataModel:           context.DataModel,
-		StaticSchema:        context.StaticSchema,
-		InstanceTopScope:    context.InstanceTopScope,
+		DataModel:            context.DataModel,
+		StaticSchema:         context.StaticSchema,
+		InstanceTopScope:     context.InstanceTopScope,
 	}
 
 	newClient := &ServerClient{
@@ -73,6 +76,7 @@ func NewServerClient(clientAddr *net.UDPAddr, server *CustomServer, context *Com
 		Server:             server,
 		Address:            clientAddr,
 	}
+	newClient.RunningContext = server.RunningContext
 
 	return newClient
 }
@@ -98,6 +102,8 @@ func (myServer *CustomServer) Start() error {
 			thisClient = NewServerClient(client, myServer, myServer.Context)
 			myServer.Clients[client.String()] = thisClient
 			thisClient.Init()
+
+			<-myServer.ClientEmitter.Emit("client", thisClient)
 		}
 		thisClient.ReadPacket(buf[:n])
 	}
@@ -110,7 +116,7 @@ func (myServer *CustomServer) Stop() {
 	myServer.Connection.Close()
 }
 
-func NewCustomServer(port uint16, schema *StaticSchema, dataModel *datamodel.DataModel) (*CustomServer, error) {
+func NewCustomServer(ctx context.Context, port uint16, schema *StaticSchema, dataModel *datamodel.DataModel) (*CustomServer, error) {
 	server := &CustomServer{Clients: make(map[string]*ServerClient)}
 
 	var err error
@@ -120,12 +126,14 @@ func NewCustomServer(port uint16, schema *StaticSchema, dataModel *datamodel.Dat
 	}
 
 	rand.Seed(time.Now().UnixNano())
+	server.RunningContext = ctx
 	server.GUID = rand.Uint64()
 	server.Schema = schema
 	server.Context = NewCommunicationContext()
 	server.Context.DataModel = dataModel
 	server.Context.StaticSchema = schema
 	server.InstanceDictionary = datamodel.NewInstanceDictionary()
+	server.ClientEmitter = emitter.New(0)
 
 	return server, nil
 }

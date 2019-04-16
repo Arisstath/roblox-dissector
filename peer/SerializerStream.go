@@ -111,6 +111,7 @@ func (b *extendedReader) ReadProperties(schema []*StaticPropertySchema, properti
 }
 
 func (b *extendedWriter) WriteSerializedValue(val rbxfile.Value, writer PacketWriter, valueType uint8) error {
+	// TODO: Is this check right?
 	if val == nil {
 		return nil
 	}
