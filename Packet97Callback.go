@@ -95,14 +95,14 @@ func ShowPacket97(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 
 	dumpButton := widgets.NewQPushButton2("Dump...", nil)
 	dumpButton.ConnectReleased(func() {
-		iLocation := widgets.QFileDialog_GetSaveFileName(dumpButton, "Save instance schema...", "", "GOB files (*.gob)", "", 0)
+		iLocation := widgets.QFileDialog_GetSaveFileName(dumpButton, "Save instance schema...", "", "TXT files (*.txt)", "", 0)
 		instances, err := os.OpenFile(iLocation, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 		if err != nil {
 			println("while opening file:", err.Error())
 			return
 		}
 
-		eLocation := widgets.QFileDialog_GetSaveFileName(dumpButton, "Save enum schema...", "", "GOB files (*.gob)", "", 0)
+		eLocation := widgets.QFileDialog_GetSaveFileName(dumpButton, "Save enum schema...", "", "TXT files (*.txt)", "", 0)
 		enums, err := os.OpenFile(eLocation, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 		if err != nil {
 			println("while opening file:", err.Error())
