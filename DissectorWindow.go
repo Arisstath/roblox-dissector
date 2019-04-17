@@ -434,9 +434,9 @@ Running PCAP (%s).
 
 			instanceDictionary := datamodel.NewInstanceDictionary()
 			thisRoot := datamodel.FromRbxfile(instanceDictionary, dataModelRoot)
-			normalizeTypes(thisRoot.Instances, &schema)
+			normalizeTypes(thisRoot.Instances, schema)
 
-			server, err := peer.NewCustomServer(context.TODO(), uint16(port), &schema, thisRoot)
+			server, err := peer.NewCustomServer(context.TODO(), uint16(port), schema, thisRoot)
 			if err != nil {
 				println("while creating server", err.Error())
 				return
