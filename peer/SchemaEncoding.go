@@ -14,10 +14,10 @@ func mustAtoi(x string) int {
 	return result
 }
 
-func ParseSchema(ifile io.Reader, efile io.Reader) (StaticSchema, error) {
+func ParseSchema(ifile io.Reader, efile io.Reader) (*StaticSchema, error) {
 	enums := bufio.NewReader(efile)
 	instances := bufio.NewReader(ifile)
-	schema := StaticSchema{}
+	schema := &StaticSchema{}
 	var totalEnums int
 	_, err := fmt.Fscanf(enums, "%d\n", &totalEnums)
 	if err != nil {
