@@ -20,8 +20,8 @@ var Packet83Subpackets map[uint8]string = map[uint8]string{
 	0x07: "ID_REPLIC_EVENT",
 	0x08: "ID_REPLIC_REQUEST_CHAR",
 	0x09: "ID_REPLIC_ROCKY",
-	0x0A: "ID_REPLIC_PROP_ACK",
-	0x0B: "ID_REPLIC_GZIP_JOINDATA",
+	0x0A: "ID_REPLIC_CFRAME_ACK",
+	0x0B: "ID_REPLIC_JOIN_DATA",
 	0x0C: "ID_REPLIC_UPDATE_CLIENT_QUOTA",
 	0x0D: "ID_REPLIC_STREAM_DATA",
 	0x0E: "ID_REPLIC_REGION_REMOVAL",
@@ -29,6 +29,7 @@ var Packet83Subpackets map[uint8]string = map[uint8]string{
 	0x10: "ID_REPLIC_TAG",
 	0x11: "ID_REPLIC_STATS",
 	0x12: "ID_REPLIC_HASH",
+	0x13: "ID_REPLIC_ATOMIC",
 }
 
 var Packet83Decoders = map[uint8](func(*extendedReader, PacketReader, *PacketLayers) (Packet83Subpacket, error)){
@@ -45,6 +46,7 @@ var Packet83Decoders = map[uint8](func(*extendedReader, PacketReader, *PacketLay
 	0x10: (*extendedReader).DecodePacket83_10,
 	0x11: (*extendedReader).DecodePacket83_11,
 	0x12: (*extendedReader).DecodePacket83_12,
+	0x13: (*extendedReader).DecodePacket83_13,
 }
 
 // A subpacket contained within a 0x83 (ID_DATA) packet

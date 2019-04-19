@@ -26,6 +26,7 @@ var SubpacketCallbacks = map[uint8](func(peer.Packet83Subpacket) widgets.QWidget
 	0x10: show83_10,
 	0x11: show83_11,
 	0x12: show83_12,
+	0x13: show83_13,
 }
 var Callbacks83_09 = map[uint8](func(peer.Packet83_09Subpacket) widgets.QWidget_ITF){
 	0x0: show83_09_00,
@@ -425,6 +426,24 @@ func show83_12(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	layerLayout.AddWidget(hashList, 0, 0)
 
 	widget.SetLayout(layerLayout)
+
+	return widget
+}
+
+func show83_13(t peer.Packet83Subpacket) widgets.QWidget_ITF {
+	this := t.(*peer.Packet83_13)
+	widget := widgets.NewQWidget(nil, 0)
+	layout := NewTopAlignLayout()
+	layout.AddWidget(NewQLabelF("Instance: %s", this.Instance.GetFullName()), 0, 0)
+	layout.AddWidget(NewQLabelF("Reference: %s", this.Instance.Ref.String()), 0, 0)
+	if this.Parent != nil {
+		layout.AddWidget(NewQLabelF("Parent: %s", this.Parent.GetFullName()), 0, 0)
+		layout.AddWidget(NewQLabelF("Parent ref: %s", this.Parent.Ref.String()), 0, 0)
+	} else {
+		layout.AddWidget(NewLabel("Parent: nil"), 0, 0)
+	}
+
+	widget.SetLayout(layout)
 
 	return widget
 }

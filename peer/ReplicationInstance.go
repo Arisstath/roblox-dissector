@@ -67,9 +67,6 @@ func decodeReplicationInstance(reader PacketReader, thisStream InstanceReader, l
 	if err != nil {
 		return repInstance, errors.New("while parsing parent: " + err.Error())
 	}
-	if reference.IsNull {
-		return repInstance, errors.New("parent is null")
-	}
 	if len(reference.String()) > 0x50 {
 		layers.Root.Logger.Println("Parent: (invalid), ", len(reference.String()))
 	} else {
