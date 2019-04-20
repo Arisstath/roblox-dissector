@@ -200,15 +200,23 @@ func (logicHandler *PacketLogicHandler) ReplicationInstance(inst *datamodel.Inst
 	return repInstance
 }
 
-func (logicHandler *PacketLogicHandler) constructInstanceList(list []*ReplicationInstance, instance *datamodel.Instance) []*ReplicationInstance {
+func (logicHandler *PacketLogicHandler) constructInstanceList(list []*ReplicationInstance, instance *datamodel.Instance, ignore ...*datamodel.Instance) []*ReplicationInstance {
 	for _, child := range instance.Children {
+		for _, ig := range ignore {
+			if child == ig {
+				// No dinosaurs please
+				goto skip
+			}
+		}
 		list = append(list, logicHandler.ReplicationInstance(child, false))
 		list = logicHandler.constructInstanceList(list, child)
+	skip:
 	}
 	return list
 }
 
-func (logicHandler *PacketLogicHandler) ReplicateJoinData(rootInstance *datamodel.Instance, replicateProperties, replicateChildren bool) error {
+func (logicHandler *PacketLogicHandler) ReplicateJoinData(rootInstance *datamodel.Instance, replicateProperties, replicateChildren bool, streamer *JoinDataStreamer, ignore ...*datamodel.Instance) error {
+	var err error
 	list := []*ReplicationInstance{}
 	// HACK: Replicating some instances to the client without including properties
 	// may result in an error and a disconnection.
@@ -230,21 +238,23 @@ func (logicHandler *PacketLogicHandler) ReplicateJoinData(rootInstance *datamode
 		}
 	}
 	rootInstance.PropertiesMutex.RUnlock()
-	var joinDataObject *Packet83_0B
-	// FIXME: This may result in the joindata becoming too large
-	// for the client to handle! We need to split it up into
-	// multiple segments
 	if replicateChildren {
-		joinDataObject = &Packet83_0B{
-			Instances: logicHandler.constructInstanceList(list, rootInstance),
+		childList := logicHandler.constructInstanceList(list, rootInstance, ignore...)
+		for _, inst := range childList {
+			err = streamer.AddInstance(inst)
+			if err != nil {
+				return err
+			}
 		}
 	} else {
-		joinDataObject = &Packet83_0B{
-			Instances: list,
+		for _, inst := range list {
+			err = streamer.AddInstance(inst)
+			if err != nil {
+				return err
+			}
 		}
 	}
-
-	return logicHandler.WriteDataPackets(joinDataObject)
+	return nil
 }
 
 func (logicHandler *PacketLogicHandler) SendHackFlag(player *datamodel.Instance, flag string) error {

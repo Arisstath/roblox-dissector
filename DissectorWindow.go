@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -432,11 +433,12 @@ Running PCAP (%s).
 				return
 			}
 
+			rand.Seed(time.Now().UnixNano())
 			instanceDictionary := datamodel.NewInstanceDictionary()
 			thisRoot := datamodel.FromRbxfile(instanceDictionary, dataModelRoot)
 			normalizeRoot(thisRoot, schema)
 
-			server, err := peer.NewCustomServer(context.TODO(), uint16(port), schema, thisRoot)
+			server, err := peer.NewCustomServer(context.TODO(), uint16(port), schema, thisRoot, instanceDictionary)
 			if err != nil {
 				println("while creating server", err.Error())
 				return

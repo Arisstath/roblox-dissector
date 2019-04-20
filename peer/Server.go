@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
-	"time"
 
 	"github.com/gskartwii/roblox-dissector/datamodel"
 	"github.com/olebedev/emitter"
@@ -35,7 +34,7 @@ func (client *ServerClient) ReadPacket(buf []byte) {
 		Root: RootLayer{
 			Source:      client.Address,
 			Destination: client.Server.Address,
-			FromServer:  false,
+			FromClient:  true,
 		},
 	}
 	client.ConnectedPeer.ReadPacket(buf, layers)
@@ -46,6 +45,14 @@ func (client *ServerClient) createWriter() {
 		num, err := client.Connection.WriteToUDP(e.Args[0].([]byte), client.Address)
 		if err != nil {
 			fmt.Printf("Wrote %d bytes, err: %s\n", num, err.Error())
+		}
+	}, emitter.Void)
+	client.DefaultPacketWriter.LayerEmitter.On("*", func(e *emitter.Event) {
+		e.Args[0].(*PacketLayers).Root = RootLayer{
+			FromServer:  true,
+			Logger:      nil,
+			Source:      client.Server.Address,
+			Destination: client.Address,
 		}
 	}, emitter.Void)
 }
@@ -116,7 +123,7 @@ func (myServer *CustomServer) Stop() {
 	myServer.Connection.Close()
 }
 
-func NewCustomServer(ctx context.Context, port uint16, schema *StaticSchema, dataModel *datamodel.DataModel) (*CustomServer, error) {
+func NewCustomServer(ctx context.Context, port uint16, schema *StaticSchema, dataModel *datamodel.DataModel, dict *datamodel.InstanceDictionary) (*CustomServer, error) {
 	server := &CustomServer{Clients: make(map[string]*ServerClient)}
 
 	var err error
@@ -125,14 +132,14 @@ func NewCustomServer(ctx context.Context, port uint16, schema *StaticSchema, dat
 		return server, err
 	}
 
-	rand.Seed(time.Now().UnixNano())
 	server.RunningContext = ctx
 	server.GUID = rand.Uint64()
 	server.Schema = schema
 	server.Context = NewCommunicationContext()
 	server.Context.DataModel = dataModel
 	server.Context.StaticSchema = schema
-	server.InstanceDictionary = datamodel.NewInstanceDictionary()
+	server.InstanceDictionary = dict
+	server.Context.InstanceTopScope = server.InstanceDictionary.Scope
 	server.ClientEmitter = emitter.New(0)
 
 	return server, nil
