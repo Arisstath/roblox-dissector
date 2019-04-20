@@ -203,8 +203,10 @@ func (m *PacketListViewer) AddFullPacket(context *peer.CommunicationContext, lay
 		}
 
 		datagramNumber = NewQStandardItemF("%d - %d", firstLayerNumber, lastLayerNumber)
-	} else {
+	} else if layers.RakNet != nil {
 		datagramNumber = NewUintItem(layers.RakNet.DatagramNumber)
+	} else {
+		datagramNumber = NewStringItem("???")
 	}
 	rootRow = append(rootRow, datagramNumber)
 
