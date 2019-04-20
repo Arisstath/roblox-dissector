@@ -25,8 +25,8 @@ type Packet81Layer struct {
 	CharacterAutoSpawn   bool
 	// Server's scope
 	ReferenceString string
-	ScriptKey      uint32
-	CoreScriptKey  uint32
+	ScriptKey       uint32
+	CoreScriptKey   uint32
 	// List of services to be set
 	Items []*Packet81LayerItem
 }
