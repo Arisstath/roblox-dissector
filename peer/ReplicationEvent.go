@@ -34,9 +34,11 @@ func (schema *StaticEventSchema) Serialize(event *ReplicationEvent, writer Packe
 	}
 	for i, argSchema := range schema.Arguments {
 		//println("Writing argument", argSchema.Type)
-		err := stream.WriteSerializedValue(event.Arguments[i], writer, argSchema.Type)
-		if err != nil {
-			return err
+		if event.Arguments[i] != nil {
+			err := stream.WriteSerializedValue(event.Arguments[i], writer, argSchema.Type)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
