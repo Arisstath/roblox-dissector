@@ -90,10 +90,16 @@ func showProperties(properties map[string]rbxfile.Value, numNils int) *gui.QStan
 type Packet83Subpacket peer.Packet83Subpacket
 
 func show83_0B(t peer.Packet83Subpacket) widgets.QWidget_ITF {
-	this := t.(*peer.Packet83_0B)
+	var this *peer.Packet83_0B
+	switch t.(type) {
+	case *peer.Packet83_0B:
+		this = t.(*peer.Packet83_0B)
+	case *peer.RawJoinDataBuffer:
+		this = t.(*peer.RawJoinDataBuffer).Packet83_0B
+	}
 	instanceList := widgets.NewQTreeView(nil)
 	standardModel := NewProperSortModel(nil)
-	standardModel.SetHorizontalHeaderLabels([]string{"Index", "Name", "Type", "Value", "Reference", "Parent", "Path"})
+	standardModel.SetHorizontalHeaderLabels([]string{"Index", "Name", "Type", "Value", "Reference", "Parent", "Path", "Delete on disconnect"})
 
 	rootNode := standardModel.InvisibleRootItem()
 	if this != nil && this.Instances != nil { // if arraylen == 0, this is nil
@@ -101,6 +107,7 @@ func show83_0B(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 			indexItem := NewUintItem(i)
 			row := []*gui.QStandardItem{indexItem}
 			row = append(row, showReplicationInstance(instance.Instance, instance.Parent)...)
+			row = append(row, NewQStandardItemF("%v", instance.DeleteOnDisconnect))
 			indexItem.AppendRow([]*gui.QStandardItem{showProperties(instance.Properties, 1)})
 			rootNode.AppendRow(row)
 		}
@@ -122,10 +129,11 @@ func show83_02(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_02)
 	instanceList := widgets.NewQTreeView(nil)
 	standardModel := NewProperSortModel(nil)
-	standardModel.SetHorizontalHeaderLabels([]string{"Name", "Type", "Value", "Reference", "Parent", "Path"})
+	standardModel.SetHorizontalHeaderLabels([]string{"Name", "Type", "Value", "Reference", "Parent", "Path", "Delete on disconnect"})
 
 	rootNode := standardModel.InvisibleRootItem()
 	row := showReplicationInstance(this.Instance, this.Parent)
+	row = append(row, NewQStandardItemF("%v", this.DeleteOnDisconnect))
 	row[0].AppendRow([]*gui.QStandardItem{showProperties(this.Properties, 0)})
 	rootNode.AppendRow(row)
 	instanceList.SetModel(standardModel)
