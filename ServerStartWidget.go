@@ -58,9 +58,18 @@ var noLocalDefaults = map[string](map[string]rbxfile.Value){
 		"LocaleManifest":       rbxfile.ValueString("en-us"),
 		"Name":                 rbxfile.ValueString("LocalizationService"),
 		"RobloxLocked":         rbxfile.ValueBool(false),
-		"ShouldUseCloudTable": rbxfile.ValueBool(false),
+		"ShouldUseCloudTable":  rbxfile.ValueBool(false),
 		"Tags":                 rbxfile.ValueBinaryString(""),
 		"WebTableContents":     rbxfile.ValueString(""),
+	},
+	"Players": map[string]rbxfile.Value{
+		"Archivable":               rbxfile.ValueBool(true),
+		"MaxPlayersInternal":       rbxfile.ValueInt(6),
+		"Name":                     rbxfile.ValueString("Players"),
+		"PreferredPlayersInternal": rbxfile.ValueInt(6),
+		"RespawnTime":              rbxfile.ValueFloat(5.0),
+		"RobloxLocked":             rbxfile.ValueBool(false),
+		"Tags":                     rbxfile.ValueBinaryString(""),
 	},
 }
 
@@ -118,6 +127,13 @@ func normalizeTypes(children []*datamodel.Instance, schema *peer.StaticSchema) {
 		}
 		normalizeTypes(instance.Children, schema)
 	}
+}
+
+func normalizeRoot(root *datamodel.DataModel, schema *peer.StaticSchema) {
+	// Clear children of some services if they exist
+	root.FindService("Players").Children = nil
+	root.FindService("JointsService").Children = nil
+	normalizeTypes(root.Instances, schema)
 }
 
 func NewServerStartWidget(parent widgets.QWidget_ITF, settings *ServerSettings, callback func(*ServerSettings)) {
