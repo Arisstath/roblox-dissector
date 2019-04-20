@@ -178,7 +178,7 @@ func (writer *DefaultPacketWriter) writeAsSplits(estHeaderLength int, data []byt
 		newLayers.RakNet = thisRakNet
 		newLayers.SplitPacket.ReliablePackets[i] = thisPacket
 		newLayers.SplitPacket.RakNetPackets[i] = thisRakNet
-		newLayers.SplitPacket.NumReceivedSplits = uint32(i)
+		newLayers.SplitPacket.NumReceivedSplits = uint32(i + 1)
 		newLayers.SplitPacket.NextExpectedPacket = uint32(i)
 
 		<-writer.LayerEmitter.Emit("reliability", newLayers)
