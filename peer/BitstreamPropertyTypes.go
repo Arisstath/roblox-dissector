@@ -442,9 +442,8 @@ func (b *extendedReader) readSystemAddress(caches *Caches) (datamodel.ValueSyste
 	if err != nil {
 		return thisAddress, err
 	}
-	for i := 0; i < 4; i++ {
-		thisAddress.IP[i] = thisAddress.IP[i] ^ 0xFF // bitwise NOT
-	}
+	thisAddress.IP[0], thisAddress.IP[3] = thisAddress.IP[3], thisAddress.IP[0]
+	thisAddress.IP[1], thisAddress.IP[2] = thisAddress.IP[2], thisAddress.IP[1]
 
 	port, err := b.readUint16BE()
 	thisAddress.Port = int(port)
@@ -463,9 +462,6 @@ func (b *joinSerializeReader) readSystemAddress() (datamodel.ValueSystemAddress,
 	err = b.bytes(thisAddress.IP, 4)
 	if err != nil {
 		return thisAddress, err
-	}
-	for i := 0; i < 4; i++ {
-		thisAddress.IP[i] = thisAddress.IP[i] ^ 0xFF // bitwise NOT
 	}
 
 	port, err := b.readUint16BE()

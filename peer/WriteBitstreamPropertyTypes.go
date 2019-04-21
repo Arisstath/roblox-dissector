@@ -566,18 +566,12 @@ func (b *extendedWriter) writeSystemAddressRaw(val datamodel.ValueSystemAddress)
 	if err != nil {
 		return err
 	}
-	for i := 0; i < 4; i++ {
-		addr.IP[i] = addr.IP[i] ^ 0xFF // bitwise NOT
-	}
 
-	err = b.bytes(4, addr.IP)
+	tmpIPAddr := [...]byte{addr.IP[3], addr.IP[2], addr.IP[1], addr.IP[0]}
+
+	err = b.bytes(4, tmpIPAddr[:])
 	if err != nil {
 		return err
-	}
-
-	// in case the value will be used again
-	for i := 0; i < 4; i++ {
-		addr.IP[i] = addr.IP[i] ^ 0xFF
 	}
 
 	return b.writeUint16BE(uint16(addr.Port))
