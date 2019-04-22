@@ -62,7 +62,7 @@ func NewSelectInterfaceWidget(parent widgets.QWidget_ITF, callback func(string, 
 		}
 		useInterface := standardModel.Item(interfaces.SelectedIndexes()[0].Row(), 0).Data(0).ToString()
 		promisc := usePromisc.CheckState() == core.Qt__Checked
-		window.Destroy(true, true)
+		window.Close()
 		callback(useInterface, promisc)
 	})
 

@@ -14,7 +14,7 @@ func NewClientStartWidget(parent widgets.QWidget_ITF, callback func(string)) {
 
 	startButton := widgets.NewQPushButton2("Start", window)
 	startButton.ConnectReleased(func() {
-		window.Destroy(true, true)
+		window.Close()
 		callback(uri.Text())
 	})
 	layout.AddWidget(startButton, 0, 0)

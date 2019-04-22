@@ -1,7 +1,8 @@
 package main
+
 import "github.com/therecipe/qt/widgets"
 
-func NewProxyCaptureWidget(parent widgets.QWidget_ITF, callback func(string, string)()) {
+func NewProxyCaptureWidget(parent widgets.QWidget_ITF, callback func(string, string)) {
 	window := widgets.NewQWidget(parent, 1)
 	window.SetWindowTitle("Set up proxy...")
 	layout := NewTopAlignLayout()
@@ -18,7 +19,7 @@ func NewProxyCaptureWidget(parent widgets.QWidget_ITF, callback func(string, str
 
 	startButton := widgets.NewQPushButton2("Start", nil)
 	startButton.ConnectReleased(func() {
-		window.Destroy(true, true)
+		window.Close()
 		callback(srcTextBox.Text(), dstTextBox.Text())
 	})
 	layout.AddWidget(startButton, 0, 0)

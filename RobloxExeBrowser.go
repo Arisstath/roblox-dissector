@@ -1,7 +1,8 @@
 package main
+
 import "github.com/therecipe/qt/widgets"
 
-func NewStudioChooser(parent widgets.QWidget_ITF, settings *StudioSettings, callback func(*StudioSettings)()) {
+func NewStudioChooser(parent widgets.QWidget_ITF, settings *StudioSettings, callback func(*StudioSettings)) {
 	window := widgets.NewQWidget(parent, 1)
 	window.SetWindowTitle("Choose Studio location...")
 	layout := NewTopAlignLayout()
@@ -43,7 +44,7 @@ func NewStudioChooser(parent widgets.QWidget_ITF, settings *StudioSettings, call
 
 	startButton := widgets.NewQPushButton2("Start", nil)
 	startButton.ConnectReleased(func() {
-		window.Destroy(true, true)
+		window.Close()
 		settings.Location = fileTextBox.Text()
 		settings.Flags = flags.Text()
 		settings.Address = address.Text()
@@ -57,11 +58,11 @@ func NewStudioChooser(parent widgets.QWidget_ITF, settings *StudioSettings, call
 	window.Show()
 }
 
-func NewPlayerChooser(parent widgets.QWidget_ITF, settings *PlayerSettings, callback func(*PlayerSettings)()) {
+func NewPlayerChooser(parent widgets.QWidget_ITF, settings *PlayerSettings, callback func(*PlayerSettings)) {
 	window := widgets.NewQWidget(parent, 1)
 	window.SetWindowTitle("Choose Player location...")
 	layout := NewTopAlignLayout()
-	
+
 	fileLabel := NewLabel("Player location:")
 	fileTextBox := widgets.NewQLineEdit2(settings.Location, nil)
 	browseButton := widgets.NewQPushButton2("Browse...", nil)
@@ -94,7 +95,7 @@ func NewPlayerChooser(parent widgets.QWidget_ITF, settings *PlayerSettings, call
 
 	startButton := widgets.NewQPushButton2("Start", nil)
 	startButton.ConnectReleased(func() {
-		window.Destroy(true, true)
+		window.Close()
 		settings.Location = fileTextBox.Text()
 		settings.Flags = flags.Text()
 		settings.GameID = gameID.Text()

@@ -233,7 +233,7 @@ func NewServerStartWidget(parent widgets.QWidget_ITF, settings *ServerSettings, 
 
 	startButton := widgets.NewQPushButton2("Start", nil)
 	startButton.ConnectReleased(func() {
-		window.Destroy(true, true)
+		window.Close()
 		settings.Port = port.Text()
 		settings.EnumSchemaLocation = enumTextBox.Text()
 		settings.InstanceSchemaLocation = instanceTextBox.Text()

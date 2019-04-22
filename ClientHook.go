@@ -20,9 +20,7 @@ func (session *CaptureSession) CaptureFromClient(client *peer.CustomClient, plac
 }
 
 func (captureContext *CaptureContext) HookServer(server *peer.CustomServer) {
-	println("making a serverhook")
 	server.ClientEmitter.On("client", func(e *emitter.Event) {
-		println("received a new client")
 		client := e.Args[0].(*peer.ServerClient)
 		conversation := NewProviderConversation(client.DefaultPacketReader, client.DefaultPacketWriter)
 		conversation.ClientAddress = client.Address

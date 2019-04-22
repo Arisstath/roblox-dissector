@@ -42,8 +42,7 @@ func NewServerConsole(parent widgets.QWidget_ITF, server *peer.CustomServer) {
 	stopButton := widgets.NewQPushButton2("Stop", window)
 	layout.AddWidget(stopButton, 0, 0)
 	stopButton.ConnectReleased(func() {
-		window.Destroy(true, true)
-		server.Stop()
+		window.Close()
 	})
 
 	window.SetLayout(layout)
