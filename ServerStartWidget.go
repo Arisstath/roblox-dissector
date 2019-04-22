@@ -86,6 +86,15 @@ func normalizeTypes(children []*datamodel.Instance, schema *peer.StaticSchema) {
 			}
 		}
 
+		// hack: color is saved in the wrong format
+		if instance.ClassName == "Part" {
+			color := instance.Get("Color")
+			if color != nil {
+				instance.Set("Color3uint8", color)
+				delete(instance.Properties, "Color")
+			}
+		}
+
 		for name, prop := range instance.Properties {
 			propSchema := schema.SchemaForClass(instance.ClassName).SchemaForProp(name)
 			if propSchema == nil {
@@ -129,10 +138,52 @@ func normalizeTypes(children []*datamodel.Instance, schema *peer.StaticSchema) {
 	}
 }
 
+func normalizeChildren(instances []*datamodel.Instance, schema *peer.StaticSchema) {
+	for _, inst := range instances {
+		newChildren := make([]*datamodel.Instance, 0, len(inst.Children))
+		for _, child := range inst.Children {
+			class := schema.SchemaForClass(child.ClassName)
+			if class == nil {
+				fmt.Printf("Warning: %s doesn't exist in schema! Stripping this instance.\n", child.ClassName)
+				continue
+			}
+
+			newChildren = append(newChildren, child)
+		}
+
+		inst.Children = newChildren
+		normalizeChildren(inst.Children, schema)
+	}
+}
+
+func normalizeServices(root *datamodel.DataModel, schema *peer.StaticSchema) {
+	newInstances := make([]*datamodel.Instance, 0, len(root.Instances))
+	for _, serv := range root.Instances {
+		class := schema.SchemaForClass(serv.ClassName)
+		if class == nil {
+			fmt.Printf("Warning: %s doesn't exist in schema! Stripping this instance.\n", serv.ClassName)
+			continue
+		}
+
+		newInstances = append(newInstances, serv)
+	}
+
+	root.Instances = newInstances
+}
+
 func normalizeRoot(root *datamodel.DataModel, schema *peer.StaticSchema) {
+	normalizeServices(root, schema)
 	// Clear children of some services if they exist
-	root.FindService("Players").Children = nil
-	root.FindService("JointsService").Children = nil
+	players := root.FindService("Players")
+	if players != nil {
+		players.Children = nil
+	}
+	joints := root.FindService("JointsService")
+	if joints != nil {
+		joints.Children = nil
+	}
+	normalizeServices(root, schema)
+	normalizeChildren(root.Instances, schema)
 	normalizeTypes(root.Instances, schema)
 }
 
