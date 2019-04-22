@@ -80,12 +80,12 @@ func (handler *contextualHandler) SetContext(val *CommunicationContext) {
 type DefaultPacketReader struct {
 	contextualHandler
 	// LayerEmitter provides a low-level interface for receiving packets
-	// Topics: full-reliable, simple, reliable, reliability, ack
+	// Topics: full-reliable, offline, reliable, reliability, ack
 	LayerEmitter *emitter.Emitter
 	// ErrorEmitter is the same as LayerEmitter, except invoked when layers.Error != nil ErrorEmitter *emitter.Emitter
 	ErrorEmitter *emitter.Emitter
 
-	// PacketEmitter provides a high-level interface for receiving simple and reliable packets
+	// PacketEmitter provides a high-level interface for receiving offline and reliable packets
 	// Channels correspond to TypeString() return values
 	PacketEmitter *emitter.Emitter
 
@@ -142,14 +142,11 @@ func (reader *DefaultPacketReader) emitLayers(topic string, layers *PacketLayers
 	if layers.Error != nil {
 		<-reader.ErrorEmitter.Emit(topic, layers)
 	} else {
-		/*if layers.Main != nil {
-			println("emitting layers for", topic, layers.Main.TypeString())
-		}*/
 		<-reader.LayerEmitter.Emit(topic, layers)
 	}
 }
 
-func (reader *DefaultPacketReader) readSimple(stream *extendedReader, packetType uint8, layers *PacketLayers) {
+func (reader *DefaultPacketReader) readOffline(stream *extendedReader, packetType uint8, layers *PacketLayers) {
 	var err error
 	layers.Root.logBuffer = new(strings.Builder)
 	layers.Root.Logger = log.New(layers.Root.logBuffer, "", log.Lmicroseconds|log.Ltime)
@@ -157,11 +154,11 @@ func (reader *DefaultPacketReader) readSimple(stream *extendedReader, packetType
 	if decoder != nil {
 		layers.Main, err = decoder(stream, reader, layers)
 		if err != nil {
-			layers.Error = fmt.Errorf("Failed to decode simple packet %02X: %s", packetType, err.Error())
+			layers.Error = fmt.Errorf("Failed to decode offline packet %02X: %s", packetType, err.Error())
 		}
 	}
 
-	reader.emitLayers("simple", layers)
+	reader.emitLayers("offline", layers)
 }
 
 func (reader *DefaultPacketReader) readGeneric(stream *extendedReader, layers *PacketLayers) {
@@ -169,7 +166,6 @@ func (reader *DefaultPacketReader) readGeneric(stream *extendedReader, layers *P
 	if layers.PacketType == 0x1B { // ID_TIMESTAMP
 		tsLayer, err := packetDecoders[0x1B](stream, reader, layers)
 		if err != nil {
-			println("timestamp fail")
 			layers.Reliability.SplitBuffer.Logger.Println("error:", err.Error())
 			layers.Error = fmt.Errorf("Failed to decode timestamped packet: %s", err.Error())
 			return
@@ -177,7 +173,6 @@ func (reader *DefaultPacketReader) readGeneric(stream *extendedReader, layers *P
 		layers.Timestamp = tsLayer.(*Packet1BLayer)
 		packetType, err := stream.ReadByte()
 		if err != nil {
-			println("timestamp type fail")
 			layers.Reliability.SplitBuffer.Logger.Println("error:", err.Error())
 			layers.Error = fmt.Errorf("Failed to decode timestamped packet: %s", err.Error())
 			return
@@ -192,7 +187,6 @@ func (reader *DefaultPacketReader) readGeneric(stream *extendedReader, layers *P
 		layers.Main, err = decoder(stream, reader, layers)
 
 		if err != nil {
-			println("parser error, setting main to nil", err.Error())
 			layers.Main = nil
 			layers.Reliability.SplitBuffer.Logger.Println("error:", err.Error())
 			layers.Error = fmt.Errorf("Failed to decode reliable packet %02X: %s", layers.PacketType, err.Error())
@@ -210,7 +204,6 @@ func (reader *DefaultPacketReader) readOrdered(layers *PacketLayers) {
 		var packetType uint8
 		packetType, err = buffer.dataReader.ReadByte()
 		if err != nil {
-			println("ouch, my packetType", err.Error())
 			subPacket.SplitBuffer.Logger.Println("error:", err.Error())
 			layers.Error = fmt.Errorf("Failed to decode reliablePacket type %d: %s", packetType, err.Error())
 		} else {
@@ -248,7 +241,6 @@ func (reader *DefaultPacketReader) readReliable(layers *PacketLayers) {
 		reliablePacketLayers.PacketType = buffer.PacketType
 
 		if err != nil {
-			println("error while handling split")
 			subPacket.SplitBuffer.Logger.Println("error while handling split:", err.Error())
 			reliablePacketLayers.Error = fmt.Errorf("Error while handling split packet: %s", err.Error())
 			reader.emitLayers("reliable", reliablePacketLayers)
@@ -286,7 +278,6 @@ func (reader *DefaultPacketReader) readReliable(layers *PacketLayers) {
 				}
 			}
 		default:
-			println("error while handling reliability")
 			reliablePacketLayers.Error = fmt.Errorf("Unknown reliability: %d", reliablePacketLayers.Reliability.Reliability)
 			// TODO: Is it legal to emit the reliable packet twice?
 			reader.emitLayers("reliable", reliablePacketLayers)
@@ -302,19 +293,16 @@ func (reader *DefaultPacketReader) ReadPacket(payload []byte, layers *PacketLaye
 	layers.PacketType = payload[0]
 	if err != nil {
 		layers.Error = err
-		// packetType = payload[0]
-		reader.emitLayers("simple", layers)
+		layers.PacketType = 0xFF
+		reader.emitLayers("offline", layers)
 		return
 	}
 
 	layers.RakNet = rakNetLayer
-	if rakNetLayer.IsSimple {
-		packetType := rakNetLayer.SimpleLayerID
+	if rakNetLayer.IsOffline {
+		packetType := rakNetLayer.OfflineLayerID
 		layers.PacketType = packetType
-		reader.readSimple(stream, packetType, layers)
-	} else if !rakNetLayer.Flags.IsValid {
-		layers.Error = fmt.Errorf("Sent invalid packet (packet header %x)", payload[0])
-		reader.emitLayers("simple", layers)
+		reader.readOffline(stream, packetType, layers)
 	} else if rakNetLayer.Flags.IsACK || rakNetLayer.Flags.IsNAK {
 		reader.emitLayers("ack", layers)
 	} else {
@@ -408,15 +396,11 @@ func (reader *DefaultPacketReader) bindBasicPacketHandler() {
 	// important: sync!
 	reader.LayerEmitter.On("full-reliable", func(e *emitter.Event) {
 		layers := e.Args[0].(*PacketLayers)
-		//println("will emit packet", layers.Main.TypeString())
 		<-reader.PacketEmitter.Emit(layers.Main.TypeString(), layers.Main, layers)
-		//println("finished emitting packet")
 	}, emitter.Void)
-	reader.LayerEmitter.On("simple", func(e *emitter.Event) {
+	reader.LayerEmitter.On("offline", func(e *emitter.Event) {
 		layers := e.Args[0].(*PacketLayers)
-		//println("will emit packet", layers.Main.TypeString())
 		<-reader.PacketEmitter.Emit(layers.Main.TypeString(), layers.Main, layers)
-		//println("finished emitting packet")
 	}, emitter.Void)
 }
 

@@ -44,17 +44,17 @@ var JoinDataConfiguration = []JoinDataConfig{
 	JoinDataConfig{"SocialService", true, false},
 }
 
-func (client *ServerClient) simple5Handler(e *emitter.Event) {
+func (client *ServerClient) offline5Handler(e *emitter.Event) {
 	println("Received connection!", client.Address.String())
-	client.WriteSimple(&Packet06Layer{
+	client.WriteOffline(&Packet06Layer{
 		GUID:        client.Server.GUID,
 		UseSecurity: false,
 		MTU:         1492,
 	})
 }
-func (client *ServerClient) simple7Handler(e *emitter.Event) {
+func (client *ServerClient) offline7Handler(e *emitter.Event) {
 	println("Received reply 7!", client.Address.String())
-	client.WriteSimple(&Packet08Layer{
+	client.WriteOffline(&Packet08Layer{
 		GUID:      client.Server.GUID,
 		IPAddress: client.Address,
 		MTU:       1492,
@@ -253,8 +253,8 @@ func (client *ServerClient) bindDefaultHandlers() {
 	client.DefaultPacketReader.LayerEmitter.On("reliability", client.defaultReliabilityLayerHandler, emitter.Void)
 	// TODO: Error handling?
 	pEmitter := client.PacketEmitter
-	pEmitter.On("ID_OPEN_CONNECTION_REQUEST_1", client.simple5Handler, emitter.Void)
-	pEmitter.On("ID_OPEN_CONNECTION_REQUEST_2", client.simple7Handler, emitter.Void)
+	pEmitter.On("ID_OPEN_CONNECTION_REQUEST_1", client.offline5Handler, emitter.Void)
+	pEmitter.On("ID_OPEN_CONNECTION_REQUEST_2", client.offline7Handler, emitter.Void)
 	pEmitter.On("ID_CONNECTION_REQUEST", client.connectionRequestHandler, emitter.Void)
 	pEmitter.On("ID_PROTOCOL_SYNC", client.requestParamsHandler, emitter.Void)
 	pEmitter.On("ID_SUBMIT_TICKET", client.authHandler, emitter.Void)

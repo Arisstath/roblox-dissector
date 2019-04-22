@@ -245,7 +245,7 @@ func (viewer *PacketListViewer) BindToConversation(conv *Conversation) {
 	serverPacketEmitter := conv.ServerReader.Layers()
 	serverErrorEmitter := conv.ServerReader.Errors()
 
-	simpleHandler := func(e *emitter.Event) {
+	offlineHandler := func(e *emitter.Event) {
 		layers := e.Args[0].(*peer.PacketLayers)
 		MainThreadRunner.RunOnMain(func() {
 			viewer.AddFullPacket(context, layers, ActivationCallbacks[layers.PacketType])
@@ -267,17 +267,17 @@ func (viewer *PacketListViewer) BindToConversation(conv *Conversation) {
 		<-MainThreadRunner.Wait
 	}
 
-	clientPacketEmitter.On("simple", simpleHandler, emitter.Void)
+	clientPacketEmitter.On("offline", offlineHandler, emitter.Void)
 	clientPacketEmitter.On("reliable", reliableHandler, emitter.Void)
 	clientPacketEmitter.On("full-reliable", fullReliableHandler, emitter.Void)
-	clientErrorEmitter.On("simple", simpleHandler, emitter.Void)
+	clientErrorEmitter.On("offline", offlineHandler, emitter.Void)
 	clientErrorEmitter.On("reliable", reliableHandler, emitter.Void)
 	clientErrorEmitter.On("full-reliable", fullReliableHandler, emitter.Void)
 
-	serverPacketEmitter.On("simple", simpleHandler, emitter.Void)
+	serverPacketEmitter.On("offline", offlineHandler, emitter.Void)
 	serverPacketEmitter.On("reliable", reliableHandler, emitter.Void)
 	serverPacketEmitter.On("full-reliable", fullReliableHandler, emitter.Void)
-	serverErrorEmitter.On("simple", simpleHandler, emitter.Void)
+	serverErrorEmitter.On("offline", offlineHandler, emitter.Void)
 	serverErrorEmitter.On("reliable", reliableHandler, emitter.Void)
 	serverErrorEmitter.On("full-reliable", fullReliableHandler, emitter.Void)
 }

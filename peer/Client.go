@@ -488,7 +488,7 @@ func (myClient *CustomClient) dial() {
 				myClient.Logger.Println("successfully dialed")
 				return
 			}
-			myClient.WriteSimple(connreqpacket)
+			myClient.WriteOffline(connreqpacket)
 			select {
 			case <-time.After(5 * time.Second):
 			case <-myClient.RunningContext.Done():

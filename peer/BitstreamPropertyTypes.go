@@ -121,7 +121,7 @@ func (b *extendedReader) readVector2() (rbxfile.ValueVector2, error) {
 	return val, err
 }
 
-// reads a simple Vector3 value (f32 X, f32 Y, f32 Z)
+// reads a offline Vector3 value (f32 X, f32 Y, f32 Z)
 func (b *extendedReader) readVector3Simple() (rbxfile.ValueVector3, error) {
 	var err error
 	val := rbxfile.ValueVector3{}

@@ -121,18 +121,18 @@ func NewProxyWriter(ctx context.Context) *ProxyWriter {
 		}
 	}, emitter.Void)
 
-	clientHalf.DefaultPacketReader.LayerEmitter.On("simple", func(e *emitter.Event) {
+	clientHalf.DefaultPacketReader.LayerEmitter.On("offline", func(e *emitter.Event) {
 		layers := e.Args[0].(*PacketLayers)
-		println("client simple", layers.PacketType)
+		println("client offline", layers.PacketType)
 		if layers.PacketType == 5 {
 			println("recv 5, protocol type", layers.Main.(*Packet05Layer).ProtocolVersion)
 		}
-		serverHalf.WriteSimple(layers.Main)
+		serverHalf.WriteOffline(layers.Main)
 	}, emitter.Void)
-	serverHalf.DefaultPacketReader.LayerEmitter.On("simple", func(e *emitter.Event) {
+	serverHalf.DefaultPacketReader.LayerEmitter.On("offline", func(e *emitter.Event) {
 		layers := e.Args[0].(*PacketLayers)
-		println("server simple", layers.PacketType)
-		clientHalf.WriteSimple(layers.Main)
+		println("server offline", layers.PacketType)
+		clientHalf.WriteOffline(layers.Main)
 	}, emitter.Void)
 
 	clientHalf.DefaultPacketReader.LayerEmitter.On("reliability", func(e *emitter.Event) {

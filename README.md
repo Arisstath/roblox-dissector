@@ -56,7 +56,7 @@ Packets for which encoding is not supported: memcheck hash packets
 * Custom Roblox server
 
 ## Screenshots
-![Sala provides a simple interface for exploring PCAP files.](https://user-images.githubusercontent.com/6651822/55480485-0fc92880-5629-11e9-93eb-8431f85dd793.png)
+![Sala provides a offline interface for exploring PCAP files.](https://user-images.githubusercontent.com/6651822/55480485-0fc92880-5629-11e9-93eb-8431f85dd793.png)
 
 ![DataModel browser](https://user-images.githubusercontent.com/6651822/55480533-35563200-5629-11e9-9b7d-b5ed892a2ff0.png)
 

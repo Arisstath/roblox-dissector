@@ -133,8 +133,6 @@ func NewPacket13Layer() *Packet13Layer {
 	return &Packet13Layer{}
 }
 
-var voidOfflineMessage []byte = make([]byte, 0x10)
-
 func (thisStream *extendedReader) DecodePacket05Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	var err error
 	layer := NewPacket05Layer()
@@ -180,10 +178,6 @@ func (thisStream *extendedReader) DecodePacket06Layer(reader PacketReader, layer
 	layer := NewPacket06Layer()
 
 	var err error
-	err = thisStream.bytes(voidOfflineMessage, 0x10)
-	if err != nil {
-		return layer, err
-	}
 	layer.GUID, err = thisStream.readUint64BE()
 	if err != nil {
 		return layer, err
@@ -231,10 +225,6 @@ func (thisStream *extendedReader) DecodePacket07Layer(reader PacketReader, layer
 	layer := NewPacket07Layer()
 
 	var err error
-	err = thisStream.bytes(voidOfflineMessage, 0x10)
-	if err != nil {
-		return layer, err
-	}
 	layer.IPAddress, err = thisStream.readAddress()
 	if err != nil {
 		return layer, err
@@ -282,10 +272,6 @@ func (thisStream *extendedReader) DecodePacket08Layer(reader PacketReader, layer
 	layer := NewPacket08Layer()
 
 	var err error
-	err = thisStream.bytes(voidOfflineMessage, 0x10)
-	if err != nil {
-		return layer, err
-	}
 	layer.GUID, err = thisStream.readUint64BE()
 	if err != nil {
 		return layer, err
