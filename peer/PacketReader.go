@@ -375,6 +375,11 @@ func (reader *DefaultPacketReader) HandlePacket0B(e *emitter.Event) {
 	}
 }
 
+func (reader *DefaultPacketReader) HandlePacket13(e *emitter.Event) {
+	packet := e.Args[0].(*Packet83_13)
+	packet.Instance.SetParent(packet.Parent)
+}
+
 // Top replic handler
 func (reader *DefaultPacketReader) HandlePacket81(e *emitter.Event) {
 	packet := e.Args[0].(*Packet81Layer)
@@ -390,6 +395,7 @@ func (reader *DefaultPacketReader) BindDataModelHandlers() {
 	reader.DataEmitter.On("ID_REPLIC_PROP", reader.HandlePacket03, emitter.Void)
 	reader.DataEmitter.On("ID_REPLIC_EVENT", reader.HandlePacket07, emitter.Void)
 	reader.DataEmitter.On("ID_REPLIC_JOIN_DATA", reader.HandlePacket0B, emitter.Void)
+	reader.DataEmitter.On("ID_REPLIC_ATOMIC", reader.HandlePacket13, emitter.Void)
 }
 
 func (reader *DefaultPacketReader) bindBasicPacketHandler() {
