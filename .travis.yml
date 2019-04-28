@@ -26,3 +26,4 @@ deploy:
   api_key: $GH_TOKEN
   file: "deploy.zip"
   skip_cleanup: true
+  prerelease: true
