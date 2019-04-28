@@ -1,5 +1,8 @@
+// +build divert
 package main
 
+// WinDivertProxy code will only be included if the "divert" tags is set
+// This is because the windivert dependency causes problems on many build platforms
 import (
 	"bytes"
 	"context"
@@ -16,6 +19,8 @@ import (
 	windivert "github.com/Gskartwii/windivert-go"
 	"github.com/olebedev/emitter"
 )
+
+const WinDivertEnabled = true
 
 type HTTPLayer struct {
 	OriginalHost   string

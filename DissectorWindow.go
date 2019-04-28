@@ -374,7 +374,11 @@ Running PCAP (%s).
 	})
 	captureLiveAction.ConnectTriggered(window.OpenLiveInterfaceHandler)
 	captureDivertAction.ConnectTriggered(func(checked bool) {
-		NewPlayerProxyWidget(window, window.PlayerProxySettings, window.CaptureFromDivertProxy)
+		if WinDivertEnabled {
+			NewPlayerProxyWidget(window, window.PlayerProxySettings, window.CaptureFromDivertProxy)
+		} else {
+			window.ShowCaptureError(errors.New("WinDivert disabled at build time"))
+		}
 	})
 
 	toolBar := widgets.NewQToolBar("Basic functions", window)
