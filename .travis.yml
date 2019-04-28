@@ -1,0 +1,14 @@
+sudo: required
+language: go
+go:
+- 1.11.2
+
+services:
+- docker
+
+install:
+- docker pull therecipe/qt:windows_64_shared
+- go get -v -tags=no_env github.com/therecipe/qt/cmd/...
+
+script:
+- $GOPATH/bin/qtdeploy -docker build windows
