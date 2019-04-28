@@ -560,3 +560,14 @@ func (myClient *CustomClient) stalkPart(movePart *datamodel.Instance, cframe rbx
 		println("Failed to send stalking packet:", err.Error())
 	}
 }
+
+func (myClient *CustomClient) SendEvent(instance *datamodel.Instance, name string, arguments ...rbxfile.Value) error {
+	instance.FireEvent(name, arguments...)
+	return myClient.WriteDataPackets(
+		&Packet83_07{
+			Instance: instance,
+			Schema:   myClient.Context.StaticSchema.SchemaForClass(instance.ClassName).SchemaForEvent(name),
+			Event:    &ReplicationEvent{arguments},
+		},
+	)
+}

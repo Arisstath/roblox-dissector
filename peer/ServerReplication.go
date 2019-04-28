@@ -239,8 +239,8 @@ func (client *ServerClient) ChildAddedHandler(parent *datamodel.Instance, e *emi
 }
 
 func (client *ServerClient) PropChangedHandler(inst *datamodel.Instance, e *emitter.Event) {
-	name := e.Args[0].(string)
-	value := e.Args[1].(rbxfile.Value)
+	name := e.OriginalTopic
+	value := e.Args[0].(rbxfile.Value)
 
 	if !client.IsHandlingProp(inst, name) {
 		client.WriteDataPackets(&Packet83_03{
@@ -252,8 +252,8 @@ func (client *ServerClient) PropChangedHandler(inst *datamodel.Instance, e *emit
 }
 
 func (client *ServerClient) EventHandler(inst *datamodel.Instance, e *emitter.Event) {
-	name := e.Args[0].(string)
-	args := e.Args[1].([]rbxfile.Value)
+	name := e.OriginalTopic
+	args := e.Args[0].([]rbxfile.Value)
 
 	if !client.IsHandlingEvent(inst, name) {
 		client.WriteDataPackets(&Packet83_07{

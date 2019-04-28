@@ -126,19 +126,19 @@ func (client *ServerClient) authHandler(e *emitter.Event) {
 				WatchChanges:  instance.ReplicateProperties,
 				WatchChildren: instance.ReplicateChildren,
 			})
-		}
 
-		thisContainer := &ReplicationContainer{
-			Instance:            service,
-			ReplicateProperties: instance.ReplicateProperties,
-			ReplicateChildren:   instance.ReplicateChildren,
+			thisContainer := &ReplicationContainer{
+				Instance:            service,
+				ReplicateProperties: instance.ReplicateProperties,
+				ReplicateChildren:   instance.ReplicateChildren,
 
-			// service parent should never change, but this will be
-			// inherited by children
-			ReplicateParent: true,
+				// service parent should never change, but this will be
+				// inherited by children
+				ReplicateParent: true,
+			}
+			client.replicatedInstances = append(client.replicatedInstances, thisContainer)
+			thisContainer.UpdateBinding(client)
 		}
-		client.replicatedInstances = append(client.replicatedInstances, thisContainer)
-		thisContainer.UpdateBinding(client)
 	}
 
 	err = client.WritePacket(&Packet81Layer{
@@ -174,11 +174,7 @@ func (client *ServerClient) authHandler(e *emitter.Event) {
 	player.Set("UserId", rbxfile.ValueInt64(-1))
 	player.Set("userId", rbxfile.ValueInt64(-1))
 	player.Ref = client.Server.InstanceDictionary.NewReference()
-	err = client.DataModel.FindService("Players").AddChild(player)
-	if err != nil {
-		println("player error: ", err.Error())
-		return
-	}
+
 	playerGui, _ := datamodel.NewInstance("PlayerGui", nil)
 	playerGui.Ref = client.Server.InstanceDictionary.NewReference()
 	err = player.AddChild(playerGui)
@@ -187,12 +183,9 @@ func (client *ServerClient) authHandler(e *emitter.Event) {
 		return
 	}
 
-	err = client.WriteDataPackets(
-		&Packet83_02{client.ReplicationInstance(player, true)},
-		&Packet83_02{client.ReplicationInstance(playerGui, false)},
-	)
+	err = client.DataModel.FindService("Players").AddChild(player)
 	if err != nil {
-		println("player replic error: ", err.Error())
+		println("player error: ", err.Error())
 		return
 	}
 
