@@ -48,7 +48,6 @@ func newSplitPacketBuffer(packet *ReliablePacket, context *CommunicationContext)
 		ReliablePackets: reliables,
 		RakNetPackets:   raknets,
 	}
-	list.data = make([]byte, 0, uint32(packet.LengthInBits)*packet.SplitPacketCount*8)
 	list.PacketType = 0xFF
 	list.UniqueID = context.UniqueID
 	context.UniqueID++
