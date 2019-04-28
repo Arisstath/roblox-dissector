@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"strconv"
 
 	"github.com/olebedev/emitter"
@@ -9,6 +10,39 @@ import (
 	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/widgets"
 )
+
+type HTTPConversation struct {
+	Name string
+	// TODO: Too WinDivert-centric: subclass this struct instead
+	ExpectingJoinAshx bool
+	LayerEmitter      *emitter.Emitter
+	ErrorEmitter      *emitter.Emitter
+}
+
+func (conv *HTTPConversation) Layers() *emitter.Emitter {
+	return conv.LayerEmitter
+}
+func (conv *HTTPConversation) Errors() *emitter.Emitter {
+	return conv.ErrorEmitter
+}
+
+func NewHTTPConversation(name string) *HTTPConversation {
+	return &HTTPConversation{
+		Name:              name,
+		ExpectingJoinAshx: true,
+		LayerEmitter:      emitter.New(0),
+		ErrorEmitter:      emitter.New(0),
+	}
+}
+
+type HTTPLayer struct {
+	OriginalHost   string
+	OriginalScheme string
+	Request        *http.Request
+	RequestBody    []byte
+	Response       *http.Response
+	ResponseBody   []byte
+}
 
 type HTTPMessageViewer struct {
 	*widgets.QWidget
