@@ -13,7 +13,7 @@ import (
 	"net"
 
 	"github.com/DataDog/zstd"
-	"github.com/gskartwii/roblox-dissector/datamodel"
+	"github.com/Gskartwii/roblox-dissector/datamodel"
 )
 
 // TODO: Move extendedReader to its own package (roblox-dissector/parser)?

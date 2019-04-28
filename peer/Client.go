@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gskartwii/roblox-dissector/datamodel"
+	"github.com/Gskartwii/roblox-dissector/datamodel"
 	"github.com/olebedev/emitter"
 	"github.com/pierrec/xxHash/xxHash32"
 	"github.com/robloxapi/rbxfile"

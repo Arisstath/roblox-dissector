@@ -6,7 +6,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/gskartwii/roblox-dissector/datamodel"
+	"github.com/Gskartwii/roblox-dissector/datamodel"
 	"github.com/olebedev/emitter"
 )
 

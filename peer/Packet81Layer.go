@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gskartwii/roblox-dissector/datamodel"
+	"github.com/Gskartwii/roblox-dissector/datamodel"
 )
 
 // Describes a global service from ID_SET_GLOBALS (Packet81Layer)

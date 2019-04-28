@@ -13,7 +13,7 @@ import (
 
 	"github.com/Gskartwii/roblox-dissector/peer"
 
-	windivert "github.com/gskartwii/windivert-go"
+	windivert "github.com/Gskartwii/windivert-go"
 	"github.com/olebedev/emitter"
 )
 

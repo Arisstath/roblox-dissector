@@ -3,7 +3,7 @@ package peer
 import (
 	"errors"
 
-	"github.com/gskartwii/roblox-dissector/datamodel"
+	"github.com/Gskartwii/roblox-dissector/datamodel"
 	"github.com/robloxapi/rbxfile"
 )
 
