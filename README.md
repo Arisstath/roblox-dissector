@@ -1,6 +1,7 @@
 # Sala
 ## The Essential Roblox Network Suite
 
+[![Build Status](https://travis-ci.org/Gskartwii/roblox-dissector.svg?branch=master)](https://travis-ci.org/Gskartwii/roblox-dissector)
 [![Documentation](https://godoc.org/github.com/Gskartwii/roblox-dissector?status.svg)](https://godoc.org/github.com/Gskartwii/roblox-dissector)
 [![Go Report](https://goreportcard.com/badge/github.com/Gskartwii/roblox-dissector)](https://goreportcard.com/report/github.com/Gskartwii/roblox-dissector)
 [![Release v0.6pre](https://img.shields.io/badge/release-v0.6pre-blue.svg)](https://github.com/Gskartwii/roblox-dissector/releases)
