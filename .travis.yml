@@ -13,3 +13,16 @@ install:
 script:
 - go get -d -v ./...
 - $GOPATH/bin/qtdeploy -docker build windows
+
+before_deploy:
+  - git config --local user.name "Gskartwii"
+  - git config --local user.email "gskw+git@crescentcode.net"
+  - export TRAVIS_TAG=${TRAVIS_TAG:-$(date +'%Y%m%d%H%M%S')-$(git log --format=%h -1)}
+  - git tag $TRAVIS_TAG
+  - zip deploy
+
+deploy:
+  provider: releases
+  api_key: $GH_TOKEN
+  file: "deploy.zip"
+  skip_cleanup: true
