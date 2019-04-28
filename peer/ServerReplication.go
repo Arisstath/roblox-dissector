@@ -25,7 +25,7 @@ type ReplicationContainer struct {
 	parentBinding <-chan emitter.Event
 }
 
-func (cont *ReplicationContainer) UpdateBinding(client *ServerClient) {
+func (cont *ReplicationContainer) UpdateBinding(client *ServerClient, isNew bool) {
 	inst := cont.Instance
 
 	if cont.parentBinding == nil && cont.ReplicateParent {
@@ -58,7 +58,7 @@ func (cont *ReplicationContainer) UpdateBinding(client *ServerClient) {
 
 	// Cascade update
 	for _, child := range inst.Children {
-		client.UpdateBinding(child)
+		client.UpdateBinding(child, isNew)
 	}
 }
 
@@ -213,7 +213,7 @@ func (client *ServerClient) ChildAddedHandler(parent *datamodel.Instance, e *emi
 
 	childConfig := client.ReplicationConfig(child)
 	if childConfig != nil {
-		client.UpdateBinding(child)
+		client.UpdateBinding(child, false)
 
 		if client.IsHandlingProp(child, "Parent") {
 			// this client caused the parent change, won't replicate
@@ -231,11 +231,7 @@ func (client *ServerClient) ChildAddedHandler(parent *datamodel.Instance, e *emi
 	}
 
 	// Bind to instance before replicating it to the client
-	client.UpdateBinding(child)
-
-	if !client.IsHandlingChild(child) {
-		client.PacketLogicHandler.ReplicateInstance(child, false)
-	}
+	client.UpdateBinding(child, true)
 }
 
 func (client *ServerClient) PropChangedHandler(inst *datamodel.Instance, e *emitter.Event) {
@@ -264,7 +260,7 @@ func (client *ServerClient) EventHandler(inst *datamodel.Instance, e *emitter.Ev
 	}
 }
 
-func (client *ServerClient) UpdateBinding(inst *datamodel.Instance) {
+func (client *ServerClient) UpdateBinding(inst *datamodel.Instance, isNew bool) {
 	found := client.ReplicationConfig(inst)
 	var parentConfig *ReplicationContainer
 	if inst.Parent() == nil {
@@ -279,6 +275,7 @@ func (client *ServerClient) UpdateBinding(inst *datamodel.Instance) {
 		parentConfig = client.ReplicationConfig(inst.Parent())
 	}
 	if found == nil {
+		// This instance has never been replicated to the client
 		// inherit
 		newBinding := &ReplicationContainer{
 			Instance:            inst,
@@ -286,13 +283,20 @@ func (client *ServerClient) UpdateBinding(inst *datamodel.Instance) {
 			ReplicateChildren:   parentConfig.ReplicateChildren,
 			ReplicateParent:     parentConfig.ReplicateParent,
 		}
-		newBinding.UpdateBinding(client)
 		client.replicatedInstances = append(client.replicatedInstances, newBinding)
+
+		if !client.IsHandlingChild(inst) && isNew {
+			client.PacketLogicHandler.ReplicateInstance(inst, false)
+		}
+
+		// Because this instance hasn't been replicated, neither are its children
+		newBinding.UpdateBinding(client, isNew)
 	} else {
 		found.ReplicateProperties = parentConfig.ReplicateProperties
 		found.ReplicateChildren = parentConfig.ReplicateChildren
 		found.ReplicateParent = parentConfig.ReplicateParent
-		found.UpdateBinding(client)
+
+		found.UpdateBinding(client, isNew)
 	}
 }
 
@@ -324,7 +328,7 @@ func (client *ServerClient) sendReplicatedFirst() error {
 func (client *ServerClient) sendContainer(streamer *JoinDataStreamer, config JoinDataConfig) error {
 	service := client.DataModel.FindService(config.ClassName)
 	if service != nil {
-		return client.ReplicateJoinData(service, config.ReplicateProperties, config.ReplicateChildren, streamer, server.Player)
+		return client.ReplicateJoinData(service, config.ReplicateProperties, config.ReplicateChildren, streamer, client.Player)
 	}
 	return nil
 }

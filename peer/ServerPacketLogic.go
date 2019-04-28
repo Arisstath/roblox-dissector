@@ -129,7 +129,7 @@ func (client *ServerClient) topReplicate() error {
 				ReplicateParent: true,
 			}
 			client.replicatedInstances = append(client.replicatedInstances, thisContainer)
-			thisContainer.UpdateBinding(client)
+			thisContainer.UpdateBinding(client, false)
 		}
 	}
 
@@ -159,9 +159,22 @@ func (client *ServerClient) createPlayer() error {
 
 	client.Player = player
 
+	hum, _ := datamodel.NewInstance("Model", nil)
+	hum.Set("Name", rbxfile.ValueString("Player1"))
+	hum.Ref = client.Server.InstanceDictionary.NewReference()
+	err := client.DataModel.FindService("Workspace").AddChild(hum)
+	if err != nil {
+		return err
+	}
+
+	player.Set("Character", datamodel.ValueReference{
+		Reference: hum.Ref,
+		Instance:  hum,
+	})
+
 	playerGui, _ := datamodel.NewInstance("PlayerGui", nil)
 	playerGui.Ref = client.Server.InstanceDictionary.NewReference()
-	err := player.AddChild(playerGui)
+	err = player.AddChild(playerGui)
 	if err != nil {
 		return err
 	}
