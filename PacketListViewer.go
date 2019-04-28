@@ -190,13 +190,13 @@ func (m *PacketListViewer) AddFullPacket(context *peer.CommunicationContext, lay
 		lastLayer := allRakNetLayers[len(allRakNetLayers)-1]
 		var firstLayerNumber, lastLayerNumber int32
 		if firstLayer == nil {
-			fmt.Printf("Encountered nil first raknet")
+			println("Encountered nil first raknet")
 			firstLayerNumber = -1
 		} else {
 			firstLayerNumber = int32(firstLayer.DatagramNumber)
 		}
 		if lastLayer == nil {
-			fmt.Printf("Encountered nil last raknet")
+			println("Encountered nil last raknet")
 			lastLayerNumber = -1
 		} else {
 			lastLayerNumber = int32(lastLayer.DatagramNumber)
