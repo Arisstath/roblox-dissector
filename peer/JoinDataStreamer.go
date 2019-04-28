@@ -124,5 +124,6 @@ func (state *JoinDataStreamer) AddInstance(instance *ReplicationInstance) error 
 
 	state.rawLayer.Instances = append(state.rawLayer.Instances, instance)
 
+	// TODO: Caching?
 	return instance.Serialize(state.packetWriter, state.writer)
 }

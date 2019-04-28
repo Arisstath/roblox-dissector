@@ -17,7 +17,7 @@ type JoinDataConfig struct {
 }
 
 var JoinDataConfiguration = []JoinDataConfig{
-	JoinDataConfig{"ReplicatedFirst", false, false},
+	JoinDataConfig{"ReplicatedFirst", true, true},
 	JoinDataConfig{"Lighting", true, true},
 	JoinDataConfig{"SoundService", true, true},
 	JoinDataConfig{"TeleportService", true, false},
@@ -107,15 +107,7 @@ func (client *ServerClient) requestParamsHandler(e *emitter.Event) {
 	})
 }
 
-func (client *ServerClient) authHandler(e *emitter.Event) {
-	err := client.WritePacket(&Packet97Layer{
-		Schema: client.Context.StaticSchema,
-	})
-	if err != nil {
-		println("schema error: ", err.Error())
-		return
-	}
-
+func (client *ServerClient) topReplicate() error {
 	topReplicationItems := make([]*Packet81LayerItem, 0, len(JoinDataConfiguration))
 	for _, instance := range JoinDataConfiguration {
 		service := client.Context.DataModel.FindService(instance.ClassName)
@@ -141,7 +133,7 @@ func (client *ServerClient) authHandler(e *emitter.Event) {
 		}
 	}
 
-	err = client.WritePacket(&Packet81Layer{
+	return client.WritePacket(&Packet81Layer{
 		StreamJob:            false,
 		FilteringEnabled:     true,
 		AllowThirdPartySales: false,
@@ -152,19 +144,9 @@ func (client *ServerClient) authHandler(e *emitter.Event) {
 		CoreScriptKey: 1,
 		Items:         topReplicationItems,
 	})
-	if err != nil {
-		println("topreplic error: ", err.Error())
-		return
-	}
+}
 
-	err = client.WritePacket(&Packet84Layer{
-		MarkerId: 1,
-	})
-	if err != nil {
-		println("topreplic error: ", err.Error())
-		return
-	}
-
+func (client *ServerClient) createPlayer() error {
 	player, _ := datamodel.NewInstance("Player", nil)
 	player.Set("Name", rbxfile.ValueString("Player1"))
 	player.Set("AccountAgeReplicate", rbxfile.ValueInt(-1712138672))
@@ -175,87 +157,58 @@ func (client *ServerClient) authHandler(e *emitter.Event) {
 	player.Set("userId", rbxfile.ValueInt64(-1))
 	player.Ref = client.Server.InstanceDictionary.NewReference()
 
+	client.Player = player
+
 	playerGui, _ := datamodel.NewInstance("PlayerGui", nil)
 	playerGui.Ref = client.Server.InstanceDictionary.NewReference()
-	err = player.AddChild(playerGui)
+	err := player.AddChild(playerGui)
 	if err != nil {
-		println("playergui error: ", err.Error())
+		return err
+	}
+
+	return client.DataModel.FindService("Players").AddChild(player)
+}
+
+func (client *ServerClient) authHandler(e *emitter.Event) {
+	err := client.WritePacket(&Packet97Layer{
+		Schema: client.Context.StaticSchema,
+	})
+	if err != nil {
+		println("schema error: ", err.Error())
 		return
 	}
 
-	err = client.DataModel.FindService("Players").AddChild(player)
+	err = client.topReplicate()
+	if err != nil {
+		println("topreplic error: ", err.Error())
+		return
+	}
+
+	err = client.WritePacket(&Packet84Layer{
+		MarkerId: 1,
+	})
+	if err != nil {
+		println("marker error: ", err.Error())
+		return
+	}
+
+	err = client.createPlayer()
 	if err != nil {
 		println("player error: ", err.Error())
 		return
 	}
 
 	// REPLICATION BEGIN
-	// Do not include ReplicatedFirst itself in replication
-	replicatedFirstStreamer := NewJoinDataStreamer(client.DefaultPacketWriter)
-	replicatedFirstStreamer.BufferEmitter.On("join-data", func(e *emitter.Event) {
-		err := client.WriteDataPackets(e.Args[0].(Packet83Subpacket))
-		if err != nil {
-			println("replicatedfirst error: ", err.Error())
-		}
-	}, emitter.Void)
-	replicatedFirst := client.constructInstanceList(nil, client.DataModel.FindService("ReplicatedFirst"))
-	for _, repFirstInstance := range replicatedFirst {
-		err := replicatedFirstStreamer.AddInstance(repFirstInstance)
-		if err != nil {
-			println("repfirst join data error: ", err.Error())
-			return
-		}
-	}
-	err = replicatedFirstStreamer.Close()
+	err = client.sendReplicatedFirst()
 	if err != nil {
-		println("repfirst join data error: ", err.Error())
+		println("replicatedfirst error: ", err.Error())
 		return
 	}
-	// Tag: ReplicatedFirst finished!
-	err = client.WriteDataPackets(&Packet83_10{
-		TagId: 12,
-	})
+	err = client.sendContainers()
 	if err != nil {
-		println("tag error: ", err.Error())
+		println("joindata error: ", err.Error())
 		return
 	}
-
-	joinDataStreamer := NewJoinDataStreamer(client.DefaultPacketWriter)
-	joinDataStreamer.BufferEmitter.On("join-data", func(e *emitter.Event) {
-		err := client.WriteDataPackets(e.Args[0].(Packet83Subpacket))
-		if err != nil {
-			println("joindata error: ", err.Error())
-		}
-	}, emitter.Void)
-	for _, dataConfig := range JoinDataConfiguration {
-		service := client.DataModel.FindService(dataConfig.ClassName)
-		if service != nil {
-			println("Replicating service ", dataConfig.ClassName)
-			err = client.ReplicateJoinData(service, dataConfig.ReplicateProperties, dataConfig.ReplicateChildren, joinDataStreamer, player)
-			if err != nil {
-				println("repfirst join data error: ", err.Error())
-				return
-			}
-		}
-	}
-	err = joinDataStreamer.Close()
-	if err != nil {
-		println("join data error: ", err.Error())
-		return
-	}
-
-	err = client.WriteDataPackets(&Packet83_10{
-		TagId: 13,
-	})
-	if err != nil {
-		println("tag error: ", err.Error())
-		return
-	}
-	// REPLICATION END
-
-	println("setting playername")
-	player.Set("Name", rbxfile.ValueString("Player15"))
-	println("set playername")
 }
 
 func (client *ServerClient) bindDefaultHandlers() {

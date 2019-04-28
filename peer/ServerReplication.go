@@ -295,3 +295,65 @@ func (client *ServerClient) UpdateBinding(inst *datamodel.Instance) {
 		found.UpdateBinding(client)
 	}
 }
+
+func (client *ServerClient) sendReplicatedFirst() error {
+	replicatedFirstStreamer := NewJoinDataStreamer(client.DefaultPacketWriter)
+	replicatedFirstStreamer.BufferEmitter.On("join-data", func(e *emitter.Event) {
+		err := client.WriteDataPackets(e.Args[0].(Packet83Subpacket))
+		if err != nil {
+			println("replicatedfirst error: ", err.Error())
+		}
+	}, emitter.Void)
+	replicatedFirst := client.constructInstanceList(nil, client.DataModel.FindService("ReplicatedFirst"))
+	for _, repFirstInstance := range replicatedFirst {
+		err := replicatedFirstStreamer.AddInstance(repFirstInstance)
+		if err != nil {
+			return err
+		}
+	}
+	err := replicatedFirstStreamer.Close()
+	if err != nil {
+		return err
+	}
+	// Tag: ReplicatedFirst finished!
+	return client.WriteDataPackets(&Packet83_10{
+		TagId: 12,
+	})
+}
+
+func (client *ServerClient) sendContainer(streamer *JoinDataStreamer, config JoinDataConfig) error {
+	service := client.DataModel.FindService(config.ClassName)
+	if service != nil {
+		return client.ReplicateJoinData(service, config.ReplicateProperties, config.ReplicateChildren, streamer, server.Player)
+	}
+	return nil
+}
+
+func (client *ServerClient) sendContainers() error {
+	var err error
+
+	joinDataStreamer := NewJoinDataStreamer(client.DefaultPacketWriter)
+	joinDataStreamer.BufferEmitter.On("join-data", func(e *emitter.Event) {
+		err := client.WriteDataPackets(e.Args[0].(Packet83Subpacket))
+		if err != nil {
+			println("joindata error: ", err.Error())
+		}
+	}, emitter.Void)
+	for _, dataConfig := range JoinDataConfiguration {
+		// Previously replicated for priority, don't duplicate
+		if dataConfig.ClassName != "ReplicatedFirst" {
+			err = client.sendContainer(joinDataStreamer, dataConfig)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	err = joinDataStreamer.Close()
+	if err != nil {
+		return err
+	}
+
+	return client.WriteDataPackets(&Packet83_10{
+		TagId: 13,
+	})
+}

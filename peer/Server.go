@@ -16,6 +16,8 @@ type ServerClient struct {
 	Server  *CustomServer
 	Address *net.UDPAddr
 
+	Player *datamodel.Instance
+
 	replicatedInstances []*ReplicationContainer
 	handlingChild       *datamodel.Instance
 	handlingProp        handledChange
