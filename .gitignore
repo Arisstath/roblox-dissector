@@ -8,5 +8,3 @@ dumps
 *.dll
 moc*
 rcc*
-*.syso
-*.rc
