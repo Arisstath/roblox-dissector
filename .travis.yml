@@ -19,7 +19,7 @@ before_deploy:
   - git config --local user.email "gskw+git@crescentcode.net"
   - export TRAVIS_TAG=${TRAVIS_TAG:-$(date +'%Y%m%d%H%M%S')-$(git log --format=%h -1)}
   - git tag $TRAVIS_TAG
-  - zip deploy.zip deploy
+  - zip -r deploy.zip deploy
 
 deploy:
   provider: releases
