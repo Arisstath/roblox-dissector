@@ -20,6 +20,7 @@ type Instance struct {
 	ChildEmitter    *emitter.Emitter
 	PropertyEmitter *emitter.Emitter
 	EventEmitter    *emitter.Emitter
+	ParentEmitter   *emitter.Emitter
 	parent          *Instance
 }
 
@@ -31,6 +32,7 @@ func NewInstance(className string, parent *Instance) (*Instance, error) {
 		ChildEmitter:    emitter.New(1),
 		PropertyEmitter: emitter.New(1),
 		EventEmitter:    emitter.New(1),
+		ParentEmitter:   emitter.New(1),
 	}
 
 	return inst, inst.SetParent(parent)
@@ -69,7 +71,12 @@ func (instance *Instance) AddChild(child *Instance) error {
 		instance.Children = append(instance.Children, child)
 		<-instance.ChildEmitter.Emit(child.Name(), child)
 	}
-	<-child.PropertyEmitter.Emit("Parent", instance)
+
+	parentName := ""
+	if instance != nil {
+		parentName = instance.Name()
+	}
+	<-child.ParentEmitter.Emit(parentName, instance)
 	return nil
 }
 

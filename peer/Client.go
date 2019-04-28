@@ -236,12 +236,12 @@ func (myClient *CustomClient) setupChat() error {
 			player := joinEvent.Args[0].(*datamodel.Instance)
 			myClient.Logger.Printf("SYSTEM: %s has joined the game.\n", player.Name())
 			go func(player *datamodel.Instance) {
-				parentEmitter := player.PropertyEmitter.On("Parent")
+				parentEmitter := player.ParentEmitter.On("*")
 				thisBinding := playerLeaveBindings.PushBack(InstanceEmitterBinding{Instance: player, Binding: parentEmitter})
 				for newParent := range parentEmitter {
 					if newParent.Args[0].(*datamodel.Instance) == nil {
 						playerLeaveBindings.Remove(thisBinding)
-						player.PropertyEmitter.Off("Parent", parentEmitter)
+						player.ParentEmitter.Off("*", parentEmitter)
 						playerLeaveChan <- player
 						return
 					}

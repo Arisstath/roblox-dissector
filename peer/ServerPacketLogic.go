@@ -127,6 +127,18 @@ func (client *ServerClient) authHandler(e *emitter.Event) {
 				WatchChildren: instance.ReplicateChildren,
 			})
 		}
+
+		thisContainer := &ReplicationContainer{
+			Instance:            service,
+			ReplicateProperties: instance.ReplicateProperties,
+			ReplicateChildren:   instance.ReplicateChildren,
+
+			// service parent should never change, but this will be
+			// inherited by children
+			ReplicateParent: true,
+		}
+		client.replicatedInstances = append(client.replicatedInstances, thisContainer)
+		thisContainer.UpdateBinding(client)
 	}
 
 	err = client.WritePacket(&Packet81Layer{
@@ -247,6 +259,10 @@ func (client *ServerClient) authHandler(e *emitter.Event) {
 		return
 	}
 	// REPLICATION END
+
+	println("setting playername")
+	player.Set("Name", rbxfile.ValueString("Player15"))
+	println("set playername")
 }
 
 func (client *ServerClient) bindDefaultHandlers() {

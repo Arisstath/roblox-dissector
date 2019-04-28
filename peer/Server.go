@@ -15,6 +15,12 @@ type ServerClient struct {
 	PacketLogicHandler
 	Server  *CustomServer
 	Address *net.UDPAddr
+
+	replicatedInstances []*ReplicationContainer
+	handlingChild       *datamodel.Instance
+	handlingProp        handledChange
+	handlingEvent       handledChange
+	handlingRemoval     *datamodel.Instance
 }
 
 type CustomServer struct {
