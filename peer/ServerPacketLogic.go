@@ -146,6 +146,15 @@ func (client *ServerClient) topReplicate() error {
 	})
 }
 
+func (client *ServerClient) createCameraScript(parent *datamodel.Instance) error {
+	cameraScript, _ := datamodel.NewInstance("LocalScript", nil)
+	cameraScript.Set("Name", rbxfile.ValueString("SalaCamera"))
+	cameraScript.Set("Source", rbxfile.ValueProtectedString(CameraScript))
+	cameraScript.Ref = client.Server.InstanceDictionary.NewReference()
+
+	return parent.AddChild(cameraScript)
+}
+
 func (client *ServerClient) createPlayer() error {
 	player, _ := datamodel.NewInstance("Player", nil)
 	player.Set("Name", rbxfile.ValueString("Player1"))
@@ -211,7 +220,6 @@ func (client *ServerClient) authHandler(e *emitter.Event) {
 		return
 	}
 
-	// REPLICATION BEGIN
 	err = client.sendReplicatedFirst()
 	if err != nil {
 		println("replicatedfirst error: ", err.Error())
@@ -220,6 +228,12 @@ func (client *ServerClient) authHandler(e *emitter.Event) {
 	err = client.sendContainers()
 	if err != nil {
 		println("joindata error: ", err.Error())
+		return
+	}
+
+	err = client.createCameraScript(client.Player.FindFirstChild("PlayerGui"))
+	if err != nil {
+		println("camera error: ", err.Error())
 		return
 	}
 }
@@ -233,4 +247,6 @@ func (client *ServerClient) bindDefaultHandlers() {
 	pEmitter.On("ID_CONNECTION_REQUEST", client.connectionRequestHandler, emitter.Void)
 	pEmitter.On("ID_PROTOCOL_SYNC", client.requestParamsHandler, emitter.Void)
 	pEmitter.On("ID_SUBMIT_TICKET", client.authHandler, emitter.Void)
+
+	client.PacketLogicHandler.bindDefaultHandlers()
 }

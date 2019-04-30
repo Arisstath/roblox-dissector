@@ -230,7 +230,6 @@ func (client *ServerClient) ChildAddedHandler(parent *datamodel.Instance, e *emi
 		return
 	}
 
-	// Bind to instance before replicating it to the client
 	client.UpdateBinding(child, true)
 }
 
