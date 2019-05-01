@@ -71,9 +71,6 @@ func (client *ServerClient) Init() {
 	client.Connection = client.Server.Connection
 	client.createWriter()
 
-	client.SetIsClient(false)
-	client.SetToClient(true)
-
 	client.Connected = true
 
 	client.startAcker()
