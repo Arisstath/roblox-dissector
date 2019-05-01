@@ -1,6 +1,8 @@
 package peer
 
 import (
+	"fmt"
+
 	"github.com/gskartwii/roblox-dissector/datamodel"
 	"github.com/olebedev/emitter"
 	"github.com/robloxapi/rbxfile"
@@ -23,6 +25,8 @@ type ReplicationContainer struct {
 	propBinding   <-chan emitter.Event
 	eventBinding  <-chan emitter.Event
 	parentBinding <-chan emitter.Event
+
+	hasReplicated bool
 }
 
 func (cont *ReplicationContainer) UpdateBinding(client *ServerClient, isNew bool) {
@@ -199,6 +203,8 @@ func (client *ServerClient) ParentChangedHandler(inst *datamodel.Instance, e *em
 	if parentConfig == nil {
 		// if the new parent hasn't been replicated to the client,
 		// the scenario should be handled by parenting this instance to nil
+		// Note: we don't check hasReplicated here!
+		// hasReplicated has the sense "has replicated _yet_"
 		client.WriteDataPackets(&Packet83_03{
 			Instance: inst,
 			Schema:   nil, // Parent
@@ -212,7 +218,7 @@ func (client *ServerClient) ChildAddedHandler(parent *datamodel.Instance, e *emi
 	child := e.Args[0].(*datamodel.Instance)
 
 	childConfig := client.ReplicationConfig(child)
-	if childConfig != nil {
+	if childConfig != nil && childConfig.hasReplicated {
 		client.UpdateBinding(child, false)
 
 		if client.IsHandlingProp(child, "Parent") {
@@ -259,13 +265,13 @@ func (client *ServerClient) EventHandler(inst *datamodel.Instance, e *emitter.Ev
 	}
 }
 
-func (client *ServerClient) UpdateBinding(inst *datamodel.Instance, isNew bool) {
+func (client *ServerClient) UpdateBinding(inst *datamodel.Instance, canReplicate bool) {
 	found := client.ReplicationConfig(inst)
 	var parentConfig *ReplicationContainer
 	if inst.Parent() == nil {
 		// Consider the instance destroyed
 		parentConfig = &ReplicationContainer{
-			Instance:            inst,
+			Instance:            nil,
 			ReplicateProperties: false,
 			ReplicateChildren:   false,
 			ReplicateParent:     false,
@@ -275,6 +281,8 @@ func (client *ServerClient) UpdateBinding(inst *datamodel.Instance, isNew bool) 
 	}
 	if found == nil {
 		// This instance has never been replicated to the client
+		// found == nil && !isNew means that this is joinData replication
+		// hence we don't create a binding yet
 		// inherit
 		newBinding := &ReplicationContainer{
 			Instance:            inst,
@@ -282,20 +290,23 @@ func (client *ServerClient) UpdateBinding(inst *datamodel.Instance, isNew bool) 
 			ReplicateChildren:   parentConfig.ReplicateChildren,
 			ReplicateParent:     parentConfig.ReplicateParent,
 		}
-		client.replicatedInstances = append(client.replicatedInstances, newBinding)
 
-		if !client.IsHandlingChild(inst) && isNew {
+		client.replicatedInstances = append(client.replicatedInstances, newBinding)
+		if canReplicate && !client.IsHandlingChild(inst) && !newBinding.hasReplicated {
+			newBinding.hasReplicated = true
 			client.PacketLogicHandler.ReplicateInstance(inst, false)
+		} else if client.IsHandlingChild(inst) {
+			newBinding.hasReplicated = true
 		}
 
-		// Because this instance hasn't been replicated, neither are its children
-		newBinding.UpdateBinding(client, isNew)
-	} else {
+		// Cascade to children
+		newBinding.UpdateBinding(client, canReplicate)
+	} else if found != nil {
 		found.ReplicateProperties = parentConfig.ReplicateProperties
 		found.ReplicateChildren = parentConfig.ReplicateChildren
 		found.ReplicateParent = parentConfig.ReplicateParent
 
-		found.UpdateBinding(client, isNew)
+		found.UpdateBinding(client, canReplicate)
 	}
 }
 
@@ -307,14 +318,14 @@ func (client *ServerClient) sendReplicatedFirst() error {
 			println("replicatedfirst error: ", err.Error())
 		}
 	}, emitter.Void)
-	replicatedFirst := client.constructInstanceList(nil, client.DataModel.FindService("ReplicatedFirst"))
-	for _, repFirstInstance := range replicatedFirst {
-		err := replicatedFirstStreamer.AddInstance(repFirstInstance)
-		if err != nil {
-			return err
-		}
+
+	service := client.DataModel.FindService("ReplicatedFirst")
+	config := client.ReplicationConfig(service)
+	err := client.ReplicateJoinData(service, config, replicatedFirstStreamer)
+	if err != nil {
+		return err
 	}
-	err := replicatedFirstStreamer.Close()
+	err = replicatedFirstStreamer.Close()
 	if err != nil {
 		return err
 	}
@@ -327,7 +338,8 @@ func (client *ServerClient) sendReplicatedFirst() error {
 func (client *ServerClient) sendContainer(streamer *JoinDataStreamer, config JoinDataConfig) error {
 	service := client.DataModel.FindService(config.ClassName)
 	if service != nil {
-		return client.ReplicateJoinData(service, config.ReplicateProperties, config.ReplicateChildren, streamer, client.Player)
+		repConfig := client.ReplicationConfig(service)
+		return client.ReplicateJoinData(service, repConfig, streamer)
 	}
 	return nil
 }
@@ -359,4 +371,66 @@ func (client *ServerClient) sendContainers() error {
 	return client.WriteDataPackets(&Packet83_10{
 		TagId: 13,
 	})
+}
+
+func (client *ServerClient) replicateJoinDataChildren(children []*datamodel.Instance, streamer *JoinDataStreamer) error {
+	for _, child := range children {
+		config := client.ReplicationConfig(child)
+		if config == nil {
+			println("warning: nil config for instance", child.GetFullName(), "skipping")
+			continue
+		}
+		if config.hasReplicated {
+			// Skip instances that have already been replicated
+			continue
+		}
+		config.hasReplicated = true
+
+		err := streamer.AddInstance(client.ReplicationInstance(child, false))
+		if err != nil {
+			return err
+		}
+		err = client.replicateJoinDataChildren(child.Children, streamer)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (client *ServerClient) ReplicateJoinData(rootInstance *datamodel.Instance, rootConfig *ReplicationContainer, streamer *JoinDataStreamer) error {
+	var err error
+	// HACK: Replicating some instances to the client without including properties
+	// may result in an error and a disconnection.
+	// Here's a bad workaround
+	rootInstance.PropertiesMutex.RLock()
+	if rootConfig.ReplicateProperties && len(rootInstance.Properties) != 0 {
+		rootConfig.hasReplicated = true
+		err = streamer.AddInstance(client.ReplicationInstance(rootInstance, false))
+		if err != nil {
+			return err
+		}
+	} else if rootConfig.ReplicateProperties {
+		switch rootInstance.ClassName {
+		case "AdService",
+			"Workspace",
+			"JointsService",
+			"Players",
+			"StarterGui",
+			"StarterPack":
+			fmt.Printf("Warning: skipping replication of bad instance %s (no properties and no defaults), replicateProperties: %v\n", rootInstance.ClassName, rootConfig.ReplicateProperties)
+		default:
+			rootConfig.hasReplicated = true
+			err = streamer.AddInstance(client.ReplicationInstance(rootInstance, false))
+			if err != nil {
+				return err
+			}
+		}
+	}
+	rootInstance.PropertiesMutex.RUnlock()
+
+	if rootConfig.ReplicateChildren {
+		return client.replicateJoinDataChildren(rootInstance.Children, streamer)
+	}
+	return nil
 }

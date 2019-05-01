@@ -200,63 +200,6 @@ func (logicHandler *PacketLogicHandler) ReplicationInstance(inst *datamodel.Inst
 	return repInstance
 }
 
-func (logicHandler *PacketLogicHandler) constructInstanceList(list []*ReplicationInstance, instance *datamodel.Instance, ignore ...*datamodel.Instance) []*ReplicationInstance {
-	for _, child := range instance.Children {
-		for _, ig := range ignore {
-			if child == ig {
-				// No dinosaurs please
-				goto skip
-			}
-		}
-		list = append(list, logicHandler.ReplicationInstance(child, false))
-		list = logicHandler.constructInstanceList(list, child)
-	skip:
-	}
-	return list
-}
-
-func (logicHandler *PacketLogicHandler) ReplicateJoinData(rootInstance *datamodel.Instance, replicateProperties, replicateChildren bool, streamer *JoinDataStreamer, ignore ...*datamodel.Instance) error {
-	var err error
-	list := []*ReplicationInstance{}
-	// HACK: Replicating some instances to the client without including properties
-	// may result in an error and a disconnection.
-	// Here's a bad workaround
-	rootInstance.PropertiesMutex.RLock()
-	if replicateProperties && len(rootInstance.Properties) != 0 {
-		list = append(list, logicHandler.ReplicationInstance(rootInstance, false))
-	} else if replicateProperties {
-		switch rootInstance.ClassName {
-		case "AdService",
-			"Workspace",
-			"JointsService",
-			"Players",
-			"StarterGui",
-			"StarterPack":
-			fmt.Printf("Warning: skipping replication of bad instance %s (no properties and no defaults), replicateProperties: %v\n", rootInstance.ClassName, replicateProperties)
-		default:
-			list = append(list, logicHandler.ReplicationInstance(rootInstance, false))
-		}
-	}
-	rootInstance.PropertiesMutex.RUnlock()
-	if replicateChildren {
-		childList := logicHandler.constructInstanceList(list, rootInstance, ignore...)
-		for _, inst := range childList {
-			err = streamer.AddInstance(inst)
-			if err != nil {
-				return err
-			}
-		}
-	} else {
-		for _, inst := range list {
-			err = streamer.AddInstance(inst)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
 func (logicHandler *PacketLogicHandler) SendHackFlag(player *datamodel.Instance, flag string) error {
 	return logicHandler.SendEvent(player, "StatsAvailable", rbxfile.ValueString(flag))
 }
