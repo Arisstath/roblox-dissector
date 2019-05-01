@@ -14,7 +14,7 @@ import (
 	"github.com/Gskartwii/roblox-dissector/peer"
 	"github.com/dreadl0ck/gopcap"
 	"github.com/google/gopacket/pcap"
-	"github.com/gskartwii/roblox-dissector/datamodel"
+	"github.com/Gskartwii/roblox-dissector/datamodel"
 	"github.com/robloxapi/rbxfile/xml"
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/gui"
