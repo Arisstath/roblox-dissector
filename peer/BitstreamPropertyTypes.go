@@ -2,7 +2,7 @@ package peer
 
 import "errors"
 import "github.com/robloxapi/rbxfile"
-import "github.com/gskartwii/roblox-dissector/datamodel"
+import "github.com/Gskartwii/roblox-dissector/datamodel"
 
 import "math"
 

@@ -1,0 +1,29 @@
+sudo: required
+language: go
+go:
+- 1.11.2
+
+services:
+- docker
+
+install:
+- docker pull therecipe/qt:windows_64_shared
+- go get -v -tags=no_env github.com/therecipe/qt/cmd/...
+
+script:
+- go get -d -v ./...
+- $GOPATH/bin/qtdeploy -docker build windows
+
+before_deploy:
+  - git config --local user.name "Gskartwii"
+  - git config --local user.email "gskw+git@crescentcode.net"
+  - export TRAVIS_TAG=${TRAVIS_TAG:-$(date +'%Y%m%d%H%M%S')-$(git log --format=%h -1)}
+  - git tag $TRAVIS_TAG
+  - zip -r deploy.zip deploy
+
+deploy:
+  provider: releases
+  api_key: $GH_TOKEN
+  file: "deploy.zip"
+  skip_cleanup: true
+  prerelease: true

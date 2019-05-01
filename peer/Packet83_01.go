@@ -1,7 +1,7 @@
 package peer
 
 import (
-	"github.com/gskartwii/roblox-dissector/datamodel"
+	"github.com/Gskartwii/roblox-dissector/datamodel"
 )
 
 // ID_DELETE_INSTANCE

@@ -3,7 +3,7 @@ package peer
 import (
 	"bytes"
 
-	"github.com/gskartwii/roblox-dissector/datamodel"
+	"github.com/Gskartwii/roblox-dissector/datamodel"
 )
 
 // Cache represents a network cache that stores repeatable objects such as strings.

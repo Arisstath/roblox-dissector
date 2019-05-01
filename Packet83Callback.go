@@ -4,7 +4,7 @@ import (
 	"strconv"
 
 	"github.com/Gskartwii/roblox-dissector/peer"
-	"github.com/gskartwii/roblox-dissector/datamodel"
+	"github.com/Gskartwii/roblox-dissector/datamodel"
 	"github.com/robloxapi/rbxfile"
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/gui"

@@ -1,5 +1,9 @@
+// +build divert
+
 package main
 
+// WinDivertProxy code will only be included if the "divert" tags is set
+// This is because the windivert dependency causes problems on many build platforms
 import (
 	"bytes"
 	"context"
@@ -13,32 +17,11 @@ import (
 
 	"github.com/Gskartwii/roblox-dissector/peer"
 
-	windivert "github.com/gskartwii/windivert-go"
+	windivert "github.com/Gskartwii/windivert-go"
 	"github.com/olebedev/emitter"
 )
 
-type HTTPLayer struct {
-	OriginalHost   string
-	OriginalScheme string
-	Request        *http.Request
-	RequestBody    []byte
-	Response       *http.Response
-	ResponseBody   []byte
-}
-
-type HTTPConversation struct {
-	Name              string
-	ExpectingJoinAshx bool
-	LayerEmitter      *emitter.Emitter
-	ErrorEmitter      *emitter.Emitter
-}
-
-func (conv *HTTPConversation) Layers() *emitter.Emitter {
-	return conv.LayerEmitter
-}
-func (conv *HTTPConversation) Errors() *emitter.Emitter {
-	return conv.ErrorEmitter
-}
+const WinDivertEnabled = true
 
 type ProxiedPacket struct {
 	Payload []byte
@@ -152,15 +135,6 @@ func (captureContext *CaptureContext) CaptureFromWinDivertProxy(ctx context.Cont
 		}
 	}
 	return nil
-}
-
-func NewHTTPConversation(name string) *HTTPConversation {
-	return &HTTPConversation{
-		Name:              name,
-		ExpectingJoinAshx: true,
-		LayerEmitter:      emitter.New(0),
-		ErrorEmitter:      emitter.New(0),
-	}
 }
 
 func (conv *HTTPConversation) CaptureForWinDivert(ctx context.Context, captureCtx *CaptureContext, certFile string, keyFile string) {

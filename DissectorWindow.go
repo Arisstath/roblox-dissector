@@ -356,11 +356,11 @@ func NewDissectorWindow(parent widgets.QWidget_ITF, flags core.Qt__WindowType) *
 
 	helpBar := window.MenuBar().AddMenu2("&Help")
 	helpBar.AddAction("View &GitHub page").ConnectTriggered(func(_ bool) {
-		url := core.NewQUrl3("https://github.com/gskartwii/roblox-dissector", core.QUrl__TolerantMode)
+		url := core.NewQUrl3("https://github.com/Gskartwii/roblox-dissector", core.QUrl__TolerantMode)
 		gui.QDesktopServices_OpenUrl(url)
 	})
 	helpBar.AddAction("Report an issue/Get support").ConnectTriggered(func(_ bool) {
-		url := core.NewQUrl3("https://github.com/gskartwii/roblox-dissector/issues/new", core.QUrl__TolerantMode)
+		url := core.NewQUrl3("https://github.com/Gskartwii/roblox-dissector/issues/new", core.QUrl__TolerantMode)
 		gui.QDesktopServices_OpenUrl(url)
 	})
 	helpBar.AddAction("Join Discord server").ConnectTriggered(func(_ bool) {
@@ -398,7 +398,11 @@ Running PCAP (%s).
 	})
 	captureLiveAction.ConnectTriggered(window.OpenLiveInterfaceHandler)
 	captureDivertAction.ConnectTriggered(func(checked bool) {
-		NewPlayerProxyWidget(window, window.PlayerProxySettings, window.CaptureFromDivertProxy)
+		if WinDivertEnabled {
+			NewPlayerProxyWidget(window, window.PlayerProxySettings, window.CaptureFromDivertProxy)
+		} else {
+			window.ShowCaptureError(errors.New("WinDivert disabled at build time"))
+		}
 	})
 
 	startClientAction.ConnectTriggered(func(checked bool) {
