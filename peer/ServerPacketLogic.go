@@ -1,6 +1,7 @@
 package peer
 
 import (
+	"fmt"
 	"net"
 	"time"
 
@@ -157,19 +158,19 @@ func (client *ServerClient) createCameraScript(parent *datamodel.Instance) error
 
 func (client *ServerClient) createPlayer() error {
 	player, _ := datamodel.NewInstance("Player", nil)
-	player.Set("Name", rbxfile.ValueString("Player1"))
-	player.Set("AccountAgeReplicate", rbxfile.ValueInt(-1712138672))
-	player.Set("CharacterAppearanceId", rbxfile.ValueInt64(36537369)) // gskw
+	player.Set("Name", rbxfile.ValueString(fmt.Sprintf("Player%d", client.Index)))
+	player.Set("AccountAgeReplicate", rbxfile.ValueInt(117))
+	player.Set("CharacterAppearanceId", rbxfile.ValueInt64(1))
 	player.Set("ChatPrivacyMode", datamodel.ValueToken{Value: 0})
 	player.Set("ReplicatedLocaleId", rbxfile.ValueString("en-us"))
-	player.Set("UserId", rbxfile.ValueInt64(-1))
-	player.Set("userId", rbxfile.ValueInt64(-1))
+	player.Set("UserId", rbxfile.ValueInt64(-client.Index))
+	player.Set("userId", rbxfile.ValueInt64(-client.Index))
 	player.Ref = client.Server.InstanceDictionary.NewReference()
 
 	client.Player = player
 
 	hum, _ := datamodel.NewInstance("Model", nil)
-	hum.Set("Name", rbxfile.ValueString("Player1"))
+	hum.Set("Name", player.Get("Name"))
 	hum.Ref = client.Server.InstanceDictionary.NewReference()
 	err := client.DataModel.FindService("Workspace").AddChild(hum)
 	if err != nil {

@@ -17,6 +17,7 @@ type ServerClient struct {
 	Address *net.UDPAddr
 
 	Player *datamodel.Instance
+	Index  int
 
 	replicatedInstances []*ReplicationContainer
 	handlingChild       *datamodel.Instance
@@ -35,6 +36,8 @@ type CustomServer struct {
 	Schema             *StaticSchema
 	InstanceDictionary *datamodel.InstanceDictionary
 	RunningContext     context.Context
+
+	PlayerIndex int
 }
 
 func (client *ServerClient) ReadPacket(buf []byte) {
@@ -83,10 +86,12 @@ func NewServerClient(clientAddr *net.UDPAddr, server *CustomServer, context *Com
 		InstanceTopScope:     context.InstanceTopScope,
 	}
 
+	server.PlayerIndex++
 	newClient := &ServerClient{
 		PacketLogicHandler: newPacketLogicHandler(newContext, true),
 		Server:             server,
 		Address:            clientAddr,
+		Index:              server.PlayerIndex,
 	}
 	newClient.RunningContext = server.RunningContext
 

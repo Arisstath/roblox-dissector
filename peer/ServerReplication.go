@@ -257,11 +257,16 @@ func (client *ServerClient) EventHandler(inst *datamodel.Instance, e *emitter.Ev
 	args := e.Args[0].([]rbxfile.Value)
 
 	if !client.IsHandlingEvent(inst, name) {
-		client.WriteDataPackets(&Packet83_07{
-			Instance: inst,
-			Schema:   client.Context.StaticSchema.SchemaForClass(inst.ClassName).SchemaForEvent(name),
-			Event:    &ReplicationEvent{args},
-		})
+		switch name {
+		case "RemoteOnInvokeClient", "OnClientEvent":
+			client.WriteDataPackets(&Packet83_07{
+				Instance: inst,
+				Schema:   client.Context.StaticSchema.SchemaForClass(inst.ClassName).SchemaForEvent(name),
+				Event:    &ReplicationEvent{args},
+			})
+		default:
+			println("Warning: not replicating non-whitelisted event", name)
+		}
 	}
 }
 
