@@ -313,7 +313,7 @@ var typeToNetworkConvTable = map[rbxfile.Type]uint8{
 	rbxfile.TypeVector2:                  PROP_TYPE_VECTOR2,
 	rbxfile.TypeVector3:                  PROP_TYPE_VECTOR3_COMPLICATED,
 	rbxfile.TypeCFrame:                   PROP_TYPE_CFRAME_COMPLICATED,
-	rbxfile.TypeToken:                    PROP_TYPE_ENUM,
+	datamodel.TypeToken:                  PROP_TYPE_ENUM,
 	datamodel.TypeReference:              PROP_TYPE_INSTANCE,
 	rbxfile.TypeVector3int16:             PROP_TYPE_VECTOR3UINT16,
 	rbxfile.TypeVector2int16:             PROP_TYPE_VECTOR2UINT16,
@@ -340,9 +340,32 @@ func typeToNetwork(val rbxfile.Value) (uint8, bool) {
 	typ, ok := typeToNetworkConvTable[val.Type()]
 	return typ, ok
 }
+func isCorrectType(val rbxfile.Value, expected uint8) bool {
+	typ, ok := typeToNetworkConvTable[val.Type()]
+	if !ok {
+		return false
+	}
+	switch expected {
+	case PROP_TYPE_STRING, PROP_TYPE_STRING_NO_CACHE:
+		return typ == PROP_TYPE_STRING
+	case PROP_TYPE_PROTECTEDSTRING_0, PROP_TYPE_PROTECTEDSTRING_1, PROP_TYPE_PROTECTEDSTRING_2, PROP_TYPE_PROTECTEDSTRING_3:
+		return typ == PROP_TYPE_PROTECTEDSTRING_0
+	case PROP_TYPE_VECTOR3_SIMPLE, PROP_TYPE_VECTOR3_COMPLICATED:
+		return typ == PROP_TYPE_VECTOR3_COMPLICATED
+	case PROP_TYPE_CFRAME_SIMPLE, PROP_TYPE_CFRAME_COMPLICATED:
+		return typ == PROP_TYPE_CFRAME_COMPLICATED
+	default:
+		return typ == expected
+	}
+}
+
 func (b *extendedWriter) writeSerializedValueGeneric(val rbxfile.Value, valueType uint8) error {
 	if val == nil {
-		return nil
+		return errors.New("can't write nil value")
+	}
+
+	if !isCorrectType(val, valueType) {
+		return fmt.Errorf("bad value type: expected %d, got %T", valueType, val)
 	}
 	var err error
 	switch valueType {
@@ -543,18 +566,12 @@ func (b *extendedWriter) writeSystemAddressRaw(val datamodel.ValueSystemAddress)
 	if err != nil {
 		return err
 	}
-	for i := 0; i < 4; i++ {
-		addr.IP[i] = addr.IP[i] ^ 0xFF // bitwise NOT
-	}
 
-	err = b.bytes(4, addr.IP)
+	tmpIPAddr := [...]byte{addr.IP[3], addr.IP[2], addr.IP[1], addr.IP[0]}
+
+	err = b.bytes(4, tmpIPAddr[:])
 	if err != nil {
 		return err
-	}
-
-	// in case the value will be used again
-	for i := 0; i < 4; i++ {
-		addr.IP[i] = addr.IP[i] ^ 0xFF
 	}
 
 	return b.writeUint16BE(uint16(addr.Port))

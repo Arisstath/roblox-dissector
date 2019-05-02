@@ -121,7 +121,7 @@ func (b *extendedReader) readVector2() (rbxfile.ValueVector2, error) {
 	return val, err
 }
 
-// reads a simple Vector3 value (f32 X, f32 Y, f32 Z)
+// reads a offline Vector3 value (f32 X, f32 Y, f32 Z)
 func (b *extendedReader) readVector3Simple() (rbxfile.ValueVector3, error) {
 	var err error
 	val := rbxfile.ValueVector3{}
@@ -442,9 +442,8 @@ func (b *extendedReader) readSystemAddress(caches *Caches) (datamodel.ValueSyste
 	if err != nil {
 		return thisAddress, err
 	}
-	for i := 0; i < 4; i++ {
-		thisAddress.IP[i] = thisAddress.IP[i] ^ 0xFF // bitwise NOT
-	}
+	thisAddress.IP[0], thisAddress.IP[3] = thisAddress.IP[3], thisAddress.IP[0]
+	thisAddress.IP[1], thisAddress.IP[2] = thisAddress.IP[2], thisAddress.IP[1]
 
 	port, err := b.readUint16BE()
 	thisAddress.Port = int(port)
@@ -463,9 +462,6 @@ func (b *joinSerializeReader) readSystemAddress() (datamodel.ValueSystemAddress,
 	err = b.bytes(thisAddress.IP, 4)
 	if err != nil {
 		return thisAddress, err
-	}
-	for i := 0; i < 4; i++ {
-		thisAddress.IP[i] = thisAddress.IP[i] ^ 0xFF // bitwise NOT
 	}
 
 	port, err := b.readUint16BE()

@@ -45,7 +45,7 @@ func NewFindDefaultsWidget(parent widgets.QWidget_ITF, settings *DefaultsSetting
 
 	okButton := widgets.NewQPushButton2("OK", window)
 	okButton.ConnectReleased(func() {
-		window.Destroy(true, true)
+		window.Close()
 		settings.Files = make([]string, standardModel.RowCount(core.NewQModelIndex()))
 		for i := 0; i < standardModel.RowCount(core.NewQModelIndex()); i++ {
 			settings.Files[i] = standardModel.Item(i, 0).Data(0).ToString()

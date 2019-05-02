@@ -111,9 +111,6 @@ func (b *extendedReader) ReadProperties(schema []*StaticPropertySchema, properti
 }
 
 func (b *extendedWriter) WriteSerializedValue(val rbxfile.Value, writer PacketWriter, valueType uint8) error {
-	if val == nil {
-		return nil
-	}
 	var err error
 	switch valueType {
 	case PROP_TYPE_STRING:
@@ -166,7 +163,6 @@ func (b *extendedWriter) WriteProperties(schema []*StaticPropertySchema, propert
 			return err
 		}
 
-		//println("serializing", i, name, value.String())
 		err = schema[i].Serialize(value, writer, b)
 		if err != nil {
 			return err
@@ -270,9 +266,6 @@ type joinSerializeWriter struct {
 }
 
 func (b *joinSerializeWriter) WriteSerializedValue(val rbxfile.Value, writer PacketWriter, valueType uint8) error {
-	if val == nil {
-		return nil
-	}
 	var err error
 	switch valueType {
 	case PROP_TYPE_STRING:
@@ -314,7 +307,6 @@ func (b *joinSerializeWriter) WriteProperties(schema []*StaticPropertySchema, pr
 			return err
 		}
 
-		//println("serializing", i, name, value.String())
 		err = schema[i].Serialize(value, writer, b)
 		if err != nil {
 			return err

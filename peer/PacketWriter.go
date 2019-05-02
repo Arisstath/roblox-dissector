@@ -24,13 +24,13 @@ type PacketWriter interface {
 }
 
 // PacketWriter is a struct used to write packets to a peer
-// Pass packets in using WriteSimple/WriteGeneric/etc.
+// Pass packets in using WriteOffline/WriteGeneric/etc.
 // and bind to the given callbacks
 type DefaultPacketWriter struct {
 	contextualHandler
 	// LayerEmitter provides a low-level interface for hooking into the
 	// packet serialization process
-	// Channels: full-reliable, simple, reliable, reliability, ack
+	// Channels: full-reliable, offline, reliable, reliability, ack
 	LayerEmitter *emitter.Emitter
 
 	// ErrorEmitter never emits anything. It exists for compatibility
@@ -70,9 +70,9 @@ func (writer *DefaultPacketWriter) output(bytes []byte) {
 	<-writer.Output.Emit("udp", bytes)
 }
 
-// WriteSimple is used to write pre-connection packets (IDs 5-8). It doesn't use a
+// WriteOffline is used to write pre-connection packets (IDs 5-8). It doesn't use a
 // ReliabilityLayer.
-func (writer *DefaultPacketWriter) WriteSimple(packet RakNetPacket) error {
+func (writer *DefaultPacketWriter) WriteOffline(packet RakNetPacket) error {
 	output := make([]byte, 0, 1492)
 	buffer := bytes.NewBuffer(output)
 	stream := &extendedWriter{buffer}
@@ -82,15 +82,15 @@ func (writer *DefaultPacketWriter) WriteSimple(packet RakNetPacket) error {
 	}
 	layers := &PacketLayers{
 		RakNet: &RakNetLayer{
-			IsSimple:      true,
-			SimpleLayerID: packet.Type(),
+			IsOffline:      true,
+			OfflineLayerID: packet.Type(),
 		},
 		PacketType: packet.Type(),
 		Main:       packet,
 	}
 
 	writer.output(buffer.Bytes())
-	<-writer.LayerEmitter.Emit("simple", layers)
+	<-writer.LayerEmitter.Emit("offline", layers)
 	return nil
 }
 
@@ -178,7 +178,7 @@ func (writer *DefaultPacketWriter) writeAsSplits(estHeaderLength int, data []byt
 		newLayers.RakNet = thisRakNet
 		newLayers.SplitPacket.ReliablePackets[i] = thisPacket
 		newLayers.SplitPacket.RakNetPackets[i] = thisRakNet
-		newLayers.SplitPacket.NumReceivedSplits = uint32(i)
+		newLayers.SplitPacket.NumReceivedSplits = uint32(i + 1)
 		newLayers.SplitPacket.NextExpectedPacket = uint32(i)
 
 		<-writer.LayerEmitter.Emit("reliability", newLayers)

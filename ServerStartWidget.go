@@ -34,6 +34,7 @@ var noLocalDefaults = map[string](map[string]rbxfile.Value){
 		"Name":                       rbxfile.ValueString("Workspace"),
 		"PrimaryPart":                datamodel.ValueReference{Instance: nil, Reference: datamodel.NullReference},
 		"RobloxLocked":               rbxfile.ValueBool(false),
+		"StreamingEnabled":           rbxfile.ValueBool(false),
 		"StreamingMinRadius":         rbxfile.ValueInt(0),
 		"StreamingTargetRadius":      rbxfile.ValueInt(0),
 		"Tags":                       rbxfile.ValueBinaryString(""),
@@ -57,8 +58,18 @@ var noLocalDefaults = map[string](map[string]rbxfile.Value){
 		"LocaleManifest":       rbxfile.ValueString("en-us"),
 		"Name":                 rbxfile.ValueString("LocalizationService"),
 		"RobloxLocked":         rbxfile.ValueBool(false),
+		"ShouldUseCloudTable":  rbxfile.ValueBool(false),
 		"Tags":                 rbxfile.ValueBinaryString(""),
 		"WebTableContents":     rbxfile.ValueString(""),
+	},
+	"Players": map[string]rbxfile.Value{
+		"Archivable":               rbxfile.ValueBool(true),
+		"MaxPlayersInternal":       rbxfile.ValueInt(6),
+		"Name":                     rbxfile.ValueString("Players"),
+		"PreferredPlayersInternal": rbxfile.ValueInt(6),
+		"RespawnTime":              rbxfile.ValueFloat(5.0),
+		"RobloxLocked":             rbxfile.ValueBool(false),
+		"Tags":                     rbxfile.ValueBinaryString(""),
 	},
 }
 
@@ -72,6 +83,15 @@ func normalizeTypes(children []*datamodel.Instance, schema *peer.StaticSchema) {
 					println("Adding missing default value", instance.ClassName, prop.Name)
 					instance.Properties[prop.Name] = defaultValues[prop.Name]
 				}
+			}
+		}
+
+		// hack: color is saved in the wrong format
+		if instance.ClassName == "Part" {
+			color := instance.Get("Color")
+			if color != nil {
+				instance.Set("Color3uint8", color)
+				delete(instance.Properties, "Color")
 			}
 		}
 
@@ -116,6 +136,55 @@ func normalizeTypes(children []*datamodel.Instance, schema *peer.StaticSchema) {
 		}
 		normalizeTypes(instance.Children, schema)
 	}
+}
+
+func normalizeChildren(instances []*datamodel.Instance, schema *peer.StaticSchema) {
+	for _, inst := range instances {
+		newChildren := make([]*datamodel.Instance, 0, len(inst.Children))
+		for _, child := range inst.Children {
+			class := schema.SchemaForClass(child.ClassName)
+			if class == nil {
+				fmt.Printf("Warning: %s doesn't exist in schema! Stripping this instance.\n", child.ClassName)
+				continue
+			}
+
+			newChildren = append(newChildren, child)
+		}
+
+		inst.Children = newChildren
+		normalizeChildren(inst.Children, schema)
+	}
+}
+
+func normalizeServices(root *datamodel.DataModel, schema *peer.StaticSchema) {
+	newInstances := make([]*datamodel.Instance, 0, len(root.Instances))
+	for _, serv := range root.Instances {
+		class := schema.SchemaForClass(serv.ClassName)
+		if class == nil {
+			fmt.Printf("Warning: %s doesn't exist in schema! Stripping this instance.\n", serv.ClassName)
+			continue
+		}
+
+		newInstances = append(newInstances, serv)
+	}
+
+	root.Instances = newInstances
+}
+
+func normalizeRoot(root *datamodel.DataModel, schema *peer.StaticSchema) {
+	normalizeServices(root, schema)
+	// Clear children of some services if they exist
+	players := root.FindService("Players")
+	if players != nil {
+		players.Children = nil
+	}
+	joints := root.FindService("JointsService")
+	if joints != nil {
+		joints.Children = nil
+	}
+	normalizeServices(root, schema)
+	normalizeChildren(root.Instances, schema)
+	normalizeTypes(root.Instances, schema)
 }
 
 func NewServerStartWidget(parent widgets.QWidget_ITF, settings *ServerSettings, callback func(*ServerSettings)) {
@@ -164,7 +233,7 @@ func NewServerStartWidget(parent widgets.QWidget_ITF, settings *ServerSettings, 
 
 	startButton := widgets.NewQPushButton2("Start", nil)
 	startButton.ConnectReleased(func() {
-		window.Destroy(true, true)
+		window.Close()
 		settings.Port = port.Text()
 		settings.EnumSchemaLocation = enumTextBox.Text()
 		settings.InstanceSchemaLocation = instanceTextBox.Text()

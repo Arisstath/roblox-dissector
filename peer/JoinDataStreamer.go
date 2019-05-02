@@ -5,15 +5,17 @@ import (
 	"encoding/binary"
 	"io"
 
+	"github.com/DataDog/zstd"
+
 	"github.com/olebedev/emitter"
 )
 
-type rawJoinDataBuffer struct {
+type RawJoinDataBuffer struct {
 	*Packet83_0B
 	buf []byte
 }
 
-func (buf *rawJoinDataBuffer) Serialize(writer PacketWriter, stream *extendedWriter) error {
+func (buf *RawJoinDataBuffer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	_, err := stream.Write(buf.buf)
 	return err
 }
@@ -47,6 +49,7 @@ type JoinDataStreamer struct {
 	// These buffers should be passed to PacketWriter.WritePacket()
 	BufferEmitter    *emitter.Emitter
 	compressedBuffer *bytes.Buffer
+	compressor       *zstd.Writer
 	writer           *joinSerializeWriter
 	counter          *countWriter
 	rawLayer         *Packet83_0B
@@ -67,35 +70,60 @@ func (state *JoinDataStreamer) makeNewStream() *joinSerializeWriter {
 	state.compressedBuffer = bytes.NewBuffer(nil)
 	state.counter = newCountWriter()
 	state.rawLayer = NewPacket83_0BLayer()
+	state.compressor = zstd.NewWriter(state.compressedBuffer)
 
-	writeMux := io.MultiWriter(state.compressedBuffer, state.counter)
+	writeMux := io.MultiWriter(state.compressor, state.counter)
 	state.writer = &joinSerializeWriter{&extendedWriter{writeMux}}
 
 	return state.writer
 }
 
-func (state *JoinDataStreamer) Flush() {
+func (state *JoinDataStreamer) Flush() error {
+	// If there's nothing to write, skip
+	if len(state.rawLayer.Instances) == 0 {
+		return nil
+	}
+
+	err := state.compressor.Close()
+	if err != nil {
+		return err
+	}
+
 	cachedBuffer := make([]byte, state.compressedBuffer.Len()+4+4+4)
 	binary.BigEndian.PutUint32(cachedBuffer[:4], uint32(len(state.rawLayer.Instances)))
 	binary.BigEndian.PutUint32(cachedBuffer[4:8], uint32(state.compressedBuffer.Len()))
 	binary.BigEndian.PutUint32(cachedBuffer[8:12], uint32(state.counter.numBytes))
 
 	copy(cachedBuffer[12:], state.compressedBuffer.Bytes())
-	thisBuf := &rawJoinDataBuffer{
+	thisBuf := &RawJoinDataBuffer{
 		Packet83_0B: state.rawLayer,
 		buf:         cachedBuffer,
 	}
 
 	<-state.BufferEmitter.Emit("join-data", thisBuf)
+	return nil
+}
+
+func (state *JoinDataStreamer) Close() error {
+	err := state.Flush()
+	if err != nil {
+		return err
+	}
+	state.BufferEmitter.Off("*")
+	return nil
 }
 
 func (state *JoinDataStreamer) AddInstance(instance *ReplicationInstance) error {
 	if state.compressedBuffer.Len() > MaxJoinDataBytes {
-		state.Flush()
+		err := state.Flush()
+		if err != nil {
+			return err
+		}
 		state.makeNewStream()
 	}
 
 	state.rawLayer.Instances = append(state.rawLayer.Instances, instance)
 
+	// TODO: Caching?
 	return instance.Serialize(state.packetWriter, state.writer)
 }

@@ -1,6 +1,7 @@
 package peer
 
 import (
+	"fmt"
 	"net"
 	"time"
 
@@ -16,43 +17,45 @@ type JoinDataConfig struct {
 	ReplicateChildren   bool
 }
 
-var joinDataConfiguration = []JoinDataConfig{
-	JoinDataConfig{"ReplicatedFirst", false, false}, // Replicated separately
+var JoinDataConfiguration = []JoinDataConfig{
+	JoinDataConfig{"ReplicatedFirst", true, true},
 	JoinDataConfig{"Lighting", true, true},
 	JoinDataConfig{"SoundService", true, true},
+	JoinDataConfig{"TeleportService", true, false},
 	JoinDataConfig{"StarterPack", false, true},
 	JoinDataConfig{"StarterGui", true, true},
-	//JoinDataConfig{"StarterPlayer", true, true},
+	JoinDataConfig{"StarterPlayer", true, true},
 	JoinDataConfig{"CSGDictionaryService", false, true},
 	JoinDataConfig{"Workspace", true, true},
 	JoinDataConfig{"JointsService", false, true},
+	JoinDataConfig{"Players", true, true},
 	JoinDataConfig{"Teams", false, true},
 	JoinDataConfig{"InsertService", true, true},
 	JoinDataConfig{"Chat", true, true},
+	JoinDataConfig{"LocalizationService", true, true},
 	JoinDataConfig{"FriendService", true, true},
 	JoinDataConfig{"MarketplaceService", true, true},
 	JoinDataConfig{"BadgeService", true, false},
-	//JoinDataConfig{"ReplicatedStorage", true, true},
+	JoinDataConfig{"ReplicatedStorage", true, true},
 	JoinDataConfig{"RobloxReplicatedStorage", true, true},
 	JoinDataConfig{"TestService", true, true},
 	JoinDataConfig{"LogService", true, false},
 	JoinDataConfig{"PointsService", true, false},
 	JoinDataConfig{"AdService", true, false},
-	JoinDataConfig{"TeleportService", true, false},
-	JoinDataConfig{"LocalizationService", true, true},
+	JoinDataConfig{"SocialService", true, false},
 }
 
-func (client *ServerClient) simple5Handler(e *emitter.Event) {
+func (client *ServerClient) offline5Handler(e *emitter.Event) {
 	println("Received connection!", client.Address.String())
-	client.WriteSimple(&Packet06Layer{
+	client.WriteOffline(&Packet06Layer{
 		GUID:        client.Server.GUID,
 		UseSecurity: false,
 		MTU:         1492,
 	})
 }
-func (client *ServerClient) simple7Handler(e *emitter.Event) {
+func (client *ServerClient) offline7Handler(e *emitter.Event) {
 	println("Received reply 7!", client.Address.String())
-	client.WriteSimple(&Packet08Layer{
+	client.WriteOffline(&Packet08Layer{
 		GUID:      client.Server.GUID,
 		IPAddress: client.Address,
 		MTU:       1492,
@@ -87,14 +90,12 @@ func (client *ServerClient) requestParamsHandler(e *emitter.Event) {
 	for _, flag := range e.Args[0].(*Packet90Layer).RequestedFlags {
 		value := false
 		switch flag {
-		case "UseNativePathWaypoint",
-			"ReplicationInterpolateRelativeHumanoidPlatformsMotion",
+		case "FixDictionaryScopePlatformsReplication",
+			"ReplicateInterpolateRelativeHumanoidPlatformsMotion",
 			"FixRaysInWedges",
-			"PartMasslessEnabled",
-			"KeepRedundantWeldsExplicit",
 			"FixBallRaycasts",
-			"EnableRootPriority",
-			"FixHats":
+			"UseNativePathWaypoint",
+			"PgsForAll":
 			value = true
 		}
 		params[flag] = value
@@ -107,6 +108,90 @@ func (client *ServerClient) requestParamsHandler(e *emitter.Event) {
 	})
 }
 
+func (client *ServerClient) topReplicate() error {
+	topReplicationItems := make([]*Packet81LayerItem, 0, len(JoinDataConfiguration))
+	for _, instance := range JoinDataConfiguration {
+		service := client.Context.DataModel.FindService(instance.ClassName)
+		if service != nil {
+			topReplicationItems = append(topReplicationItems, &Packet81LayerItem{
+				Schema:        client.Context.StaticSchema.SchemaForClass(instance.ClassName),
+				Instance:      service,
+				WatchChanges:  instance.ReplicateProperties,
+				WatchChildren: instance.ReplicateChildren,
+			})
+
+			thisContainer := &ReplicationContainer{
+				Instance:            service,
+				ReplicateProperties: instance.ReplicateProperties,
+				ReplicateChildren:   instance.ReplicateChildren,
+
+				// service parent should never change, but this will be
+				// inherited by children
+				ReplicateParent: true,
+			}
+			client.replicatedInstances = append(client.replicatedInstances, thisContainer)
+			thisContainer.UpdateBinding(client, false)
+		}
+	}
+
+	return client.WritePacket(&Packet81Layer{
+		StreamJob:            false,
+		FilteringEnabled:     true,
+		AllowThirdPartySales: false,
+		CharacterAutoSpawn:   true,
+		ReferenceString:      client.Server.InstanceDictionary.Scope,
+		// TODO: VM ints
+		ScriptKey:     1,
+		CoreScriptKey: 1,
+		Items:         topReplicationItems,
+	})
+}
+
+func (client *ServerClient) createCameraScript(parent *datamodel.Instance) error {
+	cameraScript, _ := datamodel.NewInstance("LocalScript", nil)
+	cameraScript.Set("Name", rbxfile.ValueString("SalaCamera"))
+	cameraScript.Set("Source", rbxfile.ValueProtectedString(CameraScript))
+	cameraScript.Ref = client.Server.InstanceDictionary.NewReference()
+
+	return parent.AddChild(cameraScript)
+}
+
+func (client *ServerClient) createPlayer() error {
+	player, _ := datamodel.NewInstance("Player", nil)
+	player.Set("Name", rbxfile.ValueString(fmt.Sprintf("Player%d", client.Index)))
+	player.Set("AccountAgeReplicate", rbxfile.ValueInt(117))
+	player.Set("CharacterAppearanceId", rbxfile.ValueInt64(1))
+	player.Set("ChatPrivacyMode", datamodel.ValueToken{Value: 0})
+	player.Set("ReplicatedLocaleId", rbxfile.ValueString("en-us"))
+	player.Set("UserId", rbxfile.ValueInt64(-client.Index))
+	player.Set("userId", rbxfile.ValueInt64(-client.Index))
+	player.Ref = client.Server.InstanceDictionary.NewReference()
+
+	client.Player = player
+
+	hum, _ := datamodel.NewInstance("Model", nil)
+	hum.Set("Name", player.Get("Name"))
+	hum.Ref = client.Server.InstanceDictionary.NewReference()
+	err := client.DataModel.FindService("Workspace").AddChild(hum)
+	if err != nil {
+		return err
+	}
+
+	player.Set("Character", datamodel.ValueReference{
+		Reference: hum.Ref,
+		Instance:  hum,
+	})
+
+	playerGui, _ := datamodel.NewInstance("PlayerGui", nil)
+	playerGui.Ref = client.Server.InstanceDictionary.NewReference()
+	err = player.AddChild(playerGui)
+	if err != nil {
+		return err
+	}
+
+	return client.DataModel.FindService("Players").AddChild(player)
+}
+
 func (client *ServerClient) authHandler(e *emitter.Event) {
 	err := client.WritePacket(&Packet97Layer{
 		Schema: client.Context.StaticSchema,
@@ -116,96 +201,53 @@ func (client *ServerClient) authHandler(e *emitter.Event) {
 		return
 	}
 
-	topReplicationItems := make([]*Packet81LayerItem, len(client.Context.DataModel.Instances))
-	for i, instance := range client.Context.DataModel.Instances {
-		topReplicationItems[i] = &Packet81LayerItem{
-			Schema:        client.Context.StaticSchema.SchemaForClass(instance.ClassName),
-			Instance:      instance,
-			WatchChanges:  false,
-			WatchChildren: false,
-		}
-	}
-
-	err = client.WritePacket(&Packet81Layer{
-		StreamJob:            false,
-		FilteringEnabled:     true,
-		AllowThirdPartySales: false,
-		CharacterAutoSpawn:   true,
-		ReferenceString:       client.Server.InstanceDictionary.Scope,
-		// TODO: VM ints
-		ScriptKey:     1,
-		CoreScriptKey: 1,
-		Items:         topReplicationItems,
-	})
+	err = client.topReplicate()
 	if err != nil {
 		println("topreplic error: ", err.Error())
 		return
 	}
 
-	partTest, _ := datamodel.NewInstance("NumberValue", nil)
-	partTest.Set("Value", rbxfile.ValueDouble(3.0))
-	partTest.Ref = client.Server.InstanceDictionary.NewReference()
-	err = client.DataModel.FindService("Workspace").AddChild(partTest)
+	err = client.WritePacket(&Packet84Layer{
+		MarkerId: 1,
+	})
 	if err != nil {
-		println("parttest error: ", err.Error())
+		println("marker error: ", err.Error())
 		return
 	}
 
-	err = client.ReplicateInstance(partTest, false)
+	err = client.createPlayer()
 	if err != nil {
-		println("parttest error: ", err.Error())
+		println("player error: ", err.Error())
 		return
 	}
 
-	// REPLICATION BEGIN
-	// Do not include ReplicatedFirst itself in replication
-	replicatedFirst := client.constructInstanceList(nil, client.DataModel.FindService("ReplicatedFirst"))
-	newInstanceList := make([]Packet83Subpacket, 0, len(replicatedFirst))
-	for _, repFirstInstance := range replicatedFirst {
-		newInstanceList = append(newInstanceList, &Packet83_02{repFirstInstance})
-	}
-	err = client.WriteDataPackets(newInstanceList...)
+	err = client.sendReplicatedFirst()
 	if err != nil {
-		println("replicfirst error: ", err.Error())
+		println("replicatedfirst error: ", err.Error())
 		return
 	}
-	// Tag: ReplicatedFirst finished!
-	err = client.WriteDataPackets(&Packet83_10{
-		TagId: 12,
-	})
+	err = client.sendContainers()
 	if err != nil {
-		println("tag error: ", err.Error())
+		println("joindata error: ", err.Error())
 		return
 	}
-	// For now, we will not limit the size of JoinData
-	// This may become a problem later on with larger places
-	for _, dataConfig := range joinDataConfiguration {
-		service := client.DataModel.FindService(dataConfig.ClassName)
-		if service != nil {
-			println("Replicating service ", dataConfig.ClassName)
-			err = client.ReplicateJoinData(service, dataConfig.ReplicateProperties, dataConfig.ReplicateChildren)
-			if err != nil {
-				println("replicate join data error: ", err.Error())
-				return
-			}
-		}
-	}
-	err = client.WriteDataPackets(&Packet83_10{
-		TagId: 13,
-	})
+
+	err = client.createCameraScript(client.Player.FindFirstChild("PlayerGui"))
 	if err != nil {
-		println("tag error: ", err.Error())
+		println("camera error: ", err.Error())
 		return
 	}
-	// REPLICATION END
 }
 
 func (client *ServerClient) bindDefaultHandlers() {
+	client.DefaultPacketReader.LayerEmitter.On("reliability", client.defaultReliabilityLayerHandler, emitter.Void)
 	// TODO: Error handling?
 	pEmitter := client.PacketEmitter
-	pEmitter.On("ID_OPEN_CONNECTION_REQUEST_1", client.simple5Handler, emitter.Void)
-	pEmitter.On("ID_OPEN_CONNECTION_REQUEST_2", client.simple7Handler, emitter.Void)
+	pEmitter.On("ID_OPEN_CONNECTION_REQUEST_1", client.offline5Handler, emitter.Void)
+	pEmitter.On("ID_OPEN_CONNECTION_REQUEST_2", client.offline7Handler, emitter.Void)
 	pEmitter.On("ID_CONNECTION_REQUEST", client.connectionRequestHandler, emitter.Void)
 	pEmitter.On("ID_PROTOCOL_SYNC", client.requestParamsHandler, emitter.Void)
 	pEmitter.On("ID_SUBMIT_TICKET", client.authHandler, emitter.Void)
+
+	client.PacketLogicHandler.bindDefaultHandlers()
 }

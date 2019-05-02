@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"log"
-	"os"
 	"strings"
 	"time"
 
@@ -66,30 +65,6 @@ func NewClientConsole(parent widgets.QWidget_ITF, client *peer.CustomClient, fla
 
 	chatWidget.SetLayout(formLayout)
 	layout.AddWidget(chatWidget, 0, 0)
-
-	dumpSchema := widgets.NewQPushButton2("Dump schema...", window)
-	dumpSchema.ConnectReleased(func() {
-		location := widgets.QFileDialog_GetSaveFileName(window, "Save schema...", "", "Text files (*.txt)", "", 0)
-		writer, err := os.OpenFile(location, os.O_RDWR|os.O_CREATE, 0666)
-		if err != nil {
-			println("while opening file:", err.Error())
-			return
-		}
-		location2 := widgets.QFileDialog_GetSaveFileName(window, "Save enums...", "", "Text files (*.txt)", "", 0)
-		writer2, err := os.OpenFile(location2, os.O_RDWR|os.O_CREATE, 0666)
-		if err != nil {
-			println("while opening file:", err.Error())
-			return
-		}
-		client.Context.StaticSchema.Dump(writer, writer2)
-	})
-
-	dumpRbxl := widgets.NewQPushButton2("Dump DataModel...", window)
-	dumpRbxl.ConnectReleased(func() {
-		DumpDataModel(client.Context, window)
-	})
-	layout.AddWidget(dumpSchema, 0, 0)
-	layout.AddWidget(dumpRbxl, 0, 0)
 
 	window.SetLayout(layout)
 

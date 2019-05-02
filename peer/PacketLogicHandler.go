@@ -29,6 +29,8 @@ type PacketLogicHandler struct {
 
 	DataModel *datamodel.DataModel
 	Connected bool
+
+	GenericEvents *emitter.Emitter
 }
 
 func newPacketLogicHandler(context *CommunicationContext, withClient bool) PacketLogicHandler {
@@ -40,6 +42,8 @@ func newPacketLogicHandler(context *CommunicationContext, withClient bool) Packe
 
 		Context:   context,
 		DataModel: context.DataModel,
+
+		GenericEvents: emitter.New(0),
 	}
 }
 
@@ -85,7 +89,8 @@ func (logicHandler *PacketLogicHandler) defaultReliabilityLayerHandler(e *emitte
 	logicHandler.mustACK = append(logicHandler.mustACK, int(e.Args[0].(*PacketLayers).RakNet.DatagramNumber))
 }
 
-func (logicHandler *PacketLogicHandler) disconnectInternal() {
+func (logicHandler *PacketLogicHandler) cleanup() {
+	logicHandler.Connected = false
 	// Note: these will NOT close the channel!
 	if logicHandler.ackTicker != nil {
 		logicHandler.ackTicker.Stop()
@@ -95,11 +100,20 @@ func (logicHandler *PacketLogicHandler) disconnectInternal() {
 	}
 }
 
+type DisconnectionSource uint
+
+const (
+	LocalDisconnection DisconnectionSource = iota
+	RemoteDisconnection
+)
+
 func (logicHandler *PacketLogicHandler) Disconnect() {
 	if logicHandler.Connected {
 		logicHandler.WritePacket(&Packet15Layer{
 			Reason: -1,
 		})
+		<-logicHandler.GenericEvents.Emit("disconnected", LocalDisconnection, int32(-1))
+		logicHandler.cleanup()
 	}
 }
 
@@ -122,7 +136,8 @@ func (logicHandler *PacketLogicHandler) disconnectHandler(e *emitter.Event) {
 	mainLayer := e.Args[0].(*Packet15Layer)
 	fmt.Printf("Received disconnect with reason %d\n", mainLayer.Reason)
 
-	logicHandler.disconnectInternal()
+	<-logicHandler.GenericEvents.Emit("disconnected", RemoteDisconnection, mainLayer.Reason)
+	logicHandler.cleanup()
 }
 
 func (logicHandler *PacketLogicHandler) sendPing() {
@@ -198,53 +213,6 @@ func (logicHandler *PacketLogicHandler) ReplicationInstance(inst *datamodel.Inst
 	inst.PropertiesMutex.RUnlock()
 
 	return repInstance
-}
-
-func (logicHandler *PacketLogicHandler) constructInstanceList(list []*ReplicationInstance, instance *datamodel.Instance) []*ReplicationInstance {
-	for _, child := range instance.Children {
-		list = append(list, logicHandler.ReplicationInstance(child, false))
-		list = logicHandler.constructInstanceList(list, child)
-	}
-	return list
-}
-
-func (logicHandler *PacketLogicHandler) ReplicateJoinData(rootInstance *datamodel.Instance, replicateProperties, replicateChildren bool) error {
-	list := []*ReplicationInstance{}
-	// HACK: Replicating some instances to the client without including properties
-	// may result in an error and a disconnection.
-	// Here's a bad workaround
-	rootInstance.PropertiesMutex.RLock()
-	if replicateProperties && len(rootInstance.Properties) != 0 {
-		list = append(list, logicHandler.ReplicationInstance(rootInstance, false))
-	} else if replicateProperties {
-		switch rootInstance.ClassName {
-		case "AdService",
-			"Workspace",
-			"JointsService",
-			"Players",
-			"StarterGui",
-			"StarterPack":
-			fmt.Printf("Warning: skipping replication of bad instance %s (no properties and no defaults), replicateProperties: %v\n", rootInstance.ClassName, replicateProperties)
-		default:
-			list = append(list, logicHandler.ReplicationInstance(rootInstance, false))
-		}
-	}
-	rootInstance.PropertiesMutex.RUnlock()
-	var joinDataObject *Packet83_0B
-	// FIXME: This may result in the joindata becoming too large
-	// for the client to handle! We need to split it up into
-	// multiple segments
-	if replicateChildren {
-		joinDataObject = &Packet83_0B{
-			Instances: logicHandler.constructInstanceList(list, rootInstance),
-		}
-	} else {
-		joinDataObject = &Packet83_0B{
-			Instances: list,
-		}
-	}
-
-	return logicHandler.WriteDataPackets(joinDataObject)
 }
 
 func (logicHandler *PacketLogicHandler) SendHackFlag(player *datamodel.Instance, flag string) error {

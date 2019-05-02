@@ -45,8 +45,8 @@ func (myClient *CustomClient) bindDefaultHandlers() {
 	myClient.PacketLogicHandler.bindDefaultHandlers()
 
 	pEmitter := myClient.PacketEmitter
-	pEmitter.On("ID_OPEN_CONNECTION_REPLY_1", myClient.simple6Handler, emitter.Void)
-	pEmitter.On("ID_OPEN_CONNECTION_REPLY_2", myClient.simple8Handler, emitter.Void)
+	pEmitter.On("ID_OPEN_CONNECTION_REPLY_1", myClient.offline6Handler, emitter.Void)
+	pEmitter.On("ID_OPEN_CONNECTION_REPLY_2", myClient.offline8Handler, emitter.Void)
 	pEmitter.On("ID_CONNECTION_ACCEPTED", myClient.packet10Handler, emitter.Void)
 	pEmitter.On("ID_DISCONNECTION_NOTIFICATION", myClient.disconnectionLogger, emitter.Void)
 	pEmitter.On("ID_SET_GLOBALS", myClient.topReplicationHandler, emitter.Void)
@@ -68,13 +68,13 @@ func (myClient *CustomClient) bindDefaultHandlers() {
 }
 
 func (myClient *CustomClient) sendResponse7() {
-	myClient.WriteSimple(&Packet07Layer{
+	myClient.WriteOffline(&Packet07Layer{
 		GUID:      myClient.GUID,
 		MTU:       1492,
 		IPAddress: &myClient.ServerAddress,
 	})
 }
-func (myClient *CustomClient) simple6Handler(e *emitter.Event) {
+func (myClient *CustomClient) offline6Handler(e *emitter.Event) {
 	println("receive 6")
 	myClient.Connected = true
 	myClient.sendResponse7()
@@ -93,7 +93,7 @@ func (myClient *CustomClient) sendResponse9() {
 		println("Failed to write response9: ", err.Error())
 	}
 }
-func (myClient *CustomClient) simple8Handler(e *emitter.Event) {
+func (myClient *CustomClient) offline8Handler(e *emitter.Event) {
 	myClient.sendResponse9()
 }
 
@@ -559,4 +559,15 @@ func (myClient *CustomClient) stalkPart(movePart *datamodel.Instance, cframe rbx
 	if err != nil {
 		println("Failed to send stalking packet:", err.Error())
 	}
+}
+
+func (myClient *CustomClient) SendEvent(instance *datamodel.Instance, name string, arguments ...rbxfile.Value) error {
+	instance.FireEvent(name, arguments...)
+	return myClient.WriteDataPackets(
+		&Packet83_07{
+			Instance: instance,
+			Schema:   myClient.Context.StaticSchema.SchemaForClass(instance.ClassName).SchemaForEvent(name),
+			Event:    &ReplicationEvent{arguments},
+		},
+	)
 }

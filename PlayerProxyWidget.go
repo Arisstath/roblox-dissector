@@ -1,8 +1,8 @@
-
 package main
+
 import "github.com/therecipe/qt/widgets"
 
-func NewPlayerProxyWidget(parent widgets.QWidget_ITF, settings *PlayerProxySettings, callback func(*PlayerProxySettings)()) {
+func NewPlayerProxyWidget(parent widgets.QWidget_ITF, settings *PlayerProxySettings, callback func(*PlayerProxySettings)) {
 	window := widgets.NewQWidget(parent, 1)
 	window.SetWindowTitle("Choose HTTPS server settings...")
 	layout := NewTopAlignLayout()
@@ -29,7 +29,7 @@ func NewPlayerProxyWidget(parent widgets.QWidget_ITF, settings *PlayerProxySetti
 
 	startButton := widgets.NewQPushButton2("Start", nil)
 	startButton.ConnectReleased(func() {
-		window.Destroy(true, true)
+		window.Close()
 		settings.Certfile = certfileTextBox.Text()
 		settings.Keyfile = keyfileTextBox.Text()
 		callback(settings)

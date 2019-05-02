@@ -3,7 +3,6 @@ package peer
 import (
 	"errors"
 	"fmt"
-	"io"
 	"strconv"
 )
 
@@ -89,10 +88,6 @@ func (thisStream *extendedReader) DecodePacket83Layer(reader PacketReader, layer
 		layer.SubPackets = append(layer.SubPackets, inner)
 
 		packetType, err = thisStream.readUint8()
-		if err == io.EOF {
-			println("DEPRECATED_WARNING: ignoring packettype read past end")
-			return layer, nil
-		}
 		if err != nil {
 			return layer, err
 		}

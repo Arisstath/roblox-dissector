@@ -4,12 +4,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
+	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"time"
 
+	"github.com/Gskartwii/roblox-dissector/datamodel"
 	"github.com/Gskartwii/roblox-dissector/peer"
 	"github.com/dreadl0ck/gopcap"
 	"github.com/google/gopacket/pcap"
+	"github.com/robloxapi/rbxfile/xml"
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/widgets"
@@ -64,8 +70,6 @@ type DissectorWindow struct {
 
 	StudioVersion string
 	PlayerVersion string
-	// TODO: Remove?
-	DefaultValues DefaultValues
 
 	StudioSettings      *StudioSettings
 	PlayerSettings      *PlayerSettings
@@ -159,7 +163,7 @@ func (window *DissectorWindow) CaptureFromLive(itfName string, promisc bool) {
 	}()
 }
 
-func (window *DissectorWindow) StartClient(placeID uint32, browserTrackerId uint64, authTicket string) {
+func (window *DissectorWindow) startClientWithArgs(placeID uint32, browserTrackerId uint64, authTicket string) {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 
 	customClient := peer.NewCustomClient(ctx)
@@ -310,6 +314,20 @@ func (window *DissectorWindow) TabSelected(index int) {
 	window.SessionSelected(window.CurrentSession, window.CurrentPacketListViewer, window.CurrentHTTPViewer)
 }
 
+func (window *DissectorWindow) StartClient(uri string) {
+	protocolRegex := regexp.MustCompile(`roblox-dissector:([0-9A-Fa-f]+):(\d+):(\d+)`)
+	parts := protocolRegex.FindStringSubmatch(uri)
+	if len(parts) < 4 {
+		widgets.QMessageBox_Critical(window, "Invalid protocol invocation", "Invalid protocol invocation: "+uri, widgets.QMessageBox__Ok, widgets.QMessageBox__NoButton)
+	} else {
+		authTicket := parts[1]
+		placeID, _ := strconv.Atoi(parts[2])
+		browserTrackerId, _ := strconv.Atoi(parts[3])
+
+		window.startClientWithArgs(uint32(placeID), uint64(browserTrackerId), authTicket)
+	}
+}
+
 func NewDissectorWindow(parent widgets.QWidget_ITF, flags core.Qt__WindowType) *DissectorWindow {
 	window := &DissectorWindow{
 		QMainWindow: widgets.NewQMainWindow(parent, flags),
@@ -329,6 +347,10 @@ func NewDissectorWindow(parent widgets.QWidget_ITF, flags core.Qt__WindowType) *
 	capture4FileAction := captureBar.AddAction("From &RawCap file...")
 	captureLiveAction := captureBar.AddAction("From &live interface...")
 	captureDivertAction := captureBar.AddAction("From &WinDivert proxy...")
+
+	peersBar := window.MenuBar().AddMenu2("&Peers")
+	startClientAction := peersBar.AddAction("Start &client...")
+	startServerAction := peersBar.AddAction("Start &server...")
 
 	helpBar := window.MenuBar().AddMenu2("&Help")
 	helpBar.AddAction("View &GitHub page").ConnectTriggered(func(_ bool) {
@@ -379,6 +401,63 @@ Running PCAP (%s).
 		} else {
 			window.ShowCaptureError(errors.New("WinDivert disabled at build time"))
 		}
+	})
+
+	startClientAction.ConnectTriggered(func(checked bool) {
+		NewClientStartWidget(window, window.StartClient)
+	})
+	startServerAction.ConnectTriggered(func(checked bool) {
+		NewServerStartWidget(window, window.ServerSettings, func(settings *ServerSettings) {
+			port, _ := strconv.Atoi(settings.Port)
+			enums, err := os.Open(settings.EnumSchemaLocation)
+			if err != nil {
+				println("while parsing schema:", err.Error())
+				return
+			}
+			instances, err := os.Open(settings.InstanceSchemaLocation)
+			if err != nil {
+				println("while parsing schema:", err.Error())
+				return
+			}
+			schema, err := peer.ParseSchema(instances, enums)
+			if err != nil {
+				println("while parsing schema:", err.Error())
+				return
+			}
+			dataModelReader, err := os.Open(settings.RBXLLocation)
+			if err != nil {
+				println("while reading instances:", err.Error())
+				return
+			}
+			dataModelRoot, err := xml.Deserialize(dataModelReader, nil)
+			if err != nil {
+				println("while reading instances:", err.Error())
+				return
+			}
+
+			rand.Seed(time.Now().UnixNano())
+			instanceDictionary := datamodel.NewInstanceDictionary()
+			thisRoot := datamodel.FromRbxfile(instanceDictionary, dataModelRoot)
+			normalizeRoot(thisRoot, schema)
+
+			nameBase := "<SERVER>"
+			session := NewCaptureSession(nameBase, window)
+			session.SetModel = true
+			window.Sessions = append(window.Sessions, session)
+			index := window.TabWidget.AddTab(session.PacketListViewers[0], fmt.Sprintf("Conversation: %s#1", nameBase))
+			window.TabWidget.SetCurrentIndex(index)
+			server, err := peer.NewCustomServer(session.Context, uint16(port), schema, thisRoot, instanceDictionary)
+			if err != nil {
+				println("while creating server", err.Error())
+				return
+			}
+			server.InstanceDictionary = instanceDictionary
+			server.Context.InstancesByReference.Populate(thisRoot.Instances)
+
+			NewServerConsole(window, server, session)
+
+			go session.CaptureFromServer(server)
+		})
 	})
 
 	toolBar := widgets.NewQToolBar("Basic functions", window)

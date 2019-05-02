@@ -138,11 +138,11 @@ type ACKRange struct {
 // about every packet.
 type RakNetLayer struct {
 	payload *extendedReader
-	// Is the packet a simple pre-connection packet?
-	IsSimple bool
-	// If IsSimple is true, this is the packet type.
-	SimpleLayerID uint8
-	// Drop any non-simple packets which don't have IsValid set.
+	// Is the packet a offline pre-connection packet?
+	IsOffline bool
+	// If IsOffline is true, this is the packet type.
+	OfflineLayerID uint8
+	// Drop any non-offline packets which don't have IsValid set.
 	Flags RakNetFlags
 	ACKs  []ACKRange
 	// A datagram number that is used to keep the packets in order.
@@ -167,7 +167,7 @@ func (stream *extendedReader) DecodeRakNetLayer(reader PacketReader, packetType 
 	layer := NewRakNetLayer()
 
 	var err error
-	if packetType == 0x5 {
+	if packetType >= 0x5 && packetType <= 0x8 {
 		_, err = stream.ReadByte()
 		if err != nil {
 			return layer, err
@@ -179,21 +179,12 @@ func (stream *extendedReader) DecodeRakNetLayer(reader PacketReader, packetType 
 		}
 
 		if bytes.Compare(thisOfflineMessage, OfflineMessageID) != 0 {
-			return layer, errors.New("offline message didn't match in packet 5")
+			return layer, fmt.Errorf("offline message didn't match in packet %d", packetType)
 		}
 
-		layer.SimpleLayerID = packetType
+		layer.OfflineLayerID = packetType
 		layer.payload = stream
-		layer.IsSimple = true
-		return layer, nil
-	} else if packetType >= 0x6 && packetType <= 0x8 {
-		_, err = stream.ReadByte()
-		if err != nil {
-			return layer, err
-		}
-		layer.IsSimple = true
-		layer.payload = stream
-		layer.SimpleLayerID = packetType
+		layer.IsOffline = true
 		return layer, nil
 	}
 
