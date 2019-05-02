@@ -29,6 +29,8 @@ type PacketLogicHandler struct {
 
 	DataModel *datamodel.DataModel
 	Connected bool
+
+	GenericEvents *emitter.Emitter
 }
 
 func newPacketLogicHandler(context *CommunicationContext, withClient bool) PacketLogicHandler {
@@ -40,6 +42,8 @@ func newPacketLogicHandler(context *CommunicationContext, withClient bool) Packe
 
 		Context:   context,
 		DataModel: context.DataModel,
+
+		GenericEvents: emitter.New(0),
 	}
 }
 
@@ -85,7 +89,8 @@ func (logicHandler *PacketLogicHandler) defaultReliabilityLayerHandler(e *emitte
 	logicHandler.mustACK = append(logicHandler.mustACK, int(e.Args[0].(*PacketLayers).RakNet.DatagramNumber))
 }
 
-func (logicHandler *PacketLogicHandler) disconnectInternal() {
+func (logicHandler *PacketLogicHandler) cleanup() {
+	logicHandler.Connected = false
 	// Note: these will NOT close the channel!
 	if logicHandler.ackTicker != nil {
 		logicHandler.ackTicker.Stop()
@@ -95,11 +100,20 @@ func (logicHandler *PacketLogicHandler) disconnectInternal() {
 	}
 }
 
+type DisconnectionSource uint
+
+const (
+	LocalDisconnection DisconnectionSource = iota
+	RemoteDisconnection
+)
+
 func (logicHandler *PacketLogicHandler) Disconnect() {
 	if logicHandler.Connected {
 		logicHandler.WritePacket(&Packet15Layer{
 			Reason: -1,
 		})
+		<-logicHandler.GenericEvents.Emit("disconnected", LocalDisconnection, int32(-1))
+		logicHandler.cleanup()
 	}
 }
 
@@ -122,7 +136,8 @@ func (logicHandler *PacketLogicHandler) disconnectHandler(e *emitter.Event) {
 	mainLayer := e.Args[0].(*Packet15Layer)
 	fmt.Printf("Received disconnect with reason %d\n", mainLayer.Reason)
 
-	logicHandler.disconnectInternal()
+	<-logicHandler.GenericEvents.Emit("disconnected", RemoteDisconnection, mainLayer.Reason)
+	logicHandler.cleanup()
 }
 
 func (logicHandler *PacketLogicHandler) sendPing() {

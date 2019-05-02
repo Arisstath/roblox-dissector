@@ -10,6 +10,8 @@ func (captureContext *CaptureContext) HookClient(client *peer.CustomClient) {
 	// The client address assigned here may be wrong. It doesn't really matter
 	conversation.ClientAddress = &client.Address
 	conversation.ServerAddress = &client.ServerAddress
+	conversation.Context = client.Context
+
 	captureContext.AddConversation(conversation)
 }
 
@@ -25,6 +27,7 @@ func (captureContext *CaptureContext) HookServer(server *peer.CustomServer) {
 		conversation := NewProviderConversation(client.DefaultPacketReader, client.DefaultPacketWriter)
 		conversation.ClientAddress = client.Address
 		conversation.ServerAddress = client.Server.Address
+		conversation.Context = client.Context
 
 		captureContext.AddConversation(conversation)
 	}, emitter.Void)

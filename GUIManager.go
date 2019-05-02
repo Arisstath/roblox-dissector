@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/robloxapi/rbxfile"
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/widgets"
@@ -39,8 +38,6 @@ var MainThreadRunner = NewMainThreadHelper(nil)
 func init() {
 	MainThreadRunner.ConnectRunOnMain(MainThreadRunner.runOnMain)
 }
-
-type DefaultValues map[string](map[string]rbxfile.Value)
 
 func NewTopAlignLayout() *widgets.QVBoxLayout {
 	layout := widgets.NewQVBoxLayout()

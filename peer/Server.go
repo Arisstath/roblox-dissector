@@ -98,26 +98,47 @@ func NewServerClient(clientAddr *net.UDPAddr, server *CustomServer, context *Com
 	return newClient
 }
 
+func (myServer *CustomServer) bindToDisconnection(client *ServerClient) {
+	// HACK: gets priority in the emitter via Use()
+	client.GenericEvents.Use("disconnected", func(e *emitter.Event) {
+		println("server received client disconnection")
+		delete(myServer.Clients, client.Address.String())
+	})
+}
+
 func (myServer *CustomServer) Start() error {
 	conn, err := net.ListenUDP("udp", myServer.Address)
-	defer conn.Close()
 	if err != nil {
 		return err
 	}
 	myServer.Connection = conn
+	defer myServer.stop()
 
 	buf := make([]byte, 1492)
-
 	for {
 		n, client, err := conn.ReadFromUDP(buf)
 		if err != nil {
 			return err
 		}
 
+		select {
+		case <-myServer.RunningContext.Done():
+			return myServer.RunningContext.Err()
+		default:
+		}
+
 		thisClient, ok := myServer.Clients[client.String()]
 		if !ok {
+			// always check for offline messages, disconnected peers
+			// may keep sending packets which must be ignored
+			if !IsOfflineMessage(buf[:n]) {
+				continue
+			}
 			thisClient = NewServerClient(client, myServer, myServer.Context)
 			myServer.Clients[client.String()] = thisClient
+
+			myServer.bindToDisconnection(thisClient)
+
 			thisClient.Init()
 
 			<-myServer.ClientEmitter.Emit("client", thisClient)
@@ -126,7 +147,7 @@ func (myServer *CustomServer) Start() error {
 	}
 }
 
-func (myServer *CustomServer) Stop() {
+func (myServer *CustomServer) stop() {
 	for _, client := range myServer.Clients {
 		client.Disconnect()
 	}

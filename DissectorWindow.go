@@ -440,7 +440,13 @@ Running PCAP (%s).
 			thisRoot := datamodel.FromRbxfile(instanceDictionary, dataModelRoot)
 			normalizeRoot(thisRoot, schema)
 
-			server, err := peer.NewCustomServer(context.TODO(), uint16(port), schema, thisRoot, instanceDictionary)
+			nameBase := "<SERVER>"
+			session := NewCaptureSession(nameBase, window)
+			session.SetModel = true
+			window.Sessions = append(window.Sessions, session)
+			index := window.TabWidget.AddTab(session.PacketListViewers[0], fmt.Sprintf("Conversation: %s#1", nameBase))
+			window.TabWidget.SetCurrentIndex(index)
+			server, err := peer.NewCustomServer(session.Context, uint16(port), schema, thisRoot, instanceDictionary)
 			if err != nil {
 				println("while creating server", err.Error())
 				return
@@ -448,14 +454,7 @@ Running PCAP (%s).
 			server.InstanceDictionary = instanceDictionary
 			server.Context.InstancesByReference.Populate(thisRoot.Instances)
 
-			NewServerConsole(window, server)
-
-			nameBase := "<SERVER>"
-			session := NewCaptureSession(nameBase, window)
-			session.SetModel = true
-			window.Sessions = append(window.Sessions, session)
-			index := window.TabWidget.AddTab(session.PacketListViewers[0], fmt.Sprintf("Conversation: %s#1", nameBase))
-			window.TabWidget.SetCurrentIndex(index)
+			NewServerConsole(window, server, session)
 
 			go session.CaptureFromServer(server)
 		})

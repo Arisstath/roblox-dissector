@@ -1,11 +1,13 @@
 package main
 
-import "github.com/therecipe/qt/widgets"
-import "github.com/therecipe/qt/gui"
-import "github.com/Gskartwii/roblox-dissector/peer"
-import "time"
+import (
+	"github.com/Gskartwii/roblox-dissector/peer"
+	"github.com/olebedev/emitter"
+	"github.com/therecipe/qt/gui"
+	"github.com/therecipe/qt/widgets"
+)
 
-func NewServerConsole(parent widgets.QWidget_ITF, server *peer.CustomServer) {
+func NewServerConsole(parent widgets.QWidget_ITF, server *peer.CustomServer, session *CaptureSession) {
 	window := widgets.NewQWidget(parent, 1)
 	window.SetWindowTitle("Server watch console")
 	layout := NewTopAlignLayout()
@@ -17,6 +19,7 @@ func NewServerConsole(parent widgets.QWidget_ITF, server *peer.CustomServer) {
 
 	updateClients := func() {
 		rootNode := standardModel.InvisibleRootItem()
+		println("after disc have", rootNode.RowCount(), len(server.Clients))
 		if rootNode.RowCount() != len(server.Clients) {
 			standardModel.Clear()
 			standardModel.SetHorizontalHeaderLabels([]string{"Address"})
@@ -26,14 +29,15 @@ func NewServerConsole(parent widgets.QWidget_ITF, server *peer.CustomServer) {
 			}
 		}
 	}
-	ticker := time.NewTicker(500 * time.Millisecond)
-	go func() {
-		for true {
-			<-ticker.C
-			updateClients()
-		}
-	}()
 
+	server.ClientEmitter.On("client", func(e *emitter.Event) {
+		updateClients()
+		client := e.Args[0].(*peer.ServerClient)
+		client.GenericEvents.On("disconnected", func(e *emitter.Event) {
+			println("received client disconnection")
+			updateClients()
+		}, emitter.Void)
+	}, emitter.Void)
 	clients.SetModel(standardModel)
 	clients.SetSelectionMode(1)
 	layout.AddWidget(clientsLabel, 0, 0)
@@ -41,14 +45,12 @@ func NewServerConsole(parent widgets.QWidget_ITF, server *peer.CustomServer) {
 
 	stopButton := widgets.NewQPushButton2("Stop", window)
 	layout.AddWidget(stopButton, 0, 0)
-	stopButton.ConnectReleased(func() {
-		window.Close()
-	})
+	// don't close the window upon stopping capture, that's unintuitive
+	stopButton.ConnectReleased(session.StopCapture)
 
 	window.SetLayout(layout)
 	window.ConnectCloseEvent(func(_ *gui.QCloseEvent) {
-		ticker.Stop()
-		server.Stop()
+		session.StopCapture()
 	})
 	window.Show()
 }
