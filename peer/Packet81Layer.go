@@ -7,7 +7,7 @@ import (
 	"github.com/Gskartwii/roblox-dissector/datamodel"
 )
 
-// Describes a global service from ID_SET_GLOBALS (Packet81Layer)
+// Packet81LayerItem describes a global service from ID_SET_GLOBALS (Packet81Layer)
 type Packet81LayerItem struct {
 	Schema        *NetworkInstanceSchema
 	Instance      *datamodel.Instance
@@ -15,7 +15,7 @@ type Packet81LayerItem struct {
 	WatchChildren bool
 }
 
-// ID_SET_GLOBALS - server -> client
+// Packet81Layer represents ID_SET_GLOBALS - server -> client
 type Packet81Layer struct {
 	// Is streaming enabled?
 	StreamJob bool
@@ -27,12 +27,8 @@ type Packet81Layer struct {
 	ReferenceString string
 	ScriptKey       uint32
 	CoreScriptKey   uint32
-	// List of services to be set
+	// List of services to be created
 	Items []*Packet81LayerItem
-}
-
-func NewPacket81Layer() *Packet81Layer {
-	return &Packet81Layer{}
 }
 
 func (thisStream *extendedReader) DecodePacket81Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
@@ -130,6 +126,7 @@ func (thisStream *extendedReader) DecodePacket81Layer(reader PacketReader, layer
 	return layer, nil
 }
 
+// Serialize implements RakNetPacket.Serialize()
 func (layer *Packet81Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
 	err = stream.WriteByte(0x81)
@@ -200,10 +197,12 @@ func (layer *Packet81Layer) String() string {
 	return fmt.Sprintf("ID_SET_GLOBALS: %d services", len(layer.Items))
 }
 
+// TypeString implements RakNetPacket.TypeString()
 func (Packet81Layer) TypeString() string {
 	return "ID_SET_GLOBALS"
 }
 
+// Type implements RakNetPacket.Type()
 func (Packet81Layer) Type() byte {
 	return 0x81
 }

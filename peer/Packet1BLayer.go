@@ -1,19 +1,14 @@
 package peer
 
-// ID_TIMESTAMP - client <-> server
+// Packet1BLayer represents ID_TIMESTAMP - client <-> server
 type Packet1BLayer struct {
 	// Timestamp of when this packet was sent
 	Timestamp  uint64
 	Timestamp2 uint64
-	stream     *extendedReader
-}
-
-func NewPacket1BLayer() *Packet1BLayer {
-	return &Packet1BLayer{}
 }
 
 func (thisStream *extendedReader) DecodePacket1BLayer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-	layer := NewPacket1BLayer()
+	layer := &Packet1BLayer{}
 
 	var err error
 	layer.Timestamp, err = thisStream.readUint64BE()
@@ -24,11 +19,11 @@ func (thisStream *extendedReader) DecodePacket1BLayer(reader PacketReader, layer
 	if err != nil {
 		return layer, err
 	}
-	layer.stream = thisStream
 
 	return layer, err
 }
 
+// Serialize implements RakNetPacket.Serialize()
 func (layer *Packet1BLayer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
 	err = stream.WriteByte(0x1B)
@@ -47,9 +42,12 @@ func (layer *Packet1BLayer) String() string {
 	return "ID_TIMESTAMP"
 }
 
+// TypeString implements RakNetPacket.TypeString()
 func (Packet1BLayer) TypeString() string {
 	return "ID_TIMESTAMP"
 }
+
+// Type implements RakNetPacket.Type()
 func (Packet1BLayer) Type() byte {
 	return 0x1B
 }
