@@ -8,7 +8,7 @@ import (
 	"github.com/robloxapi/rbxfile"
 )
 
-// Packet83_03 describes an ID_CHANGE_PROPERTY data subpacket.
+// Packet83_03 represents ID_CHANGE_PROPERTY
 type Packet83_03 struct {
 	// Instance that had the property change
 	Instance   *datamodel.Instance
@@ -84,6 +84,7 @@ func (thisStream *extendedReader) DecodePacket83_03(reader PacketReader, layers 
 	return layer, err
 }
 
+// Serialize implements Packet83Subpacke.Serialize()
 func (layer *Packet83_03) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	if layer.Instance == nil {
 		return errors.New("self is nil in serialize repl prop")
@@ -136,9 +137,12 @@ func (layer *Packet83_03) Serialize(writer PacketWriter, stream *extendedWriter)
 	return err
 }
 
+// Type implements Packet83Subpacket.Type()
 func (Packet83_03) Type() uint8 {
 	return 3
 }
+
+// TypeString implements Packet83Subpacket.TypeString()
 func (Packet83_03) TypeString() string {
 	return "ID_REPLIC_PROP"
 }

@@ -6,7 +6,7 @@ import (
 	"github.com/Gskartwii/roblox-dissector/datamodel"
 )
 
-// ID_REPLIC_ATOMIC
+// Packet83_13 represents ID_REPLIC_ATOMIC
 type Packet83_13 struct {
 	Instance *datamodel.Instance
 	Parent   *datamodel.Instance
@@ -37,6 +37,7 @@ func (thisStream *extendedReader) DecodePacket83_13(reader PacketReader, layers 
 	return inner, nil
 }
 
+// Serialize implements Packet83Subpacket.Serialize()
 func (layer *Packet83_13) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	err := stream.WriteObject(layer.Instance, writer)
 	if err != nil {
@@ -45,9 +46,12 @@ func (layer *Packet83_13) Serialize(writer PacketWriter, stream *extendedWriter)
 	return stream.WriteObject(layer.Parent, writer)
 }
 
+// Type implements Packet83Subpacket.Type()
 func (Packet83_13) Type() uint8 {
 	return 0x13
 }
+
+// TypeString implements Packet83Subpacket.TypeString()
 func (Packet83_13) TypeString() string {
 	return "ID_REPLIC_ATOMIC"
 }

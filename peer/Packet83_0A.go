@@ -7,7 +7,7 @@ import (
 	"github.com/Gskartwii/roblox-dissector/datamodel"
 )
 
-// Packet83_0A describes a ID_PROP_ACK packet.
+// Packet83_0A represents ID_CFRAME_ACK
 type Packet83_0A struct {
 	// Instance that had the property change
 	Instance *datamodel.Instance
@@ -57,6 +57,7 @@ func (thisStream *extendedReader) DecodePacket83_0A(reader PacketReader, layers 
 	return layer, err
 }
 
+// Serialize implements Packet83Subpacket.Serialize()
 func (layer *Packet83_0A) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	err := stream.writeObject(layer.Instance, writer.Caches())
 	if err != nil {
@@ -80,9 +81,12 @@ func (layer *Packet83_0A) Serialize(writer PacketWriter, stream *extendedWriter)
 	return nil
 }
 
+// Type implements Packet83Subpacket.Type()
 func (Packet83_0A) Type() uint8 {
 	return 0xA
 }
+
+// TypeString implements Packet83Subpacket.TypeString()
 func (Packet83_0A) TypeString() string {
 	return "ID_REPLIC_CFRAME_ACK"
 }

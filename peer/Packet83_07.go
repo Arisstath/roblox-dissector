@@ -7,7 +7,7 @@ import (
 	"github.com/Gskartwii/roblox-dissector/datamodel"
 )
 
-// ID_EVENT
+// Packet83_07 represents ID_EVENT
 type Packet83_07 struct {
 	// Instance that the event was invoked on
 	Instance *datamodel.Instance
@@ -53,6 +53,7 @@ func (thisStream *extendedReader) DecodePacket83_07(reader PacketReader, layers 
 	return layer, err
 }
 
+// Serialize implements Packet83Subpacket.Serialize()
 func (layer *Packet83_07) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	if layer.Instance == nil {
 		return errors.New("self is nil in serialize repl inst")
@@ -70,9 +71,12 @@ func (layer *Packet83_07) Serialize(writer PacketWriter, stream *extendedWriter)
 	return layer.Schema.Serialize(layer.Event, writer, stream)
 }
 
+// Type implements Packet83Subpacket.Type()
 func (Packet83_07) Type() uint8 {
 	return 7
 }
+
+// TypeString implements Packet83Subpacket.TypeString()
 func (Packet83_07) TypeString() string {
 	return "ID_REPLIC_EVENT"
 }

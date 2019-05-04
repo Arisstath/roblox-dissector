@@ -199,7 +199,6 @@ func (myClient *CustomClient) topReplicationHandler(e *emitter.Event) {
 
 func (myClient *CustomClient) sendDataIDResponse(challengeInt uint32) {
 	err := myClient.WriteDataPackets(&Packet83_09{
-		SubpacketType: 6,
 		Subpacket: &Packet83_09_06{
 			Challenge: challengeInt,
 			Response:  myClient.SecuritySettings.GenerateIDResponse(challengeInt),
@@ -211,9 +210,10 @@ func (myClient *CustomClient) sendDataIDResponse(challengeInt uint32) {
 }
 func (myClient *CustomClient) idChallengeHandler(e *emitter.Event) {
 	mainPacket := e.Args[0].(*Packet83_09)
-	if mainPacket.SubpacketType == 5 {
+	idChallenge, ok := mainPacket.Subpacket.(*Packet83_09_05)
+	if ok {
 		myClient.Logger.Println("recv id challenge!")
-		myClient.sendDataIDResponse(mainPacket.Subpacket.(*Packet83_09_05).Challenge)
+		myClient.sendDataIDResponse(idChallenge.Challenge)
 	}
 }
 

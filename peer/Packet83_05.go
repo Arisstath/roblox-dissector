@@ -2,7 +2,7 @@ package peer
 
 import "errors"
 
-// ID_PING
+// Packet83_05 represents ID_PING
 type Packet83_05 struct {
 	PacketVersion uint8
 	// Always false
@@ -71,6 +71,7 @@ func (thisStream *extendedReader) DecodePacket83_05(reader PacketReader, layers 
 	return inner, err
 }
 
+// Serialize implements Packet83Subpacket.Serialize()
 func (layer *Packet83_05) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
 	err = stream.WriteByte(layer.PacketVersion)
@@ -118,9 +119,12 @@ func (layer *Packet83_05) Serialize(writer PacketWriter, stream *extendedWriter)
 	return err
 }
 
+// Type implements Packet83Subpacket.Type()
 func (Packet83_05) Type() uint8 {
 	return 5
 }
+
+// TypeString implements Packet83Subpacket.TypeString()
 func (Packet83_05) TypeString() string {
 	return "ID_REPLIC_PING"
 }

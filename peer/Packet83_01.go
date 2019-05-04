@@ -4,7 +4,7 @@ import (
 	"github.com/Gskartwii/roblox-dissector/datamodel"
 )
 
-// ID_DELETE_INSTANCE
+// Packet83_01 represents ID_DELETE_INSTANCE
 type Packet83_01 struct {
 	// Instance to be deleted
 	Instance *datamodel.Instance
@@ -24,13 +24,17 @@ func (thisStream *extendedReader) DecodePacket83_01(reader PacketReader, layers 
 	return inner, err
 }
 
+// Serialize implements Packet83Subpacket.Serialize()
 func (layer *Packet83_01) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	return stream.writeObject(layer.Instance, writer.Caches())
 }
 
+// Type implements Packet83Subpacket.Type()
 func (Packet83_01) Type() uint8 {
 	return 1
 }
+
+// TypeString implements Packet83Subpacket.TypeString()
 func (Packet83_01) TypeString() string {
 	return "ID_REPLIC_DELETE_INSTANCE"
 }

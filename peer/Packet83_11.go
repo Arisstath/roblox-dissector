@@ -2,15 +2,20 @@ package peer
 
 import "fmt"
 
+// MemoryStatsItem contains the memory stats for one category
 type MemoryStatsItem struct {
 	Name   string
 	Memory float64
 }
+
+// ServerMemoryStats represents the server memory stats reported
 type ServerMemoryStats struct {
 	TotalServerMemory  float64
 	DeveloperTags      []MemoryStatsItem
 	InternalCategories []MemoryStatsItem
 }
+
+// DataStoreStats represents the DataStore stats reported
 type DataStoreStats struct {
 	Enabled                 bool
 	GetAsync                uint32
@@ -21,18 +26,22 @@ type DataStoreStats struct {
 	OnUpdate                uint32
 }
 
+// JobStatsItem represents the stats for one tracked job
 type JobStatsItem struct {
 	Name  string
 	Stat1 float32
 	Stat2 float32
 	Stat3 float32
 }
+
+// ScriptStatsItem represents the stats for one tracked script
 type ScriptStatsItem struct {
 	Name  string
 	Stat1 float32
 	Stat2 uint32
 }
 
+// Packet83_11 represents ID_STATS
 type Packet83_11 struct {
 	Version uint32
 
@@ -206,6 +215,7 @@ func (thisStream *extendedReader) DecodePacket83_11(reader PacketReader, layers 
 
 func (stream *extendedWriter) writeMemoryStats(stats []MemoryStatsItem) error {
 	err := stream.writeUint32BE(uint32(len(stats)))
+
 	if err != nil {
 		return err
 	}
@@ -224,6 +234,7 @@ func (stream *extendedWriter) writeMemoryStats(stats []MemoryStatsItem) error {
 	return nil
 }
 
+// Serialize implements Packet83Subpacket.Serialize()
 func (layer *Packet83_11) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	err := stream.writeUint32BE(layer.Version)
 	if err != nil {
@@ -348,9 +359,12 @@ func (layer *Packet83_11) Serialize(writer PacketWriter, stream *extendedWriter)
 	return stream.writeFloat32BE(layer.DataThroughputRatio)
 }
 
+// Type implements Packet83Subpacket.Type()
 func (Packet83_11) Type() uint8 {
 	return 0x11
 }
+
+// TypeString implements Packet83Subpacket.TypeString()
 func (Packet83_11) TypeString() string {
 	return "ID_REPLIC_STATS"
 }

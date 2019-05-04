@@ -1,6 +1,6 @@
 package peer
 
-// ID_PING_BACK
+// Packet83_06 represents ID_PING_BACK
 type Packet83_06 struct {
 	// Always true
 	IsPingBack bool
@@ -38,6 +38,7 @@ func (thisStream *extendedReader) DecodePacket83_06(reader PacketReader, layers 
 	return inner, err
 }
 
+// Serialize implements Packet83Subpacket.Serialize()
 func (layer *Packet83_06) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
 	err = stream.writeBoolByte(layer.IsPingBack)
@@ -60,9 +61,12 @@ func (layer *Packet83_06) Serialize(writer PacketWriter, stream *extendedWriter)
 	return err
 }
 
+// Type implements Packet83Subpacket.Type()
 func (Packet83_06) Type() uint8 {
 	return 6
 }
+
+// TypeString implements Packet83Subpacket.TypeString()
 func (Packet83_06) TypeString() string {
 	return "ID_REPLIC_PING_BACK"
 }

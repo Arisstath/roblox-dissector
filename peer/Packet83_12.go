@@ -1,8 +1,11 @@
 package peer
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
-// ID_HASH
+// Packet83_12 represents ID_HASH
 type Packet83_12 struct {
 	HashList       []uint32
 	SecurityTokens [3]uint32
@@ -96,13 +99,17 @@ func (stream *extendedReader) DecodePacket83_12(reader PacketReader, layers *Pac
 	return inner, nil
 }
 
+// Serialize implements Packet83Subpacket.Serialize()
 func (layer *Packet83_12) Serialize(writer PacketWriter, stream *extendedWriter) error {
-	return nil
+	return errors.New("hash packet not implemented")
 }
 
+// Type implements Packet83Subpacket.Type()
 func (Packet83_12) Type() uint8 {
 	return 0x12
 }
+
+// TypeString implements Packet83Subpacket.TypeString()
 func (Packet83_12) TypeString() string {
 	return "ID_REPLIC_HASH"
 }

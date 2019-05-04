@@ -8,18 +8,14 @@ import (
 	"github.com/DataDog/zstd"
 )
 
-// ID_JOINDATA
+// Packet83_0B represents ID_JOINDATA
 type Packet83_0B struct {
 	// Instances replicated by the server
 	Instances []*ReplicationInstance
 }
 
-func NewPacket83_0BLayer() *Packet83_0B {
-	return &Packet83_0B{}
-}
-
 func (thisStream *extendedReader) DecodePacket83_0B(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
-	layer := NewPacket83_0BLayer()
+	layer := &Packet83_0B{}
 
 	arrayLen, err := thisStream.readUint32BE()
 	if err != nil {
@@ -51,6 +47,7 @@ func (thisStream *extendedReader) DecodePacket83_0B(reader PacketReader, layers 
 	return layer, nil
 }
 
+// Serialize implements Packet83Subpacket.Serialize()
 func (layer *Packet83_0B) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
 	if layer.Instances == nil || len(layer.Instances) == 0 { // bail
@@ -94,9 +91,12 @@ func (layer *Packet83_0B) Serialize(writer PacketWriter, stream *extendedWriter)
 	return err
 }
 
+// Type implements Packet83Subpacket.Type()
 func (Packet83_0B) Type() uint8 {
 	return 0xB
 }
+
+// TypeString implements Packet83Subpacket.TypeString()
 func (Packet83_0B) TypeString() string {
 	return "ID_REPLIC_JOIN_DATA"
 }

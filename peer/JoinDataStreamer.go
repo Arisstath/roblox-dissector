@@ -77,7 +77,7 @@ func NewJoinDataStreamer(writer PacketWriter) *JoinDataStreamer {
 func (state *JoinDataStreamer) makeNewStream() *joinSerializeWriter {
 	state.compressedBuffer = bytes.NewBuffer(nil)
 	state.counter = newCountWriter()
-	state.rawLayer = NewPacket83_0BLayer()
+	state.rawLayer = &Packet83_0B{}
 	state.compressor = zstd.NewWriter(state.compressedBuffer)
 
 	writeMux := io.MultiWriter(state.compressor, state.counter)
