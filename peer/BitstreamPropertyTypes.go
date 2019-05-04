@@ -271,7 +271,7 @@ func (b *extendedReader) readObject(caches *Caches) (datamodel.Reference, error)
 }
 
 func (b *extendedReader) readCFrameSimple() (rbxfile.ValueCFrame, error) {
-	return rbxfile.ValueCFrame{}, nil // nop for now, since nothing uses this
+	return rbxfile.ValueCFrame{}, errors.New("simple CFrame not implemented") // nop for now, since nothing uses this
 }
 
 func quaternionToRotMatrix(q [4]float32) [9]float32 {
@@ -1206,7 +1206,7 @@ func (b *extendedReader) readSerializedValueGeneric(reader PacketReader, valueTy
 		result, err = b.readVector3()
 	case PropertyTypeVector2int16:
 		result, err = b.readVector2int16()
-	case PropertyTypeVectorint16:
+	case PropertyTypeVector3int16:
 		result, err = b.readVector3int16()
 	case PropertyTypeSimpleCFrame:
 		result, err = b.readCFrameSimple()
@@ -1226,9 +1226,9 @@ func (b *extendedReader) readSerializedValueGeneric(reader PacketReader, valueTy
 		result, err = b.readRect2D()
 	case PropertyTypePhysicalProperties:
 		result, err = b.readPhysicalProperties()
-	case PropertyTypeREGION3:
+	case PropertyTypeRegion3:
 		result, err = b.readRegion3()
-	case PropertyTypeREGION3INT16:
+	case PropertyTypeRegion3int16:
 		result, err = b.readRegion3int16()
 	case PropertyTypeInt64:
 		result, err = b.readInt64()

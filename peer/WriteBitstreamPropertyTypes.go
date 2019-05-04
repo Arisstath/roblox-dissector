@@ -315,7 +315,7 @@ var typeToNetworkConvTable = map[rbxfile.Type]uint8{
 	rbxfile.TypeCFrame:                   PropertyTypeComplicatedCFrame,
 	datamodel.TypeToken:                  PropertyTypeEnum,
 	datamodel.TypeReference:              PropertyTypeInstance,
-	rbxfile.TypeVector3int16:             PropertyTypeVectorint16,
+	rbxfile.TypeVector3int16:             PropertyTypeVector3int16,
 	rbxfile.TypeVector2int16:             PropertyTypeVector2int16,
 	datamodel.TypeNumberSequence:         PropertyTypeNumberSequence,
 	datamodel.TypeColorSequence:          PropertyTypeColorSequence,
@@ -405,7 +405,7 @@ func (b *extendedWriter) writeSerializedValueGeneric(val rbxfile.Value, valueTyp
 		err = b.writeVector3(val.(rbxfile.ValueVector3))
 	case PropertyTypeVector2int16:
 		err = b.writeVector2int16(val.(rbxfile.ValueVector2int16))
-	case PropertyTypeVectorint16:
+	case PropertyTypeVector3int16:
 		err = b.writeVector3int16(val.(rbxfile.ValueVector3int16))
 	case PropertyTypeSimpleCFrame:
 		err = b.writeCFrameSimple(val.(rbxfile.ValueCFrame))
