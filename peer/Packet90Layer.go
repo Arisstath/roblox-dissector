@@ -14,7 +14,7 @@ func NewPacket90Layer() *Packet90Layer {
 }
 
 func (stream *extendedReader) DecodePacket90Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-	layer := NewPacket90Layer()
+	layer := &Packet90Layer{}
 
 	lenBytes := bitsToBytes(uint(layers.Reliability.LengthInBits)) - 1 // -1 for packet id
 	thisStream, err := stream.aesDecrypt(int(lenBytes))

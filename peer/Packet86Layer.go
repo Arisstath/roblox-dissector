@@ -26,7 +26,7 @@ func NewPacket86Layer() *Packet86Layer {
 
 func (thisStream *extendedReader) DecodePacket86Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 
-	layer := NewPacket86Layer()
+	layer := &Packet86Layer{}
 	context := reader.Context()
 	for {
 		subpacket := &Packet86LayerSubpacket{}

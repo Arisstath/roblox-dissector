@@ -207,7 +207,7 @@ func NewPacket97Layer() *Packet97Layer {
 }
 
 func (thisStream *extendedReader) DecodePacket97Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-	layer := NewPacket97Layer()
+	layer := &Packet97Layer{}
 
 	var err error
 	stream, err := thisStream.RegionToZStdStream()

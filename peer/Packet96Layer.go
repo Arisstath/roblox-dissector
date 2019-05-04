@@ -12,7 +12,7 @@ func NewPacket96Layer() *Packet96Layer {
 }
 
 func (thisStream *extendedReader) DecodePacket96Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-	layer := NewPacket96Layer()
+	layer := &Packet96Layer{}
 	var err error
 
 	layer.Request, err = thisStream.readBoolByte()

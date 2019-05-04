@@ -66,7 +66,7 @@ func NewPacket83Layer() *Packet83Layer {
 }
 
 func (thisStream *extendedReader) DecodePacket83Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-	layer := NewPacket83Layer()
+	layer := &Packet83Layer{}
 
 	packetType, err := thisStream.readUint8()
 	if err != nil {

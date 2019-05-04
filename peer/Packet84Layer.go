@@ -12,7 +12,7 @@ func NewPacket84Layer() *Packet84Layer {
 }
 
 func (thisStream *extendedReader) DecodePacket84Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-	layer := NewPacket84Layer()
+	layer := &Packet84Layer{}
 
 	var err error
 	layer.MarkerId, err = thisStream.readUint32BE()

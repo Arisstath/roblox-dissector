@@ -17,7 +17,7 @@ func NewPacket87Layer() *Packet87Layer {
 
 func (thisStream *extendedReader) DecodePacket87Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	context := reader.Context()
-	layer := NewPacket87Layer()
+	layer := &Packet87Layer{}
 	var ref datamodel.Reference
 
 	scope, err := thisStream.readLengthAndString()

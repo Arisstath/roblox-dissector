@@ -14,7 +14,7 @@ func NewPacket15Layer() *Packet15Layer {
 }
 
 func (thisStream *extendedReader) DecodePacket15Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-	layer := NewPacket15Layer()
+	layer := &Packet15Layer{}
 
 	var err error
 	reason, err := thisStream.readUint32BE()

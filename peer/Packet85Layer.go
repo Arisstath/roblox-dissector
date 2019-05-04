@@ -77,7 +77,7 @@ func (b *extendedReader) readPhysicsData(data *PhysicsData, motors bool, reader 
 func (thisStream *extendedReader) DecodePacket85Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 
 	context := reader.Context()
-	layer := NewPacket85Layer()
+	layer := &Packet85Layer{}
 	for {
 		reference, err := thisStream.readObject(reader.Caches())
 		// unordered packets may have problems with caches

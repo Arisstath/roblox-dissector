@@ -12,7 +12,7 @@ func NewPacket92Layer() *Packet92Layer {
 }
 
 func (thisStream *extendedReader) DecodePacket92Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-	layer := NewPacket92Layer()
+	layer := &Packet92Layer{}
 
 	var err error
 	layer.PlaceId, err = thisStream.readVarsint64()
