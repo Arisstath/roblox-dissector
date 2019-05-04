@@ -9,29 +9,28 @@ import (
 	"github.com/robloxapi/rbxfile"
 )
 
+// Cell represents a terrain cell package
 type Cell struct {
 	Material  uint8
 	Occupancy uint8
 	Count     uint32
 }
+
+// Chunk represents a terrain chunk package
 type Chunk struct {
 	Header    uint8
 	ChunkSize rbxfile.ValueVector3
 	Contents  []Cell
 }
 
-// ID_ROBLOX_CLUSTER: server -> client
+// Packet8DLayer represents ID_CLUSTER: server -> client
 type Packet8DLayer struct {
 	Instance *datamodel.Instance
 	Chunks   []Chunk
 }
 
-func NewPacket8DLayer() *Packet8DLayer {
-	return &Packet8DLayer{}
-}
-
 func (thisStream *extendedReader) DecodePacket8DLayer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-	layer := NewPacket8DLayer()
+	layer := &Packet8DLayer{}
 
 	context := reader.Context()
 
@@ -140,7 +139,7 @@ func (thisStream *extendedReader) DecodePacket8DLayer(reader PacketReader, layer
 			if err != nil {
 				return layer, err
 			}
-			var thisMaterial uint8 = cellHeader & 0x3F
+			thisMaterial := cellHeader & 0x3F
 			var occupancy uint8
 			var count int
 			if cellHeader&0x40 != 0 {
@@ -183,18 +182,21 @@ func (thisStream *extendedReader) DecodePacket8DLayer(reader PacketReader, layer
 	return layer, err
 }
 
+// Serialize implements RakNetPacket.Serialize
 func (layer *Packet8DLayer) Serialize(writer PacketWriter, stream *extendedWriter) error {
-	return errors.New("not implemented!")
+	return errors.New("terrain packet not implemented")
 }
 
 func (layer *Packet8DLayer) String() string {
 	return fmt.Sprintf("ID_CLUSTER: WIP")
 }
 
+// TypeString implements RakNetPacket.TypeString()
 func (Packet8DLayer) TypeString() string {
 	return "ID_CLUSTER"
 }
 
+// Type implements RakNetPacket.Type()
 func (Packet8DLayer) Type() byte {
 	return 0x8D
 }
