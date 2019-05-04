@@ -295,42 +295,42 @@ func (b *extendedWriter) writeVarsint64(val int64) error {
 }
 
 var typeToNetworkConvTable = map[rbxfile.Type]uint8{
-	rbxfile.TypeString:                   PROP_TYPE_STRING,
-	rbxfile.TypeBinaryString:             PROP_TYPE_BINARYSTRING,
-	rbxfile.TypeProtectedString:          PROP_TYPE_PROTECTEDSTRING_0,
-	rbxfile.TypeContent:                  PROP_TYPE_CONTENT,
-	rbxfile.TypeBool:                     PROP_TYPE_PBOOL,
-	rbxfile.TypeInt:                      PROP_TYPE_PSINT,
-	rbxfile.TypeFloat:                    PROP_TYPE_PFLOAT,
-	rbxfile.TypeDouble:                   PROP_TYPE_PDOUBLE,
-	rbxfile.TypeUDim:                     PROP_TYPE_UDIM,
-	rbxfile.TypeUDim2:                    PROP_TYPE_UDIM2,
-	rbxfile.TypeRay:                      PROP_TYPE_RAY,
-	rbxfile.TypeFaces:                    PROP_TYPE_FACES,
-	rbxfile.TypeAxes:                     PROP_TYPE_AXES,
-	rbxfile.TypeBrickColor:               PROP_TYPE_BRICKCOLOR,
-	rbxfile.TypeColor3:                   PROP_TYPE_COLOR3,
-	rbxfile.TypeVector2:                  PROP_TYPE_VECTOR2,
-	rbxfile.TypeVector3:                  PROP_TYPE_VECTOR3_COMPLICATED,
-	rbxfile.TypeCFrame:                   PROP_TYPE_CFRAME_COMPLICATED,
-	datamodel.TypeToken:                  PROP_TYPE_ENUM,
-	datamodel.TypeReference:              PROP_TYPE_INSTANCE,
-	rbxfile.TypeVector3int16:             PROP_TYPE_VECTOR3UINT16,
-	rbxfile.TypeVector2int16:             PROP_TYPE_VECTOR2UINT16,
-	datamodel.TypeNumberSequence:         PROP_TYPE_NUMBERSEQUENCE,
-	datamodel.TypeColorSequence:          PROP_TYPE_COLORSEQUENCE,
-	rbxfile.TypeNumberRange:              PROP_TYPE_NUMBERRANGE,
-	rbxfile.TypeRect2D:                   PROP_TYPE_RECT2D,
-	rbxfile.TypePhysicalProperties:       PROP_TYPE_PHYSICALPROPERTIES,
-	rbxfile.TypeColor3uint8:              PROP_TYPE_COLOR3UINT8,
-	datamodel.TypeNumberSequenceKeypoint: PROP_TYPE_NUMBERSEQUENCEKEYPOINT,
-	datamodel.TypeColorSequenceKeypoint:  PROP_TYPE_COLORSEQUENCEKEYPOINT,
-	datamodel.TypeSystemAddress:          PROP_TYPE_SYSTEMADDRESS,
-	datamodel.TypeMap:                    PROP_TYPE_MAP,
-	datamodel.TypeDictionary:             PROP_TYPE_DICTIONARY,
-	datamodel.TypeArray:                  PROP_TYPE_ARRAY,
-	datamodel.TypeTuple:                  PROP_TYPE_TUPLE,
-	rbxfile.TypeInt64:                    PROP_TYPE_INT64,
+	rbxfile.TypeString:                   PropertyTypeString,
+	rbxfile.TypeBinaryString:             PropertyTypeBinaryString,
+	rbxfile.TypeProtectedString:          PropertyTypeProtectedString0,
+	rbxfile.TypeContent:                  PropertyTypeContent,
+	rbxfile.TypeBool:                     PropertyTypeBool,
+	rbxfile.TypeInt:                      PropertyTypeInt,
+	rbxfile.TypeFloat:                    PropertyTypeFloat,
+	rbxfile.TypeDouble:                   PropertyTypeDouble,
+	rbxfile.TypeUDim:                     PropertyTypeUDim,
+	rbxfile.TypeUDim2:                    PropertyTypeUDim2,
+	rbxfile.TypeRay:                      PropertyTypeRay,
+	rbxfile.TypeFaces:                    PropertyTypeFaces,
+	rbxfile.TypeAxes:                     PropertyTypeAxes,
+	rbxfile.TypeBrickColor:               PropertyTypeBrickColor,
+	rbxfile.TypeColor3:                   PropertyTypeColor3,
+	rbxfile.TypeVector2:                  PropertyTypeVector2,
+	rbxfile.TypeVector3:                  PropertyTypeComplicatedVector3,
+	rbxfile.TypeCFrame:                   PropertyTypeComplicatedCFrame,
+	datamodel.TypeToken:                  PropertyTypeEnum,
+	datamodel.TypeReference:              PropertyTypeInstance,
+	rbxfile.TypeVector3int16:             PropertyTypeVectorint16,
+	rbxfile.TypeVector2int16:             PropertyTypeVector2int16,
+	datamodel.TypeNumberSequence:         PropertyTypeNumberSequence,
+	datamodel.TypeColorSequence:          PropertyTypeColorSequence,
+	rbxfile.TypeNumberRange:              PropertyTypeNumberRange,
+	rbxfile.TypeRect2D:                   PropertyTypeRect2D,
+	rbxfile.TypePhysicalProperties:       PropertyTypePhysicalProperties,
+	rbxfile.TypeColor3uint8:              PropertyTypeColor3uint8,
+	datamodel.TypeNumberSequenceKeypoint: PropertyTypeNumberSequenceKeypoint,
+	datamodel.TypeColorSequenceKeypoint:  PropertyTypeColorSequenceKeypoint,
+	datamodel.TypeSystemAddress:          PropertyTypeSystemAddress,
+	datamodel.TypeMap:                    PropertyTypeMap,
+	datamodel.TypeDictionary:             PropertyTypeDictionary,
+	datamodel.TypeArray:                  PropertyTypeArray,
+	datamodel.TypeTuple:                  PropertyTypeTuple,
+	rbxfile.TypeInt64:                    PropertyTypeInt64,
 }
 
 func typeToNetwork(val rbxfile.Value) (uint8, bool) {
@@ -346,14 +346,14 @@ func isCorrectType(val rbxfile.Value, expected uint8) bool {
 		return false
 	}
 	switch expected {
-	case PROP_TYPE_STRING, PROP_TYPE_STRING_NO_CACHE:
-		return typ == PROP_TYPE_STRING
-	case PROP_TYPE_PROTECTEDSTRING_0, PROP_TYPE_PROTECTEDSTRING_1, PROP_TYPE_PROTECTEDSTRING_2, PROP_TYPE_PROTECTEDSTRING_3:
-		return typ == PROP_TYPE_PROTECTEDSTRING_0
-	case PROP_TYPE_VECTOR3_SIMPLE, PROP_TYPE_VECTOR3_COMPLICATED:
-		return typ == PROP_TYPE_VECTOR3_COMPLICATED
-	case PROP_TYPE_CFRAME_SIMPLE, PROP_TYPE_CFRAME_COMPLICATED:
-		return typ == PROP_TYPE_CFRAME_COMPLICATED
+	case PropertyTypeString, PropertyTypeStringNoCache:
+		return typ == PropertyTypeString
+	case PropertyTypeProtectedString0, PropertyTypeProtectedString1, PropertyTypeProtectedString2, PropertyTypeProtectedString3:
+		return typ == PropertyTypeProtectedString0
+	case PropertyTypeSimpleVector3, PropertyTypeComplicatedVector3:
+		return typ == PropertyTypeComplicatedVector3
+	case PropertyTypeSimpleCFrame, PropertyTypeComplicatedCFrame:
+		return typ == PropertyTypeComplicatedCFrame
 	default:
 		return typ == expected
 	}
@@ -369,65 +369,65 @@ func (b *extendedWriter) writeSerializedValueGeneric(val rbxfile.Value, valueTyp
 	}
 	var err error
 	switch valueType {
-	case PROP_TYPE_ENUM:
+	case PropertyTypeEnum:
 		err = b.writeNewEnumValue(val.(datamodel.ValueToken))
-	case PROP_TYPE_BINARYSTRING:
+	case PropertyTypeBinaryString:
 		err = b.writeNewBinaryString(val.(rbxfile.ValueBinaryString))
-	case PROP_TYPE_PBOOL:
+	case PropertyTypeBool:
 		err = b.writePBool(val.(rbxfile.ValueBool))
-	case PROP_TYPE_PSINT:
+	case PropertyTypeInt:
 		err = b.writeNewPSint(val.(rbxfile.ValueInt))
-	case PROP_TYPE_PFLOAT:
+	case PropertyTypeFloat:
 		err = b.writePFloat(val.(rbxfile.ValueFloat))
-	case PROP_TYPE_PDOUBLE:
+	case PropertyTypeDouble:
 		err = b.writePDouble(val.(rbxfile.ValueDouble))
-	case PROP_TYPE_UDIM:
+	case PropertyTypeUDim:
 		err = b.writeUDim(val.(rbxfile.ValueUDim))
-	case PROP_TYPE_UDIM2:
+	case PropertyTypeUDim2:
 		err = b.writeUDim2(val.(rbxfile.ValueUDim2))
-	case PROP_TYPE_RAY:
+	case PropertyTypeRay:
 		err = b.writeRay(val.(rbxfile.ValueRay))
-	case PROP_TYPE_FACES:
+	case PropertyTypeFaces:
 		err = b.writeFaces(val.(rbxfile.ValueFaces))
-	case PROP_TYPE_AXES:
+	case PropertyTypeAxes:
 		err = b.writeAxes(val.(rbxfile.ValueAxes))
-	case PROP_TYPE_BRICKCOLOR:
+	case PropertyTypeBrickColor:
 		err = b.writeBrickColor(val.(rbxfile.ValueBrickColor))
-	case PROP_TYPE_COLOR3:
+	case PropertyTypeColor3:
 		err = b.writeColor3(val.(rbxfile.ValueColor3))
-	case PROP_TYPE_COLOR3UINT8:
+	case PropertyTypeColor3uint8:
 		err = b.writeColor3uint8(val.(rbxfile.ValueColor3uint8))
-	case PROP_TYPE_VECTOR2:
+	case PropertyTypeVector2:
 		err = b.writeVector2(val.(rbxfile.ValueVector2))
-	case PROP_TYPE_VECTOR3_SIMPLE:
+	case PropertyTypeSimpleVector3:
 		err = b.writeVector3Simple(val.(rbxfile.ValueVector3))
-	case PROP_TYPE_VECTOR3_COMPLICATED:
+	case PropertyTypeComplicatedVector3:
 		err = b.writeVector3(val.(rbxfile.ValueVector3))
-	case PROP_TYPE_VECTOR2UINT16:
+	case PropertyTypeVector2int16:
 		err = b.writeVector2int16(val.(rbxfile.ValueVector2int16))
-	case PROP_TYPE_VECTOR3UINT16:
+	case PropertyTypeVectorint16:
 		err = b.writeVector3int16(val.(rbxfile.ValueVector3int16))
-	case PROP_TYPE_CFRAME_SIMPLE:
+	case PropertyTypeSimpleCFrame:
 		err = b.writeCFrameSimple(val.(rbxfile.ValueCFrame))
-	case PROP_TYPE_CFRAME_COMPLICATED:
+	case PropertyTypeComplicatedCFrame:
 		err = b.writeCFrame(val.(rbxfile.ValueCFrame))
-	case PROP_TYPE_NUMBERSEQUENCE:
+	case PropertyTypeNumberSequence:
 		err = b.writeNumberSequence(val.(datamodel.ValueNumberSequence))
-	case PROP_TYPE_NUMBERSEQUENCEKEYPOINT:
+	case PropertyTypeNumberSequenceKeypoint:
 		err = b.writeNumberSequenceKeypoint(val.(datamodel.ValueNumberSequenceKeypoint))
-	case PROP_TYPE_NUMBERRANGE:
+	case PropertyTypeNumberRange:
 		err = b.writeNumberRange(val.(rbxfile.ValueNumberRange))
-	case PROP_TYPE_COLORSEQUENCE:
+	case PropertyTypeColorSequence:
 		err = b.writeColorSequence(val.(datamodel.ValueColorSequence))
-	case PROP_TYPE_COLORSEQUENCEKEYPOINT:
+	case PropertyTypeColorSequenceKeypoint:
 		err = b.writeColorSequenceKeypoint(val.(datamodel.ValueColorSequenceKeypoint))
-	case PROP_TYPE_RECT2D:
+	case PropertyTypeRect2D:
 		err = b.writeRect2D(val.(rbxfile.ValueRect2D))
-	case PROP_TYPE_PHYSICALPROPERTIES:
+	case PropertyTypePhysicalProperties:
 		err = b.writePhysicalProperties(val.(rbxfile.ValuePhysicalProperties))
-	case PROP_TYPE_INT64:
+	case PropertyTypeInt64:
 		err = b.writeVarsint64(int64(val.(rbxfile.ValueInt64)))
-	case PROP_TYPE_STRING_NO_CACHE:
+	case PropertyTypeStringNoCache:
 		err = b.writePStringNoCache(val.(rbxfile.ValueString))
 	default:
 		return errors.New("Unsupported property type: " + strconv.Itoa(int(valueType)))

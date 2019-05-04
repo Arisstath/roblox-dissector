@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/Gskartwii/roblox-dissector/peer"
 	"github.com/Gskartwii/roblox-dissector/datamodel"
+	"github.com/Gskartwii/roblox-dissector/peer"
 	"github.com/robloxapi/rbxfile"
 	"github.com/therecipe/qt/widgets"
 )
@@ -103,32 +103,32 @@ func normalizeTypes(children []*datamodel.Instance, schema *peer.NetworkSchema) 
 				continue
 			}
 			switch propSchema.Type {
-			case peer.PROP_TYPE_PROTECTEDSTRING_0,
-				peer.PROP_TYPE_PROTECTEDSTRING_1,
-				peer.PROP_TYPE_PROTECTEDSTRING_2,
-				peer.PROP_TYPE_PROTECTEDSTRING_3:
+			case peer.PropertyTypeProtectedString0,
+				peer.PropertyTypeProtectedString1,
+				peer.PropertyTypeProtectedString2,
+				peer.PropertyTypeProtectedString3:
 				// This type may be encoded correctly depending on the format
 				if _, ok = prop.(rbxfile.ValueString); ok {
 					instance.Properties[name] = rbxfile.ValueProtectedString(prop.(rbxfile.ValueString))
 				}
-			case peer.PROP_TYPE_CONTENT:
+			case peer.PropertyTypeContent:
 				// This type may be encoded correctly depending on the format
 				if _, ok = prop.(rbxfile.ValueString); ok {
 					instance.Properties[name] = rbxfile.ValueContent(prop.(rbxfile.ValueString))
 				}
-			case peer.PROP_TYPE_ENUM:
+			case peer.PropertyTypeEnum:
 				instance.Properties[name] = datamodel.ValueToken{ID: propSchema.EnumID, Value: prop.(datamodel.ValueToken).Value}
-			case peer.PROP_TYPE_BINARYSTRING:
+			case peer.PropertyTypeBinaryString:
 				// This type may be encoded correctly depending on the format
 				if _, ok = prop.(rbxfile.ValueString); ok {
 					instance.Properties[name] = rbxfile.ValueBinaryString(prop.(rbxfile.ValueString))
 				}
-			case peer.PROP_TYPE_COLOR3UINT8:
+			case peer.PropertyTypeColor3uint8:
 				if _, ok = prop.(rbxfile.ValueColor3); ok {
 					propc3 := prop.(rbxfile.ValueColor3)
 					instance.Properties[name] = rbxfile.ValueColor3uint8{R: uint8(propc3.R * 255), G: uint8(propc3.G * 255), B: uint8(propc3.B * 255)}
 				}
-			case peer.PROP_TYPE_BRICKCOLOR:
+			case peer.PropertyTypeBrickColor:
 				if _, ok = prop.(rbxfile.ValueInt); ok {
 					instance.Properties[name] = rbxfile.ValueBrickColor(prop.(rbxfile.ValueInt))
 				}

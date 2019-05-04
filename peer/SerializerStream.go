@@ -40,17 +40,17 @@ func (b *extendedReader) ReadSerializedValue(reader PacketReader, valueType uint
 	var err error
 	var result rbxfile.Value
 	switch valueType {
-	case PROP_TYPE_STRING:
+	case PropertyTypeString:
 		result, err = b.readNewPString(reader.Caches())
-	case PROP_TYPE_PROTECTEDSTRING_0:
+	case PropertyTypeProtectedString0:
 		result, err = b.readNewProtectedString(reader.Caches())
-	case PROP_TYPE_PROTECTEDSTRING_1:
+	case PropertyTypeProtectedString1:
 		result, err = b.readNewProtectedString(reader.Caches())
-	case PROP_TYPE_PROTECTEDSTRING_2:
+	case PropertyTypeProtectedString2:
 		result, err = b.readNewProtectedString(reader.Caches())
-	case PROP_TYPE_PROTECTEDSTRING_3:
+	case PropertyTypeProtectedString3:
 		result, err = b.readNewProtectedString(reader.Caches())
-	case PROP_TYPE_INSTANCE:
+	case PropertyTypeInstance:
 		var reference datamodel.Reference
 		reference, err = b.ReadObject(reader)
 		if err != nil {
@@ -66,17 +66,17 @@ func (b *extendedReader) ReadSerializedValue(reader PacketReader, valueType uint
 			instance, err = reader.Context().InstancesByReference.CreateInstance(reference)
 			result = datamodel.ValueReference{Instance: instance, Reference: reference}
 		}
-	case PROP_TYPE_CONTENT:
+	case PropertyTypeContent:
 		result, err = b.readNewContent(reader.Caches())
-	case PROP_TYPE_SYSTEMADDRESS:
+	case PropertyTypeSystemAddress:
 		result, err = b.readSystemAddress(reader.Caches())
-	case PROP_TYPE_TUPLE:
+	case PropertyTypeTuple:
 		result, err = b.readNewTuple(reader)
-	case PROP_TYPE_ARRAY:
+	case PropertyTypeArray:
 		result, err = b.readNewArray(reader)
-	case PROP_TYPE_DICTIONARY:
+	case PropertyTypeDictionary:
 		result, err = b.readNewDictionary(reader)
-	case PROP_TYPE_MAP:
+	case PropertyTypeMap:
 		result, err = b.readNewMap(reader)
 	default:
 		return b.readSerializedValueGeneric(reader, valueType, enumId)
@@ -113,29 +113,29 @@ func (b *extendedReader) ReadProperties(schema []*NetworkPropertySchema, propert
 func (b *extendedWriter) WriteSerializedValue(val rbxfile.Value, writer PacketWriter, valueType uint8) error {
 	var err error
 	switch valueType {
-	case PROP_TYPE_STRING:
+	case PropertyTypeString:
 		err = b.writeNewPString(val.(rbxfile.ValueString), writer.Caches())
-	case PROP_TYPE_PROTECTEDSTRING_0:
+	case PropertyTypeProtectedString0:
 		err = b.writeNewProtectedString(val.(rbxfile.ValueProtectedString), writer.Caches())
-	case PROP_TYPE_PROTECTEDSTRING_1:
+	case PropertyTypeProtectedString1:
 		err = b.writeNewProtectedString(val.(rbxfile.ValueProtectedString), writer.Caches())
-	case PROP_TYPE_PROTECTEDSTRING_2:
+	case PropertyTypeProtectedString2:
 		err = b.writeNewProtectedString(val.(rbxfile.ValueProtectedString), writer.Caches())
-	case PROP_TYPE_PROTECTEDSTRING_3:
+	case PropertyTypeProtectedString3:
 		err = b.writeNewProtectedString(val.(rbxfile.ValueProtectedString), writer.Caches())
-	case PROP_TYPE_INSTANCE:
+	case PropertyTypeInstance:
 		err = b.writeObject(val.(datamodel.ValueReference).Instance, writer.Caches())
-	case PROP_TYPE_CONTENT:
+	case PropertyTypeContent:
 		err = b.writeNewContent(val.(rbxfile.ValueContent), writer.Caches())
-	case PROP_TYPE_SYSTEMADDRESS:
+	case PropertyTypeSystemAddress:
 		err = b.writeSystemAddress(val.(datamodel.ValueSystemAddress), writer.Caches())
-	case PROP_TYPE_TUPLE:
+	case PropertyTypeTuple:
 		err = b.writeNewTuple(val.(datamodel.ValueTuple), writer)
-	case PROP_TYPE_ARRAY:
+	case PropertyTypeArray:
 		err = b.writeNewArray(val.(datamodel.ValueArray), writer)
-	case PROP_TYPE_DICTIONARY:
+	case PropertyTypeDictionary:
 		err = b.writeNewDictionary(val.(datamodel.ValueDictionary), writer)
-	case PROP_TYPE_MAP:
+	case PropertyTypeMap:
 		err = b.writeNewMap(val.(datamodel.ValueMap), writer)
 	default:
 		return b.writeSerializedValueGeneric(val, valueType)
@@ -205,17 +205,17 @@ func (b *joinSerializeReader) ReadSerializedValue(reader PacketReader, valueType
 	var err error
 	var result rbxfile.Value
 	switch valueType {
-	case PROP_TYPE_STRING:
+	case PropertyTypeString:
 		result, err = b.readNewPString()
-	case PROP_TYPE_PROTECTEDSTRING_0:
+	case PropertyTypeProtectedString0:
 		result, err = b.readNewProtectedString()
-	case PROP_TYPE_PROTECTEDSTRING_1:
+	case PropertyTypeProtectedString1:
 		result, err = b.readNewProtectedString()
-	case PROP_TYPE_PROTECTEDSTRING_2:
+	case PropertyTypeProtectedString2:
 		result, err = b.readNewProtectedString()
-	case PROP_TYPE_PROTECTEDSTRING_3:
+	case PropertyTypeProtectedString3:
 		result, err = b.readNewProtectedString()
-	case PROP_TYPE_INSTANCE:
+	case PropertyTypeInstance:
 		var reference datamodel.Reference
 		reference, err = b.readJoinObject(reader.Context())
 		if err != nil {
@@ -230,9 +230,9 @@ func (b *joinSerializeReader) ReadSerializedValue(reader PacketReader, valueType
 		var instance *datamodel.Instance
 		instance, err = reader.Context().InstancesByReference.CreateInstance(reference)
 		result = datamodel.ValueReference{Instance: instance, Reference: reference}
-	case PROP_TYPE_CONTENT:
+	case PropertyTypeContent:
 		result, err = b.readNewContent()
-	case PROP_TYPE_SYSTEMADDRESS:
+	case PropertyTypeSystemAddress:
 		result, err = b.readSystemAddress()
 	default:
 		return b.extendedReader.readSerializedValueGeneric(reader, valueType, enumId)
@@ -268,21 +268,21 @@ type joinSerializeWriter struct {
 func (b *joinSerializeWriter) WriteSerializedValue(val rbxfile.Value, writer PacketWriter, valueType uint8) error {
 	var err error
 	switch valueType {
-	case PROP_TYPE_STRING:
+	case PropertyTypeString:
 		err = b.writeNewPString(val.(rbxfile.ValueString))
-	case PROP_TYPE_PROTECTEDSTRING_0:
+	case PropertyTypeProtectedString0:
 		err = b.writeNewProtectedString(val.(rbxfile.ValueProtectedString))
-	case PROP_TYPE_PROTECTEDSTRING_1:
+	case PropertyTypeProtectedString1:
 		err = b.writeNewProtectedString(val.(rbxfile.ValueProtectedString))
-	case PROP_TYPE_PROTECTEDSTRING_2:
+	case PropertyTypeProtectedString2:
 		err = b.writeNewProtectedString(val.(rbxfile.ValueProtectedString))
-	case PROP_TYPE_PROTECTEDSTRING_3:
+	case PropertyTypeProtectedString3:
 		err = b.writeNewProtectedString(val.(rbxfile.ValueProtectedString))
-	case PROP_TYPE_INSTANCE:
+	case PropertyTypeInstance:
 		err = b.WriteObject(val.(datamodel.ValueReference).Instance, writer)
-	case PROP_TYPE_CONTENT:
+	case PropertyTypeContent:
 		err = b.writeNewContent(val.(rbxfile.ValueContent))
-	case PROP_TYPE_SYSTEMADDRESS:
+	case PropertyTypeSystemAddress:
 		err = b.writeSystemAddress(val.(datamodel.ValueSystemAddress))
 	default:
 		return b.writeSerializedValueGeneric(val, valueType)

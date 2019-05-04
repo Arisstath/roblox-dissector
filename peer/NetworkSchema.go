@@ -1,97 +1,97 @@
 package peer
 
 const (
-	PROP_TYPE_NIL                    uint8 = iota
-	PROP_TYPE_STRING                       = iota
-	PROP_TYPE_STRING_NO_CACHE              = iota
-	PROP_TYPE_PROTECTEDSTRING_0            = iota
-	PROP_TYPE_PROTECTEDSTRING_1            = iota
-	PROP_TYPE_PROTECTEDSTRING_2            = iota
-	PROP_TYPE_PROTECTEDSTRING_3            = iota
-	PROP_TYPE_ENUM                         = iota
-	PROP_TYPE_BINARYSTRING                 = iota
-	PROP_TYPE_PBOOL                        = iota
-	PROP_TYPE_PSINT                        = iota
-	PROP_TYPE_PFLOAT                       = iota
-	PROP_TYPE_PDOUBLE                      = iota
-	PROP_TYPE_UDIM                         = iota
-	PROP_TYPE_UDIM2                        = iota
-	PROP_TYPE_RAY                          = iota
-	PROP_TYPE_FACES                        = iota
-	PROP_TYPE_AXES                         = iota
-	PROP_TYPE_BRICKCOLOR                   = iota
-	PROP_TYPE_COLOR3                       = iota
-	PROP_TYPE_COLOR3UINT8                  = iota
-	PROP_TYPE_VECTOR2                      = iota
-	PROP_TYPE_VECTOR3_SIMPLE               = iota
-	PROP_TYPE_VECTOR3_COMPLICATED          = iota
-	PROP_TYPE_VECTOR2UINT16                = iota
-	PROP_TYPE_VECTOR3UINT16                = iota
-	PROP_TYPE_CFRAME_SIMPLE                = iota
-	PROP_TYPE_CFRAME_COMPLICATED           = iota
-	PROP_TYPE_INSTANCE                     = iota
-	PROP_TYPE_TUPLE                        = iota
-	PROP_TYPE_ARRAY                        = iota
-	PROP_TYPE_DICTIONARY                   = iota
-	PROP_TYPE_MAP                          = iota
-	PROP_TYPE_CONTENT                      = iota
-	PROP_TYPE_SYSTEMADDRESS                = iota
-	PROP_TYPE_NUMBERSEQUENCE               = iota
-	PROP_TYPE_NUMBERSEQUENCEKEYPOINT       = iota
-	PROP_TYPE_NUMBERRANGE                  = iota
-	PROP_TYPE_COLORSEQUENCE                = iota
-	PROP_TYPE_COLORSEQUENCEKEYPOINT        = iota
-	PROP_TYPE_RECT2D                       = iota
-	PROP_TYPE_PHYSICALPROPERTIES           = iota
-	PROP_TYPE_REGION3                      = iota
-	PROP_TYPE_REGION3INT16                 = iota
-	PROP_TYPE_INT64                        = iota
+	PropertyTypeNil                    uint8 = iota
+	PropertyTypeString                       = iota
+	PropertyTypeStringNoCache                = iota
+	PropertyTypeProtectedString0             = iota
+	PropertyTypeProtectedString1             = iota
+	PropertyTypeProtectedString2             = iota
+	PropertyTypeProtectedString3             = iota
+	PropertyTypeEnum                         = iota
+	PropertyTypeBinaryString                 = iota
+	PropertyTypeBool                         = iota
+	PropertyTypeInt                          = iota
+	PropertyTypeFloat                        = iota
+	PropertyTypeDouble                       = iota
+	PropertyTypeUDim                         = iota
+	PropertyTypeUDim2                        = iota
+	PropertyTypeRay                          = iota
+	PropertyTypeFaces                        = iota
+	PropertyTypeAxes                         = iota
+	PropertyTypeBrickColor                   = iota
+	PropertyTypeColor3                       = iota
+	PropertyTypeColor3uint8                  = iota
+	PropertyTypeVector2                      = iota
+	PropertyTypeSimpleVector3                = iota
+	PropertyTypeComplicatedVector3           = iota
+	PropertyTypeVector2int16                 = iota
+	PropertyTypeVectorint16                  = iota
+	PropertyTypeSimpleCFrame                 = iota
+	PropertyTypeComplicatedCFrame            = iota
+	PropertyTypeInstance                     = iota
+	PropertyTypeTuple                        = iota
+	PropertyTypeArray                        = iota
+	PropertyTypeDictionary                   = iota
+	PropertyTypeMap                          = iota
+	PropertyTypeContent                      = iota
+	PropertyTypeSystemAddress                = iota
+	PropertyTypeNumberSequence               = iota
+	PropertyTypeNumberSequenceKeypoint       = iota
+	PropertyTypeNumberRange                  = iota
+	PropertyTypeColorSequence                = iota
+	PropertyTypeColorSequenceKeypoint        = iota
+	PropertyTypeRect2D                       = iota
+	PropertyTypePhysicalProperties           = iota
+	PropertyTypeREGION3                      = iota
+	PropertyTypeREGION3INT16                 = iota
+	PropertyTypeInt64                        = iota
 )
 
 var TypeNames = map[uint8]string{
-	PROP_TYPE_NIL:                    "nil",
-	PROP_TYPE_STRING:                 "string",
-	PROP_TYPE_STRING_NO_CACHE:        "stringnc",
-	PROP_TYPE_PROTECTEDSTRING_0:      "ProtectedString0",
-	PROP_TYPE_PROTECTEDSTRING_1:      "ProtectedString1",
-	PROP_TYPE_PROTECTEDSTRING_2:      "ProtectedString2",
-	PROP_TYPE_PROTECTEDSTRING_3:      "ProtectedString3",
-	PROP_TYPE_ENUM:                   "Enum",
-	PROP_TYPE_BINARYSTRING:           "BinaryString",
-	PROP_TYPE_PBOOL:                  "bool",
-	PROP_TYPE_PSINT:                  "sint",
-	PROP_TYPE_PFLOAT:                 "float",
-	PROP_TYPE_PDOUBLE:                "double",
-	PROP_TYPE_UDIM:                   "UDim",
-	PROP_TYPE_UDIM2:                  "UDim2",
-	PROP_TYPE_RAY:                    "Ray",
-	PROP_TYPE_FACES:                  "Faces",
-	PROP_TYPE_AXES:                   "Axes",
-	PROP_TYPE_BRICKCOLOR:             "BrickColor",
-	PROP_TYPE_COLOR3:                 "Color3",
-	PROP_TYPE_COLOR3UINT8:            "Color3uint8",
-	PROP_TYPE_VECTOR2:                "Vector2",
-	PROP_TYPE_VECTOR3_SIMPLE:         "Vector3simp",
-	PROP_TYPE_VECTOR3_COMPLICATED:    "Vector3comp",
-	PROP_TYPE_VECTOR2UINT16:          "Vector2uint16",
-	PROP_TYPE_VECTOR3UINT16:          "Vector3uint16",
-	PROP_TYPE_CFRAME_SIMPLE:          "CFramesimp",
-	PROP_TYPE_CFRAME_COMPLICATED:     "CFramecomp",
-	PROP_TYPE_INSTANCE:               "Instance",
-	PROP_TYPE_TUPLE:                  "Tuple",
-	PROP_TYPE_ARRAY:                  "Array",
-	PROP_TYPE_DICTIONARY:             "Dictionary",
-	PROP_TYPE_MAP:                    "Map",
-	PROP_TYPE_CONTENT:                "Content",
-	PROP_TYPE_SYSTEMADDRESS:          "SystemAddress",
-	PROP_TYPE_NUMBERSEQUENCE:         "NumberSequence",
-	PROP_TYPE_NUMBERSEQUENCEKEYPOINT: "NumberSequenceKeypoint",
-	PROP_TYPE_NUMBERRANGE:            "NumberRange",
-	PROP_TYPE_COLORSEQUENCE:          "ColorSequence",
-	PROP_TYPE_COLORSEQUENCEKEYPOINT:  "ColorSequenceKeypoint",
-	PROP_TYPE_RECT2D:                 "Rect2D",
-	PROP_TYPE_PHYSICALPROPERTIES:     "PhysicalProperties",
-	PROP_TYPE_INT64:                  "sint64",
+	PropertyTypeNil:                    "nil",
+	PropertyTypeString:                 "string",
+	PropertyTypeStringNoCache:          "stringnc",
+	PropertyTypeProtectedString0:       "ProtectedString0",
+	PropertyTypeProtectedString1:       "ProtectedString1",
+	PropertyTypeProtectedString2:       "ProtectedString2",
+	PropertyTypeProtectedString3:       "ProtectedString3",
+	PropertyTypeEnum:                   "Enum",
+	PropertyTypeBinaryString:           "BinaryString",
+	PropertyTypeBool:                   "bool",
+	PropertyTypeInt:                    "sint",
+	PropertyTypeFloat:                  "float",
+	PropertyTypeDouble:                 "double",
+	PropertyTypeUDim:                   "UDim",
+	PropertyTypeUDim2:                  "UDim2",
+	PropertyTypeRay:                    "Ray",
+	PropertyTypeFaces:                  "Faces",
+	PropertyTypeAxes:                   "Axes",
+	PropertyTypeBrickColor:             "BrickColor",
+	PropertyTypeColor3:                 "Color3",
+	PropertyTypeColor3uint8:            "Color3uint8",
+	PropertyTypeVector2:                "Vector2",
+	PropertyTypeSimpleVector3:          "Vector3simp",
+	PropertyTypeComplicatedVector3:     "Vector3comp",
+	PropertyTypeVector2int16:           "Vector2uint16",
+	PropertyTypeVectorint16:            "Vector3uint16",
+	PropertyTypeSimpleCFrame:           "CFramesimp",
+	PropertyTypeComplicatedCFrame:      "CFramecomp",
+	PropertyTypeInstance:               "Instance",
+	PropertyTypeTuple:                  "Tuple",
+	PropertyTypeArray:                  "Array",
+	PropertyTypeDictionary:             "Dictionary",
+	PropertyTypeMap:                    "Map",
+	PropertyTypeContent:                "Content",
+	PropertyTypeSystemAddress:          "SystemAddress",
+	PropertyTypeNumberSequence:         "NumberSequence",
+	PropertyTypeNumberSequenceKeypoint: "NumberSequenceKeypoint",
+	PropertyTypeNumberRange:            "NumberRange",
+	PropertyTypeColorSequence:          "ColorSequence",
+	PropertyTypeColorSequenceKeypoint:  "ColorSequenceKeypoint",
+	PropertyTypeRect2D:                 "Rect2D",
+	PropertyTypePhysicalProperties:     "PhysicalProperties",
+	PropertyTypeInt64:                  "sint64",
 }
 
 type NetworkArgumentSchema struct {

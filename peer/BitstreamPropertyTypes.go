@@ -570,7 +570,7 @@ func (b *extendedReader) readNewTypeAndValue(reader PacketReader) (rbxfile.Value
 	}
 
 	var enumID uint16
-	if thisType == PROP_TYPE_ENUM {
+	if thisType == PropertyTypeEnum {
 		enumID, err = b.readUint16BE()
 		if err != nil {
 			return val, err
@@ -1164,73 +1164,73 @@ func (b *extendedReader) readSerializedValueGeneric(reader PacketReader, valueTy
 	var result rbxfile.Value
 	var temp string
 	switch valueType {
-	case PROP_TYPE_NIL: // I assume this is how it works, anyway
+	case PropertyTypeNil: // I assume this is how it works, anyway
 		result = nil
 		err = nil
-	case PROP_TYPE_STRING_NO_CACHE:
+	case PropertyTypeStringNoCache:
 		temp, err = b.readVarLengthString()
 		result = rbxfile.ValueString(temp)
-	case PROP_TYPE_ENUM:
+	case PropertyTypeEnum:
 		result, err = b.readNewEnumValue(enumID, reader.Context())
-	case PROP_TYPE_BINARYSTRING:
+	case PropertyTypeBinaryString:
 		result, err = b.readNewBinaryString()
-	case PROP_TYPE_PBOOL:
+	case PropertyTypeBool:
 		result, err = b.readPBool()
-	case PROP_TYPE_PSINT:
+	case PropertyTypeInt:
 		result, err = b.readNewPSint()
-	case PROP_TYPE_PFLOAT:
+	case PropertyTypeFloat:
 		result, err = b.readPFloat()
-	case PROP_TYPE_PDOUBLE:
+	case PropertyTypeDouble:
 		result, err = b.readPDouble()
-	case PROP_TYPE_UDIM:
+	case PropertyTypeUDim:
 		result, err = b.readUDim()
-	case PROP_TYPE_UDIM2:
+	case PropertyTypeUDim2:
 		result, err = b.readUDim2()
-	case PROP_TYPE_RAY:
+	case PropertyTypeRay:
 		result, err = b.readRay()
-	case PROP_TYPE_FACES:
+	case PropertyTypeFaces:
 		result, err = b.readFaces()
-	case PROP_TYPE_AXES:
+	case PropertyTypeAxes:
 		result, err = b.readAxes()
-	case PROP_TYPE_BRICKCOLOR:
+	case PropertyTypeBrickColor:
 		result, err = b.readBrickColor()
-	case PROP_TYPE_COLOR3:
+	case PropertyTypeColor3:
 		result, err = b.readColor3()
-	case PROP_TYPE_COLOR3UINT8:
+	case PropertyTypeColor3uint8:
 		result, err = b.readColor3uint8()
-	case PROP_TYPE_VECTOR2:
+	case PropertyTypeVector2:
 		result, err = b.readVector2()
-	case PROP_TYPE_VECTOR3_SIMPLE:
+	case PropertyTypeSimpleVector3:
 		result, err = b.readVector3Simple()
-	case PROP_TYPE_VECTOR3_COMPLICATED:
+	case PropertyTypeComplicatedVector3:
 		result, err = b.readVector3()
-	case PROP_TYPE_VECTOR2UINT16:
+	case PropertyTypeVector2int16:
 		result, err = b.readVector2int16()
-	case PROP_TYPE_VECTOR3UINT16:
+	case PropertyTypeVectorint16:
 		result, err = b.readVector3int16()
-	case PROP_TYPE_CFRAME_SIMPLE:
+	case PropertyTypeSimpleCFrame:
 		result, err = b.readCFrameSimple()
-	case PROP_TYPE_CFRAME_COMPLICATED:
+	case PropertyTypeComplicatedCFrame:
 		result, err = b.readCFrame()
-	case PROP_TYPE_NUMBERSEQUENCE:
+	case PropertyTypeNumberSequence:
 		result, err = b.readNumberSequence()
-	case PROP_TYPE_NUMBERSEQUENCEKEYPOINT:
+	case PropertyTypeNumberSequenceKeypoint:
 		result, err = b.readNumberSequenceKeypoint()
-	case PROP_TYPE_NUMBERRANGE:
+	case PropertyTypeNumberRange:
 		result, err = b.readNumberRange()
-	case PROP_TYPE_COLORSEQUENCE:
+	case PropertyTypeColorSequence:
 		result, err = b.readColorSequence()
-	case PROP_TYPE_COLORSEQUENCEKEYPOINT:
+	case PropertyTypeColorSequenceKeypoint:
 		result, err = b.readColorSequenceKeypoint()
-	case PROP_TYPE_RECT2D:
+	case PropertyTypeRect2D:
 		result, err = b.readRect2D()
-	case PROP_TYPE_PHYSICALPROPERTIES:
+	case PropertyTypePhysicalProperties:
 		result, err = b.readPhysicalProperties()
-	case PROP_TYPE_REGION3:
+	case PropertyTypeREGION3:
 		result, err = b.readRegion3()
-	case PROP_TYPE_REGION3INT16:
+	case PropertyTypeREGION3INT16:
 		result, err = b.readRegion3int16()
-	case PROP_TYPE_INT64:
+	case PropertyTypeInt64:
 		result, err = b.readInt64()
 	}
 	return result, err
