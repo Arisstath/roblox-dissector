@@ -7,7 +7,7 @@ import (
 	"github.com/Gskartwii/roblox-dissector/datamodel"
 )
 
-// Touch replication for a single touch
+// Packet86LayerSubpacket represents touch replication for a single touch
 type Packet86LayerSubpacket struct {
 	Instance1 *datamodel.Instance
 	Instance2 *datamodel.Instance
@@ -15,17 +15,12 @@ type Packet86LayerSubpacket struct {
 	IsTouch bool
 }
 
-// ID_TOUCHES - client <-> server
+// Packet86Layer represents ID_TOUCHES - client <-> server
 type Packet86Layer struct {
 	SubPackets []*Packet86LayerSubpacket
 }
 
-func NewPacket86Layer() *Packet86Layer {
-	return &Packet86Layer{}
-}
-
 func (thisStream *extendedReader) DecodePacket86Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-
 	layer := &Packet86Layer{}
 	context := reader.Context()
 	for {
@@ -63,6 +58,7 @@ func (thisStream *extendedReader) DecodePacket86Layer(reader PacketReader, layer
 	return layer, nil
 }
 
+// Serialize implements RakNetPacket.Serialize
 func (layer *Packet86Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	err := stream.WriteByte(0x86)
 	if err != nil {
@@ -94,10 +90,12 @@ func (layer *Packet86Layer) String() string {
 	return fmt.Sprintf("ID_TOUCH: %d items", len(layer.SubPackets))
 }
 
+// TypeString implements RakNetPacket.TypeString()
 func (Packet86Layer) TypeString() string {
 	return "ID_TOUCH"
 }
 
+// Type implements RakNetPacket.Type()
 func (Packet86Layer) Type() byte {
 	return 0x86
 }

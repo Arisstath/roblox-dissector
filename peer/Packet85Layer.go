@@ -65,7 +65,7 @@ func (b *extendedReader) readPhysicsData(data *PhysicsData, motors bool, reader 
 		return err
 	}
 	reference, err := b.readObject(reader.Caches())
-	if err != CacheReadOOB {
+	if err != ErrCacheReadOOB {
 		reader.Context().InstancesByReference.OnAddInstance(reference, func(inst *datamodel.Instance) {
 			data.PlatformChild = inst
 		})
@@ -74,14 +74,13 @@ func (b *extendedReader) readPhysicsData(data *PhysicsData, motors bool, reader 
 	return err
 }
 
-func (thisStream *extendedReader) DecodePacket85Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-
+func (b *extendedReader) DecodePacket85Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	context := reader.Context()
 	layer := &Packet85Layer{}
 	for {
-		reference, err := thisStream.readObject(reader.Caches())
+		reference, err := b.readObject(reader.Caches())
 		// unordered packets may have problems with caches
-		if err != nil && err != CacheReadOOB {
+		if err != nil && err != ErrCacheReadOOB {
 			return layer, err
 		}
 		if reference.IsNull {
@@ -90,29 +89,29 @@ func (thisStream *extendedReader) DecodePacket85Layer(reader PacketReader, layer
 		layers.Root.Logger.Println("reading physics for ref", reference.String())
 		subpacket := &Packet85LayerSubpacket{}
 		// TODO: generic function for this
-		if err != CacheReadOOB {
+		if err != ErrCacheReadOOB {
 			context.InstancesByReference.OnAddInstance(reference, func(inst *datamodel.Instance) {
 				subpacket.Data.Instance = inst
 			})
 		}
 
-		myFlags, err := thisStream.readUint8()
+		myFlags, err := b.readUint8()
 		if err != nil {
 			return layer, err
 		}
 		subpacket.NetworkHumanoidState = myFlags & 0x1F
 
 		if reader.IsClient() {
-			err = thisStream.readPhysicsData(&subpacket.Data, true, reader)
+			err = b.readPhysicsData(&subpacket.Data, true, reader)
 			if err != nil {
 				return layer, err
 			}
 		} else {
-			subpacket.Data.Motors, err = thisStream.readMotors()
+			subpacket.Data.Motors, err = b.readMotors()
 			if err != nil {
 				return layer, err
 			}
-			numEntries, err := thisStream.readUint8()
+			numEntries, err := b.readUint8()
 			if err != nil {
 				return layer, err
 			}
@@ -120,11 +119,11 @@ func (thisStream *extendedReader) DecodePacket85Layer(reader PacketReader, layer
 			subpacket.History = make([]*PhysicsData, numEntries)
 			for i := 0; i < int(numEntries); i++ {
 				subpacket.History[i] = new(PhysicsData)
-				subpacket.History[i].Interval, err = thisStream.readFloat32BE()
+				subpacket.History[i].Interval, err = b.readFloat32BE()
 				if err != nil {
 					return layer, err
 				}
-				thisStream.readPhysicsData(subpacket.History[i], false, reader)
+				b.readPhysicsData(subpacket.History[i], false, reader)
 				if err != nil {
 					return layer, err
 				}
@@ -133,16 +132,16 @@ func (thisStream *extendedReader) DecodePacket85Layer(reader PacketReader, layer
 
 		if (myFlags>>5)&1 == 0 { // has children
 			var object datamodel.Reference
-			for object, err = thisStream.readObject(reader.Caches()); (err == nil || err == CacheReadOOB) && !object.IsNull; object, err = thisStream.readObject(reader.Caches()) {
+			for object, err = b.readObject(reader.Caches()); (err == nil || err == ErrCacheReadOOB) && !object.IsNull; object, err = b.readObject(reader.Caches()) {
 				layers.Root.Logger.Println("reading physics child for ref", object.String())
 				child := new(PhysicsData)
-				if err != CacheReadOOB { // TODO: hack! unordered packets may have problems with caches
+				if err != ErrCacheReadOOB { // TODO: hack! unordered packets may have problems with caches
 					context.InstancesByReference.OnAddInstance(object, func(inst *datamodel.Instance) {
 						child.Instance = inst
 					})
 				}
 
-				err = thisStream.readPhysicsData(child, true, reader)
+				err = b.readPhysicsData(child, true, reader)
 				if err != nil {
 					return layer, err
 				}
@@ -192,6 +191,7 @@ func (b *extendedWriter) writePhysicsData(val *PhysicsData, motors bool, writer 
 	return err
 }
 
+// Serialize implements RakNetPacket.Serialize
 func (layer *Packet85Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	err := stream.WriteByte(0x85)
 	if err != nil {
@@ -271,9 +271,12 @@ func (layer *Packet85Layer) String() string {
 	return fmt.Sprintf("ID_PHYSICS: %d items", len(layer.SubPackets))
 }
 
+// TypeString implements RakNetPacket.TypeString()
 func (Packet85Layer) TypeString() string {
 	return "ID_PHYSICS"
 }
+
+// Type implements RakNetPacket.Type()
 func (Packet85Layer) Type() byte {
 	return 0x85
 }
