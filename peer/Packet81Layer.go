@@ -9,7 +9,7 @@ import (
 
 // Describes a global service from ID_SET_GLOBALS (Packet81Layer)
 type Packet81LayerItem struct {
-	Schema        *StaticInstanceSchema
+	Schema        *NetworkInstanceSchema
 	Instance      *datamodel.Instance
 	WatchChanges  bool
 	WatchChildren bool
@@ -103,11 +103,11 @@ func (thisStream *extendedReader) DecodePacket81Layer(reader PacketReader, layer
 			return layer, err
 		}
 
-		if int(classID) > len(context.StaticSchema.Instances) {
-			return layer, fmt.Errorf("class idx %d is higher than %d", classID, len(context.StaticSchema.Instances))
+		if int(classID) > len(context.NetworkSchema.Instances) {
+			return layer, fmt.Errorf("class idx %d is higher than %d", classID, len(context.NetworkSchema.Instances))
 		}
 
-		schema := context.StaticSchema.Instances[classID]
+		schema := context.NetworkSchema.Instances[classID]
 		thisItem.Schema = schema
 		instance, err := context.InstancesByReference.CreateInstance(reference)
 		if err != nil {

@@ -14,10 +14,10 @@ func mustAtoi(x string) int {
 	return result
 }
 
-func ParseSchema(ifile io.Reader, efile io.Reader) (*StaticSchema, error) {
+func ParseSchema(ifile io.Reader, efile io.Reader) (*NetworkSchema, error) {
 	enums := bufio.NewReader(efile)
 	instances := bufio.NewReader(ifile)
-	schema := &StaticSchema{}
+	schema := &NetworkSchema{}
 	var totalEnums int
 	_, err := fmt.Fscanf(enums, "%d\n", &totalEnums)
 	if err != nil {
@@ -25,14 +25,14 @@ func ParseSchema(ifile io.Reader, efile io.Reader) (*StaticSchema, error) {
 	}
 
 	enumExp := regexp.MustCompile(`\s*"([a-zA-Z0-9 _]+)"\s*(\d+)\s*`)
-	schema.Enums = make([]*StaticEnumSchema, totalEnums)
+	schema.Enums = make([]*NetworkEnumSchema, totalEnums)
 	for i := 0; i < totalEnums; i++ {
 		line, err := enums.ReadString('\n')
 		if err != nil {
 			return schema, err
 		}
 		enum := enumExp.FindStringSubmatch(line)
-		schema.Enums[i] = &StaticEnumSchema{
+		schema.Enums[i] = &NetworkEnumSchema{
 			Name:      enum[1],
 			BitSize:   uint8(mustAtoi(enum[2])),
 			NetworkID: uint16(i),
@@ -50,9 +50,9 @@ func ParseSchema(ifile io.Reader, efile io.Reader) (*StaticSchema, error) {
 	if err != nil {
 		return schema, err
 	}
-	schema.Instances = make([]*StaticInstanceSchema, totalInstances)
-	schema.Properties = make([]*StaticPropertySchema, totalProperties)
-	schema.Events = make([]*StaticEventSchema, totalEvents)
+	schema.Instances = make([]*NetworkInstanceSchema, totalInstances)
+	schema.Properties = make([]*NetworkPropertySchema, totalProperties)
+	schema.Events = make([]*NetworkEventSchema, totalEvents)
 	propertyGlobalIndex := 0
 	eventGlobalIndex := 0
 	for i := 0; i < totalInstances; i++ {
@@ -61,7 +61,7 @@ func ParseSchema(ifile io.Reader, efile io.Reader) (*StaticSchema, error) {
 			return schema, err
 		}
 		instance := instanceExp.FindStringSubmatch(line)
-		thisInstance := &StaticInstanceSchema{
+		thisInstance := &NetworkInstanceSchema{
 			Name:      instance[1],
 			Unknown:   uint16(mustAtoi(instance[2])),
 			NetworkID: uint16(i),
@@ -72,7 +72,7 @@ func ParseSchema(ifile io.Reader, efile io.Reader) (*StaticSchema, error) {
 		if err != nil {
 			return schema, err
 		}
-		thisInstance.Properties = make([]*StaticPropertySchema, countProperties)
+		thisInstance.Properties = make([]*NetworkPropertySchema, countProperties)
 
 		for j := 0; j < countProperties; j++ {
 			line, err = instances.ReadString('\n')
@@ -81,7 +81,7 @@ func ParseSchema(ifile io.Reader, efile io.Reader) (*StaticSchema, error) {
 			}
 
 			property := propertyExp.FindStringSubmatch(line)
-			thisProperty := &StaticPropertySchema{
+			thisProperty := &NetworkPropertySchema{
 				Name:           property[1],
 				Type:           uint8(mustAtoi(property[2])),
 				EnumID:         uint16(mustAtoi(property[3])),
@@ -100,7 +100,7 @@ func ParseSchema(ifile io.Reader, efile io.Reader) (*StaticSchema, error) {
 		if err != nil {
 			return schema, err
 		}
-		thisInstance.Events = make([]*StaticEventSchema, countEvents)
+		thisInstance.Events = make([]*NetworkEventSchema, countEvents)
 		for j := 0; j < countEvents; j++ {
 			line, err = instances.ReadString('\n')
 			if err != nil {
@@ -108,13 +108,13 @@ func ParseSchema(ifile io.Reader, efile io.Reader) (*StaticSchema, error) {
 			}
 
 			event := eventExp.FindStringSubmatch(line)
-			thisEvent := &StaticEventSchema{
+			thisEvent := &NetworkEventSchema{
 				Name:           event[1],
 				InstanceSchema: thisInstance,
 				NetworkID:      uint16(eventGlobalIndex),
 			}
 			countArguments := mustAtoi(event[2])
-			thisEvent.Arguments = make([]*StaticArgumentSchema, countArguments)
+			thisEvent.Arguments = make([]*NetworkArgumentSchema, countArguments)
 			for k := 0; k < countArguments; k++ {
 				var argType int
 				var argUnk int
@@ -123,7 +123,7 @@ func ParseSchema(ifile io.Reader, efile io.Reader) (*StaticSchema, error) {
 				if err != nil {
 					return schema, err
 				}
-				thisArgument := &StaticArgumentSchema{
+				thisArgument := &NetworkArgumentSchema{
 					Type:       uint8(argType),
 					TypeString: TypeNames[uint8(argType)],
 					EnumID:     uint16(argUnk),
@@ -143,7 +143,7 @@ func ParseSchema(ifile io.Reader, efile io.Reader) (*StaticSchema, error) {
 	return schema, nil
 }
 
-func (schema *StaticSchema) Dump(instances io.Writer, enums io.Writer) error {
+func (schema *NetworkSchema) Dump(instances io.Writer, enums io.Writer) error {
 	var err error
 
 	totalEnums := len(schema.Enums)

@@ -572,7 +572,7 @@ func (myClient *CustomClient) SendEvent(instance *datamodel.Instance, name strin
 	return myClient.WriteDataPackets(
 		&Packet83_07{
 			Instance: instance,
-			Schema:   myClient.Context.StaticSchema.SchemaForClass(instance.ClassName).SchemaForEvent(name),
+			Schema:   myClient.Context.NetworkSchema.SchemaForClass(instance.ClassName).SchemaForEvent(name),
 			Event:    &ReplicationEvent{arguments},
 		},
 	)

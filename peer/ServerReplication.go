@@ -246,7 +246,7 @@ func (client *ServerClient) PropChangedHandler(inst *datamodel.Instance, e *emit
 	if !client.IsHandlingProp(inst, name) {
 		client.WriteDataPackets(&Packet83_03{
 			Instance: inst,
-			Schema:   client.Context.StaticSchema.SchemaForClass(inst.ClassName).SchemaForProp(name),
+			Schema:   client.Context.NetworkSchema.SchemaForClass(inst.ClassName).SchemaForProp(name),
 			Value:    value,
 		})
 	}
@@ -261,7 +261,7 @@ func (client *ServerClient) EventHandler(inst *datamodel.Instance, e *emitter.Ev
 		case "RemoteOnInvokeClient", "OnClientEvent":
 			client.WriteDataPackets(&Packet83_07{
 				Instance: inst,
-				Schema:   client.Context.StaticSchema.SchemaForClass(inst.ClassName).SchemaForEvent(name),
+				Schema:   client.Context.NetworkSchema.SchemaForClass(inst.ClassName).SchemaForEvent(name),
 				Event:    &ReplicationEvent{args},
 			})
 		default:

@@ -11,7 +11,7 @@ type ReplicationEvent struct {
 	Arguments []rbxfile.Value
 }
 
-func (schema *StaticEventSchema) Decode(reader PacketReader, thisStream SerializeReader, layers *PacketLayers) (*ReplicationEvent, error) {
+func (schema *NetworkEventSchema) Decode(reader PacketReader, thisStream SerializeReader, layers *PacketLayers) (*ReplicationEvent, error) {
 	var err error
 	var thisVal rbxfile.Value
 
@@ -28,7 +28,7 @@ func (schema *StaticEventSchema) Decode(reader PacketReader, thisStream Serializ
 	return event, nil
 }
 
-func (schema *StaticEventSchema) Serialize(event *ReplicationEvent, writer PacketWriter, stream SerializeWriter) error {
+func (schema *NetworkEventSchema) Serialize(event *ReplicationEvent, writer PacketWriter, stream SerializeWriter) error {
 	if len(event.Arguments) != len(schema.Arguments) {
 		return errors.New("invalid number of event arguments")
 	}

@@ -74,7 +74,7 @@ var noLocalDefaults = map[string](map[string]rbxfile.Value){
 }
 
 // normalizeTypes changes the types of instances from binary format types to network types
-func normalizeTypes(children []*datamodel.Instance, schema *peer.StaticSchema) {
+func normalizeTypes(children []*datamodel.Instance, schema *peer.NetworkSchema) {
 	for _, instance := range children {
 		defaultValues, ok := noLocalDefaults[instance.ClassName]
 		if ok {
@@ -138,7 +138,7 @@ func normalizeTypes(children []*datamodel.Instance, schema *peer.StaticSchema) {
 	}
 }
 
-func normalizeChildren(instances []*datamodel.Instance, schema *peer.StaticSchema) {
+func normalizeChildren(instances []*datamodel.Instance, schema *peer.NetworkSchema) {
 	for _, inst := range instances {
 		newChildren := make([]*datamodel.Instance, 0, len(inst.Children))
 		for _, child := range inst.Children {
@@ -156,7 +156,7 @@ func normalizeChildren(instances []*datamodel.Instance, schema *peer.StaticSchem
 	}
 }
 
-func normalizeServices(root *datamodel.DataModel, schema *peer.StaticSchema) {
+func normalizeServices(root *datamodel.DataModel, schema *peer.NetworkSchema) {
 	newInstances := make([]*datamodel.Instance, 0, len(root.Instances))
 	for _, serv := range root.Instances {
 		class := schema.SchemaForClass(serv.ClassName)
@@ -171,7 +171,7 @@ func normalizeServices(root *datamodel.DataModel, schema *peer.StaticSchema) {
 	root.Instances = newInstances
 }
 
-func normalizeRoot(root *datamodel.DataModel, schema *peer.StaticSchema) {
+func normalizeRoot(root *datamodel.DataModel, schema *peer.NetworkSchema) {
 	normalizeServices(root, schema)
 	// Clear children of some services if they exist
 	players := root.FindService("Players")

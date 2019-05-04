@@ -142,8 +142,8 @@ type CommunicationContext struct {
 	// InstancesByReference provides a convenient way to access the DataModel's instances
 	// when only their reference is known
 	InstancesByReference *datamodel.InstanceList
-	// StaticSchema is the network instance/enum schema used in this communication
-	StaticSchema *StaticSchema
+	// NetworkSchema is the network instance/enum schema used in this communication
+	NetworkSchema *NetworkSchema
 	// IsStudio
 	IsStudio bool
 

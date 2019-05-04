@@ -11,7 +11,7 @@ import (
 type Packet83_0A struct {
 	// Instance that had the property change
 	Instance *datamodel.Instance
-	Schema   *StaticPropertySchema
+	Schema   *NetworkPropertySchema
 	Versions []uint32
 }
 
@@ -37,10 +37,10 @@ func (thisStream *extendedReader) DecodePacket83_0A(reader PacketReader, layers 
 		return layer, err
 	}
 
-	if int(propertyIDx) > int(len(context.StaticSchema.Properties)) {
-		return layer, fmt.Errorf("prop idx %d is higher than %d", propertyIDx, len(context.StaticSchema.Properties))
+	if int(propertyIDx) > int(len(context.NetworkSchema.Properties)) {
+		return layer, fmt.Errorf("prop idx %d is higher than %d", propertyIDx, len(context.NetworkSchema.Properties))
 	}
-	layer.Schema = context.StaticSchema.Properties[propertyIDx]
+	layer.Schema = context.NetworkSchema.Properties[propertyIDx]
 
 	countVersions, err := thisStream.readUint8()
 	if err != nil {

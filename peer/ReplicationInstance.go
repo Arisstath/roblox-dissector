@@ -12,7 +12,7 @@ type ReplicationInstance struct {
 	Instance           *datamodel.Instance
 	Properties         map[string]rbxfile.Value
 	Parent             *datamodel.Instance
-	Schema             *StaticInstanceSchema
+	Schema             *NetworkInstanceSchema
 	DeleteOnDisconnect bool
 }
 
@@ -45,10 +45,10 @@ func decodeReplicationInstance(reader PacketReader, thisStream InstanceReader, l
 	repInstance.Instance = thisInstance
 
 	schemaIDx, err := thisStream.readUint16BE()
-	if int(schemaIDx) > len(context.StaticSchema.Instances) {
-		return repInstance, fmt.Errorf("class idx %d is higher than %d", schemaIDx, len(context.StaticSchema.Instances))
+	if int(schemaIDx) > len(context.NetworkSchema.Instances) {
+		return repInstance, fmt.Errorf("class idx %d is higher than %d", schemaIDx, len(context.NetworkSchema.Instances))
 	}
-	schema := context.StaticSchema.Instances[schemaIDx]
+	schema := context.NetworkSchema.Instances[schemaIDx]
 	repInstance.Schema = schema
 	thisInstance.ClassName = schema.Name
 	layers.Root.Logger.Println("will parse", reference.String(), schema.Name, len(schema.Properties))

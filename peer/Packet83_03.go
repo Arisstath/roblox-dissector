@@ -14,7 +14,7 @@ type Packet83_03 struct {
 	Instance   *datamodel.Instance
 	HasVersion bool
 	Version    int32
-	Schema     *StaticPropertySchema
+	Schema     *NetworkPropertySchema
 	// New value
 	Value rbxfile.Value
 }
@@ -53,7 +53,7 @@ func (thisStream *extendedReader) DecodePacket83_03(reader PacketReader, layers 
 	}
 
 	context := reader.Context()
-	if int(propertyIDx) == int(len(context.StaticSchema.Properties)) { // explicit Parent property system
+	if int(propertyIDx) == int(len(context.NetworkSchema.Properties)) { // explicit Parent property system
 		var reference datamodel.Reference
 		reference, err = thisStream.readObject(reader.Caches())
 		if err != nil {
@@ -73,10 +73,10 @@ func (thisStream *extendedReader) DecodePacket83_03(reader PacketReader, layers 
 		return layer, err
 	}
 
-	if int(propertyIDx) > int(len(context.StaticSchema.Properties)) {
-		return layer, fmt.Errorf("prop idx %d is higher than %d", propertyIDx, len(context.StaticSchema.Properties))
+	if int(propertyIDx) > int(len(context.NetworkSchema.Properties)) {
+		return layer, fmt.Errorf("prop idx %d is higher than %d", propertyIDx, len(context.NetworkSchema.Properties))
 	}
-	schema := context.StaticSchema.Properties[propertyIDx]
+	schema := context.NetworkSchema.Properties[propertyIDx]
 	layer.Schema = schema
 
 	layer.Value, err = schema.Decode(reader, thisStream, layers)
@@ -96,7 +96,7 @@ func (layer *Packet83_03) Serialize(writer PacketWriter, stream *extendedWriter)
 
 	context := writer.Context()
 	if layer.Schema == nil { // assume Parent property
-		err = stream.writeUint16BE(uint16(len(context.StaticSchema.Properties)))
+		err = stream.writeUint16BE(uint16(len(context.NetworkSchema.Properties)))
 		if err != nil {
 			return err
 		}

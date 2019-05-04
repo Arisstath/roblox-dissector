@@ -193,7 +193,7 @@ func (logicHandler *PacketLogicHandler) SendEvent(instance *datamodel.Instance, 
 	return logicHandler.WriteDataPackets(
 		&Packet83_07{
 			Instance: instance,
-			Schema:   logicHandler.Context.StaticSchema.SchemaForClass(instance.ClassName).SchemaForEvent(name),
+			Schema:   logicHandler.Context.NetworkSchema.SchemaForClass(instance.ClassName).SchemaForEvent(name),
 			Event:    &ReplicationEvent{arguments},
 		},
 	)
@@ -204,7 +204,7 @@ func (logicHandler *PacketLogicHandler) ReplicationInstance(inst *datamodel.Inst
 	repInstance.DeleteOnDisconnect = deleteOnDisconnect
 	repInstance.Instance = inst
 	repInstance.Parent = inst.Parent()
-	repInstance.Schema = logicHandler.Context.StaticSchema.SchemaForClass(inst.ClassName)
+	repInstance.Schema = logicHandler.Context.NetworkSchema.SchemaForClass(inst.ClassName)
 	inst.PropertiesMutex.RLock()
 	repInstance.Properties = make(map[string]rbxfile.Value, len(inst.Properties))
 	for name, value := range inst.Properties {

@@ -33,7 +33,7 @@ type CustomServer struct {
 	ClientEmitter      *emitter.Emitter
 	Address            *net.UDPAddr
 	GUID               uint64
-	Schema             *StaticSchema
+	Schema             *NetworkSchema
 	InstanceDictionary *datamodel.InstanceDictionary
 	RunningContext     context.Context
 
@@ -82,7 +82,7 @@ func NewServerClient(clientAddr *net.UDPAddr, server *CustomServer, context *Com
 	newContext := &CommunicationContext{
 		InstancesByReference: context.InstancesByReference,
 		DataModel:            context.DataModel,
-		StaticSchema:         context.StaticSchema,
+		NetworkSchema:         context.NetworkSchema,
 		InstanceTopScope:     context.InstanceTopScope,
 	}
 
@@ -154,7 +154,7 @@ func (myServer *CustomServer) stop() {
 	myServer.Connection.Close()
 }
 
-func NewCustomServer(ctx context.Context, port uint16, schema *StaticSchema, dataModel *datamodel.DataModel, dict *datamodel.InstanceDictionary) (*CustomServer, error) {
+func NewCustomServer(ctx context.Context, port uint16, schema *NetworkSchema, dataModel *datamodel.DataModel, dict *datamodel.InstanceDictionary) (*CustomServer, error) {
 	server := &CustomServer{Clients: make(map[string]*ServerClient)}
 
 	var err error
@@ -168,7 +168,7 @@ func NewCustomServer(ctx context.Context, port uint16, schema *StaticSchema, dat
 	server.Schema = schema
 	server.Context = NewCommunicationContext()
 	server.Context.DataModel = dataModel
-	server.Context.StaticSchema = schema
+	server.Context.NetworkSchema = schema
 	server.InstanceDictionary = dict
 	server.Context.InstanceTopScope = server.InstanceDictionary.Scope
 	server.ClientEmitter = emitter.New(0)

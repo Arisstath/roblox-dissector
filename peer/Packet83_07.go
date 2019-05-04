@@ -11,7 +11,7 @@ import (
 type Packet83_07 struct {
 	// Instance that the event was invoked on
 	Instance *datamodel.Instance
-	Schema   *StaticEventSchema
+	Schema   *NetworkEventSchema
 	// Description about the invocation
 	Event *ReplicationEvent
 }
@@ -38,11 +38,11 @@ func (thisStream *extendedReader) DecodePacket83_07(reader PacketReader, layers 
 	}
 
 	context := reader.Context()
-	if int(eventIDx) > int(len(context.StaticSchema.Events)) {
-		return layer, fmt.Errorf("event idx %d is higher than %d", eventIDx, len(context.StaticSchema.Events))
+	if int(eventIDx) > int(len(context.NetworkSchema.Events)) {
+		return layer, fmt.Errorf("event idx %d is higher than %d", eventIDx, len(context.NetworkSchema.Events))
 	}
 
-	schema := context.StaticSchema.Events[eventIDx]
+	schema := context.NetworkSchema.Events[eventIDx]
 	layer.Schema = schema
 	layers.Root.Logger.Println("Decoding event", schema.Name)
 	layer.Event, err = schema.Decode(reader, thisStream, layers)

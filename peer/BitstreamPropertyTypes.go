@@ -558,7 +558,7 @@ func (b *extendedReader) readNewPSint() (rbxfile.ValueInt, error) {
 }
 
 func getEnumName(context *CommunicationContext, id uint16) string {
-	return context.StaticSchema.Enums[id].Name
+	return context.NetworkSchema.Enums[id].Name
 }
 
 // readNewTypeAndValue is never used by join data!

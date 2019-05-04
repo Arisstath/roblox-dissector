@@ -114,7 +114,7 @@ func (client *ServerClient) topReplicate() error {
 		service := client.Context.DataModel.FindService(instance.ClassName)
 		if service != nil {
 			topReplicationItems = append(topReplicationItems, &Packet81LayerItem{
-				Schema:        client.Context.StaticSchema.SchemaForClass(instance.ClassName),
+				Schema:        client.Context.NetworkSchema.SchemaForClass(instance.ClassName),
 				Instance:      service,
 				WatchChanges:  instance.ReplicateProperties,
 				WatchChildren: instance.ReplicateChildren,
@@ -194,7 +194,7 @@ func (client *ServerClient) createPlayer() error {
 
 func (client *ServerClient) authHandler(e *emitter.Event) {
 	err := client.WritePacket(&Packet97Layer{
-		Schema: client.Context.StaticSchema,
+		Schema: client.Context.NetworkSchema,
 	})
 	if err != nil {
 		println("schema error: ", err.Error())
