@@ -2,8 +2,6 @@ package peer
 
 import "net"
 
-type ErrorHandler func(error)
-
 // ConnectedPeer describes a connection to a peer
 // FIXME: ACKs and NAKs are not properly reacted to.
 // create a resend queue before you forget!
@@ -30,6 +28,9 @@ func (peer *ConnectedPeer) sendACKs() error {
 	return nil
 }
 
+// NewConnectedPeer returns a new ConnectedPeer instance
+// withClient specifies whether the target of the connection
+// is a client, i.e. if the caller is acting as a server
 func NewConnectedPeer(context *CommunicationContext, withClient bool) *ConnectedPeer {
 	myPeer := &ConnectedPeer{}
 
