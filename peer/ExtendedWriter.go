@@ -93,9 +93,8 @@ func (b *extendedWriter) writeFloat16BE(value float32, min float32, max float32)
 func (b *extendedWriter) writeBoolByte(value bool) error {
 	if value {
 		return b.WriteByte(1)
-	} else {
-		return b.WriteByte(0)
 	}
+	return b.WriteByte(0)
 }
 
 func (b *extendedWriter) writeAddress(value *net.UDPAddr) error {
@@ -171,9 +170,8 @@ func (b *extendedWriter) writeWithCache(value interface{}, cache Cache, writeCal
 			return err
 		}
 		return writeCallback(b, value)
-	} else {
-		return b.WriteByte(matchedIndex)
 	}
+	return b.WriteByte(matchedIndex)
 }
 
 func (b *extendedWriter) writeUint32AndString(val interface{}) error {
