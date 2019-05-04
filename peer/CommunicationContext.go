@@ -118,6 +118,7 @@ func (c *ByteSliceCache) LastWrite() uint8 {
 	return c.lastWrite
 }
 
+// Caches represents a collection of network caches that are used by various packets
 type Caches struct {
 	String          StringCache
 	Object          StringCache
@@ -126,32 +127,38 @@ type Caches struct {
 	ProtectedString ByteSliceCache
 }
 
-// TODO: Remove CommunicationContext, or at least
-// make it so that it's only used for PCAP captures
-// where the server and client must be stored somewhere
+// CommunicationContext represents a network communication's
+// contextual data
 type CommunicationContext struct {
-	// TODO: Move this to reader and writer?
+	// InstanceTopScope is the server's default scope that is
+	// mainly used by JoinData
+	// TODO: make this use a getter and setter instead, so
+	// that an error can be reported if it is accessed prematurely
 	InstanceTopScope string
 
-	DataModel           *datamodel.DataModel
+	// DataModel represents the hierarchical collection of instances
+	// in the context of which the communication takes place
+	DataModel *datamodel.DataModel
+	// InstancesByReference provides a convenient way to access the DataModel's instances
+	// when only their reference is known
 	InstancesByReference *datamodel.InstanceList
-
-	// TODO: Can we do better?
-	UniqueID uint32
-
+	// StaticSchema is the network instance/enum schema used in this communication
 	StaticSchema *StaticSchema
-
+	// IsStudio
 	IsStudio bool
 
+	// ScriptKey and CoreScriptKey are decryption keys for the
+	// replicated scripts as reported by the server
 	ScriptKey     uint32
 	CoreScriptKey uint32
+
+	uniqueID uint32
 }
 
+// NewCommunicationContext returns a new CommunicationContext
 func NewCommunicationContext() *CommunicationContext {
 	return &CommunicationContext{
-		DataModel:           datamodel.New(),
+		DataModel:            datamodel.New(),
 		InstancesByReference: datamodel.NewInstanceList(),
-		// TODO: Report an error if top scope is accessed before being assigned
-		InstanceTopScope: "WARNING_UNASSIGNED_TOP_SCOPE",
 	}
 }
