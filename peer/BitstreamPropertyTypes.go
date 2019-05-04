@@ -1164,7 +1164,7 @@ func (b *extendedReader) readSerializedValueGeneric(reader PacketReader, valueTy
 	var result rbxfile.Value
 	var temp string
 	switch valueType {
-	case PROP_TYPE_INVALID: // I assume this is how it works, anyway
+	case PROP_TYPE_NIL: // I assume this is how it works, anyway
 		result = nil
 		err = nil
 	case PROP_TYPE_STRING_NO_CACHE:
