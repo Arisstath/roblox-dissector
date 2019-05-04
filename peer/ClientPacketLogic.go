@@ -150,7 +150,7 @@ func (myClient *CustomClient) sendProtocolSync() {
 }
 func (myClient *CustomClient) sendPlaceIDVerification(placeID int64) {
 	response92 := &Packet92Layer{
-		PlaceId: placeID,
+		PlaceID: placeID,
 	}
 	err := myClient.WritePacket(response92)
 	if err != nil {
