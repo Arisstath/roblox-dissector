@@ -2,15 +2,11 @@ package peer
 
 import "fmt"
 
-// ID_PROTOCOL_SYNC - client -> server
+// Packet90Layer represents ID_PROTOCOL_SYNC - client -> server
 type Packet90Layer struct {
 	SchemaVersion  uint32
 	RequestedFlags []string
 	JoinData       string
-}
-
-func NewPacket90Layer() *Packet90Layer {
-	return &Packet90Layer{}
 }
 
 func (stream *extendedReader) DecodePacket90Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
@@ -42,6 +38,7 @@ func (stream *extendedReader) DecodePacket90Layer(reader PacketReader, layers *P
 	return layer, nil
 }
 
+// Serialize implements RakNetPacket.Serialize
 func (layer *Packet90Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	err := stream.WriteByte(0x90)
 	if err != nil {
@@ -77,10 +74,12 @@ func (layer *Packet90Layer) String() string {
 	return fmt.Sprintf("ID_PROTOCOL_SYNC: Version %d, %d flags", layer.SchemaVersion, len(layer.RequestedFlags))
 }
 
+// TypeString implements RakNetPacket.TypeString()
 func (Packet90Layer) TypeString() string {
 	return "ID_PROTOCOL_SYNC"
 }
 
+// Type implements RakNetPacket.Type()
 func (Packet90Layer) Type() byte {
 	return 0x90
 }
