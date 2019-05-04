@@ -10,11 +10,16 @@ import (
 	"github.com/olebedev/emitter"
 )
 
+// RawJoinDataBuffer is a 0x83 subpacket which is functionally
+// identical to Packet83_0B.
+// However, its contents have been serialized ahead-of-time by JoinDataStreamer
+// and hence its Serialize implementation is different
 type RawJoinDataBuffer struct {
 	*Packet83_0B
 	buf []byte
 }
 
+// Serialize implements Packet83Subpacket.Serialize()
 func (buf *RawJoinDataBuffer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	_, err := stream.Write(buf.buf)
 	return err
@@ -56,6 +61,9 @@ type JoinDataStreamer struct {
 	packetWriter     PacketWriter
 }
 
+// NewJoinDataStreamer returns a new JoinDataStreamer object
+// which emits RawJoinDataBuffer objects once their internal
+// buffers reach the length specified by MaxJoinDataBytes
 func NewJoinDataStreamer(writer PacketWriter) *JoinDataStreamer {
 	streamer := &JoinDataStreamer{
 		BufferEmitter: emitter.New(0),
@@ -78,6 +86,8 @@ func (state *JoinDataStreamer) makeNewStream() *joinSerializeWriter {
 	return state.writer
 }
 
+// Flush forces JoinDataStreamer to emit the RawJoinDataBuffer being
+// serialized currently, unless empty
 func (state *JoinDataStreamer) Flush() error {
 	// If there's nothing to write, skip
 	if len(state.rawLayer.Instances) == 0 {
@@ -104,6 +114,8 @@ func (state *JoinDataStreamer) Flush() error {
 	return nil
 }
 
+// Close flushes the JoinDataStreamer and unbinds BufferEmitter
+// bindings
 func (state *JoinDataStreamer) Close() error {
 	err := state.Flush()
 	if err != nil {
@@ -113,6 +125,7 @@ func (state *JoinDataStreamer) Close() error {
 	return nil
 }
 
+// AddInstance add the instance to the current RawJoinDataBuffer
 func (state *JoinDataStreamer) AddInstance(instance *ReplicationInstance) error {
 	if state.compressedBuffer.Len() > MaxJoinDataBytes {
 		err := state.Flush()
