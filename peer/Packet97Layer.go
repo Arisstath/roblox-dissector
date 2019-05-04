@@ -8,7 +8,7 @@ import (
 	"github.com/DataDog/zstd"
 )
 
-// ID_NEW_SCHEMA - server -> client
+// Packet97Layer represents ID_NEW_SCHEMA - server -> client
 // Negotiates a network schema with the client
 type Packet97Layer struct {
 	Schema *NetworkSchema
@@ -197,6 +197,7 @@ func (thisStream *extendedReader) DecodePacket97Layer(reader PacketReader, layer
 	return layer, err
 }
 
+// Serialize implements RakNetPacket.Serialize()
 func (layer *Packet97Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
 
@@ -358,10 +359,12 @@ func (layer *Packet97Layer) String() string {
 	return fmt.Sprintf("ID_NEW_SCHEMA: %d enums, %d instances", len(layer.Schema.Enums), len(layer.Schema.Instances))
 }
 
+// TypeString implements RakNetPacket.TypeString()
 func (Packet97Layer) TypeString() string {
 	return "ID_NEW_SCHEMA"
 }
 
+// Type implements RakNetPacket.Type()
 func (Packet97Layer) Type() byte {
 	return 0x97
 }
