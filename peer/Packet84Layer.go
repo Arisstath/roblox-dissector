@@ -2,38 +2,38 @@ package peer
 
 import "fmt"
 
-// ID_MARKER - server -> client
+// Packet84Layer represents ID_MARKER - server -> client
 type Packet84Layer struct {
-	MarkerId uint32
-}
-
-func NewPacket84Layer() *Packet84Layer {
-	return &Packet84Layer{}
+	MarkerID uint32
 }
 
 func (thisStream *extendedReader) DecodePacket84Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := &Packet84Layer{}
 
 	var err error
-	layer.MarkerId, err = thisStream.readUint32BE()
+	layer.MarkerID, err = thisStream.readUint32BE()
 	return layer, err
 }
 
+// Serialize implements RakNetPacket.Serialize()
 func (layer *Packet84Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	err := stream.WriteByte(0x84)
 	if err != nil {
 		return err
 	}
-	return stream.writeUint32BE(layer.MarkerId)
+	return stream.writeUint32BE(layer.MarkerID)
 }
 
 func (layer *Packet84Layer) String() string {
-	return fmt.Sprintf("ID_MARKER: %d", layer.MarkerId)
+	return fmt.Sprintf("ID_MARKER: %d", layer.MarkerID)
 }
 
+// TypeString implements RakNetPacket.TypeString()
 func (Packet84Layer) TypeString() string {
 	return "ID_MARKER"
 }
+
+// Type implements RakNetPacket.Type()
 func (Packet84Layer) Type() byte {
 	return 0x84
 }
