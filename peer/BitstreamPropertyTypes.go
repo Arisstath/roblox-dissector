@@ -1159,7 +1159,7 @@ func (b *extendedReader) readPhysicsVelocity() (rbxfile.ValueVector3, error) {
 	return val, err
 }
 
-func (b *extendedReader) readSerializedValueGeneric(reader PacketReader, valueType uint8, enumId uint16) (rbxfile.Value, error) {
+func (b *extendedReader) readSerializedValueGeneric(reader PacketReader, valueType uint8, enumID uint16) (rbxfile.Value, error) {
 	var err error
 	var result rbxfile.Value
 	var temp string
@@ -1171,7 +1171,7 @@ func (b *extendedReader) readSerializedValueGeneric(reader PacketReader, valueTy
 		temp, err = b.readVarLengthString()
 		result = rbxfile.ValueString(temp)
 	case PROP_TYPE_ENUM:
-		result, err = b.readNewEnumValue(enumId, reader.Context())
+		result, err = b.readNewEnumValue(enumID, reader.Context())
 	case PROP_TYPE_BINARYSTRING:
 		result, err = b.readNewBinaryString()
 	case PROP_TYPE_PBOOL:

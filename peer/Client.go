@@ -22,11 +22,13 @@ import (
 	"github.com/robloxapi/rbxfile"
 )
 
-type InstanceEmitterBinding struct {
+type instanceEmitterBinding struct {
 	Instance *datamodel.Instance
 	Binding  <-chan emitter.Event
 }
 
+// LauncherStatuses provides a list of human-readable descriptions
+// for PlaceLauncher status codes
 var LauncherStatuses = [...]string{
 	"Wait",
 	"Wait (2)",
@@ -44,63 +46,75 @@ var LauncherStatuses = [...]string{
 }
 
 type placeLauncherResponse struct {
-	JobId                string
+	JobID                string
 	Status               int
-	JoinScriptUrl        string
-	AuthenticationUrl    string
+	JoinScriptURL        string
+	AuthenticationURL    string
 	AuthenticationTicket string
 }
-type JoinAshxResponse struct {
+type joinAshxResponse struct {
 	ClientTicket          string
 	NewClientTicket       string
-	SessionId             string
+	SessionID             string
 	MachineAddress        string
 	ServerPort            uint16
-	UserId                int64
+	UserID                int64
 	UserName              string
 	CharacterAppearance   string
-	CharacterAppearanceId int64
+	CharacterAppearanceID int64
 	PingInterval          int
 	AccountAge            int
 }
 
+// SecurityHandler describes an interface that provides emulation
+// of a certain Roblox client
 type SecurityHandler interface {
-	GenerateIdResponse(challenge uint32) uint32
+	// GenerateIdResponse should provide a response to a challenge
+	// given in Packet83_09_05
+	GenerateIDResponse(challenge uint32) uint32
+	// PatchTicketPacket should change the parameters in a Packet8ALayer
+	// appropriately
 	PatchTicketPacket(*Packet8ALayer)
+	// GenerateTicketHash should implement the hashing algorithm
+	// used for auth ticket hashes in Packet8ALayer
 	GenerateTicketHash(ticket string) uint32
-	OsPlatform() string
+	// OSPlatform should return a string recognized by Roblox
+	// that names the Roblox client platform (Win32, Windows_Universal, Android, etc.)
+	OSPlatform() string
+	// UserAgent should return a user agent string to be used in
+	// HTTP requests
 	UserAgent() string
 }
-type SecuritySettings struct {
-	rakPassword   []byte
-	goldenHash    uint32
-	securityKey   string
-	dataModelHash string
+type securitySettings struct {
+	RakPassword   []byte
+	GoldenHash    uint32
+	SecurityKey   string
+	DataModelHash string
 	osPlatform    string
 	userAgent     string
 }
-type Windows10SecuritySettings struct {
-	SecuritySettings
+type windows10SecuritySettings struct {
+	securitySettings
 }
 
-type JoinData struct {
+type joinData struct {
 	RawJoinData           string
 	CharacterAppearance   string
 	GameChatType          string
-	FollowUserId          int64
+	FollowUserID          int64
 	AccountAge            int32
 	SuperSafeChat         bool
-	VrDevice              string
+	VRDevice              string
 	MembershipType        string
-	Locale2Id             string
+	Locale2ID             string
 	UserName              string
 	IsTeleportedIn        bool
-	LocaleId              string
-	CharacterAppearanceId int64
-	UserId                int64
+	LocaleID              string
+	CharacterAppearanceID int64
+	UserID                int64
 }
 
-func (d JoinData) JSON() ([]byte, error) {
+func (d joinData) JSON() ([]byte, error) {
 	buffer := &bytes.Buffer{}
 	encoder := json.NewEncoder(buffer)
 	encoder.SetEscapeHTML(false)
@@ -109,29 +123,31 @@ func (d JoinData) JSON() ([]byte, error) {
 	return buffer.Bytes()[:buffer.Len()-1], err
 }
 
+// CustomClient emulates a Roblox client by requesting
+// Roblox to start a game server and then connecting to it
 type CustomClient struct {
 	PacketLogicHandler
-	Address               net.UDPAddr
-	ServerAddress         net.UDPAddr
+	Address               *net.UDPAddr
+	ServerAddress         *net.UDPAddr
 	clientTicket          string
-	sessionId             string
-	PlayerId              int64
+	sessionID             string
+	PlayerID              int64
 	UserName              string
 	characterAppearance   string
-	characterAppearanceId int64
-	PlaceId               uint32
+	characterAppearanceID int64
+	PlaceID               uint32
 	httpClient            *http.Client
 	GUID                  uint64
-	BrowserTrackerId      uint64
-	GenderId              uint8
+	BrowserTrackerID      uint64
+	GenderID              uint8
 	IsPartyLeader         bool
 	AccountAge            int
 
-	JoinDataObject JoinData
+	joinDataObject joinData
 
 	SecuritySettings   SecurityHandler
 	Logger             *log.Logger
-	LocalPlayer        *datamodel.Instance
+	localPlayer        *datamodel.Instance
 	timestamp2Index    uint64
 	InstanceDictionary *datamodel.InstanceDictionary
 
@@ -139,17 +155,20 @@ type CustomClient struct {
 	rootLayerPatchBinding <-chan emitter.Event
 }
 
+// ReadPacket processes a UDP packet sent by the server
+// Its first argument is a byte slice containing the UDP payload
 func (myClient *CustomClient) ReadPacket(buf []byte) {
 	layers := &PacketLayers{
 		Root: RootLayer{
-			Source:      &myClient.ServerAddress,
-			Destination: &myClient.Address,
+			Source:      myClient.ServerAddress,
+			Destination: myClient.Address,
 			FromServer:  true,
 		},
 	}
 	myClient.ConnectedPeer.ReadPacket(buf, layers)
 }
 
+// NewCustomClient creates a new client using a context
 func NewCustomClient(ctx context.Context) *CustomClient {
 	rand.Seed(time.Now().UnixNano())
 	context := NewCommunicationContext()
@@ -169,7 +188,9 @@ func NewCustomClient(ctx context.Context) *CustomClient {
 	return client
 }
 
-func (myClient *CustomClient) GetLocalPlayer() (*datamodel.Instance, error) { // may yield! do not call from main thread
+// LocalPlayer wait for and returns the client's LocalPlayer
+// may yield! do not call from main thread
+func (myClient *CustomClient) LocalPlayer() (*datamodel.Instance, error) {
 	return myClient.DataModel.WaitForChild(myClient.RunningContext, "Players", myClient.UserName)
 }
 
@@ -237,7 +258,7 @@ func (myClient *CustomClient) setupChat() error {
 			myClient.Logger.Printf("SYSTEM: %s has joined the game.\n", player.Name())
 			go func(player *datamodel.Instance) {
 				parentEmitter := player.ParentEmitter.On("*")
-				thisBinding := playerLeaveBindings.PushBack(InstanceEmitterBinding{Instance: player, Binding: parentEmitter})
+				thisBinding := playerLeaveBindings.PushBack(instanceEmitterBinding{Instance: player, Binding: parentEmitter})
 				for newParent := range parentEmitter {
 					if newParent.Args[0].(*datamodel.Instance) == nil {
 						playerLeaveBindings.Remove(thisBinding)
@@ -252,7 +273,7 @@ func (myClient *CustomClient) setupChat() error {
 		case <-myClient.RunningContext.Done():
 			players.ChildEmitter.Off("*", playerJoinEmitter)
 			for thisBind := playerLeaveBindings.Front(); thisBind != nil; thisBind = thisBind.Next() {
-				bind := thisBind.Value.(InstanceEmitterBinding)
+				bind := thisBind.Value.(instanceEmitterBinding)
 				bind.Instance.PropertyEmitter.Off("Parent", bind.Binding)
 			}
 			return nil
@@ -260,6 +281,9 @@ func (myClient *CustomClient) setupChat() error {
 	}
 }
 
+// SendChat sends a chat message
+// The first argument is required. The second and third arguments are optional
+// This function my wait for the chat RemoteEvent to be added to the DataModel
 func (myClient *CustomClient) SendChat(message string, toPlayer string, channel string) error {
 	if channel == "" {
 		channel = "All" // assume default channel
@@ -314,25 +338,25 @@ func (myClient *CustomClient) joinWithJoinScript(url string, cookies []*http.Coo
 	}
 	body.Close()
 
-	var jsResp JoinAshxResponse
+	var jsResp joinAshxResponse
 	err = json.Unmarshal(bodyBytes, &jsResp)
 	if err != nil {
 		return err
 	}
 	myClient.characterAppearance = jsResp.CharacterAppearance
-	myClient.characterAppearanceId = jsResp.CharacterAppearanceId
+	myClient.characterAppearanceID = jsResp.CharacterAppearanceID
 	myClient.clientTicket = jsResp.ClientTicket
-	myClient.sessionId = jsResp.SessionId
-	myClient.PlayerId = jsResp.UserId
+	myClient.sessionID = jsResp.SessionID
+	myClient.PlayerID = jsResp.UserID
 	myClient.UserName = jsResp.UserName
 	myClient.pingInterval = jsResp.PingInterval
 	myClient.AccountAge = jsResp.AccountAge
 
-	err = json.Unmarshal(bodyBytes, &myClient.JoinDataObject)
+	err = json.Unmarshal(bodyBytes, &myClient.joinDataObject)
 	if err != nil {
 		return err
 	}
-	myClient.JoinDataObject.LocaleId = "en-us"
+	myClient.joinDataObject.LocaleID = "en-us"
 
 	addrp, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", jsResp.MachineAddress, jsResp.ServerPort))
 	if err != nil {
@@ -341,7 +365,7 @@ func (myClient *CustomClient) joinWithJoinScript(url string, cookies []*http.Coo
 
 	myClient.Logger.Println("Connecting to", jsResp.MachineAddress)
 
-	myClient.ServerAddress = *addrp
+	myClient.ServerAddress = addrp
 	return myClient.rakConnect()
 }
 
@@ -379,11 +403,9 @@ func (myClient *CustomClient) joinWithPlaceLauncher(url string, cookies []*http.
 			return errors.New("PlaceLauncher returned fatal status")
 		}
 
-		if plResp.JoinScriptUrl == "" {
+		if plResp.JoinScriptURL == "" {
 			myClient.Logger.Println("joinscript failure, status", plResp.Status)
 			return errors.New("couldn't get joinscripturl")
-		} else {
-			break
 		}
 	}
 
@@ -391,11 +413,13 @@ func (myClient *CustomClient) joinWithPlaceLauncher(url string, cookies []*http.
 		cookies = append(cookies, cook)
 	}
 
-	return myClient.joinWithJoinScript(plResp.JoinScriptUrl, cookies)
+	return myClient.joinWithJoinScript(plResp.JoinScriptURL, cookies)
 }
 
-func (myClient *CustomClient) ConnectWithAuthTicket(placeId uint32, ticket string) error {
-	myClient.PlaceId = placeId
+// ConnectWithAuthTicket requests Roblox to create a new game server for the specified place
+// and joins that server
+func (myClient *CustomClient) ConnectWithAuthTicket(placeID uint32, ticket string) error {
+	myClient.PlaceID = placeID
 	robloxCommClient := myClient.httpClient
 	negotiationRequest, err := http.NewRequest("POST", "https://www.roblox.com/Login/Negotiate.ashx?suggest="+ticket, nil)
 	if err != nil {
@@ -429,27 +453,29 @@ func (myClient *CustomClient) ConnectWithAuthTicket(placeId uint32, ticket strin
 	}
 	cookies := resp.Cookies()
 
-	return myClient.joinWithPlaceLauncher(fmt.Sprintf("https://www.roblox.com/game/PlaceLauncher.ashx?request=RequestGame&browserTrackerId=%d&placeId=%d&isPartyLeader=false&genderId=%d", myClient.BrowserTrackerId, myClient.PlaceId, myClient.GenderId), cookies)
+	return myClient.joinWithPlaceLauncher(fmt.Sprintf("https://www.roblox.com/game/PlaceLauncher.ashx?request=RequestGame&browserTrackerId=%d&placeId=%d&isPartyLeader=false&genderId=%d", myClient.BrowserTrackerID, myClient.PlaceID, myClient.GenderID), cookies)
 }
 
-func (settings *SecuritySettings) UserAgent() string {
+func (settings *securitySettings) UserAgent() string {
 	return settings.userAgent
 }
-func (settings *SecuritySettings) OsPlatform() string {
+func (settings *securitySettings) OSPlatform() string {
 	return settings.osPlatform
 }
 
-// Automatically fills in any needed hashes/key for Windows 10 clients
-func Win10Settings() *Windows10SecuritySettings {
-	settings := &Windows10SecuritySettings{}
+// Win10Settings returns a SecurityHandler that imitates
+// a Win10Universal client (Windows Store version)
+func Win10Settings() SecurityHandler {
+	settings := &windows10SecuritySettings{}
 	settings.userAgent = "Roblox/WinINet"
 	settings.osPlatform = "Windows_Universal"
+
 	return settings
 }
-func (settings *Windows10SecuritySettings) GenerateIdResponse(challenge uint32) uint32 {
+func (settings *windows10SecuritySettings) GenerateIDResponse(challenge uint32) uint32 {
 	return (0xFFFFFFFF ^ (challenge - 0x664B2854)) - 0x1B460
 }
-func (settings *Windows10SecuritySettings) GenerateTicketHash(ticket string) uint32 {
+func (settings *windows10SecuritySettings) GenerateTicketHash(ticket string) uint32 {
 	var ecxHash uint32
 	initHash := xxHash32.Checksum([]byte(ticket), 1)
 	initHash += 0x557BB5D7
@@ -469,7 +495,7 @@ func (settings *Windows10SecuritySettings) GenerateTicketHash(ticket string) uin
 
 	return initHash
 }
-func (settings *Windows10SecuritySettings) PatchTicketPacket(packet *Packet8ALayer) {
+func (settings *windows10SecuritySettings) PatchTicketPacket(packet *Packet8ALayer) {
 	packet.SecurityKey = "2e427f51c4dab762fe9e3471c6cfa1650841723b!b1205bf4c3bb3bdbf245f3654cee567a\x0E"
 	packet.GoldenHash = 0xC001CAFE
 	packet.DataModelHash = "ios,ios"
@@ -529,8 +555,8 @@ func (myClient *CustomClient) createWriter() {
 		e.Args[0].(*PacketLayers).Root = RootLayer{
 			FromClient:  true,
 			Logger:      nil,
-			Source:      &myClient.Address,
-			Destination: &myClient.ServerAddress,
+			Source:      myClient.Address,
+			Destination: myClient.ServerAddress,
 		}
 	}, emitter.Void)
 }
@@ -539,12 +565,12 @@ func (myClient *CustomClient) rakConnect() error {
 	var err error
 	addr := myClient.ServerAddress
 
-	myClient.Connection, err = net.DialUDP("udp", nil, &addr)
+	myClient.Connection, err = net.DialUDP("udp", nil, addr)
 	defer myClient.Connection.Close()
 	if err != nil {
 		return err
 	}
-	myClient.Address = *myClient.Connection.LocalAddr().(*net.UDPAddr)
+	myClient.Address = myClient.Connection.LocalAddr().(*net.UDPAddr)
 
 	myClient.dial()
 	myClient.startAcker()
