@@ -2,29 +2,26 @@ package peer
 
 import "fmt"
 
-// ID_DICTIONARY_FORMAT - server -> client
+// Packet93Layer represents ID_DICTIONARY_FORMAT - server -> client
 // Response to ID_PROTOCOL_SYNC (Packet90Layer)
 type Packet93Layer struct {
 	ProtocolSchemaSync bool
 	// Use dictionary compression?
-	ApiDictionaryCompression bool
+	APIDictionaryCompression bool
 	// Flags set by the server
 	Params map[string]bool
 }
 
-func NewPacket93Layer() *Packet93Layer {
-	return &Packet93Layer{Params: make(map[string]bool)}
-}
-
 func (thisStream *extendedReader) DecodePacket93Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := &Packet93Layer{}
+	layer.Params = make(map[string]bool)
 
 	flags, err := thisStream.ReadByte()
 	if err != nil {
 		return layer, err
 	}
 	layer.ProtocolSchemaSync = flags&1 == 1
-	layer.ApiDictionaryCompression = flags&2 == 2
+	layer.APIDictionaryCompression = flags&2 == 2
 	if err != nil {
 		return layer, err
 	}
@@ -59,6 +56,7 @@ func (thisStream *extendedReader) DecodePacket93Layer(reader PacketReader, layer
 	return layer, nil
 }
 
+// Serialize implements RakNetPacket.Serialize
 func (layer *Packet93Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
 	err = stream.WriteByte(0x93)
@@ -70,7 +68,7 @@ func (layer *Packet93Layer) Serialize(writer PacketWriter, stream *extendedWrite
 	if layer.ProtocolSchemaSync {
 		flags |= 1
 	}
-	if layer.ApiDictionaryCompression {
+	if layer.APIDictionaryCompression {
 		flags |= 2
 	}
 	err = stream.WriteByte(flags)
@@ -109,10 +107,12 @@ func (layer *Packet93Layer) String() string {
 	return fmt.Sprintf("ID_DICTIONARY_FORMAT: %d flags", len(layer.Params))
 }
 
+// TypeString implements RakNetPacket.TypeString()
 func (Packet93Layer) TypeString() string {
 	return "ID_DICTIONARY_FORMAT"
 }
 
+// Type implements RakNetPacket.Type()
 func (Packet93Layer) Type() byte {
 	return 0x93
 }
