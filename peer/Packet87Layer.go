@@ -6,13 +6,10 @@ import (
 	"github.com/Gskartwii/roblox-dissector/datamodel"
 )
 
+// Packet87Layer represents ID_CHAT_ALL
 type Packet87Layer struct {
 	Instance *datamodel.Instance
 	Message  string
-}
-
-func NewPacket87Layer() *Packet87Layer {
-	return &Packet87Layer{}
 }
 
 func (thisStream *extendedReader) DecodePacket87Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
@@ -40,6 +37,7 @@ func (thisStream *extendedReader) DecodePacket87Layer(reader PacketReader, layer
 	return layer, err
 }
 
+// Serialize implements RakNetPacket.Serialize
 func (layer *Packet87Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	err := stream.writeUint32AndString(layer.Instance.Ref.Scope)
 	if err != nil {
@@ -56,10 +54,12 @@ func (layer *Packet87Layer) String() string {
 	return fmt.Sprintf("ID_CHAT_ALL: <%s>", layer.Instance.GetFullName())
 }
 
+// TypeString implements RakNetPacket.TypeString()
 func (Packet87Layer) TypeString() string {
 	return "ID_CHAT_ALL"
 }
 
+// Type implements RakNetPacket.Type()
 func (Packet87Layer) Type() byte {
 	return 0x87
 }
