@@ -2,13 +2,10 @@ package peer
 
 import "fmt"
 
+// Packet96Layer represents ID_REQUEST_STATS
 type Packet96Layer struct {
 	Request bool
 	Version uint32
-}
-
-func NewPacket96Layer() *Packet96Layer {
-	return &Packet96Layer{}
 }
 
 func (thisStream *extendedReader) DecodePacket96Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
@@ -27,6 +24,7 @@ func (thisStream *extendedReader) DecodePacket96Layer(reader PacketReader, layer
 	return layer, err
 }
 
+// Serialize implements RakNetPacket.Serialize
 func (layer *Packet96Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	err := stream.writeBoolByte(layer.Request)
 	if err != nil {
@@ -43,10 +41,12 @@ func (layer *Packet96Layer) String() string {
 	return fmt.Sprintf("ID_REQUEST_STATS: Version %d", layer.Version)
 }
 
+// TypeString implements RakNetPacket.TypeString()
 func (Packet96Layer) TypeString() string {
 	return "ID_REQUEST_STATS"
 }
 
+// Type implements RakNetPacket.Type()
 func (Packet96Layer) Type() byte {
 	return 0x96
 }
