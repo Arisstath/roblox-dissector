@@ -159,11 +159,11 @@ func (myClient *CustomClient) sendPlaceIDVerification(placeID int64) {
 }
 func (myClient *CustomClient) submitTicket() {
 	response8A := &Packet8ALayer{
-		PlayerId:          myClient.PlayerID,
+		PlayerID:          myClient.PlayerID,
 		ClientTicket:      myClient.clientTicket,
 		ProtocolVersion:   36,
 		RobloxProductName: "?",
-		SessionId:         myClient.sessionID,
+		SessionID:         myClient.sessionID,
 	}
 	myClient.SecuritySettings.PatchTicketPacket(response8A)
 	err := myClient.WritePacket(response8A)

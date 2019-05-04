@@ -4,9 +4,9 @@ import (
 	"fmt"
 )
 
-// ID_SUBMIT_TICKET - client -> server
+// Packet8ALayer represents ID_SUBMIT_TICKET - client -> server
 type Packet8ALayer struct {
-	PlayerId      int64
+	PlayerID      int64
 	ClientTicket  string
 	TicketHash    uint32
 	DataModelHash string
@@ -15,16 +15,12 @@ type Packet8ALayer struct {
 	SecurityKey       string
 	Platform          string
 	RobloxProductName string
-	SessionId         string
+	SessionID         string
 	GoldenHash        uint32
 }
 
-func NewPacket8ALayer() *Packet8ALayer {
-	return &Packet8ALayer{}
-}
-
 func (stream *extendedReader) DecodePacket8ALayer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-	layer := NewPacket8ALayer()
+	layer := &Packet8ALayer{}
 
 	lenBytes := bitsToBytes(uint(layers.Reliability.LengthInBits)) - 1 // -1 for packet id
 	thisStream, err := stream.aesDecrypt(int(lenBytes))
@@ -32,12 +28,12 @@ func (stream *extendedReader) DecodePacket8ALayer(reader PacketReader, layers *P
 		return layer, err
 	}
 
-	playerId, err := thisStream.readVarsint64()
+	playerID, err := thisStream.readVarsint64()
 	if err != nil {
 		return layer, err
 	}
-	layer.PlayerId = playerId
-	layers.Root.Logger.Println("playerid", playerId)
+	layer.PlayerID = playerID
+	layers.Root.Logger.Println("playerid", playerID)
 	layer.ClientTicket, err = thisStream.readVarLengthString()
 	if err != nil {
 		return layer, err
@@ -82,11 +78,11 @@ func (stream *extendedReader) DecodePacket8ALayer(reader PacketReader, layers *P
 		layers.Root.Logger.Println("hash2", hash2, "badfood check success: ", hash2 == layer.TicketHash-0xbadf00d)
 	}
 
-	layer.SessionId, err = thisStream.readVarLengthString()
+	layer.SessionID, err = thisStream.readVarLengthString()
 	if err != nil {
 		return layer, err
 	}
-	layers.Root.Logger.Println("sessid", layer.SessionId)
+	layers.Root.Logger.Println("sessid", layer.SessionID)
 	layer.GoldenHash, err = thisStream.readUint32BE()
 	if err != nil {
 		return layer, err
@@ -96,6 +92,7 @@ func (stream *extendedReader) DecodePacket8ALayer(reader PacketReader, layers *P
 	return layer, nil
 }
 
+// Serialize implements RakNetPacket.Serialize
 func (layer *Packet8ALayer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
 
@@ -104,7 +101,7 @@ func (layer *Packet8ALayer) Serialize(writer PacketWriter, stream *extendedWrite
 		return err
 	}
 	rawStream := stream.aesEncrypt()
-	err = rawStream.writeVarsint64(layer.PlayerId)
+	err = rawStream.writeVarsint64(layer.PlayerID)
 	if err != nil {
 		return err
 	}
@@ -142,7 +139,7 @@ func (layer *Packet8ALayer) Serialize(writer PacketWriter, stream *extendedWrite
 			return err
 		}
 	}
-	err = rawStream.writeVarLengthString(layer.SessionId)
+	err = rawStream.writeVarLengthString(layer.SessionID)
 	if err != nil {
 		return err
 	}
@@ -161,10 +158,12 @@ func (layer *Packet8ALayer) String() string {
 	return fmt.Sprintf("ID_SUBMIT_TICKET: %s", layer.Platform)
 }
 
+// TypeString implements RakNetPacket.TypeString()
 func (Packet8ALayer) TypeString() string {
 	return "ID_SUBMIT_TICKET"
 }
 
+// Type implements RakNetPacket.Type()
 func (Packet8ALayer) Type() byte {
 	return 0x8A
 }
