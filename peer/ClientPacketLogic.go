@@ -71,7 +71,7 @@ func (myClient *CustomClient) sendResponse7() {
 	myClient.WriteOffline(&Packet07Layer{
 		GUID:      myClient.GUID,
 		MTU:       1492,
-		IPAddress: &myClient.ServerAddress,
+		IPAddress: myClient.ServerAddress,
 	})
 }
 func (myClient *CustomClient) offline6Handler(e *emitter.Event) {
@@ -101,9 +101,9 @@ func (myClient *CustomClient) sendResponse13(pingTime uint64) {
 	nullIP, _ := net.ResolveUDPAddr("udp", "0.0.0.0:0")
 	myClient.Address.Port = 0
 	response := &Packet13Layer{
-		IPAddress: &myClient.ServerAddress,
+		IPAddress: myClient.ServerAddress,
 		Addresses: [10]*net.UDPAddr{
-			&myClient.Address,
+			myClient.Address,
 			nullIP,
 			nullIP,
 			nullIP,
@@ -124,7 +124,7 @@ func (myClient *CustomClient) sendResponse13(pingTime uint64) {
 	}
 }
 func (myClient *CustomClient) sendProtocolSync() {
-	marshalledJoin, err := myClient.JoinDataObject.JSON()
+	marshalledJoin, err := myClient.joinDataObject.JSON()
 	if err != nil {
 		myClient.Logger.Println("Failed to marshal join JSON: ", err.Error())
 		return
@@ -148,9 +148,9 @@ func (myClient *CustomClient) sendProtocolSync() {
 		println("Failed to write response90: ", err.Error())
 	}
 }
-func (myClient *CustomClient) sendPlaceIdVerification(placeId int64) {
+func (myClient *CustomClient) sendPlaceIDVerification(placeID int64) {
 	response92 := &Packet92Layer{
-		PlaceId: placeId,
+		PlaceId: placeID,
 	}
 	err := myClient.WritePacket(response92)
 	if err != nil {
@@ -159,11 +159,11 @@ func (myClient *CustomClient) sendPlaceIdVerification(placeId int64) {
 }
 func (myClient *CustomClient) submitTicket() {
 	response8A := &Packet8ALayer{
-		PlayerId:          myClient.PlayerId,
+		PlayerId:          myClient.PlayerID,
 		ClientTicket:      myClient.clientTicket,
 		ProtocolVersion:   36,
 		RobloxProductName: "?",
-		SessionId:         myClient.sessionId,
+		SessionId:         myClient.sessionID,
 	}
 	myClient.SecuritySettings.PatchTicketPacket(response8A)
 	err := myClient.WritePacket(response8A)
@@ -188,7 +188,7 @@ func (myClient *CustomClient) packet10Handler(e *emitter.Event) {
 	myClient.sendPing()
 	myClient.sendPing()
 	myClient.sendProtocolSync() // This is broken and I have no clue why
-	myClient.sendPlaceIdVerification(0)
+	myClient.sendPlaceIDVerification(0)
 	myClient.submitTicket()
 	myClient.sendSpawnName()
 }
@@ -197,12 +197,12 @@ func (myClient *CustomClient) topReplicationHandler(e *emitter.Event) {
 	myClient.startDataPing()
 }
 
-func (myClient *CustomClient) sendDataIdResponse(challengeInt uint32) {
+func (myClient *CustomClient) sendDataIDResponse(challengeInt uint32) {
 	err := myClient.WriteDataPackets(&Packet83_09{
 		SubpacketType: 6,
 		Subpacket: &Packet83_09_06{
 			Challenge: challengeInt,
-			Response:  myClient.SecuritySettings.GenerateIdResponse(challengeInt),
+			Response:  myClient.SecuritySettings.GenerateIDResponse(challengeInt),
 		},
 	})
 	if err != nil {
@@ -213,7 +213,7 @@ func (myClient *CustomClient) idChallengeHandler(e *emitter.Event) {
 	mainPacket := e.Args[0].(*Packet83_09)
 	if mainPacket.SubpacketType == 5 {
 		myClient.Logger.Println("recv id challenge!")
-		myClient.sendDataIdResponse(mainPacket.Subpacket.(*Packet83_09_05).Challenge)
+		myClient.sendDataIDResponse(mainPacket.Subpacket.(*Packet83_09_05).Challenge)
 	}
 }
 
@@ -228,14 +228,14 @@ func (myClient *CustomClient) handlePlayersService(players *datamodel.Instance) 
 	myPlayer.Properties = map[string]rbxfile.Value{
 		"Name":                              rbxfile.ValueString(myClient.UserName),
 		"CharacterAppearance":               rbxfile.ValueString(myClient.characterAppearance),
-		"CharacterAppearanceId":             rbxfile.ValueInt64(myClient.characterAppearanceId),
+		"CharacterAppearanceId":             rbxfile.ValueInt64(myClient.characterAppearanceID),
 		"InternalCharacterAppearanceLoaded": rbxfile.ValueBool(true),
 		// TODO: Assign ID here, in case somebody wants to pass this in an event arg
 		"ChatPrivacyMode":     datamodel.ValueToken{Value: 0},
 		"AccountAgeReplicate": rbxfile.ValueInt(myClient.AccountAge),
-		"OsPlatform":          rbxfile.ValueString(myClient.SecuritySettings.OsPlatform()),
-		"userId":              rbxfile.ValueInt64(myClient.PlayerId),
-		"UserId":              rbxfile.ValueInt64(myClient.PlayerId),
+		"OsPlatform":          rbxfile.ValueString(myClient.SecuritySettings.OSPlatform()),
+		"userId":              rbxfile.ValueInt64(myClient.PlayerID),
+		"UserId":              rbxfile.ValueInt64(myClient.PlayerID),
 		"ReplicatedLocaleId":  rbxfile.ValueString("en-us"),
 	}
 	err := players.AddChild(myPlayer)
@@ -243,7 +243,7 @@ func (myClient *CustomClient) handlePlayersService(players *datamodel.Instance) 
 		println("Failed to create localpalyer:", err.Error())
 	}
 	myClient.Context.InstancesByReference.AddInstance(myPlayer.Ref, myPlayer)
-	myClient.LocalPlayer = myPlayer
+	myClient.localPlayer = myPlayer
 
 	err = myClient.WriteDataPackets(
 		&Packet83_05{
@@ -259,16 +259,18 @@ func (myClient *CustomClient) handlePlayersService(players *datamodel.Instance) 
 		println("Failed to send initial data replic:", err.Error())
 		return
 	}
-	err = myClient.ReplicateInstance(myClient.LocalPlayer, true)
+	err = myClient.ReplicateInstance(myClient.localPlayer, true)
 	if err != nil {
 		println("Failed to send local player:", err.Error())
 	}
 	return
 }
 
+// InvokeRemote sends a RemoteFunction invocation to the server and waits for a response
 func (myClient *CustomClient) InvokeRemote(instance *datamodel.Instance, arguments []rbxfile.Value) (datamodel.ValueTuple, error) {
-	if myClient.LocalPlayer == nil {
-		panic(errors.New("local player is nil"))
+	localPlayer, err := myClient.LocalPlayer()
+	if err != nil {
+		return nil, err
 	}
 
 	myClient.remoteLock.Lock()
@@ -282,9 +284,9 @@ func (myClient *CustomClient) InvokeRemote(instance *datamodel.Instance, argumen
 	defer instance.EventEmitter.Off("RemoteOnInvokeSuccess", succEvtChan)
 	defer instance.EventEmitter.Off("RemoteOnInvokeError", errEvtChan)
 
-	err := myClient.SendEvent(instance, "RemoteOnInvokeServer",
+	err = myClient.SendEvent(instance, "RemoteOnInvokeServer",
 		rbxfile.ValueInt(index),
-		datamodel.ValueReference{Instance: myClient.LocalPlayer},
+		datamodel.ValueReference{Instance: localPlayer},
 		datamodel.ValueTuple(arguments),
 	)
 	if err != nil {
@@ -316,12 +318,14 @@ func (myClient *CustomClient) InvokeRemote(instance *datamodel.Instance, argumen
 	}
 }
 
-func (myClient *CustomClient) FireRemote(instance *datamodel.Instance, arguments ...rbxfile.Value) {
-	if myClient.LocalPlayer == nil {
-		panic(errors.New("local player is nil"))
+// FireRemote fires a RemoteEvent
+func (myClient *CustomClient) FireRemote(instance *datamodel.Instance, arguments ...rbxfile.Value) error {
+	localPlayer, err := myClient.LocalPlayer()
+	if err != nil {
+		return err
 	}
-	myClient.SendEvent(instance, "OnServerEvent",
-		datamodel.ValueReference{Instance: myClient.LocalPlayer},
+	return myClient.SendEvent(instance, "OnServerEvent",
+		datamodel.ValueReference{Instance: localPlayer},
 		datamodel.ValueTuple(arguments),
 	)
 }
@@ -374,13 +378,13 @@ func interpolateVector(vec1, vec2 rbxfile.ValueVector3, maxStep float32) rbxfile
 	return addVector(vec1, scaleDelta(vec1, vec2, maxStep))
 }
 
-func (myClient *CustomClient) StalkPlayer(name string) error {
+func (myClient *CustomClient) stalkPlayer(name string) error {
 	// We must be able to cancel the process from within this function
 	// while not halting the entire client
 	ctx, stalkEnd := context.WithCancel(myClient.RunningContext)
 	defer stalkEnd()
 
-	localPlayer, err := myClient.GetLocalPlayer()
+	localPlayer, err := myClient.LocalPlayer()
 	if err != nil {
 		return err
 	}
@@ -525,6 +529,7 @@ func (myClient *CustomClient) StalkPlayer(name string) error {
 	}
 }
 
+// NewTimestamp generates a new Packet1BLayer
 func (myClient *CustomClient) NewTimestamp() *Packet1BLayer {
 	timestamp := &Packet1BLayer{Timestamp: uint64(time.Now().UnixNano() / int64(time.Millisecond)), Timestamp2: myClient.timestamp2Index}
 	myClient.timestamp2Index++
@@ -561,6 +566,7 @@ func (myClient *CustomClient) stalkPart(movePart *datamodel.Instance, cframe rbx
 	}
 }
 
+// SendEvent sends an event invocation and fires the event locally
 func (myClient *CustomClient) SendEvent(instance *datamodel.Instance, name string, arguments ...rbxfile.Value) error {
 	instance.FireEvent(name, arguments...)
 	return myClient.WriteDataPackets(

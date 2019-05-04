@@ -196,7 +196,7 @@ func (myClient *CustomClient) LocalPlayer() (*datamodel.Instance, error) {
 
 // call this asynchronously! it will wait a lot
 func (myClient *CustomClient) setupStalk() {
-	err := myClient.StalkPlayer("gskw")
+	err := myClient.stalkPlayer("gskw")
 	if err != nil {
 		myClient.Logger.Printf("Stalk error: %s\n", err.Error())
 	}
