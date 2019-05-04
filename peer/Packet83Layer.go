@@ -6,8 +6,8 @@ import (
 	"strconv"
 )
 
-// List of string names for all 0x83 subpackets
-var Packet83Subpackets map[uint8]string = map[uint8]string{
+// Packet83Subpackets containts a list of string names for all 0x83 subpackets
+var Packet83Subpackets = map[uint8]string{
 	0xFF: "ID_REPLIC_???",
 	0x00: "ID_REPLIC_END",
 	0x01: "ID_REPLIC_DELETE_INSTANCE",
@@ -31,7 +31,7 @@ var Packet83Subpackets map[uint8]string = map[uint8]string{
 	0x13: "ID_REPLIC_ATOMIC",
 }
 
-var Packet83Decoders = map[uint8](func(*extendedReader, PacketReader, *PacketLayers) (Packet83Subpacket, error)){
+var packet83Decoders = map[uint8](func(*extendedReader, PacketReader, *PacketLayers) (Packet83Subpacket, error)){
 	0x01: (*extendedReader).DecodePacket83_01,
 	0x02: (*extendedReader).DecodePacket83_02,
 	0x03: (*extendedReader).DecodePacket83_03,
@@ -48,7 +48,8 @@ var Packet83Decoders = map[uint8](func(*extendedReader, PacketReader, *PacketLay
 	0x13: (*extendedReader).DecodePacket83_13,
 }
 
-// A subpacket contained within a 0x83 (ID_DATA) packet
+// Packet83Subpacket is an interface implemented by
+// subpackets contained within a 0x83 (ID_DATA) packet
 type Packet83Subpacket interface {
 	fmt.Stringer
 	Serialize(writer PacketWriter, stream *extendedWriter) error
@@ -56,13 +57,9 @@ type Packet83Subpacket interface {
 	TypeString() string
 }
 
-// ID_DATA - client <-> server
+// Packet83Layer represents ID_DATA - client <-> server
 type Packet83Layer struct {
 	SubPackets []Packet83Subpacket
-}
-
-func NewPacket83Layer() *Packet83Layer {
-	return &Packet83Layer{}
 }
 
 func (thisStream *extendedReader) DecodePacket83Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
@@ -76,7 +73,7 @@ func (thisStream *extendedReader) DecodePacket83Layer(reader PacketReader, layer
 	var inner Packet83Subpacket
 	for packetType != 0 {
 		//println("parsing subpacket", packetType)
-		decoder, ok := Packet83Decoders[packetType]
+		decoder, ok := packet83Decoders[packetType]
 		if !ok {
 			return layer, errors.New("don't know how to parse replication subpacket: " + strconv.Itoa(int(packetType)))
 		}
@@ -95,6 +92,7 @@ func (thisStream *extendedReader) DecodePacket83Layer(reader PacketReader, layer
 	return layer, nil
 }
 
+// Serialize implements RakNetPacket.Serialize
 func (layer *Packet83Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
 	err = stream.WriteByte(0x83)
@@ -115,6 +113,7 @@ func (layer *Packet83Layer) Serialize(writer PacketWriter, stream *extendedWrite
 	return stream.WriteByte(0)
 }
 
+// TypeString implements RakNetPacket.TypeString()
 func (Packet83Layer) TypeString() string {
 	return "ID_DATA"
 }
@@ -122,6 +121,8 @@ func (Packet83Layer) TypeString() string {
 func (layer *Packet83Layer) String() string {
 	return fmt.Sprintf("ID_DATA: %d items", len(layer.SubPackets))
 }
+
+// Type implements RakNetPacket.Type()
 func (Packet83Layer) Type() byte {
 	return 0x83
 }
