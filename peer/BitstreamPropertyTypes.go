@@ -257,7 +257,7 @@ func (b *extendedReader) readBrickColor() (rbxfile.ValueBrickColor, error) {
 
 func (b *extendedReader) readObject(caches *Caches) (datamodel.Reference, error) {
 	scope, err := b.readCachedScope(caches)
-	if err != nil && err != CacheReadOOB { // TODO: hack! physics packets may have problems with caches
+	if err != nil && err != ErrCacheReadOOB { // TODO: hack! physics packets may have problems with caches
 		return datamodel.Reference{}, err
 	}
 	reference := datamodel.Reference{Scope: scope}

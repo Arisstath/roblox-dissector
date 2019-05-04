@@ -255,7 +255,9 @@ func (b *extendedReader) readFloat16BE(floatMin float32, floatMax float32) (floa
 
 type cacheReadCallback func(*extendedReader) (interface{}, error)
 
-var CacheReadOOB = errors.New("cache read is out of bounds")
+// ErrCacheReadOOB is an error specifying that there was a cache
+// miss, i.e. a cached used before it was initialized
+var ErrCacheReadOOB = errors.New("cache read is out of bounds")
 
 func (b *extendedReader) readWithCache(cache Cache, readCallback cacheReadCallback) (interface{}, error) {
 	var result interface{}
@@ -279,7 +281,7 @@ func (b *extendedReader) readWithCache(cache Cache, readCallback cacheReadCallba
 	}
 
 	if result == nil {
-		return "", CacheReadOOB
+		return "", ErrCacheReadOOB
 	}
 
 	return result, err
@@ -341,7 +343,7 @@ func shuffleSlice(src []byte) []byte {
 }
 
 func calculateChecksum(data []byte) uint32 {
-	var sum uint32 = 0
+	var sum uint32
 	var r uint16 = 55665
 	var c1 uint16 = 52845
 	var c2 uint16 = 22719
@@ -405,9 +407,16 @@ func (b *extendedReader) aesDecrypt(lenBytes int) (*extendedReader, error) {
 	return thisStream, nil
 }
 
+// RakNetFlags contains a set of flags which outline basic
+// information about a RakNet layer packet
 type RakNetFlags struct {
-	IsValid          bool
-	IsACK            bool
+	// IsValid specifies whether the packet can be considered valid.
+	// If both IsValid and IsOffline are false, the packet must
+	// be invalid
+	IsValid bool
+	// IsACK specifies whether the packet is an acknowledgement packet
+	IsACK bool
+	// IsNAK specifies whether the packet is a not-acknowledged packet
 	IsNAK            bool
 	IsPacketPair     bool
 	IsContinuousSend bool
@@ -415,9 +424,9 @@ type RakNetFlags struct {
 	HasBAndAS        bool
 }
 
-func (stream *extendedReader) readRakNetFlags() (RakNetFlags, error) {
+func (b *extendedReader) readRakNetFlags() (RakNetFlags, error) {
 	val := RakNetFlags{}
-	flags, err := stream.ReadByte()
+	flags, err := b.ReadByte()
 	if err != nil {
 		return val, err
 	}
