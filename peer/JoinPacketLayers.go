@@ -37,14 +37,14 @@ func IdentifyPassword(password []byte) PasswordType {
 	}
 }
 
-// ID_OPEN_CONNECTION_REQUEST_1 - client -> server
+// Packet05Layer represents ID_OPEN_CONNECTION_REQUEST_1 - client -> server
 type Packet05Layer struct {
 	// RakNet protocol version, always 5
 	ProtocolVersion  uint8
 	MTUPaddingLength int
 }
 
-// ID_OPEN_CONNECTION_REPLY_1 - server -> client
+// Packet06Layer represents ID_OPEN_CONNECTION_REPLY_1 - server -> client
 type Packet06Layer struct {
 	// Server GUID
 	GUID uint64
@@ -54,7 +54,7 @@ type Packet06Layer struct {
 	MTU uint16
 }
 
-// ID_OPEN_CONNECTION_REQUEST_2 - client -> server
+// Packet07Layer represents ID_OPEN_CONNECTION_REQUEST_2 - client -> server
 type Packet07Layer struct {
 	// Server external IP address
 	IPAddress *net.UDPAddr
@@ -64,7 +64,7 @@ type Packet07Layer struct {
 	GUID uint64
 }
 
-// ID_OPEN_CONNECTION_REPLY_2 - server -> client
+// Packet08Layer represents ID_OPEN_CONNECTION_REPLY_2 - server -> client
 type Packet08Layer struct {
 	// Server GUID
 	GUID uint64
@@ -76,7 +76,7 @@ type Packet08Layer struct {
 	UseSecurity bool
 }
 
-// ID_CONNECTION_REQUEST - client -> server
+// Packet09Layer represents ID_CONNECTION_REQUEST - client -> server
 type Packet09Layer struct {
 	// Client GUID
 	GUID uint64
@@ -88,7 +88,7 @@ type Packet09Layer struct {
 	Password []byte
 }
 
-// ID_CONNECTION_REQUEST_ACCEPTED - server -> client
+// Packet10Layer represents ID_CONNECTION_REQUEST_ACCEPTED - server -> client
 type Packet10Layer struct {
 	// Client IP address
 	IPAddress   *net.UDPAddr
@@ -100,7 +100,7 @@ type Packet10Layer struct {
 	SendPongTime uint64
 }
 
-// ID_NEW_INCOMING_CONNECTION - client -> server
+// Packet13Layer represents ID_NEW_INCOMING_CONNECTION - client -> server
 type Packet13Layer struct {
 	// Server IP address
 	IPAddress *net.UDPAddr
@@ -111,31 +111,9 @@ type Packet13Layer struct {
 	SendPongTime uint64
 }
 
-func NewPacket05Layer() *Packet05Layer {
-	return &Packet05Layer{}
-}
-func NewPacket06Layer() *Packet06Layer {
-	return &Packet06Layer{}
-}
-func NewPacket07Layer() *Packet07Layer {
-	return &Packet07Layer{}
-}
-func NewPacket08Layer() *Packet08Layer {
-	return &Packet08Layer{}
-}
-func NewPacket09Layer() *Packet09Layer {
-	return &Packet09Layer{}
-}
-func NewPacket10Layer() *Packet10Layer {
-	return &Packet10Layer{}
-}
-func NewPacket13Layer() *Packet13Layer {
-	return &Packet13Layer{}
-}
-
 func (thisStream *extendedReader) DecodePacket05Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	var err error
-	layer := NewPacket05Layer()
+	layer := &Packet05Layer{}
 	layer.ProtocolVersion, err = thisStream.readUint8() // !! RakNetLayer will have read the offline message !!
 	mtupad, err := ioutil.ReadAll(thisStream)
 	if err != nil {
@@ -146,6 +124,7 @@ func (thisStream *extendedReader) DecodePacket05Layer(reader PacketReader, layer
 	return layer, nil
 }
 
+// Serialize implements RakNetPacket.Serialize()
 func (layer *Packet05Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	err := stream.WriteByte(0x05)
 	if err != nil {
@@ -167,15 +146,19 @@ func (layer *Packet05Layer) Serialize(writer PacketWriter, stream *extendedWrite
 func (layer *Packet05Layer) String() string {
 	return fmt.Sprintf("ID_OPEN_CONNECTION_REQUEST_1: Version %d", layer.ProtocolVersion)
 }
+
+// TypeString implements RakNetPacket.TypeString()
 func (Packet05Layer) TypeString() string {
 	return "ID_OPEN_CONNECTION_REQUEST_1"
 }
+
+// Type implements RakNetPacket.Type()
 func (Packet05Layer) Type() byte {
 	return 5
 }
 
 func (thisStream *extendedReader) DecodePacket06Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-	layer := NewPacket06Layer()
+	layer := &Packet06Layer{}
 
 	var err error
 	layer.GUID, err = thisStream.readUint64BE()
@@ -190,6 +173,7 @@ func (thisStream *extendedReader) DecodePacket06Layer(reader PacketReader, layer
 	return layer, err
 }
 
+// Serialize implements RakNetPacket.Serialize()
 func (layer *Packet06Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
 	err = stream.WriteByte(0x06)
@@ -214,15 +198,19 @@ func (layer *Packet06Layer) Serialize(writer PacketWriter, stream *extendedWrite
 func (layer *Packet06Layer) String() string {
 	return "ID_OPEN_CONNECTION_REPLY_1"
 }
+
+// TypeString impelements RakNetPacket.TypeString()
 func (Packet06Layer) TypeString() string {
 	return "ID_OPEN_CONNECTION_REPLY_1"
 }
+
+// Type implements RakNetPacket.Type()
 func (Packet06Layer) Type() byte {
 	return 6
 }
 
 func (thisStream *extendedReader) DecodePacket07Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-	layer := NewPacket07Layer()
+	layer := &Packet07Layer{}
 
 	var err error
 	layer.IPAddress, err = thisStream.readAddress()
@@ -237,6 +225,7 @@ func (thisStream *extendedReader) DecodePacket07Layer(reader PacketReader, layer
 	return layer, err
 }
 
+// Serialize implements RakNetPacket.Serialize()
 func (layer *Packet07Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
 	err = stream.WriteByte(0x07)
@@ -261,15 +250,19 @@ func (layer *Packet07Layer) Serialize(writer PacketWriter, stream *extendedWrite
 func (layer *Packet07Layer) String() string {
 	return "ID_OPEN_CONNECTION_REQUEST_2"
 }
+
+// TypeString impelements RakNetPacket.TypeString()
 func (Packet07Layer) TypeString() string {
 	return "ID_OPEN_CONNECTION_REQUEST_2"
 }
+
+// Type implements RakNetPacket.Type()
 func (Packet07Layer) Type() byte {
 	return 7
 }
 
 func (thisStream *extendedReader) DecodePacket08Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-	layer := NewPacket08Layer()
+	layer := &Packet08Layer{}
 
 	var err error
 	layer.GUID, err = thisStream.readUint64BE()
@@ -288,6 +281,7 @@ func (thisStream *extendedReader) DecodePacket08Layer(reader PacketReader, layer
 	return layer, err
 }
 
+// Serialize implements RakNetPacket.Serialize()
 func (layer *Packet08Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
 	err = stream.WriteByte(0x08)
@@ -316,15 +310,19 @@ func (layer *Packet08Layer) Serialize(writer PacketWriter, stream *extendedWrite
 func (layer *Packet08Layer) String() string {
 	return "ID_OPEN_CONNECTION_REPLY_2"
 }
+
+// TypeString impelements RakNetPacket.TypeString()
 func (Packet08Layer) TypeString() string {
 	return "ID_OPEN_CONNECTION_REPLY_2"
 }
+
+// Type implements RakNetPacket.Type()
 func (Packet08Layer) Type() byte {
 	return 8
 }
 
 func (thisStream *extendedReader) DecodePacket09Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-	layer := NewPacket09Layer()
+	layer := &Packet09Layer{}
 
 	var err error
 	layer.GUID, err = thisStream.readUint64BE()
@@ -351,6 +349,8 @@ func (thisStream *extendedReader) DecodePacket09Layer(reader PacketReader, layer
 	}
 	return layer, err
 }
+
+// Serialize implements RakNetPacket.Serialize()
 func (layer *Packet09Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
 	err = stream.WriteByte(0x09)
@@ -374,15 +374,19 @@ func (layer *Packet09Layer) Serialize(writer PacketWriter, stream *extendedWrite
 func (layer *Packet09Layer) String() string {
 	return fmt.Sprintf("ID_CONNECTION_REQUEST: Password %X", layer.Password)
 }
+
+// TypeString impelements RakNetPacket.TypeString()
 func (Packet09Layer) TypeString() string {
 	return "ID_CONNECTION_REQUEST"
 }
+
+// Type implements RakNetPacket.Type()
 func (Packet09Layer) Type() byte {
 	return 9
 }
 
 func (thisStream *extendedReader) DecodePacket10Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-	layer := NewPacket10Layer()
+	layer := &Packet10Layer{}
 
 	var err error
 	layer.IPAddress, err = thisStream.readAddress()
@@ -406,6 +410,8 @@ func (thisStream *extendedReader) DecodePacket10Layer(reader PacketReader, layer
 	layer.SendPongTime, err = thisStream.readUint64BE()
 	return layer, err
 }
+
+// Serialize implements RakNetPacket.Serialize()
 func (layer *Packet10Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
 	err = stream.WriteByte(0x10)
@@ -440,15 +446,19 @@ func (layer *Packet10Layer) Serialize(writer PacketWriter, stream *extendedWrite
 func (layer *Packet10Layer) String() string {
 	return "ID_CONNECTION_ACCEPTED"
 }
+
+// TypeString impelements RakNetPacket.TypeString()
 func (Packet10Layer) TypeString() string {
 	return "ID_CONNECTION_ACCEPTED"
 }
+
+// Type implements RakNetPacket.Type()
 func (Packet10Layer) Type() byte {
 	return 0x10
 }
 
 func (thisStream *extendedReader) DecodePacket13Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-	layer := NewPacket13Layer()
+	layer := &Packet13Layer{}
 
 	var err error
 	layer.IPAddress, err = thisStream.readAddress()
@@ -468,6 +478,8 @@ func (thisStream *extendedReader) DecodePacket13Layer(reader PacketReader, layer
 	layer.SendPongTime, err = thisStream.readUint64BE()
 	return layer, err
 }
+
+// Serialize implements RakNetPacket.Serialize()
 func (layer *Packet13Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
 	err = stream.WriteByte(0x13)
@@ -499,9 +511,12 @@ func (layer *Packet13Layer) String() string {
 	return "ID_NEW_INCOMING_CONNECTION"
 }
 
+// TypeString impelements RakNetPacket.TypeString()
 func (Packet13Layer) TypeString() string {
 	return "ID_NEW_INCOMING_CONNECTION"
 }
+
+// Type implements RakNetPacket.Type()
 func (Packet13Layer) Type() byte {
 	return 0x13
 }
