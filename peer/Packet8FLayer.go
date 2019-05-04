@@ -2,17 +2,13 @@ package peer
 
 import "fmt"
 
-// ID_PREFERRED_SPAWN_NAME - client -> server
+// Packet8FLayer represents ID_PREFERRED_SPAWN_NAME - client -> server
 type Packet8FLayer struct {
 	SpawnName string
 }
 
-func NewPacket8FLayer() *Packet8FLayer {
-	return &Packet8FLayer{}
-}
-
 func (thisStream *extendedReader) DecodePacket8FLayer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-	layer := NewPacket8FLayer()
+	layer := &Packet8FLayer{}
 
 	var err error
 	spawnName, err := thisStream.readVarLengthString()
@@ -20,6 +16,7 @@ func (thisStream *extendedReader) DecodePacket8FLayer(reader PacketReader, layer
 	return layer, err
 }
 
+// Serialize implements RakNetPacket.Serialize
 func (layer *Packet8FLayer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	err := stream.WriteByte(0x8F)
 	if err != nil {
@@ -32,10 +29,12 @@ func (layer *Packet8FLayer) String() string {
 	return fmt.Sprintf("ID_PREFERRED_SPAWN_NAME: %s", layer.SpawnName)
 }
 
+// TypeString implements RakNetPacket.TypeString()
 func (Packet8FLayer) TypeString() string {
 	return "ID_PREFERRED_SPAWN_NAME"
 }
 
+// Type implements RakNetPacket.Type()
 func (Packet8FLayer) Type() byte {
 	return 0x8F
 }
