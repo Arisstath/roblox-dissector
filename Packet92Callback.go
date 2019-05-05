@@ -8,5 +8,5 @@ import (
 func ShowPacket92(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationContext, layers *peer.PacketLayers) {
 	MainLayer := layers.Main.(*peer.Packet92Layer)
 
-	layerLayout.AddWidget(NewQLabelF("Place id: %d", MainLayer.PlaceId), 0, 0)
+	layerLayout.AddWidget(NewQLabelF("Place id: %d", MainLayer.PlaceID), 0, 0)
 }

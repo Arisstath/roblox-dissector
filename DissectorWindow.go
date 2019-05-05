@@ -168,7 +168,7 @@ func (window *DissectorWindow) startClientWithArgs(placeID uint32, browserTracke
 
 	customClient := peer.NewCustomClient(ctx)
 	customClient.SecuritySettings = peer.Win10Settings()
-	customClient.BrowserTrackerId = uint64(browserTrackerId)
+	customClient.BrowserTrackerID = uint64(browserTrackerId)
 	// No more guests! Roblox won't let us connect as one.
 
 	nameBase := fmt.Sprintf("<CLIENT>:%d", placeID)

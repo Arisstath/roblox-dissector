@@ -8,7 +8,7 @@ func ShowPacket93(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 	MainLayer := layers.Main.(*peer.Packet93Layer)
 
 	layerLayout.AddWidget(NewQLabelF("Protocol schema sync: %v", MainLayer.ProtocolSchemaSync), 0, 0)
-	layerLayout.AddWidget(NewQLabelF("API dictionary compression: %v", MainLayer.ApiDictionaryCompression), 0, 0)
+	layerLayout.AddWidget(NewQLabelF("API dictionary compression: %v", MainLayer.APIDictionaryCompression), 0, 0)
 
 	labelForParamList := NewLabel("Network params:")
 	layerLayout.AddWidget(labelForParamList, 0, 0)

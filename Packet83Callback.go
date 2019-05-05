@@ -185,7 +185,7 @@ func show83_0A(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 }
 func show83_04(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_04)
-	return NewQLabelF("Marker: %d", this.MarkerId)
+	return NewQLabelF("Marker: %d", this.MarkerID)
 }
 func show83_05(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_05)
@@ -296,9 +296,9 @@ func show83_09(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_09)
 	widget := widgets.NewQWidget(nil, 0)
 	layout := NewTopAlignLayout()
-	layout.AddWidget(NewQLabelF("Type: %d", this.SubpacketType), 0, 0)
+	layout.AddWidget(NewQLabelF("Type: %T", this.Subpacket), 0, 0)
 
-	callback := Callbacks83_09[this.SubpacketType]
+	callback := Callbacks83_09[this.Subpacket.Type()]
 	if callback == nil {
 		println("unsupported callback")
 		widget.SetLayout(layout)
@@ -312,7 +312,7 @@ func show83_09(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 }
 func show83_10(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_10)
-	return NewQLabelF("Replication tag: %d", this.TagId)
+	return NewQLabelF("Replication tag: %d", this.TagID)
 }
 func show83_11(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_11)

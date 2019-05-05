@@ -8,8 +8,8 @@ import (
 func (captureContext *CaptureContext) HookClient(client *peer.CustomClient) {
 	conversation := NewProviderConversation(client.DefaultPacketWriter, client.DefaultPacketReader)
 	// The client address assigned here may be wrong. It doesn't really matter
-	conversation.ClientAddress = &client.Address
-	conversation.ServerAddress = &client.ServerAddress
+	conversation.ClientAddress = client.Address
+	conversation.ServerAddress = client.ServerAddress
 	conversation.Context = client.Context
 
 	captureContext.AddConversation(conversation)
