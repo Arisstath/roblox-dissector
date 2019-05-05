@@ -12,6 +12,8 @@ import (
 	"github.com/robloxapi/rbxfile"
 )
 
+// PacketLogicHandler is a generic struct for connections which
+// should implements DataModelHandlers
 // TODO: Add Logger to this struct?
 type PacketLogicHandler struct {
 	*ConnectedPeer
@@ -100,13 +102,21 @@ func (logicHandler *PacketLogicHandler) cleanup() {
 	}
 }
 
+// DisconnectionSource is a type describing what caused a disconnection
 type DisconnectionSource uint
 
 const (
+	// LocalDisconnection represents a disconnection caused by
+	// the local peer (i.e. by PacketLogicHandler.Disconnect())
 	LocalDisconnection DisconnectionSource = iota
+	// RemoteDisconnection represents a disconnection caused by
+	// the remote peer
 	RemoteDisconnection
 )
 
+// Disconnect sends a "-1" disconnection reason packet
+// to the remote peer. Note that it doesn't close the
+// underlying connection
 func (logicHandler *PacketLogicHandler) Disconnect() {
 	if logicHandler.Connected {
 		logicHandler.WritePacket(&Packet15Layer{
@@ -181,6 +191,7 @@ func (logicHandler *PacketLogicHandler) bindDefaultHandlers() {
 	// ServerClients are packet readers which don't want that
 }
 
+// WriteDataPackets sends the given Packet83Subpackets to the peer
 func (logicHandler *PacketLogicHandler) WriteDataPackets(packets ...Packet83Subpacket) error {
 	err := logicHandler.WritePacket(&Packet83Layer{
 		SubPackets: packets,
@@ -188,17 +199,8 @@ func (logicHandler *PacketLogicHandler) WriteDataPackets(packets ...Packet83Subp
 	return err
 }
 
-func (logicHandler *PacketLogicHandler) SendEvent(instance *datamodel.Instance, name string, arguments ...rbxfile.Value) error {
-	instance.FireEvent(name, arguments...)
-	return logicHandler.WriteDataPackets(
-		&Packet83_07{
-			Instance: instance,
-			Schema:   logicHandler.Context.NetworkSchema.SchemaForClass(instance.ClassName).SchemaForEvent(name),
-			Event:    &ReplicationEvent{arguments},
-		},
-	)
-}
-
+// ReplicationInstance creates a new ReplicationInstance for
+// the given DataModel instance
 func (logicHandler *PacketLogicHandler) ReplicationInstance(inst *datamodel.Instance, deleteOnDisconnect bool) *ReplicationInstance {
 	repInstance := &ReplicationInstance{}
 	repInstance.DeleteOnDisconnect = deleteOnDisconnect
@@ -215,10 +217,24 @@ func (logicHandler *PacketLogicHandler) ReplicationInstance(inst *datamodel.Inst
 	return repInstance
 }
 
+// SendEvent sends an event invocation and fires the event locally
+func (logicHandler *PacketLogicHandler) SendEvent(instance *datamodel.Instance, name string, arguments ...rbxfile.Value) error {
+	instance.FireEvent(name, arguments...)
+	return logicHandler.WriteDataPackets(
+		&Packet83_07{
+			Instance: instance,
+			Schema:   logicHandler.Context.NetworkSchema.SchemaForClass(instance.ClassName).SchemaForEvent(name),
+			Event:    &ReplicationEvent{arguments},
+		},
+	)
+}
+
+// SendHackFlag attempts to fire the StatsAvailable event on the given player
 func (logicHandler *PacketLogicHandler) SendHackFlag(player *datamodel.Instance, flag string) error {
 	return logicHandler.SendEvent(player, "StatsAvailable", rbxfile.ValueString(flag))
 }
 
+// ReplicateInstance sends an ID_REPLIC_NEW_INSTANCE to the peer
 func (logicHandler *PacketLogicHandler) ReplicateInstance(inst *datamodel.Instance, deleteOnDisconnect bool) error {
 	return logicHandler.WriteDataPackets(&Packet83_02{logicHandler.ReplicationInstance(inst, deleteOnDisconnect)})
 }
