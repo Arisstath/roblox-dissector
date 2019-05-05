@@ -49,8 +49,8 @@ func newSplitPacketBuffer(packet *ReliablePacket, context *CommunicationContext)
 		RakNetPackets:   raknets,
 	}
 	list.PacketType = 0xFF
-	list.UniqueID = context.UniqueID
-	context.UniqueID++
+	list.UniqueID = context.uniqueID
+	context.uniqueID++
 	list.logBuffer = new(strings.Builder)
 	list.Logger = log.New(list.logBuffer, "", log.Lmicroseconds|log.Ltime)
 
@@ -69,7 +69,7 @@ func (list splitPacketList) delete(layers *PacketLayers) {
 
 func (reader *DefaultPacketReader) addSplitPacket(layers *PacketLayers) *SplitPacketBuffer {
 	packet := layers.Reliability
-	splitPacketId := packet.SplitPacketID
+	splitPacketID := packet.SplitPacketID
 	splitPacketIndex := packet.SplitPacketIndex
 
 	if !packet.HasSplitPacket {
@@ -83,13 +83,13 @@ func (reader *DefaultPacketReader) addSplitPacket(layers *PacketLayers) *SplitPa
 	if reader.splitPackets == nil {
 		buffer = newSplitPacketBuffer(packet, reader.context)
 
-		reader.splitPackets = map[uint16]*SplitPacketBuffer{splitPacketId: buffer}
-	} else if reader.splitPackets[splitPacketId] == nil {
+		reader.splitPackets = map[uint16]*SplitPacketBuffer{splitPacketID: buffer}
+	} else if reader.splitPackets[splitPacketID] == nil {
 		buffer = newSplitPacketBuffer(packet, reader.context)
 
-		reader.splitPackets[splitPacketId] = buffer
+		reader.splitPackets[splitPacketID] = buffer
 	} else {
-		buffer = reader.splitPackets[splitPacketId]
+		buffer = reader.splitPackets[splitPacketID]
 	}
 	buffer.addPacket(packet, layers.RakNet, splitPacketIndex)
 	packet.SplitBuffer = buffer

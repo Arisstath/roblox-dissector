@@ -219,7 +219,7 @@ func (myClient *CustomClient) idChallengeHandler(e *emitter.Event) {
 
 func (myClient *CustomClient) handlePlayersService(players *datamodel.Instance) {
 	// this function will be called twice if both top repl and data repl contain Players
-	if myClient.LocalPlayer != nil { // do not send localplayer twice!
+	if myClient.localPlayer != nil { // do not send localplayer twice!
 		return
 	}
 

@@ -238,7 +238,7 @@ func (b *joinSerializeWriter) writeNewContent(val rbxfile.ValueContent) error {
 }
 
 func (b *extendedWriter) writeCFrameSimple(val rbxfile.ValueCFrame) error {
-	return errors.New("not implemented!")
+	return errors.New("simple CFrame not implemented")
 }
 
 func rotMatrixToQuaternion(r [9]float32) [4]float32 {
