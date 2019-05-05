@@ -6,6 +6,7 @@ import (
 	"github.com/robloxapi/rbxfile"
 )
 
+// Decode deserializes a network property change packet
 func (schema *NetworkPropertySchema) Decode(reader PacketReader, stream SerializeReader, layers *PacketLayers) (rbxfile.Value, error) {
 	val, err := stream.ReadSerializedValue(reader, schema.Type, schema.EnumID)
 	if err != nil {
@@ -17,7 +18,7 @@ func (schema *NetworkPropertySchema) Decode(reader PacketReader, stream Serializ
 	return val, nil
 }
 
-// TODO: Better system?
+// Serialize serializes a property change packet to its network format
 func (schema *NetworkPropertySchema) Serialize(value rbxfile.Value, writer PacketWriter, stream SerializeWriter) error {
 	return stream.WriteSerializedValue(value, writer, schema.Type)
 }

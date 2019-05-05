@@ -8,6 +8,7 @@ import (
 	"github.com/robloxapi/rbxfile"
 )
 
+// ReplicationInstance describes a network instance creation packet
 type ReplicationInstance struct {
 	Instance           *datamodel.Instance
 	Properties         map[string]rbxfile.Value
@@ -16,18 +17,16 @@ type ReplicationInstance struct {
 	DeleteOnDisconnect bool
 }
 
-func NewReplicationInstance() *ReplicationInstance {
-	return &ReplicationInstance{Properties: make(map[string]rbxfile.Value)}
-}
-
-func is2ndRoundType(typeId uint8) bool {
-	id := uint32(typeId)
+func is2ndRoundType(typeID uint8) bool {
+	id := uint32(typeID)
 	return ((id-3) > 0x1F || ((1<<(id-3))&uint32(0xC200000F)) == 0) && (id != 1) // thank you ARM compiler for optimizing this <3
 }
 
 func decodeReplicationInstance(reader PacketReader, thisStream InstanceReader, layers *PacketLayers) (*ReplicationInstance, error) {
 	var err error
-	repInstance := NewReplicationInstance()
+	repInstance := &ReplicationInstance{
+		Properties: make(map[string]rbxfile.Value),
+	}
 	var reference datamodel.Reference
 	context := reader.Context()
 
@@ -85,6 +84,7 @@ func decodeReplicationInstance(reader PacketReader, thisStream InstanceReader, l
 	return repInstance, nil
 }
 
+// Serialize serializes an instance creation packet to its network format
 func (instance *ReplicationInstance) Serialize(writer PacketWriter, stream InstanceWriter) error {
 	var err error
 	if instance == nil || instance.Instance == nil {
