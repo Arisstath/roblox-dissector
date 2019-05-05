@@ -4,11 +4,16 @@ import "io"
 import "errors"
 
 const (
-	Unreliable          = iota
-	UnreliableSequenced = iota
-	Reliable            = iota
-	ReliableOrdered     = iota
-	ReliableSequenced   = iota
+	// Unreliable is the RakNet UNRELIABLE reliability
+	Unreliable = iota
+	// UnreliableSequenced is the RakNet UNRELIABLE_SEQUENCED reliability
+	UnreliableSequenced
+	// Reliable is the RakNet RELIABLE reliability
+	Reliable
+	// ReliableOrdered is the RakNet RELIABLE_ORDERED reliability
+	ReliableOrdered
+	// ReliableSequenced is the RakNet RELIABLE_SEQUENCED reliability
+	ReliableSequenced
 )
 
 // ReliablePacket describes a packet within a ReliabilityLayer
@@ -40,17 +45,12 @@ type ReliablePacket struct {
 	SplitBuffer *SplitPacketBuffer
 }
 
+// ReliabilityLayer describes a RakNet connection packet container
 type ReliabilityLayer struct {
 	Packets []*ReliablePacket
 }
 
-func NewReliabilityLayer() *ReliabilityLayer {
-	return &ReliabilityLayer{Packets: make([]*ReliablePacket, 0)}
-}
-func NewReliablePacket() *ReliablePacket {
-	return &ReliablePacket{SelfData: []byte{}}
-}
-
+// GetLog returns the accumulated log for the packet
 func (packet *ReliablePacket) GetLog() string {
 	if packet.SplitBuffer.logBuffer == nil {
 		return ""
@@ -58,24 +58,29 @@ func (packet *ReliablePacket) GetLog() string {
 	return packet.SplitBuffer.logBuffer.String()
 }
 
+// IsReliable returns a bool describing whether the packet's reliability is considered "Reliable"
 func (packet *ReliablePacket) IsReliable() bool {
 	return packet.Reliability == Reliable || packet.Reliability == ReliableSequenced || packet.Reliability == ReliableOrdered
 }
+
+// IsSequenced returns a bool descibing whether the packet's reliability is considered "Sequenced"
 func (packet *ReliablePacket) IsSequenced() bool {
 	return packet.Reliability == UnreliableSequenced || packet.Reliability == ReliableSequenced
 }
+
+// IsOrdered returns a bool descibing whether the packet's reliability is considered "Ordered"
 func (packet *ReliablePacket) IsOrdered() bool {
 	return packet.Reliability == UnreliableSequenced || packet.Reliability == ReliableSequenced || packet.Reliability == ReliableOrdered
 }
 
 func (thisStream *extendedReader) DecodeReliabilityLayer(reader PacketReader, layers *PacketLayers) (*ReliabilityLayer, error) {
-	layer := NewReliabilityLayer()
+	layer := &ReliabilityLayer{}
 
 	var reliability uint8
 	var hasSplitPacket bool
 	var err error
 	for reliability, hasSplitPacket, err = thisStream.readReliabilityFlags(); err == nil; reliability, hasSplitPacket, err = thisStream.readReliabilityFlags() {
-		reliablePacket := NewReliablePacket()
+		reliablePacket := &ReliablePacket{}
 		reliablePacket.RakNetLayer = layers.RakNet
 
 		reliablePacket.Reliability = reliability
@@ -141,6 +146,7 @@ func (thisStream *extendedReader) DecodeReliabilityLayer(reader PacketReader, la
 	return layer, nil
 }
 
+// Serialize serializes the packet to its network format
 func (layer *ReliabilityLayer) Serialize(writer PacketWriter, outputStream *extendedWriter) error {
 	var err error
 	for _, packet := range layer.Packets {
