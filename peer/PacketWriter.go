@@ -14,29 +14,28 @@ func min(x, y uint) uint {
 	return y
 }
 
+// PacketWriter is an interface that can be passed to packet serializers
 type PacketWriter interface {
-	SetContext(*CommunicationContext)
-	Context() *CommunicationContext
+	ContextualHandler
 	SetToClient(bool)
 	ToClient() bool
-	SetCaches(*Caches)
-	Caches() *Caches
 }
 
-// PacketWriter is a struct used to write packets to a peer
+// DefaultPacketWriter is a struct used to write packets to a peer
 // Pass packets in using WriteOffline/WriteGeneric/etc.
-// and bind to the given callbacks
+// and bind to the given emitters
 type DefaultPacketWriter struct {
 	contextualHandler
 	// LayerEmitter provides a low-level interface for hooking into the
 	// packet serialization process
-	// Channels: full-reliable, offline, reliable, reliability, ack
+	// Topics: full-reliable, offline, reliable, reliability, ack
 	LayerEmitter *emitter.Emitter
 
 	// ErrorEmitter never emits anything. It exists for compatibility
 	ErrorEmitter *emitter.Emitter
 
 	// Output sends the byte slice to be sent via UDP
+	// It uses the "output" topic
 	Output          *emitter.Emitter
 	orderingIndex   uint32
 	sequencingIndex uint32
@@ -47,6 +46,7 @@ type DefaultPacketWriter struct {
 	toClient bool
 }
 
+// NewPacketWriter initializes a new DefaultPacketWriter
 func NewPacketWriter() *DefaultPacketWriter {
 	return &DefaultPacketWriter{
 		// Ordering on output doesn't matter, hence we can set the cap high
@@ -59,9 +59,13 @@ func NewPacketWriter() *DefaultPacketWriter {
 		},
 	}
 }
+
+// ToClient implements PacketWriter.ToClient
 func (writer *DefaultPacketWriter) ToClient() bool {
 	return writer.toClient
 }
+
+// SetToClient implements PacketWriter.SetToClient
 func (writer *DefaultPacketWriter) SetToClient(val bool) {
 	writer.toClient = val
 }
@@ -149,9 +153,9 @@ func (writer *DefaultPacketWriter) writeAsSplits(estHeaderLength int, data []byt
 		RakNetPackets:      make([]*RakNetLayer, requiredSplits),
 		HasPacketType:      true,
 		PacketType:         layers.PacketType,
-		UniqueID:           writer.context.UniqueID,
+		UniqueID:           writer.context.uniqueID,
 	}
-	writer.context.UniqueID++
+	writer.context.uniqueID++
 	layers.SplitPacket = packet.SplitBuffer
 
 	var lastLayers *PacketLayers
@@ -199,7 +203,7 @@ func (writer *DefaultPacketWriter) writeReliablePacket(data []byte, layers *Pack
 	realLen := len(data)
 	estHeaderLength := 0x1C // UDP
 	estHeaderLength += 4    // RakNet
-	estHeaderLength += 1    // Reliability, has split
+	estHeaderLength++       // Reliability, has split
 	estHeaderLength += 2    // len
 
 	packet := &ReliablePacket{Reliability: reliability}
@@ -241,9 +245,9 @@ func (writer *DefaultPacketWriter) writeReliablePacket(data []byte, layers *Pack
 			RakNetPackets:      []*RakNetLayer{rakNet},
 			HasPacketType:      true,
 			PacketType:         layers.PacketType,
-			UniqueID:           writer.context.UniqueID,
+			UniqueID:           writer.context.uniqueID,
 		}
-		writer.context.UniqueID++
+		writer.context.uniqueID++
 		layers.RakNet = rakNet
 		layers.SplitPacket = packet.SplitBuffer
 
@@ -292,6 +296,8 @@ func (writer *DefaultPacketWriter) writeGeneric(layers *PacketLayers, reliabilit
 	return err
 }
 
+// WritePacket serializes the given RakNetPacket and outputs it.
+// It uses the ReliableOrdered reliability setting.
 func (writer *DefaultPacketWriter) WritePacket(generic RakNetPacket) error {
 	layers := &PacketLayers{
 		Main:       generic,
@@ -299,6 +305,9 @@ func (writer *DefaultPacketWriter) WritePacket(generic RakNetPacket) error {
 	}
 	return writer.writeGeneric(layers, ReliableOrdered)
 }
+
+// WriteTimestamped serializes the given RakNetPacket using the given timestamp
+// It uses the Unreliable reliability setting.
 func (writer *DefaultPacketWriter) WriteTimestamped(timestamp *Packet1BLayer, generic RakNetPacket) error {
 	layers := &PacketLayers{
 		Timestamp:  timestamp,
@@ -308,6 +317,7 @@ func (writer *DefaultPacketWriter) WriteTimestamped(timestamp *Packet1BLayer, ge
 	return writer.writeTimestamped(layers, Unreliable)
 }
 
+// WriteACKs writes an ACK/NAK packet for the given datagram numbers
 func (writer *DefaultPacketWriter) WriteACKs(datagrams []int, isNAK bool) error {
 	var ackStructure []ACKRange
 	sort.Ints(datagrams)
@@ -353,9 +363,13 @@ func (writer *DefaultPacketWriter) WriteACKs(datagrams []int, isNAK bool) error 
 	return writer.writeRakNet(layers)
 }
 
+// Layers returns the emitter that emits packet layers while they are
+// being generated
 func (writer *DefaultPacketWriter) Layers() *emitter.Emitter {
 	return writer.LayerEmitter
 }
+
+// Errors returns a no-op emitter
 func (writer *DefaultPacketWriter) Errors() *emitter.Emitter {
 	return writer.ErrorEmitter
 }

@@ -88,11 +88,11 @@ type DefaultPacketReader struct {
 	ErrorEmitter *emitter.Emitter
 
 	// PacketEmitter provides a high-level interface for receiving offline and reliable packets
-	// Channels correspond to TypeString() return values
+	// Topics correspond to TypeString() return values
 	PacketEmitter *emitter.Emitter
 
 	// DataEmitter provides a high-level interface for receiving ID_DATA subpackets
-	// These channels correspond to TypeString() return values
+	// These topics correspond to TypeString() return values
 	DataEmitter *emitter.Emitter
 
 	isClient bool
@@ -103,12 +103,12 @@ type DefaultPacketReader struct {
 	splitPackets splitPacketList
 }
 
-// IsClient implements ContextualHandler.IsClient()
+// IsClient implements PacketReader.IsClient()
 func (reader *DefaultPacketReader) IsClient() bool {
 	return reader.isClient
 }
 
-// SetIsClient implements ContextualHandler.SetIsClient()
+// SetIsClient implements PacketReader.SetIsClient()
 func (reader *DefaultPacketReader) SetIsClient(val bool) {
 	reader.isClient = val
 }
