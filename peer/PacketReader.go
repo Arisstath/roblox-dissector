@@ -42,6 +42,8 @@ var packetDecoders = map[byte]decoderFunc{
 	0x97: (*extendedReader).DecodePacket97Layer,
 }
 
+// ContextualHandler is a generic interface for structs that
+// provide a CommunicationContext and Caches
 type ContextualHandler interface {
 	SetContext(*CommunicationContext)
 	Context() *CommunicationContext
@@ -74,7 +76,7 @@ func (handler *contextualHandler) SetContext(val *CommunicationContext) {
 	handler.context = val
 }
 
-// PacketReader is a struct that can be used to read packets from a source
+// DefaultPacketReader is a struct that can be used to read packets from a source
 // Pass packets in using ReadPacket() and bind to the given callbacks
 // to receive the results
 type DefaultPacketReader struct {
@@ -101,13 +103,17 @@ type DefaultPacketReader struct {
 	splitPackets splitPacketList
 }
 
+// IsClient implements ContextualHandler.IsClient()
 func (reader *DefaultPacketReader) IsClient() bool {
 	return reader.isClient
 }
+
+// SetIsClient implements ContextualHandler.SetIsClient()
 func (reader *DefaultPacketReader) SetIsClient(val bool) {
 	reader.isClient = val
 }
 
+// NewPacketReader initializes a new DefaultPacketReader
 func NewPacketReader() *DefaultPacketReader {
 	var thisQ [32]map[uint32]*PacketLayers
 	for i := 0; i < 32; i++ {
@@ -310,7 +316,7 @@ func (reader *DefaultPacketReader) ReadPacket(payload []byte, layers *PacketLaye
 	}
 }
 
-// Deletion handler
+// HandlePacket01 is the default handler for ID_REPLIC_DELETE_INSTANCE packets
 func (reader *DefaultPacketReader) HandlePacket01(e *emitter.Event) {
 	packet := e.Args[0].(*Packet83_01)
 	err := packet.Instance.SetParent(nil)
@@ -333,7 +339,7 @@ func (reader *DefaultPacketReader) handleReplicationInstance(inst *ReplicationIn
 	return inst.Instance.SetParent(inst.Parent)
 }
 
-// New instance handler
+// HandlePacket02 is the default handler for ID_REPLIC_NEW_INSTANCE packets
 func (reader *DefaultPacketReader) HandlePacket02(e *emitter.Event) {
 	packet := e.Args[0].(*Packet83_02)
 
@@ -343,7 +349,7 @@ func (reader *DefaultPacketReader) HandlePacket02(e *emitter.Event) {
 	}
 }
 
-// Prop update handler
+// HandlePacket03 is the default handler for ID_REPLIC_PROP packets
 func (reader *DefaultPacketReader) HandlePacket03(e *emitter.Event) {
 	packet := e.Args[0].(*Packet83_03)
 	if packet.Schema == nil {
@@ -357,13 +363,13 @@ func (reader *DefaultPacketReader) HandlePacket03(e *emitter.Event) {
 	packet.Instance.Set(packet.Schema.Name, packet.Value)
 }
 
-// event handler
+// HandlePacket07 is the default handler fo ID_REPLIC_EVENT packets
 func (reader *DefaultPacketReader) HandlePacket07(e *emitter.Event) {
 	packet := e.Args[0].(*Packet83_07)
 	packet.Instance.FireEvent(packet.Schema.Name, packet.Event.Arguments...)
 }
 
-// Joindata handler
+// HandlePacket0B is the default handler for ID_REPLIC_JOIN_DATA packets
 func (reader *DefaultPacketReader) HandlePacket0B(e *emitter.Event) {
 	packet := e.Args[0].(*Packet83_0B)
 	for _, inst := range packet.Instances {
@@ -375,12 +381,13 @@ func (reader *DefaultPacketReader) HandlePacket0B(e *emitter.Event) {
 	}
 }
 
+// HandlePacket13 is the default handler for ID_REPLIC_ATOMIC packets
 func (reader *DefaultPacketReader) HandlePacket13(e *emitter.Event) {
 	packet := e.Args[0].(*Packet83_13)
 	packet.Instance.SetParent(packet.Parent)
 }
 
-// Top replic handler
+// HandlePacket81 is the default handler for ID_SET_GLOBALS packets
 func (reader *DefaultPacketReader) HandlePacket81(e *emitter.Event) {
 	packet := e.Args[0].(*Packet81Layer)
 	for _, item := range packet.Items {
@@ -388,6 +395,8 @@ func (reader *DefaultPacketReader) HandlePacket81(e *emitter.Event) {
 	}
 }
 
+// BindDataModelHandlers binds the default handlers so that the PacketReader
+// will update the DataModel based on what it reads
 func (reader *DefaultPacketReader) BindDataModelHandlers() {
 	reader.PacketEmitter.On("ID_SET_GLOBALS", reader.HandlePacket81, emitter.Void)
 	reader.DataEmitter.On("ID_REPLIC_DELETE_INSTANCE", reader.HandlePacket01, emitter.Void)
@@ -431,9 +440,12 @@ func (reader *DefaultPacketReader) bindDataPacketHandler() {
 	}, emitter.Void)
 }
 
+// Layers returns the emitter for successfully parsed packets
 func (reader *DefaultPacketReader) Layers() *emitter.Emitter {
 	return reader.LayerEmitter
 }
+
+// Errors returns the emitter for parser errors
 func (reader *DefaultPacketReader) Errors() *emitter.Emitter {
 	return reader.ErrorEmitter
 }
