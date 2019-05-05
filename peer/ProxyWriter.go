@@ -15,6 +15,7 @@ type ProxyHalf struct {
 	fakePackets []uint32
 }
 
+// NewProxyHalf initializes a new ProxyHalf
 func NewProxyHalf(context *CommunicationContext, withClient bool) *ProxyHalf {
 	return &ProxyHalf{
 		ConnectedPeer: NewConnectedPeer(context, withClient),
@@ -179,17 +180,18 @@ func NewProxyWriter(ctx context.Context) *ProxyWriter {
 					instPacket := subpacket.(*Packet83_02)
 					if instPacket.Schema.Name == "Player" {
 						println("patching osplatform", instPacket.Instance.Name())
-						// patch OsPlatform!
-						instPacket.Instance.Set("OsPlatform", rbxfile.ValueString(writer.SecuritySettings.OsPlatform()))
+						// patch OSPlatform!
+						instPacket.Instance.Set("OsPlatform", rbxfile.ValueString(writer.SecuritySettings.OSPlatform()))
 					}
 					modifiedSubpackets = append(modifiedSubpackets, subpacket)
 				case *Packet83_09:
 					// patch id response
 					println("patching id resp")
 					pmcPacket := subpacket.(*Packet83_09)
-					if pmcPacket.SubpacketType == 6 {
+					switch pmcPacket.Subpacket.(type) {
+					case *Packet83_09_06:
 						pmcSubpacket := pmcPacket.Subpacket.(*Packet83_09_06)
-						pmcSubpacket.Response = writer.SecuritySettings.GenerateIdResponse(pmcSubpacket.Challenge)
+						pmcSubpacket.Response = writer.SecuritySettings.GenerateIDResponse(pmcSubpacket.Challenge)
 						modifiedSubpackets = append(modifiedSubpackets, subpacket)
 					} // if not type 6, drop it!
 				case *Packet83_12:
