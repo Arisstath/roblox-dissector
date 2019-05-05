@@ -14,6 +14,7 @@ func mustAtoi(x string) int {
 	return result
 }
 
+// ParseSchema parses a network schema based on an instance (class) file and enum file
 func ParseSchema(ifile io.Reader, efile io.Reader) (*NetworkSchema, error) {
 	enums := bufio.NewReader(efile)
 	instances := bufio.NewReader(ifile)
@@ -143,6 +144,7 @@ func ParseSchema(ifile io.Reader, efile io.Reader) (*NetworkSchema, error) {
 	return schema, nil
 }
 
+// Dump encodes a NetworkSchema to a format that can be parse by ParseSchema()
 func (schema *NetworkSchema) Dump(instances io.Writer, enums io.Writer) error {
 	var err error
 
