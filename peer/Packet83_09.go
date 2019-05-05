@@ -8,6 +8,8 @@ import (
 // Packet83_09Subpacket is a generic interface for Packet83_09 subpackets
 type Packet83_09Subpacket interface {
 	fmt.Stringer
+	Type() byte
+	TypeString() string
 }
 
 // Packet83_09 represents ID_ROCKY
@@ -141,7 +143,7 @@ func (layer *Packet83_09) Serialize(writer PacketWriter, stream *extendedWriter)
 			return err
 		}
 	default:
-		fmt.Printf("Tried to write rocky packet %v\n", layer.Subpacket)
+		fmt.Printf("Tried to write rocky packet %T\n", layer.Subpacket)
 		return errors.New("rocky packet not implemented")
 	}
 
@@ -165,12 +167,52 @@ func (layer *Packet83_09) String() string {
 func (Packet83_09_00) String() string {
 	return "Unknown NetPMC 0x00"
 }
+
+// Type implements Packet83_09Subpacket.Type()
+func (Packet83_09_00) Type() byte {
+	return 0
+}
+
+// TypeString implements Packet83_09Subpacket.TypeString()
+func (Packet83_09_00) TypeString() string {
+	return "ID_ROCKY_UNKNOWN_0"
+}
 func (Packet83_09_04) String() string {
 	return "Unknown NetPMC 0x04"
+}
+
+// Type implements Packet83_09Subpacket.Type()
+func (Packet83_09_04) Type() byte {
+	return 4
+}
+
+// TypeString implements Packet83_09Subpacket.TypeString()
+func (Packet83_09_04) TypeString() string {
+	return "ID_ROCKY_UNKNOWN_4"
 }
 func (Packet83_09_05) String() string {
 	return "IdChallenge"
 }
+
+// Type implements Packet83_09Subpacket.Type()
+func (Packet83_09_05) Type() byte {
+	return 5
+}
+
+// TypeString implements Packet83_09Subpacket.TypeString()
+func (Packet83_09_05) TypeString() string {
+	return "ID_ROCKY_ID_CHALLENGE"
+}
 func (Packet83_09_06) String() string {
 	return "IdResponse"
+}
+
+// Type implements Packet83_09Subpacket.Type()
+func (Packet83_09_06) Type() byte {
+	return 6
+}
+
+// TypeString implements Packet83_09Subpacket.TypeString()
+func (Packet83_09_06) TypeString() string {
+	return "ID_ROCKY_ID_RESPONSE"
 }
