@@ -12,7 +12,7 @@ type ReplicationEvent struct {
 }
 
 // Decode deserializes a network event invocation packet
-func (schema *NetworkEventSchema) Decode(reader PacketReader, thisStream SerializeReader, layers *PacketLayers) (*ReplicationEvent, error) {
+func (schema *NetworkEventSchema) Decode(reader PacketReader, thisStream serializeReader, layers *PacketLayers) (*ReplicationEvent, error) {
 	var err error
 	var thisVal rbxfile.Value
 
@@ -30,7 +30,7 @@ func (schema *NetworkEventSchema) Decode(reader PacketReader, thisStream Seriali
 }
 
 // Serialize serializes an event invocation packet to its network format
-func (schema *NetworkEventSchema) Serialize(event *ReplicationEvent, writer PacketWriter, stream SerializeWriter) error {
+func (schema *NetworkEventSchema) Serialize(event *ReplicationEvent, writer PacketWriter, stream serializeWriter) error {
 	if len(event.Arguments) != len(schema.Arguments) {
 		return errors.New("invalid number of event arguments")
 	}

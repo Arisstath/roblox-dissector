@@ -22,7 +22,7 @@ func is2ndRoundType(typeID uint8) bool {
 	return ((id-3) > 0x1F || ((1<<(id-3))&uint32(0xC200000F)) == 0) && (id != 1) // thank you ARM compiler for optimizing this <3
 }
 
-func decodeReplicationInstance(reader PacketReader, thisStream InstanceReader, layers *PacketLayers) (*ReplicationInstance, error) {
+func decodeReplicationInstance(reader PacketReader, thisStream instanceReader, layers *PacketLayers) (*ReplicationInstance, error) {
 	var err error
 	repInstance := &ReplicationInstance{
 		Properties: make(map[string]rbxfile.Value),
@@ -85,7 +85,7 @@ func decodeReplicationInstance(reader PacketReader, thisStream InstanceReader, l
 }
 
 // Serialize serializes an instance creation packet to its network format
-func (instance *ReplicationInstance) Serialize(writer PacketWriter, stream InstanceWriter) error {
+func (instance *ReplicationInstance) Serialize(writer PacketWriter, stream instanceWriter) error {
 	var err error
 	if instance == nil || instance.Instance == nil {
 		return errors.New("self is nil in serialize repl inst")

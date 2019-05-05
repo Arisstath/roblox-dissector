@@ -7,8 +7,8 @@ import (
 	"github.com/robloxapi/rbxfile"
 )
 
-type SerializeReader interface {
-	ReadSerializedValue(reader PacketReader, valType uint8, enumId uint16) (rbxfile.Value, error)
+type serializeReader interface {
+	ReadSerializedValue(reader PacketReader, valType uint8, enumID uint16) (rbxfile.Value, error)
 	ReadObject(reader PacketReader) (datamodel.Reference, error)
 
 	// We must also ask for the following methods for compatibility reasons.
@@ -18,12 +18,12 @@ type SerializeReader interface {
 	readBoolByte() (bool, error)
 	readUint8() (uint8, error)
 }
-type InstanceReader interface {
-	SerializeReader
+type instanceReader interface {
+	serializeReader
 	ReadProperties(schema []*NetworkPropertySchema, properties map[string]rbxfile.Value, reader PacketReader) error
 }
 
-type SerializeWriter interface {
+type serializeWriter interface {
 	WriteSerializedValue(val rbxfile.Value, writer PacketWriter, valType uint8) error
 	WriteObject(object *datamodel.Instance, writer PacketWriter) error
 
@@ -31,12 +31,12 @@ type SerializeWriter interface {
 	writeBoolByte(bool) error
 	WriteByte(byte) error
 }
-type InstanceWriter interface {
-	SerializeWriter
+type instanceWriter interface {
+	serializeWriter
 	WriteProperties(schema []*NetworkPropertySchema, properties map[string]rbxfile.Value, writer PacketWriter) error
 }
 
-func (b *extendedReader) ReadSerializedValue(reader PacketReader, valueType uint8, enumId uint16) (rbxfile.Value, error) {
+func (b *extendedReader) ReadSerializedValue(reader PacketReader, valueType uint8, enumID uint16) (rbxfile.Value, error) {
 	var err error
 	var result rbxfile.Value
 	switch valueType {
@@ -79,7 +79,7 @@ func (b *extendedReader) ReadSerializedValue(reader PacketReader, valueType uint
 	case PropertyTypeMap:
 		result, err = b.readNewMap(reader)
 	default:
-		return b.readSerializedValueGeneric(reader, valueType, enumId)
+		return b.readSerializedValueGeneric(reader, valueType, enumID)
 	}
 	return result, err
 }
@@ -201,7 +201,7 @@ type joinSerializeReader struct {
 	*extendedReader
 }
 
-func (b *joinSerializeReader) ReadSerializedValue(reader PacketReader, valueType uint8, enumId uint16) (rbxfile.Value, error) {
+func (b *joinSerializeReader) ReadSerializedValue(reader PacketReader, valueType uint8, enumID uint16) (rbxfile.Value, error) {
 	var err error
 	var result rbxfile.Value
 	switch valueType {
@@ -235,7 +235,7 @@ func (b *joinSerializeReader) ReadSerializedValue(reader PacketReader, valueType
 	case PropertyTypeSystemAddress:
 		result, err = b.readSystemAddress()
 	default:
-		return b.extendedReader.readSerializedValueGeneric(reader, valueType, enumId)
+		return b.extendedReader.readSerializedValueGeneric(reader, valueType, enumID)
 	}
 	return result, err
 }

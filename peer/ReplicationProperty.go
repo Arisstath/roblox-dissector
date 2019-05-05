@@ -7,7 +7,7 @@ import (
 )
 
 // Decode deserializes a network property change packet
-func (schema *NetworkPropertySchema) Decode(reader PacketReader, stream SerializeReader, layers *PacketLayers) (rbxfile.Value, error) {
+func (schema *NetworkPropertySchema) Decode(reader PacketReader, stream serializeReader, layers *PacketLayers) (rbxfile.Value, error) {
 	val, err := stream.ReadSerializedValue(reader, schema.Type, schema.EnumID)
 	if err != nil {
 		return val, errors.New("while parsing " + schema.Name + ": " + err.Error())
@@ -19,6 +19,6 @@ func (schema *NetworkPropertySchema) Decode(reader PacketReader, stream Serializ
 }
 
 // Serialize serializes a property change packet to its network format
-func (schema *NetworkPropertySchema) Serialize(value rbxfile.Value, writer PacketWriter, stream SerializeWriter) error {
+func (schema *NetworkPropertySchema) Serialize(value rbxfile.Value, writer PacketWriter, stream serializeWriter) error {
 	return stream.WriteSerializedValue(value, writer, schema.Type)
 }
