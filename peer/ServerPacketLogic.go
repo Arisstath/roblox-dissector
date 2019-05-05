@@ -11,38 +11,38 @@ import (
 	"github.com/robloxapi/rbxfile"
 )
 
-type JoinDataConfig struct {
+type joinDataConfig struct {
 	ClassName           string
 	ReplicateProperties bool
 	ReplicateChildren   bool
 }
 
-var JoinDataConfiguration = []JoinDataConfig{
-	JoinDataConfig{"ReplicatedFirst", true, true},
-	JoinDataConfig{"Lighting", true, true},
-	JoinDataConfig{"SoundService", true, true},
-	JoinDataConfig{"TeleportService", true, false},
-	JoinDataConfig{"StarterPack", false, true},
-	JoinDataConfig{"StarterGui", true, true},
-	JoinDataConfig{"StarterPlayer", true, true},
-	JoinDataConfig{"CSGDictionaryService", false, true},
-	JoinDataConfig{"Workspace", true, true},
-	JoinDataConfig{"JointsService", false, true},
-	JoinDataConfig{"Players", true, true},
-	JoinDataConfig{"Teams", false, true},
-	JoinDataConfig{"InsertService", true, true},
-	JoinDataConfig{"Chat", true, true},
-	JoinDataConfig{"LocalizationService", true, true},
-	JoinDataConfig{"FriendService", true, true},
-	JoinDataConfig{"MarketplaceService", true, true},
-	JoinDataConfig{"BadgeService", true, false},
-	JoinDataConfig{"ReplicatedStorage", true, true},
-	JoinDataConfig{"RobloxReplicatedStorage", true, true},
-	JoinDataConfig{"TestService", true, true},
-	JoinDataConfig{"LogService", true, false},
-	JoinDataConfig{"PointsService", true, false},
-	JoinDataConfig{"AdService", true, false},
-	JoinDataConfig{"SocialService", true, false},
+var joinDataConfiguration = []joinDataConfig{
+	joinDataConfig{"ReplicatedFirst", true, true},
+	joinDataConfig{"Lighting", true, true},
+	joinDataConfig{"SoundService", true, true},
+	joinDataConfig{"TeleportService", true, false},
+	joinDataConfig{"StarterPack", false, true},
+	joinDataConfig{"StarterGui", true, true},
+	joinDataConfig{"StarterPlayer", true, true},
+	joinDataConfig{"CSGDictionaryService", false, true},
+	joinDataConfig{"Workspace", true, true},
+	joinDataConfig{"JointsService", false, true},
+	joinDataConfig{"Players", true, true},
+	joinDataConfig{"Teams", false, true},
+	joinDataConfig{"InsertService", true, true},
+	joinDataConfig{"Chat", true, true},
+	joinDataConfig{"LocalizationService", true, true},
+	joinDataConfig{"FriendService", true, true},
+	joinDataConfig{"MarketplaceService", true, true},
+	joinDataConfig{"BadgeService", true, false},
+	joinDataConfig{"ReplicatedStorage", true, true},
+	joinDataConfig{"RobloxReplicatedStorage", true, true},
+	joinDataConfig{"TestService", true, true},
+	joinDataConfig{"LogService", true, false},
+	joinDataConfig{"PointsService", true, false},
+	joinDataConfig{"AdService", true, false},
+	joinDataConfig{"SocialService", true, false},
 }
 
 func (client *ServerClient) offline5Handler(e *emitter.Event) {
@@ -103,14 +103,14 @@ func (client *ServerClient) requestParamsHandler(e *emitter.Event) {
 
 	client.WritePacket(&Packet93Layer{
 		ProtocolSchemaSync:       false,
-		ApiDictionaryCompression: false,
+		APIDictionaryCompression: false,
 		Params:                   params,
 	})
 }
 
 func (client *ServerClient) topReplicate() error {
-	topReplicationItems := make([]*Packet81LayerItem, 0, len(JoinDataConfiguration))
-	for _, instance := range JoinDataConfiguration {
+	topReplicationItems := make([]*Packet81LayerItem, 0, len(joinDataConfiguration))
+	for _, instance := range joinDataConfiguration {
 		service := client.Context.DataModel.FindService(instance.ClassName)
 		if service != nil {
 			topReplicationItems = append(topReplicationItems, &Packet81LayerItem{
@@ -130,7 +130,7 @@ func (client *ServerClient) topReplicate() error {
 				ReplicateParent: true,
 			}
 			client.replicatedInstances = append(client.replicatedInstances, thisContainer)
-			thisContainer.UpdateBinding(client, false)
+			thisContainer.updateBinding(client, false)
 		}
 	}
 
@@ -208,7 +208,7 @@ func (client *ServerClient) authHandler(e *emitter.Event) {
 	}
 
 	err = client.WritePacket(&Packet84Layer{
-		MarkerId: 1,
+		MarkerID: 1,
 	})
 	if err != nil {
 		println("marker error: ", err.Error())

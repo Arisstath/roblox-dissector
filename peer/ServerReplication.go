@@ -29,12 +29,12 @@ type ReplicationContainer struct {
 	hasReplicated bool
 }
 
-func (cont *ReplicationContainer) UpdateBinding(client *ServerClient, isNew bool) {
+func (cont *ReplicationContainer) updateBinding(client *ServerClient, isNew bool) {
 	inst := cont.Instance
 
 	if cont.parentBinding == nil && cont.ReplicateParent {
 		cont.parentBinding = inst.ParentEmitter.On("*", func(e *emitter.Event) {
-			client.ParentChangedHandler(inst, e)
+			client.parentChangedHandler(inst, e)
 		}, emitter.Void)
 	} else if !cont.ReplicateParent && cont.parentBinding != nil {
 		inst.ParentEmitter.Off("*", cont.parentBinding)
@@ -42,7 +42,7 @@ func (cont *ReplicationContainer) UpdateBinding(client *ServerClient, isNew bool
 
 	if cont.childBinding == nil && cont.ReplicateChildren {
 		cont.childBinding = inst.ChildEmitter.On("*", func(e *emitter.Event) {
-			client.ChildAddedHandler(inst, e)
+			client.childAddedHandler(inst, e)
 		}, emitter.Void)
 	} else if !cont.ReplicateChildren && cont.childBinding != nil {
 		inst.ChildEmitter.Off("*", cont.childBinding)
@@ -50,10 +50,10 @@ func (cont *ReplicationContainer) UpdateBinding(client *ServerClient, isNew bool
 
 	if cont.propBinding == nil && cont.ReplicateProperties {
 		cont.propBinding = inst.PropertyEmitter.On("*", func(e *emitter.Event) {
-			client.PropChangedHandler(inst, e)
+			client.propChangedHandler(inst, e)
 		}, emitter.Void)
 		cont.eventBinding = inst.EventEmitter.On("*", func(e *emitter.Event) {
-			client.EventHandler(inst, e)
+			client.eventHandler(inst, e)
 		}, emitter.Void)
 	} else if !cont.ReplicateProperties && cont.propBinding != nil {
 		inst.PropertyEmitter.Off("*", cont.propBinding)
@@ -62,16 +62,16 @@ func (cont *ReplicationContainer) UpdateBinding(client *ServerClient, isNew bool
 
 	// Cascade update
 	for _, child := range inst.Children {
-		client.UpdateBinding(child, isNew)
+		client.updateBinding(child, isNew)
 	}
 }
 
-func joinDataConfigForInstance(inst *datamodel.Instance) *JoinDataConfig {
+func joinDataConfigForInstance(inst *datamodel.Instance) *joinDataConfig {
 	for inst.Parent() != nil && inst.Parent().ClassName != "DataModel" {
 		inst = inst.Parent()
 	}
 
-	for _, config := range JoinDataConfiguration {
+	for _, config := range joinDataConfiguration {
 		if config.ClassName == inst.ClassName {
 			return &config
 		}
@@ -80,7 +80,10 @@ func joinDataConfigForInstance(inst *datamodel.Instance) *JoinDataConfig {
 	return nil
 }
 
-func (client *ServerClient) BindDefaultDatamodelHandlers() {
+// BindDefaultDataModelHandlers binds the client's DataModel
+// handlers so that the client's changes will be reflected in
+// the DataModel
+func (client *ServerClient) BindDefaultDataModelHandlers() {
 	dataEmitter := client.DataEmitter
 	dataEmitter.On("ID_REPLIC_DELETE_INSTANCE", func(e *emitter.Event) {
 		inst := e.Args[0].(*Packet83_01).Instance
@@ -162,6 +165,8 @@ func (client *ServerClient) BindDefaultDatamodelHandlers() {
 	}, emitter.Void)
 }
 
+// ReplicationConfig returns the replication configuration for
+// an instance
 func (client *ServerClient) ReplicationConfig(inst *datamodel.Instance) *ReplicationContainer {
 	for _, conf := range client.replicatedInstances {
 		if conf.Instance == inst {
@@ -171,21 +176,21 @@ func (client *ServerClient) ReplicationConfig(inst *datamodel.Instance) *Replica
 
 	return nil
 }
-func (client *ServerClient) IsHandlingChild(child *datamodel.Instance) bool {
+func (client *ServerClient) isHandlingChild(child *datamodel.Instance) bool {
 	return client.handlingChild == child
 }
-func (client *ServerClient) IsHandlingProp(inst *datamodel.Instance, name string) bool {
+func (client *ServerClient) isHandlingProp(inst *datamodel.Instance, name string) bool {
 	return client.handlingProp.Instance == inst && client.handlingProp.Name == name
 }
-func (client *ServerClient) IsHandlingEvent(inst *datamodel.Instance, name string) bool {
+func (client *ServerClient) isHandlingEvent(inst *datamodel.Instance, name string) bool {
 	return client.handlingEvent.Instance == inst && client.handlingEvent.Name == name
 }
-func (client *ServerClient) IsHandlingRemoval(inst *datamodel.Instance) bool {
+func (client *ServerClient) isHandlingRemoval(inst *datamodel.Instance) bool {
 	return client.handlingRemoval == inst
 }
 
-func (client *ServerClient) ParentChangedHandler(inst *datamodel.Instance, e *emitter.Event) {
-	if client.IsHandlingRemoval(inst) || client.IsHandlingProp(inst, "Parent") {
+func (client *ServerClient) parentChangedHandler(inst *datamodel.Instance, e *emitter.Event) {
+	if client.isHandlingRemoval(inst) || client.isHandlingProp(inst, "Parent") {
 		// avoid circular replication: if this parent change
 		// comes from the client, we ignore it
 		return
@@ -214,14 +219,14 @@ func (client *ServerClient) ParentChangedHandler(inst *datamodel.Instance, e *em
 
 	// If the parent has been replicated, ChildAddedHandler will replicate the appropriate change
 }
-func (client *ServerClient) ChildAddedHandler(parent *datamodel.Instance, e *emitter.Event) {
+func (client *ServerClient) childAddedHandler(parent *datamodel.Instance, e *emitter.Event) {
 	child := e.Args[0].(*datamodel.Instance)
 
 	childConfig := client.ReplicationConfig(child)
 	if childConfig != nil && childConfig.hasReplicated {
-		client.UpdateBinding(child, false)
+		client.updateBinding(child, false)
 
-		if client.IsHandlingProp(child, "Parent") {
+		if client.isHandlingProp(child, "Parent") {
 			// this client caused the parent change, won't replicate
 			return
 		}
@@ -236,14 +241,14 @@ func (client *ServerClient) ChildAddedHandler(parent *datamodel.Instance, e *emi
 		return
 	}
 
-	client.UpdateBinding(child, true)
+	client.updateBinding(child, true)
 }
 
-func (client *ServerClient) PropChangedHandler(inst *datamodel.Instance, e *emitter.Event) {
+func (client *ServerClient) propChangedHandler(inst *datamodel.Instance, e *emitter.Event) {
 	name := e.OriginalTopic
 	value := e.Args[0].(rbxfile.Value)
 
-	if !client.IsHandlingProp(inst, name) {
+	if !client.isHandlingProp(inst, name) {
 		client.WriteDataPackets(&Packet83_03{
 			Instance: inst,
 			Schema:   client.Context.NetworkSchema.SchemaForClass(inst.ClassName).SchemaForProp(name),
@@ -252,11 +257,11 @@ func (client *ServerClient) PropChangedHandler(inst *datamodel.Instance, e *emit
 	}
 }
 
-func (client *ServerClient) EventHandler(inst *datamodel.Instance, e *emitter.Event) {
+func (client *ServerClient) eventHandler(inst *datamodel.Instance, e *emitter.Event) {
 	name := e.OriginalTopic
 	args := e.Args[0].([]rbxfile.Value)
 
-	if !client.IsHandlingEvent(inst, name) {
+	if !client.isHandlingEvent(inst, name) {
 		switch name {
 		case "RemoteOnInvokeClient", "OnClientEvent":
 			client.WriteDataPackets(&Packet83_07{
@@ -270,7 +275,7 @@ func (client *ServerClient) EventHandler(inst *datamodel.Instance, e *emitter.Ev
 	}
 }
 
-func (client *ServerClient) UpdateBinding(inst *datamodel.Instance, canReplicate bool) {
+func (client *ServerClient) updateBinding(inst *datamodel.Instance, canReplicate bool) {
 	found := client.ReplicationConfig(inst)
 	var parentConfig *ReplicationContainer
 	if inst.Parent() == nil {
@@ -297,21 +302,21 @@ func (client *ServerClient) UpdateBinding(inst *datamodel.Instance, canReplicate
 		}
 
 		client.replicatedInstances = append(client.replicatedInstances, newBinding)
-		if canReplicate && !client.IsHandlingChild(inst) && !newBinding.hasReplicated {
+		if canReplicate && !client.isHandlingChild(inst) && !newBinding.hasReplicated {
 			newBinding.hasReplicated = true
 			client.PacketLogicHandler.ReplicateInstance(inst, false)
-		} else if client.IsHandlingChild(inst) {
+		} else if client.isHandlingChild(inst) {
 			newBinding.hasReplicated = true
 		}
 
 		// Cascade to children
-		newBinding.UpdateBinding(client, canReplicate)
+		newBinding.updateBinding(client, canReplicate)
 	} else if found != nil {
 		found.ReplicateProperties = parentConfig.ReplicateProperties
 		found.ReplicateChildren = parentConfig.ReplicateChildren
 		found.ReplicateParent = parentConfig.ReplicateParent
 
-		found.UpdateBinding(client, canReplicate)
+		found.updateBinding(client, canReplicate)
 	}
 }
 
@@ -326,7 +331,7 @@ func (client *ServerClient) sendReplicatedFirst() error {
 
 	service := client.DataModel.FindService("ReplicatedFirst")
 	config := client.ReplicationConfig(service)
-	err := client.ReplicateJoinData(service, config, replicatedFirstStreamer)
+	err := client.replicateJoinData(service, config, replicatedFirstStreamer)
 	if err != nil {
 		return err
 	}
@@ -336,15 +341,15 @@ func (client *ServerClient) sendReplicatedFirst() error {
 	}
 	// Tag: ReplicatedFirst finished!
 	return client.WriteDataPackets(&Packet83_10{
-		TagId: 12,
+		TagID: 12,
 	})
 }
 
-func (client *ServerClient) sendContainer(streamer *JoinDataStreamer, config JoinDataConfig) error {
+func (client *ServerClient) sendContainer(streamer *JoinDataStreamer, config joinDataConfig) error {
 	service := client.DataModel.FindService(config.ClassName)
 	if service != nil {
 		repConfig := client.ReplicationConfig(service)
-		return client.ReplicateJoinData(service, repConfig, streamer)
+		return client.replicateJoinData(service, repConfig, streamer)
 	}
 	return nil
 }
@@ -359,7 +364,7 @@ func (client *ServerClient) sendContainers() error {
 			println("joindata error: ", err.Error())
 		}
 	}, emitter.Void)
-	for _, dataConfig := range JoinDataConfiguration {
+	for _, dataConfig := range joinDataConfiguration {
 		// Previously replicated for priority, don't duplicate
 		if dataConfig.ClassName != "ReplicatedFirst" {
 			err = client.sendContainer(joinDataStreamer, dataConfig)
@@ -374,7 +379,7 @@ func (client *ServerClient) sendContainers() error {
 	}
 
 	return client.WriteDataPackets(&Packet83_10{
-		TagId: 13,
+		TagID: 13,
 	})
 }
 
@@ -403,7 +408,7 @@ func (client *ServerClient) replicateJoinDataChildren(children []*datamodel.Inst
 	return nil
 }
 
-func (client *ServerClient) ReplicateJoinData(rootInstance *datamodel.Instance, rootConfig *ReplicationContainer, streamer *JoinDataStreamer) error {
+func (client *ServerClient) replicateJoinData(rootInstance *datamodel.Instance, rootConfig *ReplicationContainer, streamer *JoinDataStreamer) error {
 	var err error
 	// HACK: Replicating some instances to the client without including properties
 	// may result in an error and a disconnection.

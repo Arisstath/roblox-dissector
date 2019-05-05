@@ -10,6 +10,8 @@ import (
 	"github.com/olebedev/emitter"
 )
 
+// ServerClient represents a local server's connection to a remote
+// client
 // TODO: Filtering?
 type ServerClient struct {
 	PacketLogicHandler
@@ -17,7 +19,10 @@ type ServerClient struct {
 	Address *net.UDPAddr
 
 	Player *datamodel.Instance
-	Index  int
+	// Index is the player's index within the server.
+	// Among other things, it is used in the determining the player's name
+	// (i.e. Player1, Player2, etc.)
+	Index int
 
 	replicatedInstances []*ReplicationContainer
 	handlingChild       *datamodel.Instance
@@ -26,6 +31,7 @@ type ServerClient struct {
 	handlingRemoval     *datamodel.Instance
 }
 
+// CustomServer is custom implementation of a Roblox server
 type CustomServer struct {
 	Context            *CommunicationContext
 	Connection         *net.UDPConn
@@ -40,6 +46,8 @@ type CustomServer struct {
 	PlayerIndex int
 }
 
+// ReadPacket processes a UDP packet sent by the client
+// Its first argument is a byte slice containing the UDP payload
 func (client *ServerClient) ReadPacket(buf []byte) {
 	layers := &PacketLayers{
 		Root: RootLayer{
@@ -68,7 +76,7 @@ func (client *ServerClient) createWriter() {
 	}, emitter.Void)
 }
 
-func (client *ServerClient) Init() {
+func (client *ServerClient) init() {
 	client.bindDefaultHandlers()
 	// Write to server's connection
 	client.Connection = client.Server.Connection
@@ -78,11 +86,12 @@ func (client *ServerClient) Init() {
 
 	client.startAcker()
 }
-func NewServerClient(clientAddr *net.UDPAddr, server *CustomServer, context *CommunicationContext) *ServerClient {
+
+func newServerClient(clientAddr *net.UDPAddr, server *CustomServer, context *CommunicationContext) *ServerClient {
 	newContext := &CommunicationContext{
 		InstancesByReference: context.InstancesByReference,
 		DataModel:            context.DataModel,
-		NetworkSchema:         context.NetworkSchema,
+		NetworkSchema:        context.NetworkSchema,
 		InstanceTopScope:     context.InstanceTopScope,
 	}
 
@@ -106,6 +115,7 @@ func (myServer *CustomServer) bindToDisconnection(client *ServerClient) {
 	})
 }
 
+// Start starts the server's read loop
 func (myServer *CustomServer) Start() error {
 	conn, err := net.ListenUDP("udp", myServer.Address)
 	if err != nil {
@@ -134,12 +144,12 @@ func (myServer *CustomServer) Start() error {
 			if !IsOfflineMessage(buf[:n]) {
 				continue
 			}
-			thisClient = NewServerClient(client, myServer, myServer.Context)
+			thisClient = newServerClient(client, myServer, myServer.Context)
 			myServer.Clients[client.String()] = thisClient
 
 			myServer.bindToDisconnection(thisClient)
 
-			thisClient.Init()
+			thisClient.init()
 
 			<-myServer.ClientEmitter.Emit("client", thisClient)
 		}
@@ -154,6 +164,7 @@ func (myServer *CustomServer) stop() {
 	myServer.Connection.Close()
 }
 
+// NewCustomServer initializes a CustomServer
 func NewCustomServer(ctx context.Context, port uint16, schema *NetworkSchema, dataModel *datamodel.DataModel, dict *datamodel.InstanceDictionary) (*CustomServer, error) {
 	server := &CustomServer{Clients: make(map[string]*ServerClient)}
 
