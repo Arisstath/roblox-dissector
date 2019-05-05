@@ -1,4 +1,4 @@
-// The peer package can be used for communication with Roblox servers, as well as
+// Package peer can be used for communication with Roblox servers and clients, as well as
 // parsing packets captured from Roblox network traffic.
 package peer
 
@@ -32,6 +32,8 @@ type RakNetPacket interface {
 	Type() byte
 }
 
+// RootLayer is a meta-layer that is container by every packet
+// It contains basic information about the packet
 type RootLayer struct {
 	logBuffer   *strings.Builder
 	Logger      *log.Logger
@@ -41,6 +43,7 @@ type RootLayer struct {
 	FromServer  bool
 }
 
+// GetLog returns the accumulated log string for a packet
 func (layer *RootLayer) GetLog() string {
 	if layer.logBuffer != nil {
 		return layer.logBuffer.String()
@@ -70,8 +73,8 @@ type PacketLayers struct {
 	Subpacket  Packet83Subpacket
 }
 
+// PacketNames contains the names of most packet types
 var PacketNames = map[byte]string{
-	0xFF: "???",
 	0x00: "ID_CONNECTED_PING",
 	0x01: "ID_UNCONNECTED_PING",
 	0x03: "ID_CONNECTED_PONG",
@@ -119,11 +122,10 @@ func (layers *PacketLayers) String() string {
 	}
 	if layers.Main != nil {
 		return layers.Main.String()
-	} else {
-		packetName, ok := PacketNames[layers.PacketType]
-		if ok {
-			return packetName
-		}
+	}
+	packetName, ok := PacketNames[layers.PacketType]
+	if ok {
+		return packetName
 	}
 	return fmt.Sprintf("Packet 0x%02X", layers.PacketType)
 }
@@ -149,13 +151,10 @@ type RakNetLayer struct {
 	DatagramNumber uint32
 }
 
-func NewRakNetLayer() *RakNetLayer {
-	return &RakNetLayer{}
-}
-
-// The offline message contained in pre-connection packets.
+// OfflineMessageID is the offline message contained in pre-connection packets.
 var OfflineMessageID = []byte{0x00, 0xFF, 0xFF, 0x00, 0xFE, 0xFE, 0xFE, 0xFE, 0xFD, 0xFD, 0xFD, 0xFD, 0x12, 0x34, 0x56, 0x78}
 
+// IsOfflineMessage checks whether the packet payload is an offline message
 func IsOfflineMessage(data []byte) bool {
 	if len(data) < 1+len(OfflineMessageID) {
 		return false
@@ -164,7 +163,7 @@ func IsOfflineMessage(data []byte) bool {
 }
 
 func (stream *extendedReader) DecodeRakNetLayer(reader PacketReader, packetType byte, layers *PacketLayers) (*RakNetLayer, error) {
-	layer := NewRakNetLayer()
+	layer := &RakNetLayer{}
 
 	var err error
 	if packetType >= 0x5 && packetType <= 0x8 {
@@ -222,17 +221,17 @@ func (stream *extendedReader) DecodeRakNetLayer(reader PacketReader, packetType 
 			layer.ACKs = append(layer.ACKs, ACKRange{min, max})
 		}
 		return layer, nil
-	} else {
-		layer.DatagramNumber, err = stream.readUint24LE()
-		if err != nil {
-			return layer, err
-		}
-
-		layer.payload = stream
-		return layer, nil
 	}
+	layer.DatagramNumber, err = stream.readUint24LE()
+	if err != nil {
+		return layer, err
+	}
+
+	layer.payload = stream
+	return layer, nil
 }
 
+// Serialize serializes the RakNetLayer to its network format
 func (layer *RakNetLayer) Serialize(writer PacketWriter, outStream *extendedWriter) error {
 	err := outStream.writeRakNetFlags(layer.Flags)
 	if err != nil {
