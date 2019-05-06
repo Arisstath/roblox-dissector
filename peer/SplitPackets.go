@@ -48,7 +48,6 @@ func newSplitPacketBuffer(packet *ReliablePacket, context *CommunicationContext)
 		ReliablePackets: reliables,
 		RakNetPackets:   raknets,
 	}
-	list.PacketType = 0xFF
 	list.UniqueID = context.uniqueID
 	context.uniqueID++
 	list.logBuffer = new(strings.Builder)

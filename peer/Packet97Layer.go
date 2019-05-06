@@ -15,7 +15,9 @@ type Packet97Layer struct {
 }
 
 func (thisStream *extendedReader) DecodePacket97Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
-	layer := &Packet97Layer{}
+	layer := &Packet97Layer{
+		Schema: &NetworkSchema{},
+	}
 
 	var err error
 	stream, err := thisStream.RegionToZStdStream()

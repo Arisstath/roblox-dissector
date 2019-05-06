@@ -123,6 +123,9 @@ func (layers *PacketLayers) String() string {
 	if layers.Main != nil {
 		return layers.Main.String()
 	}
+	if layers.RakNet == nil || (!layers.RakNet.Flags.IsValid && !layers.RakNet.IsOffline) {
+		return "???"
+	}
 	packetName, ok := PacketNames[layers.PacketType]
 	if ok {
 		return packetName

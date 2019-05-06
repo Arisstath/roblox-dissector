@@ -76,6 +76,7 @@ func (stream *extendedReader) DecodePacket8ALayer(reader PacketReader, layers *P
 			return layer, err
 		}
 		layers.Root.Logger.Println("hash2", hash2, "badfood check success: ", hash2 == layer.TicketHash-0xbadf00d)
+		layers.Root.Logger.Println("win10 check: ", hash == Win10Settings().GenerateTicketHash(layer.ClientTicket))
 	}
 
 	layer.SessionID, err = thisStream.readVarLengthString()
