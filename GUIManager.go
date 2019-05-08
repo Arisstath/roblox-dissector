@@ -3,8 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
-	"net/http"
 	"os"
 
 	"github.com/therecipe/qt/core"
@@ -134,9 +132,6 @@ func GUIMain() {
 	window.ShowMaximized()
 
 	joinFlag := flag.String("join", "", "roblox-dissector:<authTicket>:<placeID>:<browserTrackerID>")
-	go func() {
-		log.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
 	flag.Parse()
 	if *joinFlag != "" {
 		println("Received protocol invocation?")

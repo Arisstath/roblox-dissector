@@ -370,7 +370,7 @@ func NewDissectorWindow(parent widgets.QWidget_ITF, flags core.Qt__WindowType) *
 	})
 	helpBar.AddAction("&About Sala...").ConnectTriggered(func(_ bool) {
 		widgets.QMessageBox_About(window, "About Sala", fmt.Sprintf(`
-<h1>Sala version 0.6 [pre]</h1>
+<h1>Sala version 0.7.1 [beta]</h1>
 <h2>The Essential Roblox Network Suite</h2>
 Codename “Maailman salaisuudet”<br>
 Previously known as “Roblox Dissector”<br>
@@ -383,7 +383,9 @@ See the <a href="https://iconfu.com">Iconfu website</a> for more icons.<br>
 Qt is licensed under the LGPLv3 license (see “About Qt...” for more information).<br>
 <br>
 Running PCAP (%s).
-`, pcap.Version()))
+<br>
+WinDivert enabled: %v
+`, pcap.Version(), WinDivertEnabled))
 	})
 
 	captureFileAction.ConnectTriggered(window.OpenFileHandler)

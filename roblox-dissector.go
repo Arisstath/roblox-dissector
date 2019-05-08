@@ -7,9 +7,7 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/therecipe/qt/widgets"
-
-	_ "net/http"
-	_ "net/http/pprof"
+	//_ "net/http/pprof"
 )
 
 type ActivationCallback func(*widgets.QVBoxLayout, *peer.CommunicationContext, *peer.PacketLayers)
@@ -52,5 +50,8 @@ func SrcAndDestFromGoPacket(packet gopacket.Packet) (*net.UDPAddr, *net.UDPAddr)
 }
 
 func main() {
+	/*go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()*/
 	GUIMain()
 }
