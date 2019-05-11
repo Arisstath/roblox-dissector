@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Gskartwii/roblox-dissector/peer"
 	"github.com/Gskartwii/roblox-dissector/datamodel"
+	"github.com/Gskartwii/roblox-dissector/peer"
 	"github.com/robloxapi/rbxfile"
 	"github.com/robloxapi/rbxfile/xml"
 	"github.com/therecipe/qt/core"
@@ -94,6 +94,16 @@ func DumpDataModel(context *peer.CommunicationContext, parent widgets.QWidget_IT
 		return
 	}
 
+	if LumikideEnabled {
+		err = LumikideProcessContext(parent, context, writableClone)
+		if err != nil {
+			widgets.QMessageBox_Critical(parent, "Error while processing with Lumikide", err.Error(), widgets.QMessageBox__Ok, widgets.QMessageBox__NoButton)
+			return
+		}
+	} else {
+		println("Lumikide disabled at compile time, skipping processing.")
+	}
+
 	scriptData, err := os.OpenFile(location+"/scriptKeys", os.O_RDWR|os.O_CREATE, 0666)
 	defer scriptData.Close()
 	if err != nil {
@@ -131,6 +141,7 @@ func NewDataModelBrowser(context *peer.CommunicationContext, dataModel *datamode
 	takeSnapshotButton.ConnectReleased(func() {
 		DumpDataModel(context, subWindow)
 	})
+
 	subWindowLayout.AddWidget(takeSnapshotButton, 0, 0)
 
 	instanceList := widgets.NewQTreeView(subWindow)
