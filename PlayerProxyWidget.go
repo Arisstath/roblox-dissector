@@ -5,36 +5,22 @@ import "github.com/therecipe/qt/widgets"
 func NewPlayerProxyWidget(parent widgets.QWidget_ITF, settings *PlayerProxySettings, callback func(*PlayerProxySettings)) {
 	window := widgets.NewQWidget(parent, 1)
 	window.SetWindowTitle("Choose HTTPS server settings...")
-	layout := NewTopAlignLayout()
+	layout := widgets.NewQFormLayout(parent)
 
-	certfileLabel := NewLabel("Certfile location:")
-	certfileTextBox := widgets.NewQLineEdit2(settings.Certfile, nil)
-	certbrowseButton := widgets.NewQPushButton2("Browse...", nil)
-	certbrowseButton.ConnectReleased(func() {
-		certfileTextBox.SetText(widgets.QFileDialog_GetOpenFileName(window, "Find certfile...", "", "Certfiles (*.crt)", "", 0))
-	})
-	layout.AddWidget(certfileLabel, 0, 0)
-	layout.AddWidget(certfileTextBox, 0, 0)
-	layout.AddWidget(certbrowseButton, 0, 0)
+	certfileLayout := NewFileBrowseLayout(window, false, settings.Certfile, "Find certfile...", "Certfile (*.crt)")
+	layout.AddRow4("Certfile location:", certfileLayout)
 
-	keyfileLabel := NewLabel("Keyfile location:")
-	keyfileTextBox := widgets.NewQLineEdit2(settings.Keyfile, nil)
-	keybrowseButton := widgets.NewQPushButton2("Browse...", nil)
-	keybrowseButton.ConnectReleased(func() {
-		keyfileTextBox.SetText(widgets.QFileDialog_GetOpenFileName(window, "Find keyfile...", "", "Keyfiles (*.pem)", "", 0))
-	})
-	layout.AddWidget(keyfileLabel, 0, 0)
-	layout.AddWidget(keyfileTextBox, 0, 0)
-	layout.AddWidget(keybrowseButton, 0, 0)
+	keyfileLayout := NewFileBrowseLayout(window, false, settings.Certfile, "Find keyfile...", "Keyfile (*.pem)")
+	layout.AddRow4("Keyfile location:", keyfileLayout)
 
 	startButton := widgets.NewQPushButton2("Start", nil)
 	startButton.ConnectReleased(func() {
 		window.Close()
-		settings.Certfile = certfileTextBox.Text()
-		settings.Keyfile = keyfileTextBox.Text()
+		settings.Certfile = certfileLayout.FileName()
+		settings.Keyfile = keyfileLayout.FileName()
 		callback(settings)
 	})
-	layout.AddWidget(startButton, 0, 0)
+	layout.AddRow5(startButton)
 
 	window.SetLayout(layout)
 	window.Show()
