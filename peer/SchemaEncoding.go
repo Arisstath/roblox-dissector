@@ -14,13 +14,12 @@ func mustAtoi(x string) int {
 	return result
 }
 
-// ParseSchema parses a network schema based on an instance (class) file and enum file
-func ParseSchema(ifile io.Reader, efile io.Reader) (*NetworkSchema, error) {
-	enums := bufio.NewReader(efile)
-	instances := bufio.NewReader(ifile)
+// ParseSchema parses a network schema based on a schema dump file
+func ParseSchema(schemafile io.Reader) (*NetworkSchema, error) {
+	file := bufio.NewReader(schemafile)
 	schema := &NetworkSchema{}
 	var totalEnums int
-	_, err := fmt.Fscanf(enums, "%d\n", &totalEnums)
+	_, err := fmt.Fscanf(file, "%d\n", &totalEnums)
 	if err != nil {
 		return schema, err
 	}
@@ -28,7 +27,7 @@ func ParseSchema(ifile io.Reader, efile io.Reader) (*NetworkSchema, error) {
 	enumExp := regexp.MustCompile(`\s*"([a-zA-Z0-9 _]+)"\s*(\d+)\s*`)
 	schema.Enums = make([]*NetworkEnumSchema, totalEnums)
 	for i := 0; i < totalEnums; i++ {
-		line, err := enums.ReadString('\n')
+		line, err := file.ReadString('\n')
 		if err != nil {
 			return schema, err
 		}
@@ -47,7 +46,7 @@ func ParseSchema(ifile io.Reader, efile io.Reader) (*NetworkSchema, error) {
 	instanceExp := enumExp
 	eventExp := enumExp
 	propertyExp := regexp.MustCompile(`\s*"([a-zA-Z0-9 _\-\(\)/]+)"\s*(\d+)\s*(\d+)\s*`)
-	_, err = fmt.Fscanf(instances, "%d %d %d\n", &totalInstances, &totalProperties, &totalEvents)
+	_, err = fmt.Fscanf(file, "%d %d %d\n", &totalInstances, &totalProperties, &totalEvents)
 	if err != nil {
 		return schema, err
 	}
@@ -57,7 +56,7 @@ func ParseSchema(ifile io.Reader, efile io.Reader) (*NetworkSchema, error) {
 	propertyGlobalIndex := 0
 	eventGlobalIndex := 0
 	for i := 0; i < totalInstances; i++ {
-		line, err := instances.ReadString('\n')
+		line, err := file.ReadString('\n')
 		if err != nil {
 			return schema, err
 		}
@@ -69,14 +68,14 @@ func ParseSchema(ifile io.Reader, efile io.Reader) (*NetworkSchema, error) {
 		}
 
 		var countProperties int
-		_, err = fmt.Fscanf(instances, "%d\n", &countProperties)
+		_, err = fmt.Fscanf(file, "%d\n", &countProperties)
 		if err != nil {
 			return schema, err
 		}
 		thisInstance.Properties = make([]*NetworkPropertySchema, countProperties)
 
 		for j := 0; j < countProperties; j++ {
-			line, err = instances.ReadString('\n')
+			line, err = file.ReadString('\n')
 			if err != nil {
 				return schema, err
 			}
@@ -97,13 +96,13 @@ func ParseSchema(ifile io.Reader, efile io.Reader) (*NetworkSchema, error) {
 		}
 
 		var countEvents int
-		_, err = fmt.Fscanf(instances, "%d\n", &countEvents)
+		_, err = fmt.Fscanf(file, "%d\n", &countEvents)
 		if err != nil {
 			return schema, err
 		}
 		thisInstance.Events = make([]*NetworkEventSchema, countEvents)
 		for j := 0; j < countEvents; j++ {
-			line, err = instances.ReadString('\n')
+			line, err = file.ReadString('\n')
 			if err != nil {
 				return schema, err
 			}
@@ -120,7 +119,7 @@ func ParseSchema(ifile io.Reader, efile io.Reader) (*NetworkSchema, error) {
 				var argType int
 				var argUnk int
 
-				_, err = fmt.Fscanf(instances, "%d %d\n", &argType, &argUnk)
+				_, err = fmt.Fscanf(file, "%d %d\n", &argType, &argUnk)
 				if err != nil {
 					return schema, err
 				}
@@ -144,17 +143,17 @@ func ParseSchema(ifile io.Reader, efile io.Reader) (*NetworkSchema, error) {
 	return schema, nil
 }
 
-// Dump encodes a NetworkSchema to a format that can be parse by ParseSchema()
-func (schema *NetworkSchema) Dump(instances io.Writer, enums io.Writer) error {
+// Dump encodes a NetworkSchema to a format that can be parsed by ParseSchema()
+func (schema *NetworkSchema) Dump(file io.Writer) error {
 	var err error
 
 	totalEnums := len(schema.Enums)
-	_, err = enums.Write([]byte(fmt.Sprintf("%d\n", totalEnums)))
+	_, err = file.Write([]byte(fmt.Sprintf("%d\n", totalEnums)))
 	if err != nil {
 		return err
 	}
 	for _, enum := range schema.Enums {
-		_, err = enums.Write([]byte(fmt.Sprintf("%q %d\n", enum.Name, enum.BitSize)))
+		_, err = file.Write([]byte(fmt.Sprintf("%q %d\n", enum.Name, enum.BitSize)))
 		if err != nil {
 			return err
 		}
@@ -162,38 +161,38 @@ func (schema *NetworkSchema) Dump(instances io.Writer, enums io.Writer) error {
 
 	totalProperties := len(schema.Properties)
 	totalEvents := len(schema.Events)
-	_, err = instances.Write([]byte(fmt.Sprintf("%d %d %d\n", len(schema.Instances), totalProperties, totalEvents)))
+	_, err = file.Write([]byte(fmt.Sprintf("%d %d %d\n", len(schema.Instances), totalProperties, totalEvents)))
 	if err != nil {
 		return err
 	}
 
 	for _, instance := range schema.Instances {
-		_, err = instances.Write([]byte(fmt.Sprintf("%q %d\n", instance.Name, instance.Unknown)))
+		_, err = file.Write([]byte(fmt.Sprintf("%q %d\n", instance.Name, instance.Unknown)))
 		if err != nil {
 			return err
 		}
-		_, err = instances.Write([]byte(fmt.Sprintf("\t%d\n", len(instance.Properties))))
+		_, err = file.Write([]byte(fmt.Sprintf("\t%d\n", len(instance.Properties))))
 		if err != nil {
 			return err
 		}
 		for _, property := range instance.Properties {
-			_, err = instances.Write([]byte(fmt.Sprintf("\t%q %d %d\n", property.Name, property.Type, property.EnumID)))
+			_, err = file.Write([]byte(fmt.Sprintf("\t%q %d %d\n", property.Name, property.Type, property.EnumID)))
 			if err != nil {
 				return err
 			}
 		}
 
-		_, err = instances.Write([]byte(fmt.Sprintf("\t%d\n", len(instance.Events))))
+		_, err = file.Write([]byte(fmt.Sprintf("\t%d\n", len(instance.Events))))
 		if err != nil {
 			return err
 		}
 		for _, event := range instance.Events {
-			_, err = instances.Write([]byte(fmt.Sprintf("\t%q %d\n", event.Name, len(event.Arguments))))
+			_, err = file.Write([]byte(fmt.Sprintf("\t%q %d\n", event.Name, len(event.Arguments))))
 			if err != nil {
 				return err
 			}
 			for _, argument := range event.Arguments {
-				_, err = instances.Write([]byte(fmt.Sprintf("\t\t%d %d\n", argument.Type, argument.EnumID)))
+				_, err = file.Write([]byte(fmt.Sprintf("\t\t%d %d\n", argument.Type, argument.EnumID)))
 				if err != nil {
 					return err
 				}

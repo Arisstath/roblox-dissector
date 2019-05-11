@@ -202,24 +202,14 @@ func NewServerStartWidget(parent widgets.QWidget_ITF, settings *ServerSettings, 
 	layout.AddWidget(rbxlTextBox, 0, 0)
 	layout.AddWidget(browseButton, 0, 0)
 
-	enumLabel := NewLabel("Enum schema location:")
-	enumTextBox := widgets.NewQLineEdit2(settings.EnumSchemaLocation, nil)
+	schemaLabel := NewLabel("Enum schema location:")
+	schemaTextBox := widgets.NewQLineEdit2(settings.SchemaLocation, nil)
 	browseButton = widgets.NewQPushButton2("Browse...", nil)
 	browseButton.ConnectReleased(func() {
-		enumTextBox.SetText(widgets.QFileDialog_GetOpenFileName(window, "Find enum schema...", "", "Text files (*.txt)", "", 0))
+		schemaTextBox.SetText(widgets.QFileDialog_GetOpenFileName(window, "Find schema...", "", "Text files (*.txt)", "", 0))
 	})
-	layout.AddWidget(enumLabel, 0, 0)
-	layout.AddWidget(enumTextBox, 0, 0)
-	layout.AddWidget(browseButton, 0, 0)
-
-	instanceLabel := NewLabel("Instance schema location:")
-	instanceTextBox := widgets.NewQLineEdit2(settings.InstanceSchemaLocation, nil)
-	browseButton = widgets.NewQPushButton2("Browse...", nil)
-	browseButton.ConnectReleased(func() {
-		instanceTextBox.SetText(widgets.QFileDialog_GetOpenFileName(window, "Find instance schema...", "", "Text files (*.txt)", "", 0))
-	})
-	layout.AddWidget(instanceLabel, 0, 0)
-	layout.AddWidget(instanceTextBox, 0, 0)
+	layout.AddWidget(schemaLabel, 0, 0)
+	layout.AddWidget(schemaTextBox, 0, 0)
 	layout.AddWidget(browseButton, 0, 0)
 
 	// HACK: convenience
@@ -235,8 +225,7 @@ func NewServerStartWidget(parent widgets.QWidget_ITF, settings *ServerSettings, 
 	startButton.ConnectReleased(func() {
 		window.Close()
 		settings.Port = port.Text()
-		settings.EnumSchemaLocation = enumTextBox.Text()
-		settings.InstanceSchemaLocation = instanceTextBox.Text()
+		settings.SchemaLocation = schemaTextBox.Text()
 		settings.RBXLLocation = rbxlTextBox.Text()
 		callback(settings)
 	})

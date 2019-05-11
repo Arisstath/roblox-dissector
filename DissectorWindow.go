@@ -39,10 +39,9 @@ type PlayerSettings struct {
 }
 
 type ServerSettings struct {
-	Port                   string
-	EnumSchemaLocation     string
-	InstanceSchemaLocation string
-	RBXLLocation           string
+	Port           string
+	SchemaLocation string
+	RBXLLocation   string
 }
 
 type DefaultsSettings struct {
@@ -411,17 +410,12 @@ WinDivert enabled: %v
 	startServerAction.ConnectTriggered(func(checked bool) {
 		NewServerStartWidget(window, window.ServerSettings, func(settings *ServerSettings) {
 			port, _ := strconv.Atoi(settings.Port)
-			enums, err := os.Open(settings.EnumSchemaLocation)
+			schemaFile, err := os.Open(settings.SchemaLocation)
 			if err != nil {
 				println("while parsing schema:", err.Error())
 				return
 			}
-			instances, err := os.Open(settings.InstanceSchemaLocation)
-			if err != nil {
-				println("while parsing schema:", err.Error())
-				return
-			}
-			schema, err := peer.ParseSchema(instances, enums)
+			schema, err := peer.ParseSchema(schemaFile)
 			if err != nil {
 				println("while parsing schema:", err.Error())
 				return
