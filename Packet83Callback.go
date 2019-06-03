@@ -23,6 +23,7 @@ var SubpacketCallbacks = map[uint8](func(peer.Packet83Subpacket) widgets.QWidget
 	0x7:  show83_07,
 	0x9:  show83_09,
 	0xA:  show83_0A,
+	0xD:  show83_0D,
 	0x10: show83_10,
 	0x11: show83_11,
 	0x12: show83_12,
@@ -310,6 +311,20 @@ func show83_09(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 
 	return widget
 }
+
+func show83_0D(t peer.Packet83Subpacket) widgets.QWidget_ITF {
+	this := t.(*peer.Packet83_0D)
+	widget := widgets.NewQWidget(nil, 0)
+	layout := NewTopAlignLayout()
+	layout.AddWidget(NewQLabelF("Bool 1: %v", this.Bool1), 0, 0)
+	layout.AddWidget(NewQLabelF("Bool 2: %v", this.Bool2), 0, 0)
+	layout.AddWidget(NewQLabelF("Region: %s", this.Region), 0, 0)
+	layout.AddWidget(show83_0B(&peer.Packet83_0B{Instances: this.Instances}), 0, 0)
+	widget.SetLayout(layout)
+
+	return widget
+}
+
 func show83_10(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_10)
 	return NewQLabelF("Replication tag: %d", this.TagID)
@@ -460,10 +475,8 @@ func show83_14(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_14)
 	widget := widgets.NewQWidget(nil, 0)
 	layout := NewTopAlignLayout()
+	layout.AddWidget(NewQLabelF("Region: %s", this.Region), 0, 0)
 	layout.AddWidget(NewQLabelF("Int 1: %d", this.Int1), 0, 0)
-	layout.AddWidget(NewQLabelF("Int 2: %d", this.Int2), 0, 0)
-	layout.AddWidget(NewQLabelF("Int 3: %d", this.Int3), 0, 0)
-	layout.AddWidget(NewQLabelF("Int 4: %d", this.Int4), 0, 0)
 	widget.SetLayout(layout)
 
 	return widget

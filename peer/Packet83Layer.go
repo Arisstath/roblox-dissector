@@ -42,6 +42,7 @@ var packet83Decoders = map[uint8](func(*extendedReader, PacketReader, *PacketLay
 	0x09: (*extendedReader).DecodePacket83_09,
 	0x0A: (*extendedReader).DecodePacket83_0A,
 	0x0B: (*extendedReader).DecodePacket83_0B,
+	0x0D: (*extendedReader).DecodePacket83_0D,
 	0x10: (*extendedReader).DecodePacket83_10,
 	0x11: (*extendedReader).DecodePacket83_11,
 	0x12: (*extendedReader).DecodePacket83_12,
