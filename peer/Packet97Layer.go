@@ -1,11 +1,8 @@
 package peer
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
-
-	"github.com/DataDog/zstd"
 )
 
 // Packet97Layer represents ID_NEW_SCHEMA - server -> client
@@ -207,88 +204,74 @@ func (layer *Packet97Layer) Serialize(writer PacketWriter, stream *extendedWrite
 	if err != nil {
 		return err
 	}
-	// TODO: General NewZStdBuf() method?
-	uncompressedBuf := bytes.NewBuffer([]byte{})
-	zstdBuf := bytes.NewBuffer([]byte{})
-	middleStream := zstd.NewWriter(zstdBuf)
-	zstdStream := &extendedWriter{uncompressedBuf}
+	zstdStream := stream.wrapZstd()
+	// 1. Close the stream if exiting with an error; report the write error instead of close error
+	// 2. If no error occurs, this function will return zstdStream.Close()
+	// in which case it will be run a second time because of the defer (nop)
+	defer zstdStream.Close()
 
 	schema := layer.Schema
 	err = zstdStream.writeUintUTF8(uint32(len(schema.Enums)))
 	if err != nil {
-		middleStream.Close()
 		return err
 	}
 	for _, enum := range schema.Enums {
 		err = zstdStream.writeUintUTF8(uint32(len(enum.Name)))
 		if err != nil {
-			middleStream.Close()
 			return err
 		}
 		err = zstdStream.writeASCII(enum.Name)
 		if err != nil {
-			middleStream.Close()
 			return err
 		}
 		err = zstdStream.WriteByte(enum.BitSize)
 		if err != nil {
-			middleStream.Close()
 			return err
 		}
 	}
 
 	err = zstdStream.writeUintUTF8(uint32(len(schema.Instances)))
 	if err != nil {
-		middleStream.Close()
 		return err
 	}
 	err = zstdStream.writeUintUTF8(uint32(len(schema.Properties)))
 	if err != nil {
-		middleStream.Close()
 		return err
 	}
 	err = zstdStream.writeUintUTF8(uint32(len(schema.Events)))
 	if err != nil {
-		middleStream.Close()
 		return err
 	}
 	for _, instance := range schema.Instances {
 		err = zstdStream.writeUintUTF8(uint32(len(instance.Name)))
 		if err != nil {
-			middleStream.Close()
 			return err
 		}
 		err = zstdStream.writeASCII(instance.Name)
 		if err != nil {
-			middleStream.Close()
 			return err
 		}
 		err = zstdStream.writeUintUTF8(uint32(len(instance.Properties)))
 		if err != nil {
-			middleStream.Close()
 			return err
 		}
 
 		for _, property := range instance.Properties {
 			err = zstdStream.writeUintUTF8(uint32(len(property.Name)))
 			if err != nil {
-				middleStream.Close()
 				return err
 			}
 			err = zstdStream.writeASCII(property.Name)
 			if err != nil {
-				middleStream.Close()
 				return err
 			}
 			err = zstdStream.WriteByte(property.Type)
 			if err != nil {
-				middleStream.Close()
 				return err
 			}
 			if property.Type == 7 {
 				err = zstdStream.writeUint16BE(property.EnumID)
 				if err != nil {
-					middleStream.Close()
 					return err
 				}
 			}
@@ -296,65 +279,40 @@ func (layer *Packet97Layer) Serialize(writer PacketWriter, stream *extendedWrite
 
 		err = zstdStream.writeUint16BE(instance.Unknown)
 		if err != nil {
-			middleStream.Close()
 			return err
 		}
 		err = zstdStream.writeUintUTF8(uint32(len(instance.Events)))
 		if err != nil {
-			middleStream.Close()
 			return err
 		}
 		for _, event := range instance.Events {
 			err = zstdStream.writeUintUTF8(uint32(len(event.Name)))
 			if err != nil {
-				middleStream.Close()
 				return err
 			}
 			err = zstdStream.writeASCII(event.Name)
 			if err != nil {
-				middleStream.Close()
 				return err
 			}
 
 			err = zstdStream.writeUintUTF8(uint32(len(event.Arguments)))
 			if err != nil {
-				middleStream.Close()
 				return err
 			}
 			for _, argument := range event.Arguments {
 				err = zstdStream.WriteByte(argument.Type)
 				if err != nil {
-					middleStream.Close()
 					return err
 				}
 				err = zstdStream.writeUint16BE(argument.EnumID)
 				if err != nil {
-					middleStream.Close()
 					return err
 				}
 			}
 		}
 	}
 
-	_, err = middleStream.Write(uncompressedBuf.Bytes())
-	if err != nil {
-		middleStream.Close()
-		return err
-	}
-	err = middleStream.Close()
-	if err != nil {
-		return err
-	}
-	err = stream.writeUint32BE(uint32(zstdBuf.Len()))
-	if err != nil {
-		return err
-	}
-	err = stream.writeUint32BE(uint32(uncompressedBuf.Len()))
-	if err != nil {
-		return err
-	}
-	err = stream.allBytes(zstdBuf.Bytes())
-	return err
+	return zstdStream.Close()
 }
 
 func (layer *Packet97Layer) String() string {

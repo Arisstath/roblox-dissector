@@ -66,20 +66,20 @@ func (layer *Packet83_0E) Serialize(writer PacketWriter, stream *extendedWriter)
 		return err
 	}
 
-	// TODO: This won't use compression for the time being
-	// When #30 is resolved, this could be easier to fix
-	err = stream.writeBoolByte(false)
+	err = stream.writeBoolByte(true)
 	if err != nil {
 		return err
 	}
 
+	zstdStream := stream.wrapZstd()
 	for _, inst := range layer.Instances {
-		err = stream.writeObject(inst, writer.Caches())
+		err = zstdStream.writeObject(inst, writer.Caches())
 		if err != nil {
+			zstdStream.Close()
 			return err
 		}
 	}
-	return nil
+	return zstdStream.Close()
 }
 
 // Type implements Packet83Subpacket.Type()
