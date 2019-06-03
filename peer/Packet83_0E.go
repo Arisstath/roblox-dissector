@@ -14,7 +14,7 @@ type Packet83_0E struct {
 }
 
 func (thisStream *extendedReader) DecodePacket83_0E(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
-	inner := &Packet83_14{}
+	inner := &Packet83_0E{}
 	var err error
 
 	inner.Region, err = thisStream.readStreamInfo()
@@ -39,7 +39,7 @@ func (thisStream *extendedReader) DecodePacket83_0E(reader PacketReader, layers 
 		}
 	}
 
-	for i := 0; i < numInstances; i++ {
+	for i := uint32(0); i < numInstances; i++ {
 		ref, err := thisStream.readObject(reader.Caches())
 		if err != nil {
 			return inner, err

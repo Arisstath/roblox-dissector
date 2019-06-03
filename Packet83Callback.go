@@ -13,7 +13,6 @@ import (
 )
 
 var SubpacketCallbacks = map[uint8](func(peer.Packet83Subpacket) widgets.QWidget_ITF){
-	0xB:  show83_0B,
 	0x1:  show83_01,
 	0x2:  show83_02,
 	0x3:  show83_03,
@@ -23,6 +22,8 @@ var SubpacketCallbacks = map[uint8](func(peer.Packet83Subpacket) widgets.QWidget
 	0x7:  show83_07,
 	0x9:  show83_09,
 	0xA:  show83_0A,
+	0xB:  show83_0B,
+	0xC:  show83_0C,
 	0xD:  show83_0D,
 	0xE:  show83_0E,
 	0x10: show83_10,
@@ -313,6 +314,17 @@ func show83_09(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	return widget
 }
 
+func show83_0C(t peer.Packet83Subpacket) widgets.QWidget_ITF {
+	this := t.(*peer.Packet83_0C)
+	widget := widgets.NewQWidget(nil, 0)
+	layout := NewTopAlignLayout()
+	layout.AddWidget(NewQLabelF("Quota diff: %d", this.QuotaDiff), 0, 0)
+	layout.AddWidget(NewQLabelF("Max region radius: %d", this.MaxRegionRadius), 0, 0)
+	widget.SetLayout(layout)
+
+	return widget
+}
+
 func show83_0D(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_0D)
 	widget := widgets.NewQWidget(nil, 0)
@@ -348,7 +360,7 @@ func show83_0E(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	}
 	instanceList.SetSortingEnabled(true)
 	instanceList.SetModel(standardModel)
-	layerLayout.AddWidget(instanceList, 0, 0)
+	layout.AddWidget(instanceList, 0, 0)
 
 	widget.SetLayout(layout)
 
