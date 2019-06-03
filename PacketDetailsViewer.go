@@ -71,12 +71,14 @@ func NewPacketDetailsViewer(parent widgets.QWidget_ITF, flags core.Qt__WindowTyp
 }
 
 func (viewer *PacketDetailsViewer) Update(context *peer.CommunicationContext, layers *peer.PacketLayers, activationCallback ActivationCallback) {
+	var logBuf strings.Builder
 	if layers.Reliability != nil {
-		viewer.LogBox.SetPlainText(layers.Reliability.GetLog())
+		logBuf.WriteString(layers.Reliability.GetLog())
 	}
 	if layers.Error != nil {
-		viewer.LogBox.SetPlainText(viewer.LogBox.ToPlainText() + "\nError: " + layers.Error.Error())
+		logBuf.WriteString("\nError: " + layers.Error.Error())
 	}
+	viewer.LogBox.SetPlainText(logBuf.String())
 
 	originalIndex := viewer.TabLayout.CurrentIndex()
 
