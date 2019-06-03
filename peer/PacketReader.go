@@ -27,7 +27,6 @@ var packetDecoders = map[byte]decoderFunc{
 	0x1B: (*extendedReader).DecodePacket1BLayer,
 
 	0x81: (*extendedReader).DecodePacket81Layer,
-	//0x82: DecodePacket82Layer,
 	0x83: (*extendedReader).DecodePacket83Layer,
 	0x84: (*extendedReader).DecodePacket84Layer,
 	0x85: (*extendedReader).DecodePacket85Layer,
@@ -243,6 +242,7 @@ func (reader *DefaultPacketReader) readReliable(layers *PacketLayers) {
 		reliablePacketLayers := &PacketLayers{Root: layers.Root, RakNet: layers.RakNet, Reliability: subPacket}
 
 		buffer, err := reader.handleSplitPacket(reliablePacketLayers)
+		reliablePacketLayers.SplitPacket = buffer
 		subPacket.SplitBuffer = buffer
 		reliablePacketLayers.PacketType = buffer.PacketType
 

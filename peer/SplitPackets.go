@@ -26,7 +26,7 @@ type SplitPacketBuffer struct {
 
 	byteReader *bytes.Reader
 	dataReader *extendedReader
-	data       []byte
+	Data       []byte
 
 	// Have all splits been received?
 	IsFinal bool
@@ -105,7 +105,7 @@ func (reader *DefaultPacketReader) handleSplitPacket(layers *PacketLayers) (*Spl
 
 	var shouldClose bool
 	for len(packetBuffer.ReliablePackets) > int(expectedPacket) && packetBuffer.ReliablePackets[expectedPacket] != nil {
-		packetBuffer.data = append(packetBuffer.data, packetBuffer.ReliablePackets[expectedPacket].SelfData...)
+		packetBuffer.Data = append(packetBuffer.Data, packetBuffer.ReliablePackets[expectedPacket].SelfData...)
 
 		expectedPacket++
 		shouldClose = len(packetBuffer.ReliablePackets) == int(expectedPacket)
@@ -113,7 +113,7 @@ func (reader *DefaultPacketReader) handleSplitPacket(layers *PacketLayers) (*Spl
 	}
 	if shouldClose {
 		packetBuffer.IsFinal = true
-		packetBuffer.byteReader = bytes.NewReader(packetBuffer.data)
+		packetBuffer.byteReader = bytes.NewReader(packetBuffer.Data)
 		packetBuffer.dataReader = &extendedReader{packetBuffer.byteReader}
 		if reliablePacket.HasSplitPacket {
 			// TODO: Use a linked list

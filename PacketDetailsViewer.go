@@ -1,11 +1,14 @@
 package main
 
 import (
+	"encoding/hex"
 	"fmt"
+	"io/ioutil"
 	"strings"
 
 	"github.com/Gskartwii/roblox-dissector/peer"
 	"github.com/therecipe/qt/core"
+	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/widgets"
 )
 
@@ -13,6 +16,7 @@ type PacketDetailsViewer struct {
 	*widgets.QWidget
 	TabLayout      *widgets.QTabWidget
 	LogBox         *widgets.QTextEdit
+	HexDumpTab     *widgets.QWidget
 	ReliabilityTab *widgets.QWidget
 	MainTab        *widgets.QWidget
 }
@@ -44,6 +48,13 @@ func NewPacketDetailsViewer(parent widgets.QWidget_ITF, flags core.Qt__WindowTyp
 	relWidget.SetLayout(relLayout)
 	tabWidget.AddTab(relWidget, "Reliability Layer")
 	detailsViewer.ReliabilityTab = relWidget
+
+	hexDumpWidget := widgets.NewQWidget(tabWidget, 0)
+	hexDumpLayout := NewTopAlignLayout()
+	hexDumpLayout.AddWidget(NewLabel("No final packet selected!"), 0, 0)
+	hexDumpWidget.SetLayout(hexDumpLayout)
+	tabWidget.AddTab(hexDumpWidget, "Hex Dump")
+	detailsViewer.HexDumpTab = hexDumpWidget
 
 	mainWidget := widgets.NewQWidget(tabWidget, 0)
 	mainLayout := NewTopAlignLayout()
@@ -132,6 +143,50 @@ func (viewer *PacketDetailsViewer) Update(context *peer.CommunicationContext, la
 		viewer.ReliabilityTab.SetLayout(newRelLayout)
 	}
 	viewer.TabLayout.InsertTab(reliabilityIndex, viewer.ReliabilityTab, "Reliability Layer")
+
+	hexDumpIndex := viewer.TabLayout.IndexOf(viewer.HexDumpTab)
+	viewer.HexDumpTab.DestroyQWidget()
+	viewer.HexDumpTab = widgets.NewQWidget(viewer, 0)
+	if layers.SplitPacket != nil && layers.SplitPacket.IsFinal {
+		newHexLayout := NewTopAlignLayout()
+
+		bytes := layers.SplitPacket.Data
+		dump := hex.Dump(bytes)
+
+		hexDumpWindow := widgets.NewQPlainTextEdit2(dump, nil)
+		font := gui.NewQFont2("Consolas", -1, -1, false)
+		font.SetStyleHint(gui.QFont__Monospace, gui.QFont__PreferDefault)
+		hexDumpWindow.SetFont(font)
+		hexDumpWindow.SetReadOnly(true)
+		hexDumpWindow.SetLineWrapMode(widgets.QPlainTextEdit__NoWrap)
+		newHexLayout.AddWidget(hexDumpWindow, 0, 0)
+
+		copyHexStream := widgets.NewQPushButton2("Copy packet as hex stream", nil)
+		saveBinary := widgets.NewQPushButton2("Save packet as .bin...", nil)
+
+		copyHexStream.ConnectReleased(func() {
+			gui.QGuiApplication_Clipboard().SetText(hex.EncodeToString(bytes), gui.QClipboard__Clipboard)
+		})
+
+		saveBinary.ConnectReleased(func() {
+			location := widgets.QFileDialog_GetSaveFileName(saveBinary, "Save packet as .bin...", "", "BIN files (*.bin)", "", 0)
+			err := ioutil.WriteFile(location, bytes, 0666)
+			if err != nil {
+				showCritical("Couldn't save .bin", err.Error())
+			}
+		})
+
+		buttonAreaWidget := widgets.NewQWidget(nil, 0)
+		buttonLayout := widgets.NewQHBoxLayout()
+		buttonLayout.SetAlign(core.Qt__AlignLeft)
+		buttonLayout.AddWidget(copyHexStream, 0, 0)
+		buttonLayout.AddWidget(saveBinary, 0, 0)
+
+		buttonAreaWidget.SetLayout(buttonLayout)
+		newHexLayout.AddWidget(buttonAreaWidget, 0, 0)
+		viewer.HexDumpTab.SetLayout(newHexLayout)
+	}
+	viewer.TabLayout.InsertTab(hexDumpIndex, viewer.HexDumpTab, "Packet hex dump")
 
 	mainIndex := viewer.TabLayout.IndexOf(viewer.MainTab)
 	viewer.MainTab.DestroyQWidget()
