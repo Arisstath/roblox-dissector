@@ -24,6 +24,7 @@ var SubpacketCallbacks = map[uint8](func(peer.Packet83Subpacket) widgets.QWidget
 	0x9:  show83_09,
 	0xA:  show83_0A,
 	0xD:  show83_0D,
+	0xE:  show83_0E,
 	0x10: show83_10,
 	0x11: show83_11,
 	0x12: show83_12,
@@ -320,6 +321,35 @@ func show83_0D(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	layout.AddWidget(NewQLabelF("Bool 2: %v", this.Bool2), 0, 0)
 	layout.AddWidget(NewQLabelF("Region: %s", this.Region), 0, 0)
 	layout.AddWidget(show83_0B(&peer.Packet83_0B{Instances: this.Instances}), 0, 0)
+	widget.SetLayout(layout)
+
+	return widget
+}
+
+func show83_0E(t peer.Packet83Subpacket) widgets.QWidget_ITF {
+	this := t.(*peer.Packet83_0E)
+	widget := widgets.NewQWidget(nil, 0)
+	layout := NewTopAlignLayout()
+	layout.AddWidget(NewQLabelF("Region: %s", this.Region), 0, 0)
+
+	instanceListLabel := NewLabel("Removed instances:")
+	layout.AddWidget(instanceListLabel, 0, 0)
+
+	instanceList := widgets.NewQTreeView(nil)
+	standardModel := NewProperSortModel(nil)
+	standardModel.SetHorizontalHeaderLabels([]string{"Index", "Name", "Reference"})
+	rootItem := standardModel.InvisibleRootItem()
+	for index, inst := range this.Instances {
+		rootItem.AppendRow([]*gui.QStandardItem{
+			NewUintItem(index),
+			NewStringItem(inst.Name()),
+			NewStringItem(inst.Ref.String()),
+		})
+	}
+	instanceList.SetSortingEnabled(true)
+	instanceList.SetModel(standardModel)
+	layerLayout.AddWidget(instanceList, 0, 0)
+
 	widget.SetLayout(layout)
 
 	return widget
