@@ -28,6 +28,7 @@ var Packet83Subpackets = map[uint8]string{
 	0x11: "ID_REPLIC_STATS",
 	0x12: "ID_REPLIC_HASH",
 	0x13: "ID_REPLIC_ATOMIC",
+	0x14: "ID_REPLIC_STREAM_DATA_INFO",
 }
 
 var packet83Decoders = map[uint8](func(*extendedReader, PacketReader, *PacketLayers) (Packet83Subpacket, error)){
@@ -45,6 +46,7 @@ var packet83Decoders = map[uint8](func(*extendedReader, PacketReader, *PacketLay
 	0x11: (*extendedReader).DecodePacket83_11,
 	0x12: (*extendedReader).DecodePacket83_12,
 	0x13: (*extendedReader).DecodePacket83_13,
+	0x14: (*extendedReader).DecodePacket83_14,
 }
 
 // Packet83Subpacket is an interface implemented by

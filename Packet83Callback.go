@@ -3,13 +3,13 @@ package main
 import (
 	"strconv"
 
-	"github.com/Gskartwii/roblox-dissector/peer"
 	"github.com/Gskartwii/roblox-dissector/datamodel"
+	"github.com/Gskartwii/roblox-dissector/peer"
+	"github.com/dustin/go-humanize"
 	"github.com/robloxapi/rbxfile"
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/widgets"
-	"github.com/dustin/go-humanize"
 )
 
 var SubpacketCallbacks = map[uint8](func(peer.Packet83Subpacket) widgets.QWidget_ITF){
@@ -27,6 +27,7 @@ var SubpacketCallbacks = map[uint8](func(peer.Packet83Subpacket) widgets.QWidget
 	0x11: show83_11,
 	0x12: show83_12,
 	0x13: show83_13,
+	0x14: show83_14,
 }
 var Callbacks83_09 = map[uint8](func(peer.Packet83_09Subpacket) widgets.QWidget_ITF){
 	0x0: show83_09_00,
@@ -252,7 +253,6 @@ func show83_07(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	return widget
 }
 
-
 func show83_09_00(t peer.Packet83_09Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_09_00)
 	widget := widgets.NewQWidget(nil, 0)
@@ -451,6 +451,19 @@ func show83_13(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 		layout.AddWidget(NewLabel("Parent: nil"), 0, 0)
 	}
 
+	widget.SetLayout(layout)
+
+	return widget
+}
+
+func show83_14(t peer.Packet83Subpacket) widgets.QWidget_ITF {
+	this := t.(*peer.Packet83_14)
+	widget := widgets.NewQWidget(nil, 0)
+	layout := NewTopAlignLayout()
+	layout.AddWidget(NewQLabelF("Int 1: %d", this.Int1), 0, 0)
+	layout.AddWidget(NewQLabelF("Int 2: %d", this.Int2), 0, 0)
+	layout.AddWidget(NewQLabelF("Int 3: %d", this.Int3), 0, 0)
+	layout.AddWidget(NewQLabelF("Int 4: %d", this.Int4), 0, 0)
 	widget.SetLayout(layout)
 
 	return widget
