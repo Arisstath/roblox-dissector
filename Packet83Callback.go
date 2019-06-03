@@ -26,6 +26,7 @@ var SubpacketCallbacks = map[uint8](func(peer.Packet83Subpacket) widgets.QWidget
 	0xC:  show83_0C,
 	0xD:  show83_0D,
 	0xE:  show83_0E,
+	0xF:  show83_0F,
 	0x10: show83_10,
 	0x11: show83_11,
 	0x12: show83_12,
@@ -365,6 +366,11 @@ func show83_0E(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	widget.SetLayout(layout)
 
 	return widget
+}
+
+func show83_0F(t peer.Packet83Subpacket) widgets.QWidget_ITF {
+	this := t.(*peer.Packet83_0F)
+	return NewQLabelF("Instance removal: %s, %s", this.Instance.Ref.String(), this.Instance.GetFullName())
 }
 
 func show83_10(t peer.Packet83Subpacket) widgets.QWidget_ITF {
