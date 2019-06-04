@@ -58,12 +58,12 @@ func (myClient *CustomClient) bindDefaultHandlers() {
 	// we won't do that because the chan receive MUST be executed inside
 	// the go func(){}()
 	go func() {
-		players, err := myClient.DataModel.WaitForService(myClient.RunningContext, "Players")
+		localPlayer, err := myClient.DataModel.WaitForChild(myClient.RunningContext, "Players", myClient.UserName)
 		if err != nil {
-			println("players serv error:", err.Error())
+			println("localPlayer wait error:", err.Error())
 			return
 		}
-		myClient.handlePlayersService(players)
+		myClient.handleLocalPlayer(localPlayer)
 	}()
 }
 
@@ -218,19 +218,17 @@ func (myClient *CustomClient) idChallengeHandler(e *emitter.Event) {
 	}
 }
 
-func (myClient *CustomClient) handlePlayersService(players *datamodel.Instance) {
+func (myClient *CustomClient) handleLocalPlayer(player *datamodel.Instance) {
 	// this function will be called twice if both top repl and data repl contain Players
 	if myClient.localPlayer != nil { // do not send localplayer twice!
 		return
 	}
+	myClient.localPlayer = player
 
-	myPlayer, _ := datamodel.NewInstance("Player", nil)
-	myPlayer.Ref = myClient.InstanceDictionary.NewReference()
-	myPlayer.Properties = map[string]rbxfile.Value{
-		"Name":                              rbxfile.ValueString(myClient.UserName),
-		"CharacterAppearance":               rbxfile.ValueString(myClient.characterAppearance),
-		"CharacterAppearanceId":             rbxfile.ValueInt64(myClient.characterAppearanceID),
-		"InternalCharacterAppearanceLoaded": rbxfile.ValueBool(true),
+	properties := map[string]rbxfile.Value{
+		"Name":                  rbxfile.ValueString(myClient.UserName),
+		"CharacterAppearance":   rbxfile.ValueString(myClient.characterAppearance),
+		"CharacterAppearanceId": rbxfile.ValueInt64(myClient.characterAppearanceID),
 		// TODO: Assign ID here, in case somebody wants to pass this in an event arg
 		"ChatPrivacyMode":     datamodel.ValueToken{Value: 0},
 		"AccountAgeReplicate": rbxfile.ValueInt(myClient.AccountAge),
@@ -239,14 +237,8 @@ func (myClient *CustomClient) handlePlayersService(players *datamodel.Instance) 
 		"UserId":              rbxfile.ValueInt64(myClient.PlayerID),
 		"ReplicatedLocaleId":  rbxfile.ValueString("en-us"),
 	}
-	err := players.AddChild(myPlayer)
-	if err != nil {
-		println("Failed to create localpalyer:", err.Error())
-	}
-	myClient.Context.InstancesByReference.AddInstance(myPlayer.Ref, myPlayer)
-	myClient.localPlayer = myPlayer
 
-	err = myClient.WriteDataPackets(
+	err := myClient.WriteDataPackets(
 		&Packet83_05{
 			Timestamp:     uint64(time.Now().UnixNano() / int64(time.Millisecond)),
 			PacketVersion: 2,
@@ -260,7 +252,14 @@ func (myClient *CustomClient) handlePlayersService(players *datamodel.Instance) 
 		println("Failed to send initial data replic:", err.Error())
 		return
 	}
-	err = myClient.ReplicateInstance(myClient.localPlayer, true)
+	// bounce the player back to the server, for reasons beyond my understanding
+	err = myClient.WriteDataPackets(&Packet83_02{&ReplicationInstance{
+		DeleteOnDisconnect: true,
+		Instance:           player,
+		Parent:             player.Parent(),
+		Schema:             myClient.Context.NetworkSchema.SchemaForClass("Player"),
+		Properties:         properties,
+	}})
 	if err != nil {
 		println("Failed to send local player:", err.Error())
 	}
