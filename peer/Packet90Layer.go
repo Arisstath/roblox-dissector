@@ -5,6 +5,8 @@ import "fmt"
 // Packet90Layer represents ID_PROTOCOL_SYNC - client -> server
 type Packet90Layer struct {
 	SchemaVersion  uint32
+	Bool1          bool
+	Bool2          bool
 	RequestedFlags []string
 	JoinData       string
 }
@@ -18,8 +20,19 @@ func (stream *extendedReader) DecodePacket90Layer(reader PacketReader, layers *P
 		return layer, err
 	}
 	layer.SchemaVersion, err = thisStream.readUint32BE()
+	if err != nil {
+		return layer, err
+	}
+	layer.Bool1, err = thisStream.readBoolByte()
+	if err != nil {
+		return layer, err
+	}
+	layer.Bool2, err = thisStream.readBoolByte()
+	if err != nil {
+		return layer, err
+	}
 
-	flagsLen, err := thisStream.readUint16BE()
+	flagsLen, err := thisStream.readUintUTF8()
 	if err != nil {
 		return layer, err
 	}
@@ -49,7 +62,15 @@ func (layer *Packet90Layer) Serialize(writer PacketWriter, stream *extendedWrite
 	if err != nil {
 		return err
 	}
-	err = rawStream.writeUint16BE(uint16(len(layer.RequestedFlags)))
+	err = rawStream.writeBoolByte(layer.Bool1)
+	if err != nil {
+		return err
+	}
+	err = rawStream.writeBoolByte(layer.Bool2)
+	if err != nil {
+		return err
+	}
+	err = rawStream.writeUintUTF8(uint32(len(layer.RequestedFlags)))
 	if err != nil {
 		return err
 	}
