@@ -12,6 +12,18 @@ import (
 	"github.com/olebedev/emitter"
 )
 
+func SrcAndDestFromGoPacket(packet gopacket.Packet) (*net.UDPAddr, *net.UDPAddr) {
+	return &net.UDPAddr{
+			IP:   packet.Layer(layers.LayerTypeIPv4).(*layers.IPv4).SrcIP,
+			Port: int(packet.Layer(layers.LayerTypeUDP).(*layers.UDP).SrcPort),
+			Zone: "udp",
+		}, &net.UDPAddr{
+			IP:   packet.Layer(layers.LayerTypeIPv4).(*layers.IPv4).DstIP,
+			Port: int(packet.Layer(layers.LayerTypeUDP).(*layers.UDP).DstPort),
+			Zone: "udp",
+		}
+}
+
 type PacketProvider interface {
 	Layers() *emitter.Emitter
 	Errors() *emitter.Emitter

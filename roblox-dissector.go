@@ -1,11 +1,7 @@
 package main
 
 import (
-	"net"
-
 	"github.com/Gskartwii/roblox-dissector/peer"
-	"github.com/google/gopacket"
-	"github.com/google/gopacket/layers"
 	"github.com/therecipe/qt/widgets"
 	//_ "net/http/pprof"
 )
@@ -35,18 +31,6 @@ var ActivationCallbacks map[byte]ActivationCallback = map[byte]ActivationCallbac
 	0x93: ShowPacket93,
 	0x96: ShowPacket96,
 	0x97: ShowPacket97,
-}
-
-func SrcAndDestFromGoPacket(packet gopacket.Packet) (*net.UDPAddr, *net.UDPAddr) {
-	return &net.UDPAddr{
-			IP:   packet.Layer(layers.LayerTypeIPv4).(*layers.IPv4).SrcIP,
-			Port: int(packet.Layer(layers.LayerTypeUDP).(*layers.UDP).SrcPort),
-			Zone: "udp",
-		}, &net.UDPAddr{
-			IP:   packet.Layer(layers.LayerTypeIPv4).(*layers.IPv4).DstIP,
-			Port: int(packet.Layer(layers.LayerTypeUDP).(*layers.UDP).DstPort),
-			Zone: "udp",
-		}
 }
 
 func main() {
