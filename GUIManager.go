@@ -126,6 +126,10 @@ func paintItems(row []*gui.QStandardItem, color *gui.QColor) {
 	}
 }
 
+func showCritical(title, message string) {
+	widgets.QMessageBox_Critical(nil, title, message, widgets.QMessageBox__Ok, widgets.QMessageBox__NoButton)
+}
+
 func GUIMain() {
 	widgets.NewQApplication(len(os.Args), os.Args)
 	window := NewDissectorWindow(nil, 0)

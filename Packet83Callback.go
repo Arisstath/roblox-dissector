@@ -3,17 +3,16 @@ package main
 import (
 	"strconv"
 
-	"github.com/Gskartwii/roblox-dissector/peer"
 	"github.com/Gskartwii/roblox-dissector/datamodel"
+	"github.com/Gskartwii/roblox-dissector/peer"
+	"github.com/dustin/go-humanize"
 	"github.com/robloxapi/rbxfile"
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/widgets"
-	"github.com/dustin/go-humanize"
 )
 
 var SubpacketCallbacks = map[uint8](func(peer.Packet83Subpacket) widgets.QWidget_ITF){
-	0xB:  show83_0B,
 	0x1:  show83_01,
 	0x2:  show83_02,
 	0x3:  show83_03,
@@ -23,10 +22,16 @@ var SubpacketCallbacks = map[uint8](func(peer.Packet83Subpacket) widgets.QWidget
 	0x7:  show83_07,
 	0x9:  show83_09,
 	0xA:  show83_0A,
+	0xB:  show83_0B,
+	0xC:  show83_0C,
+	0xD:  show83_0D,
+	0xE:  show83_0E,
+	0xF:  show83_0F,
 	0x10: show83_10,
 	0x11: show83_11,
 	0x12: show83_12,
 	0x13: show83_13,
+	0x14: show83_14,
 }
 var Callbacks83_09 = map[uint8](func(peer.Packet83_09Subpacket) widgets.QWidget_ITF){
 	0x0: show83_09_00,
@@ -252,7 +257,6 @@ func show83_07(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	return widget
 }
 
-
 func show83_09_00(t peer.Packet83_09Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_09_00)
 	widget := widgets.NewQWidget(nil, 0)
@@ -310,6 +314,65 @@ func show83_09(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 
 	return widget
 }
+
+func show83_0C(t peer.Packet83Subpacket) widgets.QWidget_ITF {
+	this := t.(*peer.Packet83_0C)
+	widget := widgets.NewQWidget(nil, 0)
+	layout := NewTopAlignLayout()
+	layout.AddWidget(NewQLabelF("Quota diff: %d", this.QuotaDiff), 0, 0)
+	layout.AddWidget(NewQLabelF("Max region radius: %d", this.MaxRegionRadius), 0, 0)
+	widget.SetLayout(layout)
+
+	return widget
+}
+
+func show83_0D(t peer.Packet83Subpacket) widgets.QWidget_ITF {
+	this := t.(*peer.Packet83_0D)
+	widget := widgets.NewQWidget(nil, 0)
+	layout := NewTopAlignLayout()
+	layout.AddWidget(NewQLabelF("Bool 1: %v", this.Bool1), 0, 0)
+	layout.AddWidget(NewQLabelF("Bool 2: %v", this.Bool2), 0, 0)
+	layout.AddWidget(NewQLabelF("Region: %s", this.Region), 0, 0)
+	layout.AddWidget(show83_0B(&peer.Packet83_0B{Instances: this.Instances}), 0, 0)
+	widget.SetLayout(layout)
+
+	return widget
+}
+
+func show83_0E(t peer.Packet83Subpacket) widgets.QWidget_ITF {
+	this := t.(*peer.Packet83_0E)
+	widget := widgets.NewQWidget(nil, 0)
+	layout := NewTopAlignLayout()
+	layout.AddWidget(NewQLabelF("Region: %s", this.Region), 0, 0)
+
+	instanceListLabel := NewLabel("Removed instances:")
+	layout.AddWidget(instanceListLabel, 0, 0)
+
+	instanceList := widgets.NewQTreeView(nil)
+	standardModel := NewProperSortModel(nil)
+	standardModel.SetHorizontalHeaderLabels([]string{"Index", "Name", "Reference"})
+	rootItem := standardModel.InvisibleRootItem()
+	for index, inst := range this.Instances {
+		rootItem.AppendRow([]*gui.QStandardItem{
+			NewUintItem(index),
+			NewStringItem(inst.Name()),
+			NewStringItem(inst.Ref.String()),
+		})
+	}
+	instanceList.SetSortingEnabled(true)
+	instanceList.SetModel(standardModel)
+	layout.AddWidget(instanceList, 0, 0)
+
+	widget.SetLayout(layout)
+
+	return widget
+}
+
+func show83_0F(t peer.Packet83Subpacket) widgets.QWidget_ITF {
+	this := t.(*peer.Packet83_0F)
+	return NewQLabelF("Instance removal: %s, %s", this.Instance.Ref.String(), this.Instance.GetFullName())
+}
+
 func show83_10(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 	this := t.(*peer.Packet83_10)
 	return NewQLabelF("Replication tag: %d", this.TagID)
@@ -451,6 +514,17 @@ func show83_13(t peer.Packet83Subpacket) widgets.QWidget_ITF {
 		layout.AddWidget(NewLabel("Parent: nil"), 0, 0)
 	}
 
+	widget.SetLayout(layout)
+
+	return widget
+}
+
+func show83_14(t peer.Packet83Subpacket) widgets.QWidget_ITF {
+	this := t.(*peer.Packet83_14)
+	widget := widgets.NewQWidget(nil, 0)
+	layout := NewTopAlignLayout()
+	layout.AddWidget(NewQLabelF("Region: %s", this.Region), 0, 0)
+	layout.AddWidget(NewQLabelF("Int 1: %d", this.Int1), 0, 0)
 	widget.SetLayout(layout)
 
 	return widget

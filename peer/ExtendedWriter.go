@@ -10,6 +10,8 @@ import (
 	"math"
 	"net"
 
+	"github.com/DataDog/zstd"
+
 	"github.com/Gskartwii/roblox-dissector/datamodel"
 )
 
@@ -356,4 +358,53 @@ func (b *extendedWriter) writeReliabilityFlags(rel uint8, hasSplit bool) error {
 		flags |= 1 << 4
 	}
 	return b.WriteByte(flags)
+}
+
+type zstdExtendedWriter struct {
+	*extendedWriter
+	compressedBuffer *bytes.Buffer
+	compressor       *zstd.Writer
+	counter          *countWriter
+	targetStream     *extendedWriter
+	closed           bool
+}
+
+// Close flushes and closes the compression stream.
+// Trying to call this method on a closed stream will do nothing.
+func (b *zstdExtendedWriter) Close() error {
+	// double closing a zstd.Writer will result in flaky memory management
+	if b.closed {
+		return nil
+	}
+	b.closed = true
+
+	err := b.compressor.Close()
+	if err != nil {
+		return err
+	}
+
+	err = b.targetStream.writeUint32BE(uint32(b.compressedBuffer.Len()))
+	if err != nil {
+		return err
+	}
+	err = b.targetStream.writeUint32BE(uint32(b.counter.numBytes))
+	if err != nil {
+		return err
+	}
+
+	return b.targetStream.allBytes(b.compressedBuffer.Bytes())
+}
+
+func (b *extendedWriter) wrapZstd() *zstdExtendedWriter {
+	compressedBuffer := new(bytes.Buffer)
+	compressor := zstd.NewWriter(compressedBuffer)
+	counter := newCountWriter()
+	writeMux := io.MultiWriter(compressor, counter)
+	return &zstdExtendedWriter{
+		extendedWriter:   &extendedWriter{writeMux},
+		targetStream:     b,
+		compressedBuffer: compressedBuffer,
+		counter:          counter,
+		compressor:       compressor,
+	}
 }

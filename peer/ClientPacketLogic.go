@@ -132,13 +132,14 @@ func (myClient *CustomClient) sendProtocolSync() {
 	response90 := &Packet90Layer{
 		SchemaVersion: 36,
 		RequestedFlags: []string{
-			"FixDictionaryScopePlatformsReplication",
 			"UseNativePathWaypoint",
 			"BodyColorsColor3PropertyReplicationEnabled",
-			"FixBallRaycasts",
 			"FixRaysInWedges",
-			"PgsForAll",
+			"NetworkUsePeerId",
+			"NewCharacterLoadingSignalOrdering",
 			"ReplicateInterpolateRelativeHumanoidPlatformsMotion",
+			"FixBallRaycasts",
+			"PgsForAll",
 			"TerrainRaycastsRespectCollisionGroups",
 		},
 		JoinData: string(marshalledJoin),
@@ -189,7 +190,7 @@ func (myClient *CustomClient) packet10Handler(e *emitter.Event) {
 	myClient.sendPing()
 	myClient.sendProtocolSync()
 	myClient.sendPlaceIDVerification(0)
-	//myClient.submitTicket()
+	myClient.submitTicket()
 	myClient.sendSpawnName()
 }
 

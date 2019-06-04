@@ -154,6 +154,7 @@ func (writer *DefaultPacketWriter) writeAsSplits(estHeaderLength int, data []byt
 		HasPacketType:      true,
 		PacketType:         layers.PacketType,
 		UniqueID:           writer.context.uniqueID,
+		Data:               data,
 	}
 	writer.context.uniqueID++
 	layers.SplitPacket = packet.SplitBuffer
@@ -246,6 +247,7 @@ func (writer *DefaultPacketWriter) writeReliablePacket(data []byte, layers *Pack
 			HasPacketType:      true,
 			PacketType:         layers.PacketType,
 			UniqueID:           writer.context.uniqueID,
+			Data:               data,
 		}
 		writer.context.uniqueID++
 		layers.RakNet = rakNet

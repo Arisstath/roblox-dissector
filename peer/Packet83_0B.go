@@ -1,11 +1,8 @@
 package peer
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
-
-	"github.com/DataDog/zstd"
 )
 
 // Packet83_0B represents ID_JOINDATA
@@ -56,39 +53,19 @@ func (layer *Packet83_0B) Serialize(writer PacketWriter, stream *extendedWriter)
 	}
 
 	err = stream.writeUint32BE(uint32(len(layer.Instances)))
-	uncompressedBuf := bytes.NewBuffer([]byte{})
-	zstdBuf := bytes.NewBuffer([]byte{})
-	middleStream := zstd.NewWriter(zstdBuf)
-	zstdStream := &extendedWriter{uncompressedBuf}
+	zstdStream := stream.wrapZstd()
 
 	for i := 0; i < len(layer.Instances); i++ {
-		err = layer.Instances[i].Serialize(writer, &joinSerializeWriter{zstdStream})
+		// It is safe to take .extendedWriter here
+		// because the .extendedWriter will write to the compression/counter writemux
+		err = layer.Instances[i].Serialize(writer, &joinSerializeWriter{zstdStream.extendedWriter})
 		if err != nil {
-			middleStream.Close()
+			zstdStream.Close()
 			return err
 		}
 	}
 
-	_, err = middleStream.Write(uncompressedBuf.Bytes())
-	if err != nil {
-		middleStream.Close()
-		return err
-	}
-	err = middleStream.Close()
-	if err != nil {
-		return err
-	}
-
-	err = stream.writeUint32BE(uint32(zstdBuf.Len()))
-	if err != nil {
-		return err
-	}
-	err = stream.writeUint32BE(uint32(uncompressedBuf.Len()))
-	if err != nil {
-		return err
-	}
-	err = stream.allBytes(zstdBuf.Bytes())
-	return err
+	return zstdStream.Close()
 }
 
 // Type implements Packet83Subpacket.Type()

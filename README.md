@@ -4,7 +4,7 @@
 [![Build Status](https://travis-ci.org/Gskartwii/roblox-dissector.svg?branch=master)](https://travis-ci.org/Gskartwii/roblox-dissector)
 [![Documentation](https://godoc.org/github.com/Gskartwii/roblox-dissector?status.svg)](https://godoc.org/github.com/Gskartwii/roblox-dissector)
 [![Go Report](https://goreportcard.com/badge/github.com/Gskartwii/roblox-dissector)](https://goreportcard.com/report/github.com/Gskartwii/roblox-dissector)
-[![Release v0.6pre](https://img.shields.io/badge/release-v0.6pre-blue.svg)](https://github.com/Gskartwii/roblox-dissector/releases)
+[![Release v0.6pre](https://img.shields.io/badge/release-v0.7.1beta-blue.svg)](https://github.com/Gskartwii/roblox-dissector/releases)
 
 [Discord Chat](https://discord.gg/zPbprKb)
 
@@ -14,7 +14,7 @@ Sala is a suite of tools to aid developers, hackers\* and designers in understan
 
 ## Getting builds
 Some releases are available under the [releases tab](https://github.com/Gskartwii/roblox-dissector/releases).  
-To compile Sala, you must first install [TheRecipe's Go bindings for Qt](https://github.com/therecipe/qt). 
+To compile Sala, you must first install [TheRecipe's Go bindings for Qt](https://github.com/therecipe/qt). Preferably, use Qt 5.12.2 and 64-bit MinGW version 7.3. 
 Then fetch the repo and its dependencies: `go get -v github.com/Gskartwii/roblox-dissector/...`  
 And compile: 
 
@@ -29,6 +29,8 @@ After the first compilation, you can pass the `-fast` flag to `qtdeploy` to spee
 ```
 %GOPATH%/bin/qtdeploy -fast build windows
 ```
+
+If you have the right setup, you can also pass build tags to deploy. Use `-tags=lumikide` to compile with Lumikide support (if you don't know what it is, you won't need it) and `-tags=divert` to compile with WinDivert support.
 
 ## Features
 * Read PCAP Files
