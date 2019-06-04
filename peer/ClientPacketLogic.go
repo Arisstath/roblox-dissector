@@ -132,13 +132,14 @@ func (myClient *CustomClient) sendProtocolSync() {
 	response90 := &Packet90Layer{
 		SchemaVersion: 36,
 		RequestedFlags: []string{
-			"FixDictionaryScopePlatformsReplication",
 			"UseNativePathWaypoint",
 			"BodyColorsColor3PropertyReplicationEnabled",
-			"FixBallRaycasts",
 			"FixRaysInWedges",
-			"PgsForAll",
+			"NetworkUsePeerId",
+			"NewCharacterLoadingSignalOrdering",
 			"ReplicateInterpolateRelativeHumanoidPlatformsMotion",
+			"FixBallRaycasts",
+			"PgsForAll",
 			"TerrainRaycastsRespectCollisionGroups",
 		},
 		JoinData: string(marshalledJoin),
