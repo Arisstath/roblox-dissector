@@ -12,6 +12,7 @@ func ShowPacket90(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 	MainLayer := layers.Main.(*peer.Packet90Layer)
 
 	layerLayout.AddWidget(NewQLabelF("Schema version: %d", MainLayer.SchemaVersion), 0, 0)
+	layerLayout.AddWidget(NewQLabelF("Int 1: %d", MainLayer.Int1), 0, 0)
 
 	requestList := widgets.NewQTreeView(nil)
 	standardModel := NewProperSortModel(nil)

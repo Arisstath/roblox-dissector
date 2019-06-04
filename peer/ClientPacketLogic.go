@@ -135,7 +135,7 @@ func (myClient *CustomClient) sendProtocolSync() {
 			"UseNativePathWaypoint",
 			"BodyColorsColor3PropertyReplicationEnabled",
 			"FixRaysInWedges",
-			"NetworkUsePeerId",
+			"FixDictionaryScopePlatformsReplication",
 			"NewCharacterLoadingSignalOrdering",
 			"ReplicateInterpolateRelativeHumanoidPlatformsMotion",
 			"FixBallRaycasts",
@@ -190,7 +190,7 @@ func (myClient *CustomClient) packet10Handler(e *emitter.Event) {
 	myClient.sendPing()
 	myClient.sendProtocolSync()
 	myClient.sendPlaceIDVerification(0)
-	myClient.submitTicket()
+	//myClient.submitTicket()
 	myClient.sendSpawnName()
 }
 

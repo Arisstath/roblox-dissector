@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"container/list"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -100,7 +101,8 @@ type windows10SecuritySettings struct {
 type joinData struct {
 	CharacterAppearance   string
 	GameChatType          string
-	FollowUserID          int64 `json:"FollowUserId"`
+	FollowUserID          int64  `json:"FollowUserId"`
+	OSPlatform            string `json:"OsPlatform"`
 	AccountAge            int32
 	SuperSafeChat         bool
 	VRDevice              string `json:"VrDevice"`
@@ -111,8 +113,8 @@ type joinData struct {
 	UserName              string
 	IsTeleportedIn        bool
 	LocaleID              string `json:"LocaleId"`
-	CharacterAppearanceID int64
-	UserID                int64
+	CharacterAppearanceID int64  `json:"CharacterAppearanceId"`
+	UserID                int64  `json:"UserId"`
 }
 
 func (d joinData) JSON() ([]byte, error) {
@@ -358,6 +360,10 @@ func (myClient *CustomClient) joinWithJoinScript(url string, cookies []*http.Coo
 		return err
 	}
 	myClient.joinDataObject.LocaleID = "en-us"
+	myClient.joinDataObject.OSPlatform = myClient.SecuritySettings.OSPlatform()
+	randomString := make([]byte, 0x10)
+	rand.Read(randomString)
+	myClient.joinDataObject.Locale2IDRef = "RBX" + hex.EncodeToString(randomString)
 
 	addrp, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", jsResp.MachineAddress, jsResp.ServerPort))
 	if err != nil {
