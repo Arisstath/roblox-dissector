@@ -190,7 +190,7 @@ func (myClient *CustomClient) packet10Handler(e *emitter.Event) {
 	myClient.sendPing()
 	myClient.sendProtocolSync()
 	myClient.sendPlaceIDVerification(0)
-	//myClient.submitTicket()
+	myClient.submitTicket()
 	myClient.sendSpawnName()
 }
 
