@@ -1,12 +1,10 @@
 package peer
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
 
-	"github.com/DataDog/zstd"
 	"github.com/Gskartwii/roblox-dissector/datamodel"
 )
 
@@ -126,22 +124,22 @@ func (thisStream *extendedReader) DecodePacket8DLayer(reader PacketReader, layer
 			continue
 		}
 
-		var cubeSideLength int32 = 1 << (header & 0xF)
+		var cubeSideLength uint32 = 1 << (header & 0xF)
 		subpacket.SideLength = uint32(cubeSideLength)
 		cubeSize := cubeSideLength * cubeSideLength * cubeSideLength
 		if cubeSize > 0x100000 {
 			return layer, errors.New("cube size larger than max")
 		}
 		subpacket.CellCube = make([][][]Cell, subpacket.SideLength)
-		for i := 0; i < subpacket.SideLength; i++ {
+		for i := uint32(0); i < subpacket.SideLength; i++ {
 			subpacket.CellCube[i] = make([][]Cell, subpacket.SideLength)
-			for j := 0; j < subpacket.SideLength; j++ {
+			for j := uint32(0); j < subpacket.SideLength; j++ {
 				subpacket.CellCube[i][j] = make([]Cell, subpacket.SideLength)
 			}
 		}
 
 		// Don't increment i here; we will do it inside the loop
-		for i := 0; i < cubeSize; {
+		for i := uint32(0); i < cubeSize; {
 			cellHeader, err := zstdStream.readUint8()
 			if err != nil {
 				return layer, err
@@ -161,18 +159,18 @@ func (thisStream *extendedReader) DecodePacket8DLayer(reader PacketReader, layer
 				occupancy = 0
 			}
 
-			var count int
+			var count uint32
 			if cellHeader&0x80 != 0 {
 				countVal, err := zstdStream.readUint8()
 				if err != nil {
 					return layer, err
 				}
-				count = int(countVal)
+				count = uint32(countVal)
 			}
 			// Implicit count of +1
 			count++
 
-			if i+count > int(cubeSize) {
+			if i+count > cubeSize {
 				return layer, errors.New("chunk overflow")
 			}
 
@@ -188,8 +186,8 @@ func (thisStream *extendedReader) DecodePacket8DLayer(reader PacketReader, layer
 			// maxX => x=0 y=0 z=1
 			// maxX*maxZ => x=0 y=1 z=0
 			// yeah...
-			sideLength := int(subpacket.SideLength)
-			for cubeIndex := i; cubeIndex < i+count; cubeIndex++ {
+			sideLength := subpacket.SideLength
+			for cubeIndex := uint32(i); cubeIndex < i+count; cubeIndex++ {
 				xCoord := cubeIndex % sideLength
 				zCoord := (cubeIndex / sideLength) % sideLength
 				yCoord := (cubeIndex / sideLength) / sideLength
@@ -219,32 +217,15 @@ func (layer *Packet8DLayer) Serialize(writer PacketWriter, stream *extendedWrite
 		return err
 	}
 
-	uncompressedBuf := bytes.NewBuffer([]byte{})
-	zstdBuf := bytes.NewBuffer([]byte{})
-	middleStream := zstd.NewWriter(zstdBuf)
-	zstdStream := &extendedWriter{uncompressedBuf}
+	zstdStream := stream.wrapZstd()
 
 	err = layer.serializeChunks(writer, stream)
 	if err != nil {
-		middleStream.Close()
+		zstdStream.Close()
 		return err
 	}
 
-	err = middleStream.Close()
-	if err != nil {
-		return err
-	}
-
-	err = stream.writeUint32BE(uint32(zstdBuf.Len()))
-	if err != nil {
-		return err
-	}
-	err = stream.writeUint32BE(uint32(uncompressedBuf.Len()))
-	if err != nil {
-		return err
-	}
-	err = stream.allBytes(zstdBuf.Bytes())
-	return err
+	return zstdStream.Close()
 }
 
 func (layer *Packet8DLayer) String() string {

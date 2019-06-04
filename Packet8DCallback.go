@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/Gskartwii/roblox-dissector/peer"
-	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/widgets"
 )
@@ -30,21 +29,14 @@ func ShowPacket8D(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 
 	chunkList := widgets.NewQTreeView(nil)
 	standardModel := NewProperSortModel(nil)
-	standardModel.SetHorizontalHeaderLabels([]string{"Index", "Material", "Occupancy", "Count"})
+	standardModel.SetHorizontalHeaderLabels([]string{"Index", "Dimensions"})
 
 	rootNode := standardModel.InvisibleRootItem()
 	for _, chunk := range MainLayer.Chunks {
 		indexItem := NewStringItem("Chunk: " + chunk.ChunkIndex.String())
-		for i, cellData := range chunk.Contents {
-			indexItem.AppendRow([]*gui.QStandardItem{
-				NewUintItem(i),
-				NewStringItem(MaterialToString(cellData.Material)),
-				NewUintItem(cellData.Occupancy),
-				NewUintItem(cellData.Count),
-			})
-		}
+		countItem := NewQStandardItemF("%d x %d x %d", chunk.SideLength, chunk.SideLength, chunk.SideLength)
 
-		rootNode.AppendRow([]*gui.QStandardItem{indexItem})
+		rootNode.AppendRow([]*gui.QStandardItem{indexItem, countItem})
 	}
 
 	chunkList.SetModel(standardModel)
