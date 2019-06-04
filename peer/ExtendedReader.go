@@ -55,7 +55,17 @@ func (b *extendedReader) readUint16LE() (uint16, error) {
 
 func (b *extendedReader) readBoolByte() (bool, error) {
 	res, err := b.ReadByte()
-	return res == 1, err
+	if err != nil {
+		return false, err
+	}
+	switch res {
+	case 0:
+		return false, err
+	case 1:
+		return true, err
+	default:
+		return false, errors.New("invalid bool byte")
+	}
 }
 
 func (b *extendedReader) readUint24LE() (uint32, error) {
