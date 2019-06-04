@@ -1,26 +1,26 @@
 package peer
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
 
+	"github.com/DataDog/zstd"
 	"github.com/Gskartwii/roblox-dissector/datamodel"
-	"github.com/robloxapi/rbxfile"
 )
 
 // Cell represents a terrain cell package
 type Cell struct {
 	Material  uint8
 	Occupancy uint8
-	Count     uint32
 }
 
-// Chunk represents a terrain chunk package
+// Chunk represents a cubic terrain chunk package
 type Chunk struct {
-	Header    uint8
-	ChunkSize rbxfile.ValueVector3
-	Contents  []Cell
+	ChunkIndex datamodel.ValueVector3int32
+	SideLength uint32
+	CellCube   [][][]Cell
 }
 
 // Packet8DLayer represents ID_CLUSTER: server -> client
@@ -52,14 +52,12 @@ func (thisStream *extendedReader) DecodePacket8DLayer(reader PacketReader, layer
 		return layer, err
 	}
 
-	header, err := zstdStream.readUint8()
-	for err == nil {
+	var header uint8
+	for header, err = zstdStream.readUint8(); err == nil; header, err = zstdStream.readUint8() {
 		subpacket := Chunk{}
-		subpacket.Header = header & 0xF
-
-		sizeception := header & 0x60
-		if sizeception != 0 {
-			if sizeception == 0x20 {
+		indexType := header & 0x60
+		if indexType != 0 {
+			if indexType == 0x20 {
 				x, err := zstdStream.readUint16BE()
 				if err != nil {
 					return layer, err
@@ -72,12 +70,12 @@ func (thisStream *extendedReader) DecodePacket8DLayer(reader PacketReader, layer
 				if err != nil {
 					return layer, err
 				}
-				subpacket.ChunkSize = rbxfile.ValueVector3{
-					X: float32(int16(x)),
-					Y: float32(int16(y)),
-					Z: float32(int16(z)),
+				subpacket.ChunkIndex = datamodel.ValueVector3int32{
+					X: int32(int16(x)),
+					Y: int32(int16(y)),
+					Z: int32(int16(z)),
 				}
-			} else if sizeception == 0x40 {
+			} else if indexType == 0x40 {
 				x, err := zstdStream.readUint32BE()
 				if err != nil {
 					return layer, err
@@ -90,10 +88,10 @@ func (thisStream *extendedReader) DecodePacket8DLayer(reader PacketReader, layer
 				if err != nil {
 					return layer, err
 				}
-				subpacket.ChunkSize = rbxfile.ValueVector3{
-					X: float32(int32(x)),
-					Y: float32(int32(y)),
-					Z: float32(int32(z)),
+				subpacket.ChunkIndex = datamodel.ValueVector3int32{
+					X: int32(x),
+					Y: int32(y),
+					Z: int32(z),
 				}
 			} else {
 				return layer, errors.New("invalid chunk header")
@@ -111,37 +109,46 @@ func (thisStream *extendedReader) DecodePacket8DLayer(reader PacketReader, layer
 			if err != nil {
 				return layer, err
 			}
-			subpacket.ChunkSize = rbxfile.ValueVector3{
-				X: float32(int8(x)),
-				Y: float32(int8(y)),
-				Z: float32(int8(z)),
+			subpacket.ChunkIndex = datamodel.ValueVector3int32{
+				X: int32(int8(x)),
+				Y: int32(int8(y)),
+				Z: int32(int8(z)),
 			}
 		}
 
-		validCheck, err := zstdStream.readUint8()
+		isEmpty, err := zstdStream.readBoolByte()
 		if err != nil {
 			return layer, err
 		}
-		if validCheck != 0 {
-			layers.Root.Logger.Println("valid check failed! trying to continue")
+		if isEmpty {
+			layers.Root.Logger.Println("skipping empty cluster")
+			layer.Chunks = append(layer.Chunks, subpacket)
 			continue
 		}
 
-		cubeSideLength := 1 << subpacket.Header
+		var cubeSideLength int32 = 1 << (header & 0xF)
+		subpacket.SideLength = uint32(cubeSideLength)
 		cubeSize := cubeSideLength * cubeSideLength * cubeSideLength
 		if cubeSize > 0x100000 {
 			return layer, errors.New("cube size larger than max")
 		}
-		subpacket.Contents = make([]Cell, 0)
+		subpacket.CellCube = make([][][]Cell, subpacket.SideLength)
+		for i := 0; i < subpacket.SideLength; i++ {
+			subpacket.CellCube[i] = make([][]Cell, subpacket.SideLength)
+			for j := 0; j < subpacket.SideLength; j++ {
+				subpacket.CellCube[i][j] = make([]Cell, subpacket.SideLength)
+			}
+		}
 
-		for remainingCount := cubeSize; remainingCount > 0; {
+		// Don't increment i here; we will do it inside the loop
+		for i := 0; i < cubeSize; {
 			cellHeader, err := zstdStream.readUint8()
 			if err != nil {
 				return layer, err
 			}
 			thisMaterial := cellHeader & 0x3F
+
 			var occupancy uint8
-			var count int
 			if cellHeader&0x40 != 0 {
 				occupancy, err = zstdStream.readUint8()
 				if err != nil {
@@ -150,28 +157,47 @@ func (thisStream *extendedReader) DecodePacket8DLayer(reader PacketReader, layer
 			} else {
 				occupancy = 0xFF
 			}
-
-			if cellHeader&0x80 != 0 {
-				myCount, err := zstdStream.readUint8()
-				if err != nil {
-					return layer, err
-				}
-				count = int(myCount) + 1
-			} else {
-				count = 1
-			}
-
-			remainingCount -= int(count)
 			if thisMaterial == 0 {
 				occupancy = 0
 			}
-			subpacket.Contents = append(subpacket.Contents, Cell{
+
+			var count int
+			if cellHeader&0x80 != 0 {
+				countVal, err := zstdStream.readUint8()
+				if err != nil {
+					return layer, err
+				}
+				count = int(countVal)
+			}
+			// Implicit count of +1
+			count++
+
+			if i+count > int(cubeSize) {
+				return layer, errors.New("chunk overflow")
+			}
+
+			// copy the cell to the `count` next cells in the cube
+			cell := Cell{
 				Occupancy: occupancy,
 				Material:  thisMaterial,
-			})
-			layers.Root.Logger.Printf("Read cell with head:%d, material:%d, occ:%d, count:%d\n", cellHeader, thisMaterial, occupancy, count)
+			}
+
+			// Terrain coordinate system:
+			// 0 => x=0 y=0 z=0
+			// 1 => x=1 y=0 z=0
+			// maxX => x=0 y=0 z=1
+			// maxX*maxZ => x=0 y=1 z=0
+			// yeah...
+			sideLength := int(subpacket.SideLength)
+			for cubeIndex := i; cubeIndex < i+count; cubeIndex++ {
+				xCoord := cubeIndex % sideLength
+				zCoord := (cubeIndex / sideLength) % sideLength
+				yCoord := (cubeIndex / sideLength) / sideLength
+				subpacket.CellCube[xCoord][yCoord][zCoord] = cell
+			}
+
+			i += count
 		}
-		header, err = zstdStream.readUint8()
 		layer.Chunks = append(layer.Chunks, subpacket)
 	}
 	if err == io.EOF { // eof is normal, marks end of packet here
@@ -182,13 +208,47 @@ func (thisStream *extendedReader) DecodePacket8DLayer(reader PacketReader, layer
 	return layer, err
 }
 
+func (layer *Packet8DLayer) serializeChunks(writer PacketWriter, stream *extendedWriter) error {
+	return errors.New("serialize chunks not implemented")
+}
+
 // Serialize implements RakNetPacket.Serialize
 func (layer *Packet8DLayer) Serialize(writer PacketWriter, stream *extendedWriter) error {
-	return errors.New("terrain packet not implemented")
+	err := stream.WriteObject(layer.Instance, writer)
+	if err != nil {
+		return err
+	}
+
+	uncompressedBuf := bytes.NewBuffer([]byte{})
+	zstdBuf := bytes.NewBuffer([]byte{})
+	middleStream := zstd.NewWriter(zstdBuf)
+	zstdStream := &extendedWriter{uncompressedBuf}
+
+	err = layer.serializeChunks(writer, stream)
+	if err != nil {
+		middleStream.Close()
+		return err
+	}
+
+	err = middleStream.Close()
+	if err != nil {
+		return err
+	}
+
+	err = stream.writeUint32BE(uint32(zstdBuf.Len()))
+	if err != nil {
+		return err
+	}
+	err = stream.writeUint32BE(uint32(uncompressedBuf.Len()))
+	if err != nil {
+		return err
+	}
+	err = stream.allBytes(zstdBuf.Bytes())
+	return err
 }
 
 func (layer *Packet8DLayer) String() string {
-	return fmt.Sprintf("ID_CLUSTER: WIP")
+	return fmt.Sprintf("ID_CLUSTER: %d terrain chunks", len(layer.Chunks))
 }
 
 // TypeString implements RakNetPacket.TypeString()

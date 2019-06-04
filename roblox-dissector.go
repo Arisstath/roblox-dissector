@@ -25,6 +25,7 @@ var ActivationCallbacks map[byte]ActivationCallback = map[byte]ActivationCallbac
 	0x85: ShowPacket85,
 	0x86: ShowPacket86,
 	0x8A: ShowPacket8A,
+	0x8D: ShowPacket8D,
 	0x8F: ShowPacket8F,
 	0x90: ShowPacket90,
 	0x92: ShowPacket92,

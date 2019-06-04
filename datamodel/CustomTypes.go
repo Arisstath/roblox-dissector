@@ -40,6 +40,8 @@ const (
 	TypeRegion3int16                        = rbxfile.TypeInt64 + 1 + iota
 	TypeReference                           = rbxfile.TypeInt64 + 1 + iota
 	TypeToken                               = rbxfile.TypeInt64 + 1 + iota
+	// used for terrain
+	TypeVector3int32 = rbxfile.TypeInt64 + 1 + iota
 )
 
 var CustomTypeNames = map[rbxfile.Type]string{
@@ -56,6 +58,7 @@ var CustomTypeNames = map[rbxfile.Type]string{
 	TypeRegion3int16:           "Region3int16",
 	TypeReference:              "Reference",
 	TypeToken:                  "Token",
+	TypeVector3int32:           "Vector3int32",
 }
 
 type ValueColorSequenceKeypoint rbxfile.ValueColorSequenceKeypoint
@@ -83,6 +86,12 @@ type ValueReference struct {
 type ValueToken struct {
 	ID    uint16
 	Value uint32
+}
+
+type ValueVector3int32 struct {
+	X int32
+	Y int32
+	Z int32
 }
 
 func TypeString(val rbxfile.Value) string {
@@ -280,4 +289,16 @@ func (x ValueToken) Copy() rbxfile.Value {
 }
 func (x ValueToken) String() string {
 	return rbxfile.ValueToken(x.Value).String()
+}
+
+func (x ValueVector3int32) Type() rbxfile.Type {
+	return TypeVector3int32
+}
+
+func (x ValueVector3int32) Copy() rbxfile.Value {
+	return x
+}
+
+func (x ValueVector3int32) String() string {
+	return fmt.Sprintf("%d, %d, %d", x.X, x.Y, x.Z)
 }
