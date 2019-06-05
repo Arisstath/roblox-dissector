@@ -51,67 +51,67 @@ func (thisStream *extendedReader) DecodePacket8DLayer(reader PacketReader, layer
 	}
 
 	var header uint8
+	var x, y, z int32
 	for header, err = zstdStream.readUint8(); err == nil; header, err = zstdStream.readUint8() {
 		subpacket := Chunk{}
 		indexType := header & 0x60
 		if indexType != 0 {
 			if indexType == 0x20 {
-				x, err := zstdStream.readUint16BE()
+				xDiff, err := zstdStream.readUint16BE()
 				if err != nil {
 					return layer, err
 				}
-				y, err := zstdStream.readUint16BE()
+				yDiff, err := zstdStream.readUint16BE()
 				if err != nil {
 					return layer, err
 				}
-				z, err := zstdStream.readUint16BE()
+				zDiff, err := zstdStream.readUint16BE()
 				if err != nil {
 					return layer, err
 				}
-				subpacket.ChunkIndex = datamodel.ValueVector3int32{
-					X: int32(int16(x)),
-					Y: int32(int16(y)),
-					Z: int32(int16(z)),
-				}
+				x += int32(int16(xDiff))
+				y += int32(int16(yDiff))
+				z += int32(int16(zDiff))
 			} else if indexType == 0x40 {
-				x, err := zstdStream.readUint32BE()
+				xDiff, err := zstdStream.readUint32BE()
 				if err != nil {
 					return layer, err
 				}
-				y, err := zstdStream.readUint32BE()
+				yDiff, err := zstdStream.readUint32BE()
 				if err != nil {
 					return layer, err
 				}
-				z, err := zstdStream.readUint32BE()
+				zDiff, err := zstdStream.readUint32BE()
 				if err != nil {
 					return layer, err
 				}
-				subpacket.ChunkIndex = datamodel.ValueVector3int32{
-					X: int32(x),
-					Y: int32(y),
-					Z: int32(z),
-				}
+				x += int32(xDiff)
+				y += int32(yDiff)
+				z += int32(zDiff)
 			} else {
 				return layer, errors.New("invalid chunk header")
 			}
 		} else {
-			x, err := zstdStream.readUint8()
+			xDiff, err := zstdStream.readUint8()
 			if err != nil {
 				return layer, err
 			}
-			y, err := zstdStream.readUint8()
+			yDiff, err := zstdStream.readUint8()
 			if err != nil {
 				return layer, err
 			}
-			z, err := zstdStream.readUint8()
+			zDiff, err := zstdStream.readUint8()
 			if err != nil {
 				return layer, err
 			}
-			subpacket.ChunkIndex = datamodel.ValueVector3int32{
-				X: int32(int8(x)),
-				Y: int32(int8(y)),
-				Z: int32(int8(z)),
-			}
+			x += int32(int8(xDiff))
+			y += int32(int8(yDiff))
+			z += int32(int8(zDiff))
+		}
+		subpacket.ChunkIndex = datamodel.ValueVector3int32{
+			X: x,
+			Y: y,
+			Z: z,
 		}
 
 		isEmpty, err := zstdStream.readBoolByte()
