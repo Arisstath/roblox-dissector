@@ -13,7 +13,6 @@ import (
 
 	"github.com/Gskartwii/roblox-dissector/datamodel"
 	"github.com/Gskartwii/roblox-dissector/peer"
-	"github.com/dreadl0ck/gopcap"
 	"github.com/google/gopacket/pcap"
 	"github.com/robloxapi/rbxfile/xml"
 	"github.com/therecipe/qt/core"
@@ -94,12 +93,13 @@ func (window *DissectorWindow) CaptureFromFile(file string, isIPv4 bool) {
 	index := window.TabWidget.AddTab(session.PacketListViewers[0], fmt.Sprintf("Conversation: %s#1", nameBase))
 	window.TabWidget.SetCurrentIndex(index)
 
-	countPackets, err := gopcap.Count(file)
+	/*countPackets, err := gopcap.Count(file)
 	if err != nil {
 		session.StopCapture()
 		window.ShowCaptureError(err)
 		return
-	}
+	}*/
+	countPackets := 10000
 	progressChan := make(chan int, 8)
 
 	progressDialog := widgets.NewQProgressDialog2("Reading packets...", "Cancel", 0, int(countPackets), window, 0)
