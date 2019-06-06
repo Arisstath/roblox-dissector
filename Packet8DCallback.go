@@ -271,8 +271,8 @@ func (w *TerrainChunkViewer) AddChunk(chunk *peer.Chunk) {
 				model.Scale3(1.0, float32(occupancy)/255.0, 1.0)
 				w.transformations = append(w.transformations, model)
 
-				if material > 30 {
-					println("warning: material higher than 15:", material)
+				if material > 35 {
+					println("warning: material higher than 35:", material)
 				}
 				color := gui.QColor_FromHsl(int(float32(material)/35.0*360.0), 255, 127, 255)
 				w.colors = append(w.colors, color)
