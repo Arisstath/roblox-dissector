@@ -122,7 +122,7 @@ func (captureContext *CaptureContext) Capture(ctx context.Context, packetSource 
 		default:
 		}
 		progress++
-		if packet.ApplicationLayer() == nil || packet.Layer(layers.LayerTypeIPv4) == nil {
+		if packet.ApplicationLayer() == nil || packet.Layer(layers.LayerTypeIPv4) == nil || packet.Layer(layers.LayerTypeUDP) == nil {
 			continue
 		}
 		payload := packet.ApplicationLayer().Payload()
