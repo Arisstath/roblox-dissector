@@ -169,6 +169,8 @@ func NewProxyWriter(ctx context.Context) *ProxyWriter {
 			modifiedSubpackets := mainLayer.SubPackets[:0] // in case packets need to be dropped
 			for _, subpacket := range mainLayer.SubPackets {
 				switch subpacket.(type) {
+				// this packet will be sent if a debugger is detected
+				// we may want to debug the app, so hence we drop it
 				case *Packet83_07:
 					evtPacket := subpacket.(*Packet83_07)
 					if evtPacket.Schema.Name == "StatsAvailable" {
@@ -225,9 +227,6 @@ func NewProxyWriter(ctx context.Context) *ProxyWriter {
 		case 0x85:
 			mainLayer := layers.Main.(*Packet85Layer)
 			err = serverHalf.WriteTimestamped(layers.Timestamp, mainLayer)
-		case 0x86:
-			mainLayer := layers.Main.(*Packet86Layer)
-			err = serverHalf.WritePacket(mainLayer)
 		default:
 			println("passthrough packet: ", packetType)
 			err = serverHalf.WritePacket(layers.Main.(RakNetPacket))
