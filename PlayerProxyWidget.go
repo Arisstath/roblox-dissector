@@ -8,10 +8,14 @@ func NewPlayerProxyWidget(parent widgets.QWidget_ITF, settings *PlayerProxySetti
 	layout := widgets.NewQFormLayout(parent)
 
 	certfileLayout := NewFileBrowseLayout(window, false, settings.Certfile, "Find certfile...", "Certfile (*.crt)")
-	layout.AddRow4("Certfile location:", certfileLayout)
+	certfileWidget := widgets.NewQWidget(nil, 0)
+	certfileWidget.SetLayout(certfileLayout)
+	layout.AddRow3("Certfile location:", certfileWidget)
 
 	keyfileLayout := NewFileBrowseLayout(window, false, settings.Certfile, "Find keyfile...", "Keyfile (*.pem)")
-	layout.AddRow4("Keyfile location:", keyfileLayout)
+	keyfileWidget := widgets.NewQWidget(nil, 0)
+	keyfileWidget.SetLayout(keyfileLayout)
+	layout.AddRow3("Keyfile location:", keyfileWidget)
 
 	startButton := widgets.NewQPushButton2("Start", nil)
 	startButton.ConnectReleased(func() {
