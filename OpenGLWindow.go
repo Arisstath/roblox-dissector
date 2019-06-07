@@ -15,7 +15,7 @@ const (
 
 type OpenGLWindow struct {
 	gui.QWindow
-	gui.QOpenGLFunctions
+	gui.QOpenGLExtraFunctions
 
 	_ func() `constructor:"init"`
 
@@ -29,7 +29,7 @@ type OpenGLWindow struct {
 }
 
 func (w *OpenGLWindow) init() {
-	w.QOpenGLFunctions = *gui.NewQOpenGLFunctions()
+	w.QOpenGLExtraFunctions = *gui.NewQOpenGLExtraFunctions()
 	w.SetSurfaceType(gui.QSurface__OpenGLSurface)
 }
 

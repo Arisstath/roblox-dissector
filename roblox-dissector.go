@@ -1,9 +1,12 @@
 package main
 
 import (
+	"log"
+	"net/http"
+	_ "net/http/pprof"
+
 	"github.com/Gskartwii/roblox-dissector/peer"
 	"github.com/therecipe/qt/widgets"
-	//_ "net/http/pprof"
 )
 
 type ActivationCallback func(*widgets.QVBoxLayout, *peer.CommunicationContext, *peer.PacketLayers)
@@ -35,8 +38,8 @@ var ActivationCallbacks map[byte]ActivationCallback = map[byte]ActivationCallbac
 }
 
 func main() {
-	/*go func() {
+	go func() {
 		log.Println(http.ListenAndServe("localhost:6060", nil))
-	}()*/
+	}()
 	GUIMain()
 }

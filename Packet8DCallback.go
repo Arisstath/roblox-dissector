@@ -14,9 +14,27 @@ import (
 
 var TerrainMaterials = [...]string{
 	"Air",
+	"Water",
+	"Grass",
+	"Slate",
+	"Concrete",
+	"Brick",
+	"Sand",
+	"Wood Planks",
+	"Rock",
+	"Snow",
 }
 var TerrainColors = [...][3]float32{
 	[3]float32{0, 0, 0},
+	[3]float32{12, 84, 92},    // water
+	[3]float32{106, 127, 63},  // grass
+	[3]float32{63, 127, 107},  // slate
+	[3]float32{127, 102, 63},  // concrete
+	[3]float32{138, 86, 62},   // brick
+	[3]float32{143, 126, 95},  // sand
+	[3]float32{139, 109, 79},  // wood planks
+	[3]float32{102, 108, 111}, // rock
+	[3]float32{195, 199, 218}, // snow
 }
 
 var vertexData = [...]float32{
@@ -66,18 +84,18 @@ var vertexData = [...]float32{
 const vertexShaderSrc = `#version 330 core
 layout (location = 0) in vec3 posAttr;
 layout (location = 1) in vec3 normalAttr;
-uniform vec4 colAttr;
+layout (location = 2) in vec4 colAttr;
+layout (location = 3) in mat4 model;
+layout (location = 7) in mat3 modelNormal;
 out vec4 col;
-uniform mat4 projection;
-uniform mat4 view;
-uniform mat4 model;
+uniform mat4 projectionView;
 out vec3 FragPos;
 out vec3 Normal;
 void main() {
 	col = colAttr;
-	gl_Position = projection * view * model * vec4(posAttr, 1.0);
+	gl_Position = projectionView * model * vec4(posAttr, 1.0);
 	FragPos = vec3(model * vec4(posAttr, 1.0));
-	Normal = mat3(transpose(inverse(model))) * normalAttr;
+	Normal = modelNormal * normalAttr;
 }
 ` + "\x00"
 const fragmentShaderSrc = `#version 330 core
@@ -106,21 +124,20 @@ type TerrainChunkViewer struct {
 	_       func() `constructor:"init"`
 	Program *gui.QOpenGLShaderProgram
 
-	PositionLocation   uint
-	NormalLocation     uint
-	ColorLocation      uint
-	ProjectionLocation uint
-	ViewLocation       uint
-	ModelLocation      uint
-	Frame              float32
+	ProjectionViewLocation uint
+	Frame                  float32
 
-	CameraPosition  *gui.QVector3D
-	CameraYaw       float32
-	CameraPitch     float32
-	CameraFront     *gui.QVector3D
-	CameraUp        *gui.QVector3D
-	transformations []*gui.QMatrix4x4
-	colors          []*gui.QColor
+	CameraPosition *gui.QVector3D
+	CameraYaw      float32
+	CameraPitch    float32
+	CameraFront    *gui.QVector3D
+	CameraUp       *gui.QVector3D
+	ProjectionView *gui.QMatrix4x4
+
+	updateBuffers bool
+	modelBuffer   []float32
+	normalBuffer  []float32
+	colorBuffer   []float32
 
 	KeysDown          map[core.Qt__Key]struct{}
 	MouseDown         bool
@@ -156,22 +173,30 @@ func (w *TerrainChunkViewer) init() {
 			evt.Ignore()
 		}
 		w.KeysDown[core.Qt__Key(evt.Key())] = struct{}{}
+
+		w.renderLater()
 	})
 	w.ConnectKeyReleaseEvent(func(evt *gui.QKeyEvent) {
 		if evt.IsAutoRepeat() {
 			evt.Ignore()
 		}
 		delete(w.KeysDown, core.Qt__Key(evt.Key()))
+
+		w.renderLater()
 	})
 
 	w.IsFirstMouseDown = true
 	w.ConnectMousePressEvent(func(evt *gui.QMouseEvent) {
 		w.MouseDown = true
+
+		w.renderLater()
 	})
 
 	w.ConnectMouseReleaseEvent(func(evt *gui.QMouseEvent) {
 		w.MouseDown = false
 		w.IsFirstMouseDown = true
+
+		w.renderLater()
 	})
 }
 
@@ -186,11 +211,6 @@ func (w *TerrainChunkViewer) initialize() {
 	w.Program.AddShaderFromSourceCode(gui.QOpenGLShader__Fragment, fragmentShaderSrc)
 	w.Program.Link()
 
-	w.ColorLocation = uint(w.Program.UniformLocation("colAttr"))
-	w.ProjectionLocation = uint(w.Program.UniformLocation("projection"))
-	w.ViewLocation = uint(w.Program.UniformLocation("view"))
-	w.ModelLocation = uint(w.Program.UniformLocation("model"))
-
 	w.GlVertexAttribPointer(0, 3, GLFloat, false, 6*4, unsafe.Pointer(&vertexData[0]))
 	w.GlVertexAttribPointer(1, 3, GLFloat, false, 6*4, unsafe.Pointer(&vertexData[3]))
 
@@ -199,24 +219,30 @@ func (w *TerrainChunkViewer) initialize() {
 }
 
 func (w *TerrainChunkViewer) updateKeys() {
+	renderLater := false
 	speed := float32(0.25)
 	sensitivity := float32(0.15)
 	if w.IsKeyDown(core.Qt__Key_W) {
 		w.CameraPosition = addQVector3(w.CameraPosition, gui.NewQVector3D3(speed*w.CameraFront.X(), speed*w.CameraFront.Y(), speed*w.CameraFront.Z()))
+		renderLater = true
 	}
 	if w.IsKeyDown(core.Qt__Key_S) {
 		w.CameraPosition = addQVector3(w.CameraPosition, gui.NewQVector3D3(-speed*w.CameraFront.X(), -speed*w.CameraFront.Y(), -speed*w.CameraFront.Z()))
+		renderLater = true
 	}
 	if w.IsKeyDown(core.Qt__Key_A) {
 		norm := gui.QVector3D_CrossProduct(w.CameraFront, w.CameraUp).Normalized()
 		w.CameraPosition = addQVector3(w.CameraPosition, gui.NewQVector3D3(-speed*norm.X(), -speed*norm.Y(), -speed*norm.Z()))
+		renderLater = true
 	}
 	if w.IsKeyDown(core.Qt__Key_D) {
 		norm := gui.QVector3D_CrossProduct(w.CameraFront, w.CameraUp).Normalized()
 		w.CameraPosition = addQVector3(w.CameraPosition, gui.NewQVector3D3(speed*norm.X(), speed*norm.Y(), speed*norm.Z()))
+		renderLater = true
 	}
 
 	if w.MouseDown {
+		renderLater = true
 		prevPosition := w.LastMousePosition
 		currPosition := gui.QCursor_Pos()
 		w.LastMousePosition = currPosition
@@ -239,11 +265,19 @@ func (w *TerrainChunkViewer) updateKeys() {
 		}
 		w.IsFirstMouseDown = false
 	}
+
+	if renderLater {
+		w.renderLater()
+	}
 }
 
 func (w *TerrainChunkViewer) Clear() {
-	w.transformations = make([]*gui.QMatrix4x4, 0)
-	w.colors = make([]*gui.QColor, 0)
+	w.updateBuffers = true
+	w.modelBuffer = make([]float32, 0)
+	w.normalBuffer = make([]float32, 0)
+	w.colorBuffer = make([]float32, 0)
+
+	w.renderLater()
 }
 
 func (w *TerrainChunkViewer) AddChunk(chunk *peer.Chunk) {
@@ -269,18 +303,85 @@ func (w *TerrainChunkViewer) AddChunk(chunk *peer.Chunk) {
 				model.Translate3(baseX+float32(x), baseY+float32(y), baseZ+float32(z))
 				// scale the cube by making its height indicate the occupancy
 				model.Scale3(1.0, float32(occupancy)/255.0, 1.0)
-				w.transformations = append(w.transformations, model)
+				col0 := model.Column(0)
+				col1 := model.Column(1)
+				col2 := model.Column(2)
+				col3 := model.Column(3)
+				w.modelBuffer = append(w.modelBuffer,
+					col0.X(), col0.Y(), col0.Z(), col0.W(),
+					col1.X(), col1.Y(), col1.Z(), col1.W(),
+					col2.X(), col2.Y(), col2.Z(), col2.W(),
+					col3.X(), col3.Y(), col3.Z(), col3.W())
 
-				if material > 35 {
-					println("warning: material higher than 35:", material)
+				inverted := model.Inverted(nil)
+				iCol0 := inverted.Column(0)
+				iCol1 := inverted.Column(1)
+				iCol2 := inverted.Column(2)
+				w.normalBuffer = append(w.normalBuffer,
+					iCol0.X(), iCol1.X(), iCol2.X(),
+					iCol0.Y(), iCol1.Y(), iCol2.Y(),
+					iCol0.Z(), iCol1.Z(), iCol2.Z())
+
+				if int(material) < len(TerrainColors) {
+					cData := TerrainColors[material]
+					w.colorBuffer = append(w.colorBuffer, cData[0]/255.0, cData[1]/255.0, cData[2]/255.0)
+				} else {
+					if material > 35 {
+						println("warning: material higher than 35:", material)
+					}
+					color := gui.QColor_FromHsl(int(float32(int(material)-len(TerrainColors))/(35.0-float32(len(TerrainColors)))*360.0), 255, 127, 255)
+					w.colorBuffer = append(w.colorBuffer, float32(color.RedF()), float32(color.GreenF()), float32(color.BlueF()))
 				}
-				color := gui.QColor_FromHsl(int(float32(material)/35.0*360.0), 255, 127, 255)
-				w.colors = append(w.colors, color)
-
 				i++
 			}
 		}
 	}
+
+	w.updateBuffers = true
+	w.renderLater()
+}
+
+func (w *TerrainChunkViewer) RegisterBuffers() {
+	w.updateBuffers = false
+	if len(w.colorBuffer) == 0 || len(w.modelBuffer) == 0 {
+		w.GlDisableVertexAttribArray(2)
+		w.GlDisableVertexAttribArray(3)
+		w.GlDisableVertexAttribArray(4)
+		w.GlDisableVertexAttribArray(5)
+		w.GlDisableVertexAttribArray(6)
+		w.GlDisableVertexAttribArray(7)
+		w.GlDisableVertexAttribArray(8)
+		w.GlDisableVertexAttribArray(9)
+		return
+	}
+	w.GlVertexAttribPointer(2, 3, GLFloat, false, 3*4, unsafe.Pointer(&w.colorBuffer[0]))
+	w.GlVertexAttribPointer(3, 4, GLFloat, false, 4*4*4, unsafe.Pointer(&w.modelBuffer[0]))
+	w.GlVertexAttribPointer(4, 4, GLFloat, false, 4*4*4, unsafe.Pointer(&w.modelBuffer[4]))
+	w.GlVertexAttribPointer(5, 4, GLFloat, false, 4*4*4, unsafe.Pointer(&w.modelBuffer[8]))
+	w.GlVertexAttribPointer(6, 4, GLFloat, false, 4*4*4, unsafe.Pointer(&w.modelBuffer[12]))
+	w.GlVertexAttribPointer(7, 3, GLFloat, false, 4*3*3, unsafe.Pointer(&w.normalBuffer[0]))
+	w.GlVertexAttribPointer(8, 3, GLFloat, false, 4*3*3, unsafe.Pointer(&w.normalBuffer[3]))
+	w.GlVertexAttribPointer(9, 3, GLFloat, false, 4*3*3, unsafe.Pointer(&w.normalBuffer[6]))
+
+	w.GlVertexAttribDivisor(2, 1)
+	w.GlVertexAttribDivisor(3, 1)
+	w.GlVertexAttribDivisor(4, 1)
+	w.GlVertexAttribDivisor(5, 1)
+	w.GlVertexAttribDivisor(6, 1)
+	w.GlVertexAttribDivisor(7, 1)
+	w.GlVertexAttribDivisor(8, 1)
+	w.GlVertexAttribDivisor(9, 1)
+
+	w.GlEnableVertexAttribArray(2)
+	w.GlEnableVertexAttribArray(3)
+	w.GlEnableVertexAttribArray(4)
+	w.GlEnableVertexAttribArray(5)
+	w.GlEnableVertexAttribArray(6)
+	w.GlEnableVertexAttribArray(7)
+	w.GlEnableVertexAttribArray(8)
+	w.GlEnableVertexAttribArray(9)
+
+	println("will draw", len(w.colorBuffer)/3, "cubes instanced")
 }
 
 func addQVector3(vec1, vec2 *gui.QVector3D) *gui.QVector3D {
@@ -291,27 +392,20 @@ func (w *TerrainChunkViewer) render(painter *gui.QPainter) {
 	retinaScale := int(w.DevicePixelRatio())
 	w.GlViewport(0, 0, w.Width()*retinaScale, w.Height()*retinaScale)
 
-	w.GlClear(GLColorBufferBit | GLDepthBufferBit)
-	w.GlClearColor(0, 0, 0, 1)
+	projectionView := gui.NewQMatrix4x4()
+	projectionView.Perspective(60, float32(w.Width())/float32(w.Height()), 0.1, 100.0)
+	projectionView.LookAt(w.CameraPosition, addQVector3(w.CameraPosition, w.CameraFront), w.CameraUp)
+	w.ProjectionView = projectionView
+
+	if w.updateBuffers {
+		w.RegisterBuffers()
+	}
 
 	w.Program.Bind()
 	w.GlEnable(GLDepthTest)
 
-	projection := gui.NewQMatrix4x4()
-	// TODO: dynamic update
-	projection.Perspective(60, float32(w.Width())/float32(w.Height()), 0.1, 100.0)
-	view := gui.NewQMatrix4x4()
-	view.LookAt(w.CameraPosition, addQVector3(w.CameraPosition, w.CameraFront), w.CameraUp)
-	w.Program.SetUniformValue23(int(w.ProjectionLocation), projection)
-	w.Program.SetUniformValue23(int(w.ViewLocation), view)
-
-	for i := 0; i < len(w.transformations); i++ {
-		matrix := w.transformations[i]
-		color := w.colors[i]
-		w.Program.SetUniformValue23(int(w.ModelLocation), matrix)
-		w.Program.SetUniformValue10(int(w.ColorLocation), color)
-		w.GlDrawArrays(GLTriangles, 0, 36)
-	}
+	w.Program.SetUniformValue23(int(w.ProjectionViewLocation), w.ProjectionView)
+	w.GlDrawArraysInstanced(GLTriangles, 0, 36, len(w.colorBuffer)/3)
 
 	w.Program.Release()
 
@@ -359,10 +453,10 @@ func ShowPacket8D(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 		format.SetDepthBufferSize(24)
 		viewer.SetFormat(format)
 		viewer.Resize2(640, 480)
+		viewer.Clear()
 		viewer.AddChunk(chunk)
 		viewer.SetTitle(fmt.Sprintf("Sala Terrain Viewer: Chunk at %s", chunk.ChunkIndex))
 		viewer.Show()
-		viewer.setAnimating(true)
 	})
 	layerLayout.AddWidget(chunkList, 0, 0)
 
@@ -374,12 +468,21 @@ func ShowPacket8D(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 		format.SetDepthBufferSize(24)
 		viewer.SetFormat(format)
 		viewer.Resize2(640, 480)
-		for _, chunk := range MainLayer.Chunks {
+		viewer.Clear()
+		progressDialog := widgets.NewQProgressDialog2("Generating vertex attribute buffers...", "Cancel", 0, len(MainLayer.Chunks), viewAll, 0)
+		progressDialog.SetWindowTitle("Preparing terrain viewer")
+		progressDialog.SetWindowModality(core.Qt__WindowModal)
+		for i, chunk := range MainLayer.Chunks {
 			viewer.AddChunk(&chunk)
+			progressDialog.SetValue(i)
+			if progressDialog.WasCanceled() {
+				viewer.DestroyQWindow()
+				return
+			}
 		}
+		progressDialog.SetValue(len(MainLayer.Chunks))
 		viewer.SetTitle("Sala Terrain Viewer: Chunk cluster")
 		viewer.Show()
-		viewer.setAnimating(true)
 	})
 	layerLayout.AddWidget(viewAll, 0, 0)
 }
