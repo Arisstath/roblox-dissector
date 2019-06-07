@@ -42,6 +42,11 @@ func (captureContext *CaptureContext) CaptureFromWinDivertProxy(ctx context.Cont
 	if err != nil {
 		return err
 	}
+	// this must ALWAYS be executed
+	// if not, the WinDivert kernel driver may remain loaded
+	// even after the application is closed, resulting in WinDivert??.sys
+	// being locked
+	defer divertConnection.Close()
 	var ifIdx, subIfIdx uint32
 
 	proxyWriter := peer.NewProxyWriter(ctx)
@@ -99,6 +104,9 @@ func (captureContext *CaptureContext) CaptureFromWinDivertProxy(ctx context.Cont
 				proxyWriter.ClientAddr = pktSrcAddr
 				clientConversation.ClientAddress = pktSrcAddr
 				serverConversation.ClientAddress = pktSrcAddr
+			} else if proxyWriter.ClientAddr == nil {
+				fmt.Printf("premature packet: %s -> %s (%s)\n", pktSrcAddr, pktDstAddr, dstAddr)
+				continue
 			}
 
 			layers := &peer.PacketLayers{
@@ -130,7 +138,6 @@ func (captureContext *CaptureContext) CaptureFromWinDivertProxy(ctx context.Cont
 				proxyWriter.ProxyServer(newPacket.Payload, newPacket.Layers)
 			}
 		case <-ctx.Done():
-			divertConnection.Close()
 			return nil
 		}
 	}
