@@ -57,10 +57,10 @@ func (layer *Packet90Layer) Serialize(writer PacketWriter, stream *extendedWrite
 	if err != nil {
 		return err
 	}
-	/*err = rawStream.WriteByte(layer.Int1)
+	err = rawStream.WriteByte(layer.Int1)
 	if err != nil {
 		return err
-	}*/
+	}
 	err = rawStream.writeUint16BE(uint16(len(layer.RequestedFlags)))
 	if err != nil {
 		return err
