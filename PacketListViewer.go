@@ -178,8 +178,10 @@ func (m *PacketListViewer) AddFullPacket(context *peer.CommunicationContext, lay
 	var length *gui.QStandardItem
 	if layers.Reliability != nil {
 		length = NewUintItem(layers.Reliability.LengthInBits / 8)
+	} else if layers.OfflinePayload != nil {
+		length = NewUintItem(len(layers.OfflinePayload))
 	} else {
-		length = NewStringItem("???")
+		length = nil
 	}
 	rootRow = append(rootRow, length)
 	var datagramNumber *gui.QStandardItem
@@ -206,7 +208,7 @@ func (m *PacketListViewer) AddFullPacket(context *peer.CommunicationContext, lay
 	} else if layers.RakNet != nil {
 		datagramNumber = NewUintItem(layers.RakNet.DatagramNumber)
 	} else {
-		datagramNumber = NewStringItem("???")
+		datagramNumber = nil
 	}
 	rootRow = append(rootRow, datagramNumber)
 
@@ -216,10 +218,12 @@ func (m *PacketListViewer) AddFullPacket(context *peer.CommunicationContext, lay
 	} else {
 		rootRow = append(rootRow, nil)
 	}
-	rootRow = append(rootRow, NewStringItem("1"))
 
 	if layers.Reliability != nil {
+		rootRow = append(rootRow, NewStringItem("1"))
 		m.registerSplitPacketRow(rootRow, context, layers)
+	} else {
+		rootRow = append(rootRow, nil)
 	}
 
 	if layers.Reliability == nil { // Only bind if we're done parsing the packet

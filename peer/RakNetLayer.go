@@ -69,8 +69,9 @@ type PacketLayers struct {
 	// Possible parsing error?
 	Error error
 
-	PacketType byte
-	Subpacket  Packet83Subpacket
+	PacketType     byte
+	Subpacket      Packet83Subpacket
+	OfflinePayload []byte
 }
 
 // PacketNames contains the names of most packet types

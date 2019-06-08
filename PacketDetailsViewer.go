@@ -149,10 +149,15 @@ func (viewer *PacketDetailsViewer) Update(context *peer.CommunicationContext, la
 	hexDumpIndex := viewer.TabLayout.IndexOf(viewer.HexDumpTab)
 	viewer.HexDumpTab.DestroyQWidget()
 	viewer.HexDumpTab = widgets.NewQWidget(viewer, 0)
-	if layers.SplitPacket != nil && layers.SplitPacket.IsFinal {
+	if (layers.SplitPacket != nil && layers.SplitPacket.IsFinal) || layers.OfflinePayload != nil {
 		newHexLayout := NewTopAlignLayout()
 
-		bytes := layers.SplitPacket.Data
+		var bytes []byte
+		if layers.SplitPacket != nil && layers.SplitPacket.IsFinal {
+			bytes = layers.SplitPacket.Data
+		} else {
+			bytes = layers.OfflinePayload
+		}
 		dump := hex.Dump(bytes)
 
 		hexDumpWindow := widgets.NewQPlainTextEdit2(dump, nil)

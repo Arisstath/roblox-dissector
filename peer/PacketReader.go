@@ -299,6 +299,7 @@ func (reader *DefaultPacketReader) ReadPacket(payload []byte, layers *PacketLaye
 	rakNetLayer, err := stream.DecodeRakNetLayer(reader, payload[0], layers)
 	layers.PacketType = payload[0]
 	if err != nil {
+		layers.OfflinePayload = payload
 		layers.Error = err
 		reader.emitLayers("offline", layers)
 		return
@@ -308,6 +309,7 @@ func (reader *DefaultPacketReader) ReadPacket(payload []byte, layers *PacketLaye
 	if rakNetLayer.IsOffline {
 		packetType := rakNetLayer.OfflineLayerID
 		layers.PacketType = packetType
+		layers.OfflinePayload = payload
 		reader.readOffline(stream, packetType, layers)
 	} else if rakNetLayer.Flags.IsACK || rakNetLayer.Flags.IsNAK {
 		reader.emitLayers("ack", layers)
