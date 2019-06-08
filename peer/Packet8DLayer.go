@@ -34,13 +34,13 @@ func (chunk Chunk) IsEmpty() bool {
 		for _, cy := range cx {
 			for _, cz := range cy {
 				if cz.Material != 0 && cz.Occupancy != 0 {
-					return true
+					return false
 				}
 			}
 		}
 	}
 
-	return false
+	return true
 }
 
 // IsCube returns a value indicating whether all sides of the
@@ -367,16 +367,14 @@ func (layer *Packet8DLayer) serializeChunks(stream chunkSerializer) error {
 		cubeSize := chunk.SideLength * chunk.SideLength * chunk.SideLength
 		for cellIndex := uint32(0); cellIndex < cubeSize; {
 			rleCount := uint32(0)
-			var prevCell Cell
-			currCellX, currCellY, currCellZ := cellIndexToCoords(chunk.SideLength, rleCount+cellIndex)
+			currCellX, currCellY, currCellZ := cellIndexToCoords(chunk.SideLength, cellIndex)
 			currCell := chunk.CellCube[currCellX][currCellY][currCellZ]
 			for isRunLength := true; isRunLength && rleCount < 256 && rleCount+cellIndex < cubeSize; {
-				prevCell = currCell
 				rleCount++
-				currCellX, currCellY, currCellZ := cellIndexToCoords(chunk.SideLength, rleCount+cellIndex)
-				currCell = chunk.CellCube[currCellX][currCellY][currCellZ]
+				nextCellX, nextCellY, nextCellZ := cellIndexToCoords(chunk.SideLength, rleCount+cellIndex)
+				nextCell := chunk.CellCube[nextCellX][nextCellY][nextCellZ]
 
-				isRunLength = currCell.Material == prevCell.Material && currCell.Occupancy == prevCell.Occupancy
+				isRunLength = currCell.Material == nextCell.Material && currCell.Occupancy == nextCell.Occupancy
 			}
 
 			// currCell won't be the cell being encoded here!

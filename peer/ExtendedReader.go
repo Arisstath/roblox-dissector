@@ -305,6 +305,17 @@ func (b *extendedReader) readUint32AndString() (interface{}, error) {
 	return b.readASCII(int(stringLen))
 }
 
+func (b *extendedReader) readScope() (interface{}, error) {
+	stringLen, err := b.readUint32BE()
+	if err != nil {
+		return "", err
+	}
+	if stringLen != 0x23 {
+		return "", errors.New("invalid scope len")
+	}
+	return b.readASCII(int(stringLen))
+}
+
 // TODO: Perhaps make readWithCache() operate with a member function of the cache instead?
 func (b *extendedReader) readCached(caches *Caches) (string, error) {
 	cache := &caches.String
@@ -315,10 +326,7 @@ func (b *extendedReader) readCached(caches *Caches) (string, error) {
 
 func (b *extendedReader) readCachedScope(caches *Caches) (string, error) {
 	cache := &caches.Object
-	thisString, err := b.readWithCache(cache, (*extendedReader).readUint32AndString)
-	if len(thisString.(string)) != 0x23 {
-		return "", errors.New("wrong scope len")
-	}
+	thisString, err := b.readWithCache(cache, (*extendedReader).readScope)
 	return thisString.(string), err
 }
 
