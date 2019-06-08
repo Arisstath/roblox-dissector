@@ -316,7 +316,7 @@ func (b *extendedReader) readCached(caches *Caches) (string, error) {
 func (b *extendedReader) readCachedScope(caches *Caches) (string, error) {
 	cache := &caches.Object
 	thisString, err := b.readWithCache(cache, (*extendedReader).readUint32AndString)
-	if len(thisString) != 0x23 {
+	if len(thisString.(string)) != 0x23 {
 		return "", errors.New("wrong scope len")
 	}
 	return thisString.(string), err
