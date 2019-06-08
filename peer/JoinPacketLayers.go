@@ -147,15 +147,7 @@ func (thisStream *extendedReader) DecodePacket05Layer(reader PacketReader, layer
 
 // Serialize implements RakNetPacket.Serialize()
 func (layer *Packet05Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
-	err := stream.WriteByte(0x05)
-	if err != nil {
-		return err
-	}
-	err = stream.allBytes(OfflineMessageID)
-	if err != nil {
-		return err
-	}
-	err = stream.WriteByte(byte(layer.ProtocolVersion))
+	err := stream.WriteByte(byte(layer.ProtocolVersion))
 	if err != nil {
 		return err
 	}
@@ -197,14 +189,6 @@ func (thisStream *extendedReader) DecodePacket06Layer(reader PacketReader, layer
 // Serialize implements RakNetPacket.Serialize()
 func (layer *Packet06Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
-	err = stream.WriteByte(0x06)
-	if err != nil {
-		return err
-	}
-	err = stream.allBytes(OfflineMessageID)
-	if err != nil {
-		return err
-	}
 	err = stream.writeUint64BE(layer.GUID)
 	if err != nil {
 		return err
@@ -260,14 +244,6 @@ func (thisStream *extendedReader) DecodePacket07Layer(reader PacketReader, layer
 // Serialize implements RakNetPacket.Serialize()
 func (layer *Packet07Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
-	err = stream.WriteByte(0x07)
-	if err != nil {
-		return err
-	}
-	err = stream.allBytes(OfflineMessageID)
-	if err != nil {
-		return err
-	}
 	err = stream.writeAddress(layer.IPAddress)
 	if err != nil {
 		return err
@@ -334,14 +310,6 @@ func (thisStream *extendedReader) DecodePacket08Layer(reader PacketReader, layer
 // Serialize implements RakNetPacket.Serialize()
 func (layer *Packet08Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
-	err = stream.WriteByte(0x08)
-	if err != nil {
-		return err
-	}
-	err = stream.allBytes(OfflineMessageID)
-	if err != nil {
-		return err
-	}
 	err = stream.writeUint64BE(layer.GUID)
 	if err != nil {
 		return err
@@ -410,10 +378,6 @@ func (thisStream *extendedReader) DecodePacket09Layer(reader PacketReader, layer
 // Serialize implements RakNetPacket.Serialize()
 func (layer *Packet09Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
-	err = stream.WriteByte(0x09)
-	if err != nil {
-		return err
-	}
 	err = stream.writeUint64BE(layer.GUID)
 	if err != nil {
 		return err
@@ -471,10 +435,6 @@ func (thisStream *extendedReader) DecodePacket10Layer(reader PacketReader, layer
 // Serialize implements RakNetPacket.Serialize()
 func (layer *Packet10Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
-	err = stream.WriteByte(0x10)
-	if err != nil {
-		return err
-	}
 
 	err = stream.writeAddress(layer.IPAddress)
 	if err != nil {
@@ -539,10 +499,6 @@ func (thisStream *extendedReader) DecodePacket13Layer(reader PacketReader, layer
 // Serialize implements RakNetPacket.Serialize()
 func (layer *Packet13Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
-	err = stream.WriteByte(0x13)
-	if err != nil {
-		return err
-	}
 
 	err = stream.writeAddress(layer.IPAddress)
 	if err != nil {

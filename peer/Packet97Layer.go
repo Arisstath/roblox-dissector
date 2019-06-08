@@ -200,10 +200,6 @@ func (thisStream *extendedReader) DecodePacket97Layer(reader PacketReader, layer
 func (layer *Packet97Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
 
-	err = stream.WriteByte(0x97)
-	if err != nil {
-		return err
-	}
 	zstdStream := stream.wrapZstd()
 	// 1. Close the stream if exiting with an error; report the write error instead of close error
 	// 2. If no error occurs, this function will return zstdStream.Close()

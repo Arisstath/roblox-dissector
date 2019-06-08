@@ -20,10 +20,6 @@ func (thisStream *extendedReader) DecodePacket15Layer(reader PacketReader, layer
 
 // Serialize implements RakNetPacket.Serialize()
 func (layer *Packet15Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
-	err := stream.WriteByte(0x15)
-	if err != nil {
-		return err
-	}
 	return stream.writeUint32BE(uint32(layer.Reason))
 }
 

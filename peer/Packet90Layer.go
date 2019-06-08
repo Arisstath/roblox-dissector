@@ -48,10 +48,7 @@ func (stream *extendedReader) DecodePacket90Layer(reader PacketReader, layers *P
 
 // Serialize implements RakNetPacket.Serialize
 func (layer *Packet90Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
-	err := stream.WriteByte(0x90)
-	if err != nil {
-		return err
-	}
+	var err error
 	rawStream := stream.aesEncrypt()
 	err = rawStream.writeUint32BE(layer.SchemaVersion)
 	if err != nil {

@@ -26,10 +26,6 @@ func (thisStream *extendedReader) DecodePacket1BLayer(reader PacketReader, layer
 // Serialize implements RakNetPacket.Serialize()
 func (layer *Packet1BLayer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
-	err = stream.WriteByte(0x1B)
-	if err != nil {
-		return err
-	}
 	err = stream.writeUint64BE(layer.Timestamp)
 	if err != nil {
 		return err

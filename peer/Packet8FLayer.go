@@ -18,10 +18,6 @@ func (thisStream *extendedReader) DecodePacket8FLayer(reader PacketReader, layer
 
 // Serialize implements RakNetPacket.Serialize
 func (layer *Packet8FLayer) Serialize(writer PacketWriter, stream *extendedWriter) error {
-	err := stream.WriteByte(0x8F)
-	if err != nil {
-		return err
-	}
 	return stream.writeVarLengthString(layer.SpawnName)
 }
 

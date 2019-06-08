@@ -193,10 +193,7 @@ func (b *extendedWriter) writePhysicsData(val *PhysicsData, motors bool, writer 
 
 // Serialize implements RakNetPacket.Serialize
 func (layer *Packet85Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
-	err := stream.WriteByte(0x85)
-	if err != nil {
-		return err
-	}
+	var err error
 	for i := 0; i < len(layer.SubPackets); i++ {
 		subpacket := layer.SubPackets[i]
 		if subpacket.Data.Instance == nil {

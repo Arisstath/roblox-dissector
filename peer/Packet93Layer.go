@@ -59,10 +59,6 @@ func (thisStream *extendedReader) DecodePacket93Layer(reader PacketReader, layer
 // Serialize implements RakNetPacket.Serialize
 func (layer *Packet93Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
-	err = stream.WriteByte(0x93)
-	if err != nil {
-		return err
-	}
 
 	var flags byte
 	if layer.ProtocolSchemaSync {

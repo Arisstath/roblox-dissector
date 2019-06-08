@@ -17,10 +17,6 @@ func (thisStream *extendedReader) DecodePacket92Layer(reader PacketReader, layer
 
 // Serialize implements RakNetPacket.Serialize
 func (layer *Packet92Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
-	err := stream.WriteByte(0x92)
-	if err != nil {
-		return err
-	}
 	return stream.writeVarsint64(layer.PlaceID)
 }
 

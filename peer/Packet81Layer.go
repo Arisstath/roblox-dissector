@@ -129,10 +129,6 @@ func (thisStream *extendedReader) DecodePacket81Layer(reader PacketReader, layer
 // Serialize implements RakNetPacket.Serialize()
 func (layer *Packet81Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
-	err = stream.WriteByte(0x81)
-	if err != nil {
-		return err
-	}
 
 	err = stream.writeBoolByte(layer.StreamJob)
 	if err != nil {

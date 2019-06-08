@@ -80,7 +80,17 @@ func (writer *DefaultPacketWriter) WriteOffline(packet RakNetPacket) error {
 	output := make([]byte, 0, 1492)
 	buffer := bytes.NewBuffer(output)
 	stream := &extendedWriter{buffer}
-	err := packet.Serialize(writer, stream)
+
+	err := stream.WriteByte(packet.Type())
+	if err != nil {
+		return err
+	}
+	err = stream.allBytes(OfflineMessageID)
+	if err != nil {
+		return err
+	}
+
+	err = packet.Serialize(writer, stream)
 	if err != nil {
 		return err
 	}
@@ -269,7 +279,15 @@ func (writer *DefaultPacketWriter) writeTimestamped(layers *PacketLayers, reliab
 	stream := &extendedWriter{buffer}
 	timestamp := layers.Timestamp
 	generic := layers.Main
-	err := timestamp.Serialize(writer, stream)
+	err := stream.WriteByte(timestamp.Type())
+	if err != nil {
+		return err
+	}
+	err = timestamp.Serialize(writer, stream)
+	if err != nil {
+		return err
+	}
+	err = stream.WriteByte(generic.Type())
 	if err != nil {
 		return err
 	}
@@ -288,7 +306,11 @@ func (writer *DefaultPacketWriter) writeGeneric(layers *PacketLayers, reliabilit
 	buffer := bytes.NewBuffer(output) // Will allocate more if needed
 	stream := &extendedWriter{buffer}
 	generic := layers.Main
-	err := generic.Serialize(writer, stream)
+	err := stream.WriteByte(layers.Main.Type())
+	if err != nil {
+		return err
+	}
+	err = generic.Serialize(writer, stream)
 	if err != nil {
 		return err
 	}

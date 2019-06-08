@@ -100,10 +100,6 @@ func (thisStream *extendedReader) DecodePacket83Layer(reader PacketReader, layer
 // Serialize implements RakNetPacket.Serialize
 func (layer *Packet83Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
-	err = stream.WriteByte(0x83)
-	if err != nil {
-		return err
-	}
 	for _, subpacket := range layer.SubPackets {
 		thisType := subpacket.Type()
 		stream.WriteByte(uint8(thisType))
