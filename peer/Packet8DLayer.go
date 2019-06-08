@@ -426,7 +426,7 @@ func (layer *Packet8DLayer) Serialize(writer PacketWriter, stream *extendedWrite
 
 	zstdStream := stream.wrapZstd()
 
-	err = layer.serializeChunks(stream)
+	err = layer.serializeChunks(zstdStream)
 	if err != nil {
 		zstdStream.Close()
 		return err
