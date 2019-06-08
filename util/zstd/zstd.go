@@ -11,6 +11,7 @@ import (
 func main() {
 	isDecompress := flag.Bool("d", false, "If set, will decompress instead of compress")
 	outFileName := flag.String("o", "", "Path to output file")
+	offset := flag.Int("off", 1, "Offset of data in file")
 	flag.Parse()
 	inFileName := flag.Arg(0)
 
@@ -26,6 +27,10 @@ func main() {
 	}
 
 	inputFile, err = os.Open(inFileName)
+	if err != nil {
+		panic(err)
+	}
+	_, err = inputFile.Seek(int64(*offset), io.SeekStart)
 	if err != nil {
 		panic(err)
 	}
