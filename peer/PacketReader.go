@@ -294,24 +294,28 @@ func (reader *DefaultPacketReader) readReliable(layers *PacketLayers) {
 
 // ReadPacket reads a single packet and invokes all according handler functions
 func (reader *DefaultPacketReader) ReadPacket(payload []byte, layers *PacketLayers) {
+	var err error
+	if IsOfflineMessage(payload) {
+		layers.OfflinePayload = payload
+
+		layers.PacketType = payload[0]
+		layers.OfflinePayload = payload
+		reader.readOffline(bufferToStream(payload[1+0x10:]), layers.PacketType, layers)
+		return
+	}
+
 	stream := bufferToStream(payload)
+
 	// TODO: Should not create RakNetLayer if it's an offline message
 	rakNetLayer, err := stream.DecodeRakNetLayer(reader, payload[0], layers)
 	layers.PacketType = payload[0]
 	if err != nil {
-		layers.OfflinePayload = payload
 		layers.Error = err
 		reader.emitLayers("offline", layers)
 		return
 	}
-
 	layers.RakNet = rakNetLayer
-	if rakNetLayer.IsOffline {
-		packetType := rakNetLayer.OfflineLayerID
-		layers.PacketType = packetType
-		layers.OfflinePayload = payload
-		reader.readOffline(stream, packetType, layers)
-	} else if rakNetLayer.Flags.IsACK || rakNetLayer.Flags.IsNAK {
+	if rakNetLayer.Flags.IsACK || rakNetLayer.Flags.IsNAK {
 		reader.emitLayers("ack", layers)
 	} else {
 		reader.readReliable(layers)

@@ -124,14 +124,14 @@ func (layers *PacketLayers) String() string {
 	if layers.Main != nil {
 		return layers.Main.String()
 	}
-	if layers.RakNet == nil || (!layers.RakNet.Flags.IsValid && !layers.RakNet.IsOffline) {
-		return "???"
+	if (layers.RakNet != nil && layers.RakNet.Flags.IsValid) || layers.OfflinePayload != nil {
+		packetName, ok := PacketNames[layers.PacketType]
+		if ok {
+			return packetName
+		}
+		return fmt.Sprintf("Packet 0x%02X", layers.PacketType)
 	}
-	packetName, ok := PacketNames[layers.PacketType]
-	if ok {
-		return packetName
-	}
-	return fmt.Sprintf("Packet 0x%02X", layers.PacketType)
+	return "???"
 }
 
 // ACKRange describes the range of an ACK or an NAK.
@@ -144,10 +144,6 @@ type ACKRange struct {
 // about every packet.
 type RakNetLayer struct {
 	payload *extendedReader
-	// Is the packet a offline pre-connection packet?
-	IsOffline bool
-	// If IsOffline is true, this is the packet type.
-	OfflineLayerID uint8
 	// Drop any non-offline packets which don't have IsValid set.
 	Flags RakNetFlags
 	ACKs  []ACKRange
@@ -170,26 +166,6 @@ func (stream *extendedReader) DecodeRakNetLayer(reader PacketReader, packetType 
 	layer := &RakNetLayer{}
 
 	var err error
-	if packetType >= 0x5 && packetType <= 0x8 {
-		_, err = stream.ReadByte()
-		if err != nil {
-			return layer, err
-		}
-		thisOfflineMessage := make([]byte, 0x10)
-		err = stream.bytes(thisOfflineMessage, 0x10)
-		if err != nil {
-			return layer, err
-		}
-
-		if bytes.Compare(thisOfflineMessage, OfflineMessageID) != 0 {
-			return layer, fmt.Errorf("offline message didn't match in packet %d", packetType)
-		}
-
-		layer.OfflineLayerID = packetType
-		layer.payload = stream
-		layer.IsOffline = true
-		return layer, nil
-	}
 
 	layer.Flags, err = stream.readRakNetFlags()
 	if err != nil {

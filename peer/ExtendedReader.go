@@ -421,8 +421,6 @@ func (b *extendedReader) aesDecrypt(lenBytes int) (*extendedReader, error) {
 // information about a RakNet layer packet
 type RakNetFlags struct {
 	// IsValid specifies whether the packet can be considered valid.
-	// If both IsValid and IsOffline are false, the packet must
-	// be invalid
 	IsValid bool
 	// IsACK specifies whether the packet is an acknowledgement packet
 	IsACK bool

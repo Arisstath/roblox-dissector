@@ -95,15 +95,12 @@ func (writer *DefaultPacketWriter) WriteOffline(packet RakNetPacket) error {
 		return err
 	}
 	layers := &PacketLayers{
-		RakNet: &RakNetLayer{
-			IsOffline:      true,
-			OfflineLayerID: packet.Type(),
-		},
-		PacketType: packet.Type(),
-		Main:       packet,
+		PacketType:     packet.Type(),
+		Main:           packet,
+		OfflinePayload: buffer.Bytes(),
 	}
 
-	writer.output(buffer.Bytes())
+	writer.output(layers.OfflinePayload)
 	<-writer.LayerEmitter.Emit("offline", layers)
 	return nil
 }
