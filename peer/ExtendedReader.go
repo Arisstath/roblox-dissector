@@ -233,11 +233,11 @@ func (b *extendedReader) readJoinObject(context *CommunicationContext) (datamode
 	var refString string
 	if stringLen != 0xFF {
 		refString, err = b.readASCII(int(stringLen))
-		if len(refString) != 0x23 {
-			println("WARN: wrong ref len!! this should never happen, unless you are communicating with a non-standard peer")
-		}
 		if err != nil {
 			return ref, err
+		}
+		if len(refString) != 0x23 {
+			return ref, errors.New("wrong scope len")
 		}
 		ref.Scope = refString
 	} else {
@@ -316,6 +316,9 @@ func (b *extendedReader) readCached(caches *Caches) (string, error) {
 func (b *extendedReader) readCachedScope(caches *Caches) (string, error) {
 	cache := &caches.Object
 	thisString, err := b.readWithCache(cache, (*extendedReader).readUint32AndString)
+	if len(thisString) != 0x23 {
+		return "", errors.New("wrong scope len")
+	}
 	return thisString.(string), err
 }
 
