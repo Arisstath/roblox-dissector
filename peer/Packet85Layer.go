@@ -66,12 +66,15 @@ func (b *extendedReader) readPhysicsData(data *PhysicsData, motors bool, reader 
 	}
 	reference, err := b.readObject(reader.Caches())
 	if err != ErrCacheReadOOB {
+		if err != nil {
+			return err
+		}
 		reader.Context().InstancesByReference.OnAddInstance(reference, func(inst *datamodel.Instance) {
 			data.PlatformChild = inst
 		})
 		return nil
 	}
-	return err
+	return nil
 }
 
 func (b *extendedReader) DecodePacket85Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
