@@ -28,7 +28,7 @@ type ProxiedPacket struct {
 	Layers  *peer.PacketLayers
 }
 
-func (captureContext *CaptureContext) CaptureFromWinDivertProxy(ctx context.Context, realServerAddr string) error {
+func (captureContext *CaptureContext) CaptureFromWinDivertProxy(ctx context.Context, realServerAddr string, opened chan struct{}) error {
 	dstAddr, err := net.ResolveUDPAddr("udp", realServerAddr)
 	if err != nil {
 		return err
@@ -41,6 +41,10 @@ func (captureContext *CaptureContext) CaptureFromWinDivertProxy(ctx context.Cont
 	divertConnection, err := windivert.Open(filter, windivert.LayerNetwork, 405, 0)
 	if err != nil {
 		return err
+	}
+	// inform other threads that it is now safe to pass the join.ashx
+	if opened != nil {
+		close(opened)
 	}
 	// this must ALWAYS be executed
 	// if not, the WinDivert kernel driver may remain loaded
@@ -211,14 +215,18 @@ func (conv *HTTPConversation) CaptureForWinDivert(ctx context.Context, captureCt
 			thisReq.ResponseBody = response
 
 			args := regexp.MustCompile(`MachineAddress":"(\d+.\d+.\d+.\d+)","ServerPort":(\d+)`).FindSubmatch(response)
+			opened := make(chan struct{})
 
 			serverAddr := string(args[1]) + ":" + string(args[2])
 			go func() {
-				err := captureCtx.CaptureFromWinDivertProxy(ctx, serverAddr)
+				err := captureCtx.CaptureFromWinDivertProxy(ctx, serverAddr, opened)
 				if err != nil {
 					println("windivert error: ", err.Error())
 				}
 			}()
+
+			// wait for the WinDivert handle to be opened
+			<-opened
 
 			w.Write(response)
 		} else {
