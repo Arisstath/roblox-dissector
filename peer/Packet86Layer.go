@@ -60,6 +60,7 @@ func (thisStream *extendedReader) DecodePacket86Layer(reader PacketReader, layer
 
 // Serialize implements RakNetPacket.Serialize
 func (layer *Packet86Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
+	var err error
 	for i := 0; i < len(layer.SubPackets); i++ {
 		subpacket := layer.SubPackets[i]
 		if subpacket.Instance1 == nil || subpacket.Instance2 == nil {
