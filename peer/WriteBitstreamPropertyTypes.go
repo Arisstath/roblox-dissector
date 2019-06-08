@@ -341,6 +341,10 @@ func typeToNetwork(val rbxfile.Value) (uint8, bool) {
 	return typ, ok
 }
 func isCorrectType(val rbxfile.Value, expected uint8) bool {
+	// FIXME: rbxfile bug
+	if _, ok := val.(rbxfile.ValueColor3uint8); ok {
+		return expected == PropertyTypeColor3uint8
+	}
 	typ, ok := typeToNetworkConvTable[val.Type()]
 	if !ok {
 		return false
