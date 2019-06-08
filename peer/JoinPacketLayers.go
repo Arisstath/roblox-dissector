@@ -25,6 +25,23 @@ var StudioPasswordBytes = []byte{0x5E, 0x11}
 // DefaultPasswordBytes is the RakNet password used for Roblox connections by default
 var DefaultPasswordBytes = []byte{0x37, 0x4F, 0x5E, 0x11, 0x6C, 0x45}
 
+// The following declarations are to be used with ID_OPEN_CONNECTION_{REQUEST/REPLY}_2 packets
+const (
+	// CapabilityBasic indicates the base capabilities of a Roblox client
+	CapabilityBasic = 0x3E | 0x80
+	// CapabilityServerCopiesPlayerGui3 indicates that the server should create and replicate the PlayerGui
+	CapabilityServerCopiesPlayerGui3 = 0x40
+	// CapabilityDebugForceStreamingEnabled indicates that streaming should be activated regardless
+	// of what is reported in ID_SET_GLOBALS
+	CapabilityDebugForceStreamingEnabled = 0x100
+	// CapabilityIHasMinDistToUnstreamed indicates an unknown capability
+	CapabilityIHasMinDistToUnstreamed = 0x400
+	// CapabilityReplicateLuau indicates an unknown capability
+	CapabilityReplicateLuau = 0x800
+
+	CapabilityAll = CapabilityBasic | CapabilityServerCopiesPlayerGui3 | CapabilityDebugForceStreamingEnabled | CapabilityIHasMinDistToUnstreamed | CapabilityReplicateLuau
+)
+
 // IdentifyPassword identifies what RakNet password is being used
 func IdentifyPassword(password []byte) PasswordType {
 	switch {
@@ -61,7 +78,9 @@ type Packet07Layer struct {
 	// MTU in bytes
 	MTU uint16
 	// Client GUID
-	GUID uint64
+	GUID             uint64
+	SupportedVersion uint32
+	Capabilities     uint64
 }
 
 // Packet08Layer represents ID_OPEN_CONNECTION_REPLY_2 - server -> client
@@ -73,7 +92,9 @@ type Packet08Layer struct {
 	// MTU in bytes
 	MTU uint16
 	// Use libcat encryption? Always false
-	UseSecurity bool
+	UseSecurity      bool
+	SupportedVersion uint32
+	Capabilities     uint64
 }
 
 // Packet09Layer represents ID_CONNECTION_REQUEST - client -> server
@@ -222,6 +243,17 @@ func (thisStream *extendedReader) DecodePacket07Layer(reader PacketReader, layer
 		return layer, err
 	}
 	layer.GUID, err = thisStream.readUint64BE()
+	if err != nil {
+		return layer, err
+	}
+	layer.SupportedVersion, err = thisStream.readUint32BE()
+	if err != nil {
+		return layer, err
+	}
+	layer.Capabilities, err = thisStream.readUint64BE()
+	if err != nil {
+		return layer, err
+	}
 	return layer, err
 }
 
@@ -245,7 +277,14 @@ func (layer *Packet07Layer) Serialize(writer PacketWriter, stream *extendedWrite
 		return err
 	}
 	err = stream.writeUint64BE(layer.GUID)
-	return err
+	if err != nil {
+		return err
+	}
+	err = stream.writeUint32BE(layer.SupportedVersion)
+	if err != nil {
+		return err
+	}
+	return stream.writeUint64BE(layer.Capabilities)
 }
 func (layer *Packet07Layer) String() string {
 	return "ID_OPEN_CONNECTION_REQUEST_2"
@@ -278,6 +317,17 @@ func (thisStream *extendedReader) DecodePacket08Layer(reader PacketReader, layer
 		return layer, err
 	}
 	layer.UseSecurity, err = thisStream.readBoolByte()
+	if err != nil {
+		return layer, err
+	}
+	layer.SupportedVersion, err = thisStream.readUint32BE()
+	if err != nil {
+		return layer, err
+	}
+	layer.Capabilities, err = thisStream.readUint64BE()
+	if err != nil {
+		return layer, err
+	}
 	return layer, err
 }
 
@@ -305,7 +355,14 @@ func (layer *Packet08Layer) Serialize(writer PacketWriter, stream *extendedWrite
 		return err
 	}
 	err = stream.writeBoolByte(layer.UseSecurity)
-	return err
+	if err != nil {
+		return err
+	}
+	err = stream.writeUint32BE(layer.SupportedVersion)
+	if err != nil {
+		return err
+	}
+	return stream.writeUint64BE(layer.Capabilities)
 }
 func (layer *Packet08Layer) String() string {
 	return "ID_OPEN_CONNECTION_REPLY_2"

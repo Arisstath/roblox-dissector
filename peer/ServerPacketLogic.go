@@ -56,9 +56,10 @@ func (client *ServerClient) offline5Handler(e *emitter.Event) {
 func (client *ServerClient) offline7Handler(e *emitter.Event) {
 	println("Received reply 7!", client.Address.String())
 	client.WriteOffline(&Packet08Layer{
-		GUID:      client.Server.GUID,
-		IPAddress: client.Address,
-		MTU:       1492,
+		GUID:         client.Server.GUID,
+		IPAddress:    client.Address,
+		MTU:          1492,
+		Capabilities: CapabilityAll,
 	})
 }
 func (client *ServerClient) connectionRequestHandler(e *emitter.Event) {
@@ -104,7 +105,7 @@ func (client *ServerClient) requestParamsHandler(e *emitter.Event) {
 	client.WritePacket(&Packet93Layer{
 		ProtocolSchemaSync:       false,
 		APIDictionaryCompression: false,
-		Params:                   params,
+		Params: params,
 	})
 }
 

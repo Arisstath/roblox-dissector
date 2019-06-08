@@ -3,6 +3,31 @@ package main
 import "github.com/therecipe/qt/widgets"
 import "github.com/therecipe/qt/gui"
 import "github.com/Gskartwii/roblox-dissector/peer"
+import "strings"
+
+func capabilitiesToString(cap uint64) string {
+	var builder strings.Builder
+	if cap&peer.CapabilityBasic != 0 {
+		builder.WriteString("Basic, ")
+	}
+	if cap&peer.CapabilityServerCopiesPlayerGui3 != 0 {
+		builder.WriteString("ServerCopiesPlayerGui, ")
+	}
+	if cap&peer.CapabilityDebugForceStreamingEnabled != 0 {
+		builder.WriteString("DebugForceStreamingEnabled, ")
+	}
+	if cap&peer.CapabilityIHasMinDistToUnstreamed != 0 {
+		builder.WriteString("IHasMinDistToUnstreamed, ")
+	}
+	if cap&peer.CapabilityReplicateLuau != 0 {
+		builder.WriteString("ReplicateLuau, ")
+	}
+
+	if builder.Len() == 0 {
+		return ""
+	}
+	return builder.String()[:builder.Len()-2]
+}
 
 func ShowPacket05(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationContext, layers *peer.PacketLayers) {
 	MainLayer := layers.Main.(*peer.Packet05Layer)
@@ -35,6 +60,12 @@ func ShowPacket07(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 
 	guidLabel := NewQLabelF("GUID: %08X", MainLayer.GUID)
 	layerLayout.AddWidget(guidLabel, 0, 0)
+
+	supportedVersionLabel := NewQLabelF("Supported version: %d", MainLayer.SupportedVersion)
+	layerLayout.AddWidget(supportedVersionLabel, 0, 0)
+
+	capabilitiesLabel := NewQLabelF("Capabilities: %s", capabilitiesToString(MainLayer.Capabilities))
+	layerLayout.AddWidget(capabilitiesLabel, 0, 0)
 }
 
 func ShowPacket08(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationContext, layers *peer.PacketLayers) {
@@ -51,6 +82,12 @@ func ShowPacket08(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 
 	useSecurityLabel := NewQLabelF("Use security: %v", MainLayer.UseSecurity)
 	layerLayout.AddWidget(useSecurityLabel, 0, 0)
+
+	supportedVersionLabel := NewQLabelF("Supported version: %d", MainLayer.SupportedVersion)
+	layerLayout.AddWidget(supportedVersionLabel, 0, 0)
+
+	capabilitiesLabel := NewQLabelF("Capabilities: %s", capabilitiesToString(MainLayer.Capabilities))
+	layerLayout.AddWidget(capabilitiesLabel, 0, 0)
 }
 
 func ShowPacket09(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationContext, layers *peer.PacketLayers) {

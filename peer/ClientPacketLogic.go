@@ -69,9 +69,10 @@ func (myClient *CustomClient) bindDefaultHandlers() {
 
 func (myClient *CustomClient) sendResponse7() {
 	myClient.WriteOffline(&Packet07Layer{
-		GUID:      myClient.GUID,
-		MTU:       1492,
-		IPAddress: myClient.ServerAddress,
+		GUID:         myClient.GUID,
+		MTU:          1492,
+		IPAddress:    myClient.ServerAddress,
+		Capabilities: CapabilityAll,
 	})
 }
 func (myClient *CustomClient) offline6Handler(e *emitter.Event) {
