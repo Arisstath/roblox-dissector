@@ -15,6 +15,9 @@ func (thisStream *extendedReader) DecodePacket15Layer(reader PacketReader, layer
 	var err error
 	reason, err := thisStream.readUint32BE()
 	layer.Reason = int32(reason)
+	// DisconnectReceivePacketError: most parser functions -- NOT NetworkStream reading
+	// DisconnectReceivePacketStreamError: when reading from network streams
+	// DisconnectSendPacketError: from ClusterJobStep, from DataOutStep, when creating player
 	return layer, err
 }
 
