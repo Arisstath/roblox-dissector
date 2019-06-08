@@ -2,6 +2,7 @@ package peer
 
 import (
 	"context"
+	"encoding/json"
 	"net"
 	"time"
 
@@ -227,8 +228,25 @@ func NewProxyWriter(ctx context.Context) *ProxyWriter {
 		case 0x85:
 			mainLayer := layers.Main.(*Packet85Layer)
 			err = serverHalf.WriteTimestamped(layers.Timestamp, mainLayer)
+		case 0x90:
+			println("patching 0x90 osPlatform")
+			mainLayer := layers.Main.(*Packet90Layer)
+			var joinDataObject joinData
+			err = json.Unmarshal([]byte(mainLayer.JoinData), &joinDataObject)
+			// error handled below
+			if err != nil {
+				break
+			}
+			joinDataObject.OSPlatform = writer.SecuritySettings.OSPlatform()
+
+			var newJson []byte
+			newJson, err = joinDataObject.JSON()
+			if err != nil {
+				break
+			}
+			mainLayer.JoinData = string(newJson)
+			err = serverHalf.WritePacket(mainLayer)
 		default:
-			println("passthrough packet: ", packetType)
 			err = serverHalf.WritePacket(layers.Main.(RakNetPacket))
 		}
 		if err != nil {
