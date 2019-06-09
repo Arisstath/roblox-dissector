@@ -24,39 +24,6 @@ func NewProxyHalf(context *CommunicationContext, withClient bool) *ProxyHalf {
 	}
 }
 
-func (w *ProxyHalf) rotateDN(old uint32) uint32 {
-	for i := len(w.fakePackets) - 1; i >= 0; i-- {
-		fakepacket := w.fakePackets[i]
-		if old >= fakepacket {
-			old++
-		}
-	}
-	return old
-}
-func (w *ProxyHalf) rotateACK(ack ACKRange) (bool, ACKRange) {
-	fakepackets := w.fakePackets
-	for i := len(fakepackets) - 1; i >= 0; i-- {
-		fakepacket := fakepackets[i]
-		if ack.Max >= fakepacket {
-			ack.Max--
-		}
-		if ack.Min > fakepacket {
-			ack.Min--
-		}
-	}
-	return ack.Min > ack.Max, ack
-}
-func (w *ProxyHalf) rotateACKs(acks []ACKRange) (bool, []ACKRange) {
-	newacks := make([]ACKRange, 0, len(acks))
-	for i := 0; i < len(acks); i++ {
-		dropthis, newack := w.rotateACK(acks[i])
-		if !dropthis {
-			newacks = append(newacks, newack)
-		}
-	}
-	return len(newacks) == 0, newacks
-}
-
 // ProxyWriter describes a proxy that connects two peers.
 // ProxyWriters have injection capabilities.
 type ProxyWriter struct {
