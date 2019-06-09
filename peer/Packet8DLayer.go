@@ -80,6 +80,170 @@ type Packet8DLayer struct {
 	Chunks   []Chunk
 }
 
+type chunkDeserializer interface {
+	ReadByte() (byte, error)
+	readUint8() (uint8, error)
+	readBoolByte() (bool, error)
+	readUint16BE() (uint16, error)
+	readUint32BE() (uint32, error)
+}
+
+func deserializeChunks(stream chunkDeserializer) ([]Chunk, error) {
+	var header uint8
+	var x, y, z int32
+	var chunks []Chunk
+	var err error
+	for header, err = stream.readUint8(); err == nil; header, err = stream.readUint8() {
+		subpacket := Chunk{}
+		indexType := header & 0x60
+		if indexType != 0 {
+			if indexType == 0x20 {
+				xDiff, err := stream.readUint16BE()
+				if err != nil {
+					return chunks, err
+				}
+				yDiff, err := stream.readUint16BE()
+				if err != nil {
+					return chunks, err
+				}
+				zDiff, err := stream.readUint16BE()
+				if err != nil {
+					return chunks, err
+				}
+				x += int32(int16(xDiff))
+				y += int32(int16(yDiff))
+				z += int32(int16(zDiff))
+			} else if indexType == 0x40 {
+				xDiff, err := stream.readUint32BE()
+				if err != nil {
+					return chunks, err
+				}
+				yDiff, err := stream.readUint32BE()
+				if err != nil {
+					return chunks, err
+				}
+				zDiff, err := stream.readUint32BE()
+				if err != nil {
+					return chunks, err
+				}
+				x += int32(xDiff)
+				y += int32(yDiff)
+				z += int32(zDiff)
+			} else {
+				return chunks, errors.New("invalid chunk header")
+			}
+		} else {
+			xDiff, err := stream.readUint8()
+			if err != nil {
+				return chunks, err
+			}
+			yDiff, err := stream.readUint8()
+			if err != nil {
+				return chunks, err
+			}
+			zDiff, err := stream.readUint8()
+			if err != nil {
+				return chunks, err
+			}
+			x += int32(int8(xDiff))
+			y += int32(int8(yDiff))
+			z += int32(int8(zDiff))
+		}
+		subpacket.ChunkIndex = datamodel.ValueVector3int32{
+			X: x,
+			Y: y,
+			Z: z,
+		}
+
+		var cubeSideLength uint32 = 1 << (header & 0xF)
+		subpacket.SideLength = uint32(cubeSideLength)
+
+		isEmpty, err := stream.readBoolByte()
+		if err != nil {
+			return chunks, err
+		}
+		if isEmpty {
+			chunks = append(chunks, subpacket)
+			continue
+		}
+		cubeSize := cubeSideLength * cubeSideLength * cubeSideLength
+		if cubeSize > 0x100000 {
+			return chunks, errors.New("cube size larger than max")
+		}
+		subpacket.CellCube = make([][][]Cell, subpacket.SideLength)
+		for i := uint32(0); i < subpacket.SideLength; i++ {
+			subpacket.CellCube[i] = make([][]Cell, subpacket.SideLength)
+			for j := uint32(0); j < subpacket.SideLength; j++ {
+				subpacket.CellCube[i][j] = make([]Cell, subpacket.SideLength)
+			}
+		}
+
+		// Don't increment i here; we will do it inside the loop
+		for i := uint32(0); i < cubeSize; {
+			cellHeader, err := stream.readUint8()
+			if err != nil {
+				return chunks, err
+			}
+			thisMaterial := cellHeader & 0x3F
+
+			var occupancy uint8
+			if cellHeader&0x40 != 0 {
+				occupancy, err = stream.readUint8()
+				if err != nil {
+					return chunks, err
+				}
+			} else {
+				occupancy = 0xFF
+			}
+			if thisMaterial == 0 {
+				occupancy = 0
+			}
+
+			var count uint32
+			if cellHeader&0x80 != 0 {
+				countVal, err := stream.readUint8()
+				if err != nil {
+					return chunks, err
+				}
+				count = uint32(countVal)
+			}
+			// Implicit count of +1
+			count++
+
+			if i+count > cubeSize {
+				return chunks, errors.New("chunk overflow")
+			}
+
+			// copy the cell to the `count` next cells in the cube
+			cell := Cell{
+				Occupancy: occupancy,
+				Material:  thisMaterial,
+			}
+
+			// Terrain coordinate system:
+			// 0 => x=0 y=0 z=0
+			// 1 => x=1 y=0 z=0
+			// maxX => x=0 y=0 z=1
+			// maxX*maxZ => x=0 y=1 z=0
+			// yeah...
+			sideLength := subpacket.SideLength
+			for cubeIndex := uint32(i); cubeIndex < i+count; cubeIndex++ {
+				xCoord, yCoord, zCoord := cellIndexToCoords(sideLength, cubeIndex)
+				subpacket.CellCube[xCoord][yCoord][zCoord] = cell
+			}
+
+			i += count
+		}
+		chunks = append(chunks, subpacket)
+	}
+
+	if err == io.EOF {
+		return chunks, nil
+	}
+
+	return chunks, err
+}
+
 func (thisStream *extendedReader) DecodePacket8DLayer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := &Packet8DLayer{}
 
@@ -103,156 +267,7 @@ func (thisStream *extendedReader) DecodePacket8DLayer(reader PacketReader, layer
 		return layer, err
 	}
 
-	var header uint8
-	var x, y, z int32
-	for header, err = zstdStream.readUint8(); err == nil; header, err = zstdStream.readUint8() {
-		subpacket := Chunk{}
-		indexType := header & 0x60
-		if indexType != 0 {
-			if indexType == 0x20 {
-				xDiff, err := zstdStream.readUint16BE()
-				if err != nil {
-					return layer, err
-				}
-				yDiff, err := zstdStream.readUint16BE()
-				if err != nil {
-					return layer, err
-				}
-				zDiff, err := zstdStream.readUint16BE()
-				if err != nil {
-					return layer, err
-				}
-				x += int32(int16(xDiff))
-				y += int32(int16(yDiff))
-				z += int32(int16(zDiff))
-			} else if indexType == 0x40 {
-				xDiff, err := zstdStream.readUint32BE()
-				if err != nil {
-					return layer, err
-				}
-				yDiff, err := zstdStream.readUint32BE()
-				if err != nil {
-					return layer, err
-				}
-				zDiff, err := zstdStream.readUint32BE()
-				if err != nil {
-					return layer, err
-				}
-				x += int32(xDiff)
-				y += int32(yDiff)
-				z += int32(zDiff)
-			} else {
-				return layer, errors.New("invalid chunk header")
-			}
-		} else {
-			xDiff, err := zstdStream.readUint8()
-			if err != nil {
-				return layer, err
-			}
-			yDiff, err := zstdStream.readUint8()
-			if err != nil {
-				return layer, err
-			}
-			zDiff, err := zstdStream.readUint8()
-			if err != nil {
-				return layer, err
-			}
-			x += int32(int8(xDiff))
-			y += int32(int8(yDiff))
-			z += int32(int8(zDiff))
-		}
-		subpacket.ChunkIndex = datamodel.ValueVector3int32{
-			X: x,
-			Y: y,
-			Z: z,
-		}
-
-		var cubeSideLength uint32 = 1 << (header & 0xF)
-		subpacket.SideLength = uint32(cubeSideLength)
-
-		isEmpty, err := zstdStream.readBoolByte()
-		if err != nil {
-			return layer, err
-		}
-		if isEmpty {
-			layers.Root.Logger.Println("skipping empty cluster")
-			layer.Chunks = append(layer.Chunks, subpacket)
-			continue
-		}
-		cubeSize := cubeSideLength * cubeSideLength * cubeSideLength
-		if cubeSize > 0x100000 {
-			return layer, errors.New("cube size larger than max")
-		}
-		subpacket.CellCube = make([][][]Cell, subpacket.SideLength)
-		for i := uint32(0); i < subpacket.SideLength; i++ {
-			subpacket.CellCube[i] = make([][]Cell, subpacket.SideLength)
-			for j := uint32(0); j < subpacket.SideLength; j++ {
-				subpacket.CellCube[i][j] = make([]Cell, subpacket.SideLength)
-			}
-		}
-
-		// Don't increment i here; we will do it inside the loop
-		for i := uint32(0); i < cubeSize; {
-			cellHeader, err := zstdStream.readUint8()
-			if err != nil {
-				return layer, err
-			}
-			thisMaterial := cellHeader & 0x3F
-
-			var occupancy uint8
-			if cellHeader&0x40 != 0 {
-				occupancy, err = zstdStream.readUint8()
-				if err != nil {
-					return layer, err
-				}
-			} else {
-				occupancy = 0xFF
-			}
-			if thisMaterial == 0 {
-				occupancy = 0
-			}
-
-			var count uint32
-			if cellHeader&0x80 != 0 {
-				countVal, err := zstdStream.readUint8()
-				if err != nil {
-					return layer, err
-				}
-				count = uint32(countVal)
-			}
-			// Implicit count of +1
-			count++
-
-			if i+count > cubeSize {
-				return layer, errors.New("chunk overflow")
-			}
-
-			// copy the cell to the `count` next cells in the cube
-			cell := Cell{
-				Occupancy: occupancy,
-				Material:  thisMaterial,
-			}
-
-			// Terrain coordinate system:
-			// 0 => x=0 y=0 z=0
-			// 1 => x=1 y=0 z=0
-			// maxX => x=0 y=0 z=1
-			// maxX*maxZ => x=0 y=1 z=0
-			// yeah...
-			sideLength := subpacket.SideLength
-			for cubeIndex := uint32(i); cubeIndex < i+count; cubeIndex++ {
-				xCoord, yCoord, zCoord := cellIndexToCoords(sideLength, i)
-				subpacket.CellCube[xCoord][yCoord][zCoord] = cell
-			}
-
-			i += count
-		}
-		layer.Chunks = append(layer.Chunks, subpacket)
-	}
-	if err == io.EOF { // eof is normal, marks end of packet here
-		layers.Root.Logger.Println("Normal EOF when parsing")
-		return layer, nil
-	}
+	layer.Chunks, err = deserializeChunks(zstdStream)
 
 	return layer, err
 }
@@ -278,7 +293,7 @@ func (layer *Packet8DLayer) serializeChunks(stream chunkSerializer) error {
 	var err error
 	for _, chunk := range layer.Chunks {
 		var cubeSideLog2 uint8 = 0xFF
-		for i := uint8(0); i < 0xF; i++ {
+		for i := uint8(0); i <= 0xF; i++ {
 			if 1<<i == chunk.SideLength {
 				cubeSideLog2 = i
 			}
@@ -369,8 +384,11 @@ func (layer *Packet8DLayer) serializeChunks(stream chunkSerializer) error {
 			rleCount := uint32(0)
 			currCellX, currCellY, currCellZ := cellIndexToCoords(chunk.SideLength, cellIndex)
 			currCell := chunk.CellCube[currCellX][currCellY][currCellZ]
-			for isRunLength := true; isRunLength && rleCount < 256 && rleCount+cellIndex < cubeSize; {
+			for isRunLength := true; isRunLength; {
 				rleCount++
+				if rleCount+cellIndex >= cubeSize || rleCount >= 256 {
+					break
+				}
 				nextCellX, nextCellY, nextCellZ := cellIndexToCoords(chunk.SideLength, rleCount+cellIndex)
 				nextCell := chunk.CellCube[nextCellX][nextCellY][nextCellZ]
 
@@ -378,15 +396,17 @@ func (layer *Packet8DLayer) serializeChunks(stream chunkSerializer) error {
 			}
 
 			// currCell won't be the cell being encoded here!
-			material := prevCell.Material
-			occupancy := prevCell.Occupancy
+			material := currCell.Material
+			occupancy := currCell.Occupancy
 			count := uint8(rleCount - 1)
 
 			header := material
-			if count != 255 {
+			customCount := count != 0
+			customOccupancy := occupancy != 255 && material != 0
+			if customCount {
 				header |= 0x80
 			}
-			if occupancy != 255 {
+			if customOccupancy {
 				header |= 0x40
 			}
 
@@ -395,14 +415,14 @@ func (layer *Packet8DLayer) serializeChunks(stream chunkSerializer) error {
 				return err
 			}
 
-			if occupancy != 255 {
+			if customOccupancy {
 				err = stream.WriteByte(occupancy)
 				if err != nil {
 					return err
 				}
 			}
 
-			if count != 255 {
+			if customCount {
 				err = stream.WriteByte(count)
 				if err != nil {
 					return err
