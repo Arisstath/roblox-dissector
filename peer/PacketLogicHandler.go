@@ -189,6 +189,8 @@ func (logicHandler *PacketLogicHandler) bindDefaultHandlers() {
 	basicHandlers := logicHandler.PacketEmitter
 	basicHandlers.On("ID_DISCONNECTION_NOTIFICATION", logicHandler.disconnectHandler, emitter.Void)
 
+	logicHandler.Replicator.Bind(logicHandler.DefaultPacketReader, logicHandler.DefaultPacketWriter)
+
 	// do NOT call PacketReader.BindDefaultHandlers() here!
 	// ServerClients are packet readers which don't want that
 }

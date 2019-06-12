@@ -71,11 +71,10 @@ func (client *ServerClient) createWriter() {
 }
 
 func (client *ServerClient) init() {
+	client.createWriter()
 	client.bindDefaultHandlers()
 	// Write to server's connection
 	client.Connection = client.Server.Connection
-	client.createWriter()
-	client.Replicator.Bind(client.DefaultPacketReader, client.DefaultPacketWriter)
 
 	client.Connected = true
 

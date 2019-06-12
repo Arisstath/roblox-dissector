@@ -41,7 +41,6 @@ func (myClient *CustomClient) disconnectionLogger(e *emitter.Event) {
 
 func (myClient *CustomClient) bindDefaultHandlers() {
 	// let the DataModel be updated properly
-	myClient.DefaultPacketReader.BindDataModelHandlers()
 	myClient.PacketLogicHandler.bindDefaultHandlers()
 
 	pEmitter := myClient.PacketEmitter
