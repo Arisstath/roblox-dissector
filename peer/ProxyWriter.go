@@ -206,12 +206,12 @@ func NewProxyWriter(ctx context.Context) *ProxyWriter {
 			}
 			joinDataObject.OSPlatform = writer.SecuritySettings.OSPlatform()
 
-			var newJson []byte
-			newJson, err = joinDataObject.JSON()
+			var newJSON []byte
+			newJSON, err = joinDataObject.JSON()
 			if err != nil {
 				break
 			}
-			mainLayer.JoinData = string(newJson)
+			mainLayer.JoinData = string(newJSON)
 			err = serverHalf.WritePacket(mainLayer)
 		default:
 			err = serverHalf.WritePacket(layers.Main.(RakNetPacket))
