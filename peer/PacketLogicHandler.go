@@ -17,6 +17,7 @@ import (
 // TODO: Add Logger to this struct?
 type PacketLogicHandler struct {
 	*ConnectedPeer
+	Replicator     *Replicator
 	Context        *CommunicationContext
 	RunningContext context.Context
 
@@ -38,6 +39,7 @@ type PacketLogicHandler struct {
 func newPacketLogicHandler(context *CommunicationContext, withClient bool) PacketLogicHandler {
 	return PacketLogicHandler{
 		ConnectedPeer: NewConnectedPeer(context, withClient),
+		Replicator:    NewReplicator(),
 
 		remoteIndices: make(map[*datamodel.Instance]uint32),
 		remoteLock:    &sync.Mutex{},
@@ -199,42 +201,7 @@ func (logicHandler *PacketLogicHandler) WriteDataPackets(packets ...Packet83Subp
 	return err
 }
 
-// ReplicationInstance creates a new ReplicationInstance for
-// the given DataModel instance
-func (logicHandler *PacketLogicHandler) ReplicationInstance(inst *datamodel.Instance, deleteOnDisconnect bool) *ReplicationInstance {
-	repInstance := &ReplicationInstance{}
-	repInstance.DeleteOnDisconnect = deleteOnDisconnect
-	repInstance.Instance = inst
-	repInstance.Parent = inst.Parent()
-	repInstance.Schema = logicHandler.Context.NetworkSchema.SchemaForClass(inst.ClassName)
-	inst.PropertiesMutex.RLock()
-	repInstance.Properties = make(map[string]rbxfile.Value, len(inst.Properties))
-	for name, value := range inst.Properties {
-		repInstance.Properties[name] = value
-	}
-	inst.PropertiesMutex.RUnlock()
-
-	return repInstance
-}
-
-// SendEvent sends an event invocation and fires the event locally
-func (logicHandler *PacketLogicHandler) SendEvent(instance *datamodel.Instance, name string, arguments ...rbxfile.Value) error {
-	instance.FireEvent(name, arguments...)
-	return logicHandler.WriteDataPackets(
-		&Packet83_07{
-			Instance: instance,
-			Schema:   logicHandler.Context.NetworkSchema.SchemaForClass(instance.ClassName).SchemaForEvent(name),
-			Event:    &ReplicationEvent{arguments},
-		},
-	)
-}
-
 // SendHackFlag attempts to fire the StatsAvailable event on the given player
-func (logicHandler *PacketLogicHandler) SendHackFlag(player *datamodel.Instance, flag string) error {
-	return logicHandler.SendEvent(player, "StatsAvailable", rbxfile.ValueString(flag))
-}
-
-// ReplicateInstance sends an ID_REPLIC_NEW_INSTANCE to the peer
-func (logicHandler *PacketLogicHandler) ReplicateInstance(inst *datamodel.Instance, deleteOnDisconnect bool) error {
-	return logicHandler.WriteDataPackets(&Packet83_02{logicHandler.ReplicationInstance(inst, deleteOnDisconnect)})
+func (logicHandler *PacketLogicHandler) SendHackFlag(player *datamodel.Instance, flag string) {
+	player.FireEvent("StatsAvailable", rbxfile.ValueString(flag))
 }

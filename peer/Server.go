@@ -23,12 +23,6 @@ type ServerClient struct {
 	// Among other things, it is used in the determining the player's name
 	// (i.e. Player1, Player2, etc.)
 	Index int
-
-	replicatedInstances []*ReplicationContainer
-	handlingChild       *datamodel.Instance
-	handlingProp        handledChange
-	handlingEvent       handledChange
-	handlingRemoval     *datamodel.Instance
 }
 
 // CustomServer is custom implementation of a Roblox server
@@ -81,6 +75,7 @@ func (client *ServerClient) init() {
 	// Write to server's connection
 	client.Connection = client.Server.Connection
 	client.createWriter()
+	client.Replicator.Bind(client.DefaultPacketReader, client.DefaultPacketWriter)
 
 	client.Connected = true
 

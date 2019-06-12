@@ -285,15 +285,7 @@ func (myClient *CustomClient) InvokeRemote(instance *datamodel.Instance, argumen
 	defer instance.EventEmitter.Off("RemoteOnInvokeSuccess", succEvtChan)
 	defer instance.EventEmitter.Off("RemoteOnInvokeError", errEvtChan)
 
-	err = myClient.SendEvent(instance, "RemoteOnInvokeServer",
-		rbxfile.ValueInt(index),
-		datamodel.ValueReference{Instance: localPlayer},
-		datamodel.ValueTuple(arguments),
-	)
-	if err != nil {
-		return nil, err
-	}
-
+	instance.FireEvent("RemoteOnInvokeServer", rbxfile.ValueInt(index), datamodel.ValueReference{Instance: localPlayer}, datamodel.ValueTuple(arguments))
 	for {
 		select {
 		case e, received := <-succEvtChan:
@@ -325,10 +317,8 @@ func (myClient *CustomClient) FireRemote(instance *datamodel.Instance, arguments
 	if err != nil {
 		return err
 	}
-	return myClient.SendEvent(instance, "OnServerEvent",
-		datamodel.ValueReference{Instance: localPlayer},
-		datamodel.ValueTuple(arguments),
-	)
+	instance.FireEvent("OnServerEvent", datamodel.ValueReference{Instance: localPlayer}, datamodel.ValueTuple(arguments))
+	return nil
 }
 
 func addVector(vec1, vec2 rbxfile.ValueVector3) rbxfile.ValueVector3 {
@@ -519,7 +509,7 @@ func (myClient *CustomClient) stalkPlayer(name string) error {
 				continue
 			}
 			event := e.Args[0].([]rbxfile.Value)
-			err := myClient.SendEvent(myAnimator, "OnCombinedUpdate", event...)
+			myAnimator.FireEvent("OnCombinedUpdate", event...)
 			if err != nil {
 				println("Failed to send onplay event: ", err.Error())
 			}

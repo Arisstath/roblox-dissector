@@ -45,6 +45,16 @@ var joinDataConfiguration = []joinDataConfig{
 	joinDataConfig{"SocialService", true, false},
 }
 
+func joinDataConfigFor(class string) joinDataConfig {
+	for _, config := range joinDataConfiguration {
+		if config.ClassName == class {
+			return config
+		}
+	}
+
+	return joinDataConfig{}
+}
+
 func (client *ServerClient) offline5Handler(e *emitter.Event) {
 	println("Received connection!", client.Address.String())
 	client.WriteOffline(&Packet06Layer{
@@ -121,17 +131,7 @@ func (client *ServerClient) topReplicate() error {
 				WatchChildren: instance.ReplicateChildren,
 			})
 
-			thisContainer := &ReplicationContainer{
-				Instance:            service,
-				ReplicateProperties: instance.ReplicateProperties,
-				ReplicateChildren:   instance.ReplicateChildren,
-
-				// service parent should never change, but this will be
-				// inherited by children
-				ReplicateParent: true,
-			}
-			client.replicatedInstances = append(client.replicatedInstances, thisContainer)
-			thisContainer.updateBinding(client, false)
+			client.Replicator.ContainerFor(service, instance.ReplicateChildren, instance.ReplicateProperties, true)
 		}
 	}
 
