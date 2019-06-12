@@ -104,7 +104,6 @@ func newServerClient(clientAddr *net.UDPAddr, server *CustomServer, context *Com
 func (myServer *CustomServer) bindToDisconnection(client *ServerClient) {
 	// HACK: gets priority in the emitter via Use()
 	client.GenericEvents.Use("disconnected", func(e *emitter.Event) {
-		println("server received client disconnection")
 		delete(myServer.Clients, client.Address.String())
 	})
 }

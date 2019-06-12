@@ -19,7 +19,6 @@ func NewServerConsole(parent widgets.QWidget_ITF, server *peer.CustomServer, ses
 
 	updateClients := func() {
 		rootNode := standardModel.InvisibleRootItem()
-		println("after disc have", rootNode.RowCount(), len(server.Clients))
 		if rootNode.RowCount() != len(server.Clients) {
 			standardModel.Clear()
 			standardModel.SetHorizontalHeaderLabels([]string{"Address"})
@@ -34,7 +33,6 @@ func NewServerConsole(parent widgets.QWidget_ITF, server *peer.CustomServer, ses
 		updateClients()
 		client := e.Args[0].(*peer.ServerClient)
 		client.GenericEvents.On("disconnected", func(e *emitter.Event) {
-			println("received client disconnection")
 			updateClients()
 		}, emitter.Void)
 	}, emitter.Void)
