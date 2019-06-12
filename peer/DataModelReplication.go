@@ -14,7 +14,9 @@ type handledChange struct {
 }
 
 // ReplicationContainer represents replication config for an instance that
-// is specific to a server client
+// is specific to a network peer.
+// ReplicationContainer keeps track of DataModel events for the instance it's
+// bound to.
 type ReplicationContainer struct {
 	Instance            *datamodel.Instance
 	ReplicateProperties bool
@@ -28,6 +30,10 @@ type ReplicationContainer struct {
 
 	hasReplicated bool
 }
+
+// Replicator is a system that listens to DataModel updates, keeps track of
+// which instances have been replicated and sends the appropriate packets to
+// the peer it is bound to.
 type Replicator struct {
 	ReplicatedInstances map[*datamodel.Instance]*ReplicationContainer
 	handlingChild       *datamodel.Instance
@@ -39,6 +45,12 @@ type Replicator struct {
 	writer *DefaultPacketWriter
 }
 
+// ContainerFor returns the ReplicationContainer corresponding to an instance.
+// If no such container exists, it will be created according to the options:
+// (1) replicate children
+// (2) replicate properties and events
+// (3) replicate parent changes
+// If options are given but the instance has been replicated, the container will be updated.
 func (replicator *Replicator) ContainerFor(instance *datamodel.Instance, options ...bool) *ReplicationContainer {
 	cont, ok := replicator.ReplicatedInstances[instance]
 	if !ok {
@@ -113,27 +125,59 @@ func (replicator *Replicator) ReplicationInstance(inst *datamodel.Instance, dele
 	return repInstance
 }
 
+func (replicator *Replicator) replicateChildren(parent *datamodel.Instance) error {
+	for _, subChild := range parent.Children {
+		err := replicator.replicateNewChild(parent, subChild)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (replicator *Replicator) replicateNewChild(parent *datamodel.Instance, newChild *datamodel.Instance) error {
+	childConfig := replicator.ContainerFor(newChild)
+	if !childConfig.hasReplicated && replicator.handlingChild != newChild {
+		// send the child as a new instance
+		err := replicator.writeDataPacket(&Packet83_02{replicator.ReplicationInstance(newChild, false)})
+		if err != nil {
+			return err
+		}
+		childConfig.update(replicator)
+
+		// this instance's children probably haven't been replicated
+		// and if they have, their parent update hasn't been replicated
+		// because this instance (as a parent) didn't have childAdded bound
+		// when the children's parents were updated
+		err = replicator.replicateChildren(newChild)
+		if err != nil {
+			return err
+		}
+	} else if childConfig.hasReplicated && !replicator.isHandlingProperty(newChild, "Parent") && childConfig.ReplicateParent {
+		// the child exists on the client; its parent has been updated
+		err := replicator.writeDataPacket(&Packet83_03{
+			Instance: newChild,
+			Schema:   nil, // Parent property
+			Value:    datamodel.ValueReference{Instance: parent, Reference: parent.Ref},
+		})
+		if err != nil {
+			return err
+		}
+
+		// because this is a parent update, we don't need to cascade it to children
+	}
+	childConfig.hasReplicated = true
+
+	return nil
+}
+
 func (replicator *Replicator) childHandler(instance *datamodel.Instance) eventHandler {
 	return func(e *emitter.Event) {
 		newChild := e.Args[0].(*datamodel.Instance)
-		childConfig := replicator.ContainerFor(newChild)
-		if !childConfig.hasReplicated && replicator.handlingChild != newChild {
-			err := replicator.writeDataPacket(&Packet83_02{replicator.ReplicationInstance(instance, false)})
-			if err != nil {
-				println("Child handler error:", instance.GetFullName(), err.Error())
-			}
-			childConfig.update(replicator)
-		} else if childConfig.hasReplicated && !replicator.isHandlingProperty(newChild, "Parent") {
-			err := replicator.writeDataPacket(&Packet83_03{
-				Instance: newChild,
-				Schema:   nil, // Parent property
-				Value:    datamodel.ValueReference{Instance: instance, Reference: instance.Ref},
-			})
-			if err != nil {
-				println("Child handler error:", instance.GetFullName(), err.Error())
-			}
+		err := replicator.replicateNewChild(instance, newChild)
+		if err != nil {
+			println("Child handler error:", instance.GetFullName(), err.Error())
 		}
-		childConfig.hasReplicated = true
 	}
 }
 
@@ -185,6 +229,8 @@ func (replicator *Replicator) addTopInstanceChildren(children []*datamodel.Insta
 	return nil
 }
 
+// AddTopInstance manually adds an instance for replication.
+// Typically it is used by the server to add services for replication.
 func (replicator *Replicator) AddTopInstance(rootInstance *datamodel.Instance, replicateChildren, replicateProperties bool, streamer *JoinDataStreamer) error {
 	var err error
 
@@ -227,6 +273,7 @@ func (replicator *Replicator) AddTopInstance(rootInstance *datamodel.Instance, r
 	return nil
 }
 
+// Bind makes the Replicator listen to reader's packets and write packets to the given writer.
 func (replicator *Replicator) Bind(reader *DefaultPacketReader, writer *DefaultPacketWriter) {
 	replicator.reader = reader
 	replicator.writer = writer
@@ -322,6 +369,7 @@ func (replicator *Replicator) Bind(reader *DefaultPacketReader, writer *DefaultP
 	}, emitter.Void)
 }
 
+// NewReplicator creates a new Replicator object.
 func NewReplicator() *Replicator {
 	return &Replicator{
 		ReplicatedInstances: make(map[*datamodel.Instance]*ReplicationContainer),
