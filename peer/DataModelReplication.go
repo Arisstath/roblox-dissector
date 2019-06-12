@@ -382,12 +382,18 @@ func (cont *ReplicationContainer) update(replicator *Replicator) {
 	if cont.parentBinding == nil && cont.ReplicateParent {
 		cont.parentBinding = inst.ParentEmitter.On("*", replicator.parentHandler(inst), emitter.Void)
 	} else if !cont.ReplicateParent && cont.parentBinding != nil {
-		inst.ParentEmitter.Off("*", cont.parentBinding)
+		// Use a goroutine here!
+		// The emitter's mutex may be locked, because ReplicateParent
+		// is typically updated by the container's own parentBinding
+		go func() {
+			inst.ParentEmitter.Off("*", cont.parentBinding)
+		}()
 	}
 
 	if cont.childBinding == nil && cont.ReplicateChildren {
 		cont.childBinding = inst.ChildEmitter.On("*", replicator.childHandler(inst), emitter.Void)
 	} else if !cont.ReplicateChildren && cont.childBinding != nil {
+		// ChildEmitter's binding should never be locked here
 		inst.ChildEmitter.Off("*", cont.childBinding)
 	}
 
@@ -395,6 +401,7 @@ func (cont *ReplicationContainer) update(replicator *Replicator) {
 		cont.propBinding = inst.PropertyEmitter.On("*", replicator.propertyHandler(inst), emitter.Void)
 		cont.eventBinding = inst.EventEmitter.On("*", replicator.eventHandler(inst), emitter.Void)
 	} else if !cont.ReplicateProperties && cont.propBinding != nil {
+		// These bindings should never be lccked here
 		inst.PropertyEmitter.Off("*", cont.propBinding)
 		inst.EventEmitter.Off("*", cont.eventBinding)
 	}
