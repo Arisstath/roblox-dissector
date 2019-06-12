@@ -91,9 +91,12 @@ func (replicator *Replicator) writeDataPacket(packet Packet83Subpacket) error {
 func (replicator *Replicator) parentHandler(instance *datamodel.Instance) eventHandler {
 	return func(e *emitter.Event) {
 		newParent := e.Args[0].(*datamodel.Instance)
-		if newParent == nil {
+		if !instance.IsService && newParent == nil {
 			// instance was destroyed
 			// so it must have been replicated previously
+			// however, service parents are locked so parent updates for them
+			// are ignored
+			// sometimes the server will report their parent as nil
 			// unbind listeners
 			replicator.ContainerFor(instance, false, false, false)
 
@@ -143,7 +146,6 @@ func (replicator *Replicator) replicateNewChild(parent *datamodel.Instance, newC
 		if err != nil {
 			return err
 		}
-		childConfig.update(replicator)
 
 		// this instance's children probably haven't been replicated
 		// and if they have, their parent update hasn't been replicated
