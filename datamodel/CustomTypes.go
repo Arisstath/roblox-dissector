@@ -105,6 +105,51 @@ func TypeString(val rbxfile.Value) string {
 	return CustomTypeNames[thisType]
 }
 
+func TypeFromString(typ string) rbxfile.Type {
+	for k, v := range CustomTypeNames {
+		if v == typ {
+			return k
+		}
+	}
+
+	return rbxfile.TypeFromString(typ)
+}
+
+func NewValue(typ rbxfile.Type) rbxfile.Value {
+	switch typ {
+	case TypeArray:
+		return ValueArray{}
+	case TypeColorSequence:
+		return ValueColorSequence{}
+	case TypeColorSequenceKeypoint:
+		return ValueColorSequenceKeypoint{}
+	case TypeDictionary:
+		return ValueDictionary{}
+	case TypeMap:
+		return ValueMap{}
+	case TypeNumberSequence:
+		return ValueNumberSequence{}
+	case TypeNumberSequenceKeypoint:
+		return ValueNumberSequenceKeypoint{}
+	case TypeReference:
+		return ValueReference{}
+	case TypeRegion3:
+		return ValueRegion3{}
+	case TypeRegion3int16:
+		return ValueRegion3int16{}
+	case TypeSystemAddress:
+		return ValueSystemAddress{}
+	case TypeToken:
+		return ValueToken{}
+	case TypeTuple:
+		return ValueTuple{}
+	case TypeVector3int32:
+		return ValueVector3int32{}
+	default:
+		return rbxfile.NewValue(typ)
+	}
+}
+
 func (x ValueRegion3) String() string {
 	return fmt.Sprintf("{%s}, {%s}", x.Start.String(), x.End.String())
 }

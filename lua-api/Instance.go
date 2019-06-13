@@ -1,14 +1,21 @@
 package api
 
 import (
-	"github.com/gskartwii/roblox-dissector/datamodel"
-	"github.com/gskartwii/roblox-dissector/peer"
-	"github.com/robloxapi/rbxfile"
+	"errors"
+	"fmt"
+
+	"github.com/Gskartwii/roblox-dissector/datamodel"
+	"github.com/Gskartwii/roblox-dissector/peer"
 	lua "github.com/yuin/gopher-lua"
 )
 
-func getSchema(L *lua.LState) *peer.NetworkSchema {
-	return L.GetGlobal("schema").(*lua.LUserData).Value.(*peer.NetworkSchema)
+func getSchema(L *lua.LState) (*peer.NetworkSchema, error) {
+	schema, ok := L.GetGlobal("schema").(*lua.LUserData)
+	if !ok {
+		return nil, errors.New("schema not initialized")
+	}
+
+	return schema.Value.(*peer.NetworkSchema), nil
 }
 
 func instanceIndex(L *lua.LState) int {
@@ -19,11 +26,15 @@ func instanceIndex(L *lua.LState) int {
 		return 1
 	}
 
-	instanceClass := getSchema(L).SchemaForClass(inst.ClassName)
+	schema, err := getSchema(L)
+	if err != nil {
+		L.RaiseError("indexing instance: %s", err.Error())
+	}
+	instanceClass := schema.SchemaForClass(inst.ClassName)
 	for _, prop := range instanceClass.Properties {
 		if prop.Name == name {
 			val := inst.Get(name)
-			L.Push(BridgeValue(val))
+			L.Push(BridgeValue(L, val))
 			return 1
 		}
 	}
@@ -44,7 +55,18 @@ func instanceNewIndex(L *lua.LState) int {
 		return 0
 	}
 
-	val := checkValue(L, 3)
+	schema, err := getSchema(L)
+	if err != nil {
+		L.RaiseError("schema not initialized")
+	}
+	class := schema.SchemaForClass(inst.ClassName)
+	propSchema := class.SchemaForProp(prop)
+	if propSchema == nil {
+		L.ArgError(2, fmt.Sprintf("%s is not a valid property", prop))
+		return 0
+	}
+
+	val := checkValue(L, 3, peer.NetworkToRbxfileType(propSchema.Type))
 	inst.Set(prop, val)
 	return 0
 }
@@ -68,16 +90,10 @@ func checkInstance(L *lua.LState) *datamodel.Instance {
 	return checkInstanceArg(L, 1)
 }
 
-func checkValue(L *lua.LState, index int) rbxfile.Value {
-	ud := L.CheckUserData(index)
-	if v, ok := ud.Value.(rbxfile.Value); ok {
-		return v
-	}
-	L.ArgError(index, "value expected")
-	return nil
-}
-
 func BridgeInstance(instance *datamodel.Instance, L *lua.LState) lua.LValue {
+	if instance == nil {
+		return lua.LNil
+	}
 	ud := L.NewUserData()
 	ud.Value = instance
 	L.SetMetatable(ud, L.GetTypeMetatable("Instance"))

@@ -1,5 +1,10 @@
 package peer
 
+import (
+	"github.com/Gskartwii/roblox-dissector/datamodel"
+	"github.com/robloxapi/rbxfile"
+)
+
 const (
 	// PropertyTypeNil is the type for nil values
 	PropertyTypeNil uint8 = iota
@@ -143,6 +148,62 @@ var TypeNames = map[uint8]string{
 	PropertyTypeRect2D:                 "Rect2D",
 	PropertyTypePhysicalProperties:     "PhysicalProperties",
 	PropertyTypeInt64:                  "sint64",
+}
+
+var typeToNetworkConvTable = map[rbxfile.Type]uint8{
+	rbxfile.TypeString:                   PropertyTypeString,
+	rbxfile.TypeBinaryString:             PropertyTypeBinaryString,
+	rbxfile.TypeProtectedString:          PropertyTypeProtectedString0,
+	rbxfile.TypeContent:                  PropertyTypeContent,
+	rbxfile.TypeBool:                     PropertyTypeBool,
+	rbxfile.TypeInt:                      PropertyTypeInt,
+	rbxfile.TypeFloat:                    PropertyTypeFloat,
+	rbxfile.TypeDouble:                   PropertyTypeDouble,
+	rbxfile.TypeUDim:                     PropertyTypeUDim,
+	rbxfile.TypeUDim2:                    PropertyTypeUDim2,
+	rbxfile.TypeRay:                      PropertyTypeRay,
+	rbxfile.TypeFaces:                    PropertyTypeFaces,
+	rbxfile.TypeAxes:                     PropertyTypeAxes,
+	rbxfile.TypeBrickColor:               PropertyTypeBrickColor,
+	rbxfile.TypeColor3:                   PropertyTypeColor3,
+	rbxfile.TypeVector2:                  PropertyTypeVector2,
+	rbxfile.TypeVector3:                  PropertyTypeComplicatedVector3,
+	rbxfile.TypeCFrame:                   PropertyTypeComplicatedCFrame,
+	datamodel.TypeToken:                  PropertyTypeEnum,
+	datamodel.TypeReference:              PropertyTypeInstance,
+	rbxfile.TypeVector3int16:             PropertyTypeVector3int16,
+	rbxfile.TypeVector2int16:             PropertyTypeVector2int16,
+	datamodel.TypeNumberSequence:         PropertyTypeNumberSequence,
+	datamodel.TypeColorSequence:          PropertyTypeColorSequence,
+	rbxfile.TypeNumberRange:              PropertyTypeNumberRange,
+	rbxfile.TypeRect2D:                   PropertyTypeRect2D,
+	rbxfile.TypePhysicalProperties:       PropertyTypePhysicalProperties,
+	rbxfile.TypeColor3uint8:              PropertyTypeColor3uint8,
+	datamodel.TypeNumberSequenceKeypoint: PropertyTypeNumberSequenceKeypoint,
+	datamodel.TypeColorSequenceKeypoint:  PropertyTypeColorSequenceKeypoint,
+	datamodel.TypeSystemAddress:          PropertyTypeSystemAddress,
+	datamodel.TypeMap:                    PropertyTypeMap,
+	datamodel.TypeDictionary:             PropertyTypeDictionary,
+	datamodel.TypeArray:                  PropertyTypeArray,
+	datamodel.TypeTuple:                  PropertyTypeTuple,
+	rbxfile.TypeInt64:                    PropertyTypeInt64,
+}
+
+func RbxfileToNetworkType(val rbxfile.Value) (uint8, bool) {
+	if val == nil {
+		return 0, true
+	}
+	typ, ok := typeToNetworkConvTable[val.Type()]
+	return typ, ok
+}
+
+func NetworkToRbxfileType(typ uint8) rbxfile.Type {
+	for k, v := range typeToNetworkConvTable {
+		if typ == v {
+			return k
+		}
+	}
+	return rbxfile.TypeInvalid
 }
 
 // NetworkArgumentSchema describes the schema of one event argument

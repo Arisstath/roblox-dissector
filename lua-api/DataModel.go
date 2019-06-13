@@ -1,12 +1,12 @@
 package api
 
 import (
-	"github.com/gskartwii/roblox-dissector/datamodel"
+	"github.com/Gskartwii/roblox-dissector/datamodel"
 	lua "github.com/yuin/gopher-lua"
 )
 
 func dataModelIndex(L *lua.LState) int {
-	dm := checkDataModel(L)
+	checkDataModel(L)
 	name := L.CheckString(2)
 	if v, ok := datamodelMethods[name]; ok {
 		L.Push(L.NewFunction(v))

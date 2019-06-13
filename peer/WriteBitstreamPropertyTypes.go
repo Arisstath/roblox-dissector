@@ -294,57 +294,7 @@ func (b *extendedWriter) writeVarsint64(val int64) error {
 	return b.writeVarint64(uint64(val)<<1 ^ -(uint64(val) >> 63))
 }
 
-var typeToNetworkConvTable = map[rbxfile.Type]uint8{
-	rbxfile.TypeString:                   PropertyTypeString,
-	rbxfile.TypeBinaryString:             PropertyTypeBinaryString,
-	rbxfile.TypeProtectedString:          PropertyTypeProtectedString0,
-	rbxfile.TypeContent:                  PropertyTypeContent,
-	rbxfile.TypeBool:                     PropertyTypeBool,
-	rbxfile.TypeInt:                      PropertyTypeInt,
-	rbxfile.TypeFloat:                    PropertyTypeFloat,
-	rbxfile.TypeDouble:                   PropertyTypeDouble,
-	rbxfile.TypeUDim:                     PropertyTypeUDim,
-	rbxfile.TypeUDim2:                    PropertyTypeUDim2,
-	rbxfile.TypeRay:                      PropertyTypeRay,
-	rbxfile.TypeFaces:                    PropertyTypeFaces,
-	rbxfile.TypeAxes:                     PropertyTypeAxes,
-	rbxfile.TypeBrickColor:               PropertyTypeBrickColor,
-	rbxfile.TypeColor3:                   PropertyTypeColor3,
-	rbxfile.TypeVector2:                  PropertyTypeVector2,
-	rbxfile.TypeVector3:                  PropertyTypeComplicatedVector3,
-	rbxfile.TypeCFrame:                   PropertyTypeComplicatedCFrame,
-	datamodel.TypeToken:                  PropertyTypeEnum,
-	datamodel.TypeReference:              PropertyTypeInstance,
-	rbxfile.TypeVector3int16:             PropertyTypeVector3int16,
-	rbxfile.TypeVector2int16:             PropertyTypeVector2int16,
-	datamodel.TypeNumberSequence:         PropertyTypeNumberSequence,
-	datamodel.TypeColorSequence:          PropertyTypeColorSequence,
-	rbxfile.TypeNumberRange:              PropertyTypeNumberRange,
-	rbxfile.TypeRect2D:                   PropertyTypeRect2D,
-	rbxfile.TypePhysicalProperties:       PropertyTypePhysicalProperties,
-	rbxfile.TypeColor3uint8:              PropertyTypeColor3uint8,
-	datamodel.TypeNumberSequenceKeypoint: PropertyTypeNumberSequenceKeypoint,
-	datamodel.TypeColorSequenceKeypoint:  PropertyTypeColorSequenceKeypoint,
-	datamodel.TypeSystemAddress:          PropertyTypeSystemAddress,
-	datamodel.TypeMap:                    PropertyTypeMap,
-	datamodel.TypeDictionary:             PropertyTypeDictionary,
-	datamodel.TypeArray:                  PropertyTypeArray,
-	datamodel.TypeTuple:                  PropertyTypeTuple,
-	rbxfile.TypeInt64:                    PropertyTypeInt64,
-}
-
-func typeToNetwork(val rbxfile.Value) (uint8, bool) {
-	if val == nil {
-		return 0, true
-	}
-	typ, ok := typeToNetworkConvTable[val.Type()]
-	return typ, ok
-}
 func isCorrectType(val rbxfile.Value, expected uint8) bool {
-	// FIXME: rbxfile bug
-	if _, ok := val.(rbxfile.ValueColor3uint8); ok {
-		return expected == PropertyTypeColor3uint8
-	}
 	typ, ok := typeToNetworkConvTable[val.Type()]
 	if !ok {
 		return false
@@ -441,7 +391,7 @@ func (b *extendedWriter) writeSerializedValueGeneric(val rbxfile.Value, valueTyp
 
 func (b *extendedWriter) writeNewTypeAndValue(val rbxfile.Value, writer PacketWriter) error {
 	var err error
-	valueType, ok := typeToNetwork(val)
+	valueType, ok := RbxfileToNetworkType(val)
 	if !ok {
 		fmt.Printf("Invalid network type: %T\n", val)
 		return errors.New("invalid network type")
