@@ -94,7 +94,7 @@ func getValue(L *lua.LState, val lua.LValue) rbxfile.Value {
 			}
 			// Don't use Len(), use MaxN() to find the real length
 			for i := 0; i < valTable.MaxN(); i++ {
-				subValue := getValue(L, valTable.RawGetInt(i))
+				subValue := getValue(L, valTable.RawGetInt(i+1))
 				reflectVal = reflect.Append(reflectVal, reflect.ValueOf(subValue))
 			}
 
@@ -139,7 +139,7 @@ func getValue(L *lua.LState, val lua.LValue) rbxfile.Value {
 					for j := 0; j < field.Len(); j++ {
 						// only support these types for now
 						if field.Index(j).Kind() == reflect.Float32 || field.Index(j).Kind() == reflect.Float64 {
-							field.Index(j).SetFloat(float64(storedArray.RawGetInt(j).(lua.LNumber)))
+							field.Index(j).SetFloat(float64(storedArray.RawGetInt(j + 1).(lua.LNumber)))
 						} else {
 							L.RaiseError("can't dereflect array type %s", field.Index(j).Kind())
 						}
