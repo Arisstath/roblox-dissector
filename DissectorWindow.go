@@ -434,7 +434,7 @@ WinDivert enabled: %v
 			rand.Seed(time.Now().UnixNano())
 			instanceDictionary := datamodel.NewInstanceDictionary()
 			thisRoot := datamodel.FromRbxfile(instanceDictionary, dataModelRoot)
-			normalizeRoot(thisRoot, schema)
+			peer.NormalizeDataModel(thisRoot, schema)
 
 			nameBase := "<SERVER>"
 			session := NewCaptureSession(nameBase, window)
