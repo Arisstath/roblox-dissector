@@ -116,10 +116,11 @@ func getValue(L *lua.LState, val lua.LValue) rbxfile.Value {
 				reflectVal.SetMapIndex(reflect.ValueOf(keyStr), reflect.ValueOf(subValue))
 			}
 		case reflect.Struct:
+			ptrToValue := reflect.New(reflectVal.Type())
 			for i := 0; i < reflectVal.NumField(); i++ {
 				keyName := reflectVal.Type().Field(i).Name
 				keyValue := valTable.RawGetString(keyName)
-				field := reflectVal.Field(i)
+				field := ptrToValue.Elem().Field(i)
 
 				switch reflectVal.Type().Field(i).Type.Kind() {
 				// Don't need to support everything here
@@ -143,10 +144,15 @@ func getValue(L *lua.LState, val lua.LValue) rbxfile.Value {
 							L.RaiseError("can't dereflect array type %s", field.Index(j).Kind())
 						}
 					}
+				case reflect.Interface, reflect.Struct:
+					subValue := getValue(L, keyValue)
+					field.Set(reflect.ValueOf(subValue))
 				default:
 					L.RaiseError("can't dereflect struct field %s", reflectVal.Type().Field(i).Name)
 				}
 			}
+
+			return reflect.Indirect(ptrToValue).Interface().(rbxfile.Value)
 		}
 		return createdValue
 	default:
