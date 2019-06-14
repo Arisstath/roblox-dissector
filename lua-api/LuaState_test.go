@@ -44,7 +44,8 @@ func expectCFrame(t *testing.T, expect rbxfile.ValueCFrame, try rbxfile.ValueCFr
 	}
 }
 
-func TestCFrame(t *testing.T) {
+func initLuaState(t *testing.T) (*State, *datamodel.DataModel, context.CancelFunc) {
+	t.Helper()
 	schemaFile, err := os.Open("testdata/schema_studio.txt")
 	if err != nil {
 		t.Fatal(err.Error())
@@ -76,10 +77,15 @@ func TestCFrame(t *testing.T) {
 	state.RegisterDataModel(thisRoot)
 	state.RegisterSchema(schema)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
 	state.SetContext(ctx)
 
-	err = state.DoString(`
+	return state, thisRoot, cancel
+}
+
+func TestCFrame(t *testing.T) {
+	state, thisRoot, cancel := initLuaState(t)
+	defer cancel()
+	err := state.DoString(`
 	local workspace = game.Workspace;
 	local baseplate = workspace.Baseplate;
 	local newPosition = as({X = 5, Y = 117, Z = 5.2}, "Vector3");
@@ -94,4 +100,26 @@ func TestCFrame(t *testing.T) {
 		Position: rbxfile.ValueVector3{X: 5, Y: 117, Z: 5.2},
 		Rotation: [9]float32{1, 0, 0, 0, 1, 0, 0, 0, 1},
 	}, thisRoot.FindService("Workspace").FindFirstChild("Baseplate").Get("CFrame").(rbxfile.ValueCFrame))
+}
+
+func TestWaitForChild(t *testing.T) {
+	state, thisRoot, cancel := initLuaState(t)
+	defer cancel()
+
+	go func() {
+		time.Sleep(time.Second)
+		newChild, _ := datamodel.NewInstance("StringValue", nil)
+		newChild.Set("Name", rbxfile.ValueString("NotYet"))
+		newChild.Set("Value", rbxfile.ValueString("Waiting was successful."))
+		thisRoot.FindService("Workspace").AddChild(newChild)
+	}()
+
+	err := state.DoString(`
+	local workspace = game.Workspace;
+	local value = workspace.NotYet;
+	print(value.Value);
+	`)
+	if err != nil {
+		t.Error(err.Error())
+	}
 }
