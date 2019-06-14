@@ -133,6 +133,18 @@ func getValue(L *lua.LState, val lua.LValue) rbxfile.Value {
 					field.SetFloat(float64(keyValue.(lua.LNumber)))
 				case reflect.String:
 					field.SetString(string(keyValue.(lua.LString)))
+				case reflect.Array:
+					storedArray := keyValue.(*lua.LTable)
+					for j := 0; j < field.Len(); j++ {
+						// only support these types for now
+						if field.Index(j).Kind() == reflect.Float32 || field.Index(j).Kind() == reflect.Float64 {
+							field.Index(j).SetFloat(float64(storedArray.RawGetInt(j).(lua.LNumber)))
+						} else {
+							L.RaiseError("can't dereflect array type %s", field.Index(j).Kind())
+						}
+					}
+				default:
+					L.RaiseError("can't dereflect struct field %s", reflectVal.Type().Field(i).Name)
 				}
 			}
 		}
@@ -230,6 +242,14 @@ func BridgeValue(L *lua.LState, value interface{}) lua.LValue {
 		return lua.LNumber(reflectVal.Int())
 	case reflect.String:
 		return lua.LString(reflectVal.String())
+	case reflect.Array:
+		out := L.NewTable()
+		for i := 0; i < reflectVal.Len(); i++ {
+			// values don't need to implement rbxfile.Value
+			out.Append(BridgeValue(L, reflectVal.Index(i).Interface()))
+		}
+
+		return out
 	case reflect.Slice:
 		elemType := reflectVal.Type().Elem()
 		if elemType.Kind() == reflect.Uint8 {
