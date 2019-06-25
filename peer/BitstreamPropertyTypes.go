@@ -1,10 +1,13 @@
 package peer
 
-import "errors"
-import "github.com/robloxapi/rbxfile"
-import "github.com/Gskartwii/roblox-dissector/datamodel"
+import (
+	"errors"
+	"fmt"
+	"math"
 
-import "math"
+	"github.com/Gskartwii/roblox-dissector/datamodel"
+	"github.com/robloxapi/rbxfile"
+)
 
 // PhysicsMotor is an alias type for rbxfile.ValueCFrames. They are used to
 // describe motors in physics packets
@@ -1232,6 +1235,8 @@ func (b *extendedReader) readSerializedValueGeneric(reader PacketReader, valueTy
 		result, err = b.readRegion3int16()
 	case PropertyTypeInt64:
 		result, err = b.readInt64()
+	default:
+		err = fmt.Errorf("unsupported value type %d", valueType)
 	}
 	return result, err
 }
