@@ -331,6 +331,8 @@ var typeToNetworkConvTable = map[rbxfile.Type]uint8{
 	datamodel.TypeArray:                  PropertyTypeArray,
 	datamodel.TypeTuple:                  PropertyTypeTuple,
 	rbxfile.TypeInt64:                    PropertyTypeInt64,
+	datamodel.TypePathWaypoint:           PropertyTypePathWaypoint,
+	rbxfile.TypeSharedString:             PropertyTypeSharedString,
 }
 
 func typeToNetwork(val rbxfile.Value) (uint8, bool) {
@@ -433,6 +435,10 @@ func (b *extendedWriter) writeSerializedValueGeneric(val rbxfile.Value, valueTyp
 		err = b.writeVarsint64(int64(val.(rbxfile.ValueInt64)))
 	case PropertyTypeStringNoCache:
 		err = b.writePStringNoCache(val.(rbxfile.ValueString))
+	case PropertyTypePathWaypoint:
+		err = b.writePathWaypoint(val.(datamodel.ValuePathWaypoint))
+	case PropertyTypeSharedString:
+		err = b.writeSharedString(val.(rbxfile.ValueSharedString))
 	default:
 		return errors.New("Unsupported property type: " + strconv.Itoa(int(valueType)))
 	}
@@ -630,6 +636,23 @@ func (b *extendedWriter) writePhysicalProperties(val rbxfile.ValuePhysicalProper
 		err = b.writeFloat32BE(val.ElasticityWeight)
 	}
 	return err
+}
+
+func (b *extendedWriter) writePathWaypoint(val datamodel.ValuePathWaypoint) error {
+	err := b.writeVector3Simple(val.Position)
+	if err != nil {
+		return err
+	}
+	return b.writeUint32BE(val.Action)
+}
+
+func (b *extendedWriter) writeSharedString(val rbxfile.ValueSharedString) error {
+	err := b.writeASCII("0123456789abcdef")
+	if err != nil {
+		return err
+	}
+	println("FIXME: wrote sharedstring (placeholder)")
+	return nil
 }
 
 func (b *extendedWriter) writeCoordsMode0(val rbxfile.ValueVector3) error {

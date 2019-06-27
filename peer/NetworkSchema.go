@@ -96,6 +96,10 @@ const (
 	PropertyTypeRegion3int16 = iota
 	// PropertyTypeInt64 is the type for 64-bit signed integer values
 	PropertyTypeInt64 = iota
+	// PropertyTypePathWaypoint is the type for path waypoints
+	PropertyTypePathWaypoint = iota
+	// PropertyTypeSharedString is the type for shared strings
+	PropertyTypeSharedString = iota
 )
 
 // TypeNames is a list of names for value types
@@ -143,6 +147,8 @@ var TypeNames = map[uint8]string{
 	PropertyTypeRect2D:                 "Rect2D",
 	PropertyTypePhysicalProperties:     "PhysicalProperties",
 	PropertyTypeInt64:                  "sint64",
+	PropertyTypePathWaypoint:           "PathWaypoint",
+	PropertyTypeSharedString:           "SharedString",
 }
 
 // NetworkArgumentSchema describes the schema of one event argument
