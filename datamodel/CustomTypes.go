@@ -27,21 +27,22 @@ func (ref Reference) String() string {
 }
 
 const (
-	TypeNumberSequenceKeypoint rbxfile.Type = rbxfile.TypeInt64 + 1 + iota
-	TypeColorSequenceKeypoint               = rbxfile.TypeInt64 + 1 + iota
-	TypeNumberSequence                      = rbxfile.TypeInt64 + 1 + iota
-	TypeColorSequence                       = rbxfile.TypeInt64 + 1 + iota
-	TypeSystemAddress                       = rbxfile.TypeInt64 + 1 + iota
-	TypeMap                                 = rbxfile.TypeInt64 + 1 + iota
-	TypeDictionary                          = rbxfile.TypeInt64 + 1 + iota
-	TypeArray                               = rbxfile.TypeInt64 + 1 + iota
-	TypeTuple                               = rbxfile.TypeInt64 + 1 + iota
-	TypeRegion3                             = rbxfile.TypeInt64 + 1 + iota
-	TypeRegion3int16                        = rbxfile.TypeInt64 + 1 + iota
-	TypeReference                           = rbxfile.TypeInt64 + 1 + iota
-	TypeToken                               = rbxfile.TypeInt64 + 1 + iota
+	TypeNumberSequenceKeypoint rbxfile.Type = rbxfile.TypeSharedString + 1 + iota
+	TypeColorSequenceKeypoint               = rbxfile.TypeSharedString + 1 + iota
+	TypeNumberSequence                      = rbxfile.TypeSharedString + 1 + iota
+	TypeColorSequence                       = rbxfile.TypeSharedString + 1 + iota
+	TypeSystemAddress                       = rbxfile.TypeSharedString + 1 + iota
+	TypeMap                                 = rbxfile.TypeSharedString + 1 + iota
+	TypeDictionary                          = rbxfile.TypeSharedString + 1 + iota
+	TypeArray                               = rbxfile.TypeSharedString + 1 + iota
+	TypeTuple                               = rbxfile.TypeSharedString + 1 + iota
+	TypeRegion3                             = rbxfile.TypeSharedString + 1 + iota
+	TypeRegion3int16                        = rbxfile.TypeSharedString + 1 + iota
+	TypeReference                           = rbxfile.TypeSharedString + 1 + iota
+	TypeToken                               = rbxfile.TypeSharedString + 1 + iota
 	// used for terrain
-	TypeVector3int32 = rbxfile.TypeInt64 + 1 + iota
+	TypeVector3int32 = rbxfile.TypeSharedString + 1 + iota
+	TypePathWaypoint = rbxfile.TypeSharedString + 1 + iota
 )
 
 var CustomTypeNames = map[rbxfile.Type]string{
@@ -59,6 +60,7 @@ var CustomTypeNames = map[rbxfile.Type]string{
 	TypeReference:              "Reference",
 	TypeToken:                  "Token",
 	TypeVector3int32:           "Vector3int32",
+	TypePathWaypoint:           "PathWaypoint",
 }
 
 type ValueColorSequenceKeypoint rbxfile.ValueColorSequenceKeypoint
@@ -81,6 +83,10 @@ type ValueSystemAddress net.UDPAddr
 type ValueReference struct {
 	Reference Reference
 	Instance  *Instance
+}
+type ValuePathWaypoint struct {
+	Position rbxfile.ValueVector3
+	Action   uint32
 }
 
 type ValueToken struct {
@@ -301,4 +307,16 @@ func (x ValueVector3int32) Copy() rbxfile.Value {
 
 func (x ValueVector3int32) String() string {
 	return fmt.Sprintf("%d, %d, %d", x.X, x.Y, x.Z)
+}
+
+func (x ValuePathWaypoint) Type() rbxfile.Type {
+	return TypePathWaypoint
+}
+
+func (x ValuePathWaypoint) String() string {
+	return fmt.Sprintf("%s, action %d", x.Position, x.Action)
+}
+
+func (x ValuePathWaypoint) Copy() rbxfile.Value {
+	return x
 }

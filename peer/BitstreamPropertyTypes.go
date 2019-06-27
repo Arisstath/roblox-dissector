@@ -1137,6 +1137,27 @@ func (b *extendedReader) readInt64() (rbxfile.ValueInt64, error) {
 	return rbxfile.ValueInt64(val), err
 }
 
+func (b *extendedReader) readPathWaypoint() (datamodel.ValuePathWaypoint, error) {
+	var val datamodel.ValuePathWaypoint
+	var err error
+	val.Position, err = b.readVector3Simple()
+	if err != nil {
+		return val, err
+	}
+
+	val.Action, err = b.readUint32BE()
+	return val, err
+}
+
+func (b *extendedReader) readSharedString() (rbxfile.ValueSharedString, error) {
+	md5, err := b.readASCII(0x10)
+	if err != nil {
+		return rbxfile.ValueSharedString{}, err
+	}
+	println("FIXME: read sharedstring (ignored) md5=", md5)
+	return rbxfile.ValueSharedString{}, nil
+}
+
 func (b *extendedReader) readPhysicsVelocity() (rbxfile.ValueVector3, error) {
 	var val rbxfile.ValueVector3
 	flags, err := b.readUint8()
@@ -1232,6 +1253,10 @@ func (b *extendedReader) readSerializedValueGeneric(reader PacketReader, valueTy
 		result, err = b.readRegion3int16()
 	case PropertyTypeInt64:
 		result, err = b.readInt64()
+	case PropertyTypePathWaypoint:
+		result, err = b.readPathWaypoint()
+	case PropertyTypeSharedString:
+		result, err = b.readSharedString()
 	}
 	return result, err
 }
