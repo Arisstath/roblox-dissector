@@ -105,6 +105,8 @@ func (instance *Instance) ToRbxfile(pool *RbxfileReferencePool) *rbxfile.Instanc
 			inst.Properties[name] = rbxfile.ValueReference{
 				Instance: pool.Make(value.(ValueReference).Instance),
 			}
+		case *ValueDeferredString:
+			inst.Properties[name] = value.(*ValueDeferredString).Value
 		case nil:
 			// Strip this property
 		default:

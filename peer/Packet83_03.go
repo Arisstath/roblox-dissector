@@ -79,9 +79,18 @@ func (thisStream *extendedReader) DecodePacket83_03(reader PacketReader, layers 
 	schema := context.NetworkSchema.Properties[propertyIDx]
 	layer.Schema = schema
 
-	layer.Value, err = schema.Decode(reader, thisStream, layers)
+	deferred := newDeferredStrings(reader)
+	layer.Value, err = schema.Decode(reader, thisStream, layers, deferred)
+	if err != nil {
+		return layer, err
+	}
 
-	return layer, err
+	err = thisStream.resolveDeferredStrings(deferred)
+	if err != nil {
+		return layer, err
+	}
+
+	return layer, nil
 }
 
 // Serialize implements Packet83Subpacke.Serialize()

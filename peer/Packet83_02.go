@@ -1,6 +1,8 @@
 package peer
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // Packet83_02 represents ID_CREATE_INSTANCE
 type Packet83_02 struct {
@@ -9,8 +11,17 @@ type Packet83_02 struct {
 }
 
 func (thisStream *extendedReader) DecodePacket83_02(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
-	result, err := decodeReplicationInstance(reader, thisStream, layers)
-	return &Packet83_02{result}, err
+	deferred := newDeferredStrings(reader)
+	result, err := decodeReplicationInstance(reader, thisStream, layers, deferred)
+	if err != nil {
+		return nil, err
+	}
+
+	err = thisStream.resolveDeferredStrings(deferred)
+	if err != nil {
+		return nil, err
+	}
+	return &Packet83_02{result}, nil
 }
 
 // Serialize implements Packet83Subpacket.Serialize()

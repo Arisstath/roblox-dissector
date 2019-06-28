@@ -14,6 +14,7 @@ import (
 
 	"github.com/DataDog/zstd"
 	"github.com/Gskartwii/roblox-dissector/datamodel"
+	"github.com/robloxapi/rbxfile"
 )
 
 // TODO: Move extendedReader to its own package (roblox-dissector/parser)?
@@ -469,4 +470,82 @@ func (b *extendedReader) readRakNetFlags() (RakNetFlags, error) {
 func (b *extendedReader) readReliabilityFlags() (uint8, bool, error) {
 	flags, err := b.ReadByte()
 	return flags >> 5, flags>>4&1 == 1, err
+}
+
+type deferredStrings struct {
+	m                    map[string][]*datamodel.ValueDeferredString
+	underlyingDictionary map[string]rbxfile.ValueSharedString
+}
+
+func newDeferredStrings(reader PacketReader) deferredStrings {
+	return deferredStrings{
+		m:                    make(map[string][]*datamodel.ValueDeferredString),
+		underlyingDictionary: reader.Context().SharedStrings,
+	}
+}
+
+func (m deferredStrings) NewValue(md5 string) *datamodel.ValueDeferredString {
+	val := &datamodel.ValueDeferredString{Hash: md5}
+	if resolved, ok := m.underlyingDictionary[md5]; ok {
+		val.Value = resolved
+		return val
+	}
+
+	// doesn't matter if it's nil, we need to update it in the map anyway
+	m.m[md5] = append(m.m[md5], val)
+	return val
+}
+
+func (m deferredStrings) Resolve(md5 string, value rbxfile.ValueSharedString) {
+	for _, resolvable := range m.m[md5] {
+		resolvable.Value = value
+	}
+}
+
+func (b *extendedReader) resolveDeferredStrings(defers deferredStrings) error {
+	println("len(defers) ==", len(defers.m))
+	for len(defers.m) > 0 {
+		md5, err := b.readASCII(0x10)
+		if err != nil {
+			return err
+		}
+		format, err := b.ReadByte()
+		if err != nil {
+			return err
+		}
+
+		_, isValid := defers.m[md5]
+		if !isValid {
+			return fmt.Errorf("didn't defer with md5 = %X", md5)
+		}
+
+		cachedValue, cachedExists := defers.underlyingDictionary[md5]
+		switch format {
+		case 0:
+			if cachedExists {
+				return fmt.Errorf("duplicated deferred resolve for %X", md5)
+			}
+			resolvedValue, err := b.readVarLengthString()
+			if err != nil {
+				return err
+			}
+			defers.Resolve(md5, rbxfile.ValueSharedString(resolvedValue))
+			delete(defers.m, md5)
+
+			defers.underlyingDictionary[md5] = rbxfile.ValueSharedString(resolvedValue)
+
+			fmt.Printf("resolved %X\n", md5)
+		case 1:
+			if !cachedExists {
+				return fmt.Errorf("couldn't resolve deferred %X", md5)
+			}
+			defers.Resolve(md5, cachedValue)
+			delete(defers.m, md5)
+
+			fmt.Printf("cached %X\n", md5)
+		default:
+			return errors.New("invalid deferred string dictionary format")
+		}
+	}
+	return nil
 }

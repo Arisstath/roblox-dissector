@@ -41,8 +41,9 @@ const (
 	TypeReference                           = rbxfile.TypeSharedString + 1 + iota
 	TypeToken                               = rbxfile.TypeSharedString + 1 + iota
 	// used for terrain
-	TypeVector3int32 = rbxfile.TypeSharedString + 1 + iota
-	TypePathWaypoint = rbxfile.TypeSharedString + 1 + iota
+	TypeVector3int32   = rbxfile.TypeSharedString + 1 + iota
+	TypePathWaypoint   = rbxfile.TypeSharedString + 1 + iota
+	TypeDeferredString = rbxfile.TypeSharedString + 1 + iota
 )
 
 var CustomTypeNames = map[rbxfile.Type]string{
@@ -61,6 +62,7 @@ var CustomTypeNames = map[rbxfile.Type]string{
 	TypeToken:                  "Token",
 	TypeVector3int32:           "Vector3int32",
 	TypePathWaypoint:           "PathWaypoint",
+	TypeDeferredString:         "SharedString (deferred)",
 }
 
 type ValueColorSequenceKeypoint rbxfile.ValueColorSequenceKeypoint
@@ -98,6 +100,11 @@ type ValueVector3int32 struct {
 	X int32
 	Y int32
 	Z int32
+}
+
+type ValueDeferredString struct {
+	Hash  string
+	Value rbxfile.ValueSharedString
 }
 
 func TypeString(val rbxfile.Value) string {
@@ -318,5 +325,19 @@ func (x ValuePathWaypoint) String() string {
 }
 
 func (x ValuePathWaypoint) Copy() rbxfile.Value {
+	return x
+}
+
+func (x *ValueDeferredString) Type() rbxfile.Type {
+	return TypeDeferredString
+}
+func (x *ValueDeferredString) String() string {
+	stringLen := len(x.Value)
+	if stringLen == 0 {
+		return fmt.Sprintf("Deferred; MD5=%X", x.Hash)
+	}
+	return fmt.Sprintf("%X (len %d)", x.Hash, stringLen)
+}
+func (x *ValueDeferredString) Copy() rbxfile.Value {
 	return x
 }

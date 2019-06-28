@@ -42,15 +42,21 @@ func (thisStream *extendedReader) DecodePacket83_07(reader PacketReader, layers 
 		return layer, fmt.Errorf("event idx %d is higher than %d", eventIDx, len(context.NetworkSchema.Events))
 	}
 
+	deferred := newDeferredStrings(reader)
 	schema := context.NetworkSchema.Events[eventIDx]
 	layer.Schema = schema
 	layers.Root.Logger.Println("Decoding event", schema.Name)
-	layer.Event, err = schema.Decode(reader, thisStream, layers)
+	layer.Event, err = schema.Decode(reader, thisStream, layers, deferred)
 	if err != nil {
 		return layer, err
 	}
 
-	return layer, err
+	err = thisStream.resolveDeferredStrings(deferred)
+	if err != nil {
+		return layer, err
+	}
+
+	return layer, nil
 }
 
 // Serialize implements Packet83Subpacket.Serialize()

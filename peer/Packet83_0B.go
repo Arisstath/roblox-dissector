@@ -33,15 +33,16 @@ func (thisStream *extendedReader) DecodePacket83_0B(reader PacketReader, layers 
 		return layer, err
 	}
 
+	deferred := newDeferredStrings(reader)
 	var i uint32
 	for i = 0; i < arrayLen; i++ {
-		layer.Instances[i], err = decodeReplicationInstance(reader, &joinSerializeReader{zstdStream}, layers)
+		layer.Instances[i], err = decodeReplicationInstance(reader, &joinSerializeReader{zstdStream}, layers, deferred)
 		if err != nil {
 			return layer, err
 		}
-
 	}
-	return layer, nil
+
+	return layer, zstdStream.resolveDeferredStrings(deferred)
 }
 
 // Serialize implements Packet83Subpacket.Serialize()

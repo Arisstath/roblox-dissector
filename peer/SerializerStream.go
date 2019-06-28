@@ -8,7 +8,7 @@ import (
 )
 
 type serializeReader interface {
-	ReadSerializedValue(reader PacketReader, valType uint8, enumID uint16) (rbxfile.Value, error)
+	ReadSerializedValue(reader PacketReader, valType uint8, enumID uint16, deferred deferredStrings) (rbxfile.Value, error)
 	ReadObject(reader PacketReader) (datamodel.Reference, error)
 
 	// We must also ask for the following methods for compatibility reasons.
@@ -20,7 +20,7 @@ type serializeReader interface {
 }
 type instanceReader interface {
 	serializeReader
-	ReadProperties(schema []*NetworkPropertySchema, properties map[string]rbxfile.Value, reader PacketReader) error
+	ReadProperties(schema []*NetworkPropertySchema, properties map[string]rbxfile.Value, reader PacketReader, deferred deferredStrings) error
 }
 
 type serializeWriter interface {
@@ -36,7 +36,7 @@ type instanceWriter interface {
 	WriteProperties(schema []*NetworkPropertySchema, properties map[string]rbxfile.Value, writer PacketWriter) error
 }
 
-func (b *extendedReader) ReadSerializedValue(reader PacketReader, valueType uint8, enumID uint16) (rbxfile.Value, error) {
+func (b *extendedReader) ReadSerializedValue(reader PacketReader, valueType uint8, enumID uint16, deferred deferredStrings) (rbxfile.Value, error) {
 	var err error
 	var result rbxfile.Value
 	switch valueType {
@@ -71,22 +71,22 @@ func (b *extendedReader) ReadSerializedValue(reader PacketReader, valueType uint
 	case PropertyTypeSystemAddress:
 		result, err = b.readSystemAddress(reader.Caches())
 	case PropertyTypeTuple:
-		result, err = b.readNewTuple(reader)
+		result, err = b.readNewTuple(reader, deferred)
 	case PropertyTypeArray:
-		result, err = b.readNewArray(reader)
+		result, err = b.readNewArray(reader, deferred)
 	case PropertyTypeDictionary:
-		result, err = b.readNewDictionary(reader)
+		result, err = b.readNewDictionary(reader, deferred)
 	case PropertyTypeMap:
-		result, err = b.readNewMap(reader)
+		result, err = b.readNewMap(reader, deferred)
 	default:
-		return b.readSerializedValueGeneric(reader, valueType, enumID)
+		return b.readSerializedValueGeneric(reader, valueType, enumID, deferred)
 	}
 	return result, err
 }
 func (b *extendedReader) ReadObject(reader PacketReader) (datamodel.Reference, error) {
 	return b.readObject(reader.Caches())
 }
-func (b *extendedReader) ReadProperties(schema []*NetworkPropertySchema, properties map[string]rbxfile.Value, reader PacketReader) error {
+func (b *extendedReader) ReadProperties(schema []*NetworkPropertySchema, properties map[string]rbxfile.Value, reader PacketReader, deferred deferredStrings) error {
 	for i := 0; i < 2; i++ {
 		propertyIndex, err := b.readUint8()
 		last := "none"
@@ -95,11 +95,13 @@ func (b *extendedReader) ReadProperties(schema []*NetworkPropertySchema, propert
 				return errors.New("prop index oob, last was " + last)
 			}
 
-			value, err := b.ReadSerializedValue(reader, schema[propertyIndex].Type, schema[propertyIndex].EnumID)
+			value, err := b.ReadSerializedValue(reader, schema[propertyIndex].Type, schema[propertyIndex].EnumID, deferred)
 			if err != nil {
 				return err
 			}
+
 			properties[schema[propertyIndex].Name] = value
+
 			last = schema[propertyIndex].Name
 			propertyIndex, err = b.readUint8()
 		}
@@ -201,7 +203,7 @@ type joinSerializeReader struct {
 	*extendedReader
 }
 
-func (b *joinSerializeReader) ReadSerializedValue(reader PacketReader, valueType uint8, enumID uint16) (rbxfile.Value, error) {
+func (b *joinSerializeReader) ReadSerializedValue(reader PacketReader, valueType uint8, enumID uint16, deferred deferredStrings) (rbxfile.Value, error) {
 	var err error
 	var result rbxfile.Value
 	switch valueType {
@@ -235,14 +237,14 @@ func (b *joinSerializeReader) ReadSerializedValue(reader PacketReader, valueType
 	case PropertyTypeSystemAddress:
 		result, err = b.readSystemAddress()
 	default:
-		return b.extendedReader.readSerializedValueGeneric(reader, valueType, enumID)
+		return b.extendedReader.readSerializedValueGeneric(reader, valueType, enumID, deferred)
 	}
 	return result, err
 }
 func (b *joinSerializeReader) ReadObject(reader PacketReader) (datamodel.Reference, error) {
 	return b.readJoinObject(reader.Context())
 }
-func (b *joinSerializeReader) ReadProperties(schema []*NetworkPropertySchema, properties map[string]rbxfile.Value, reader PacketReader) error {
+func (b *joinSerializeReader) ReadProperties(schema []*NetworkPropertySchema, properties map[string]rbxfile.Value, reader PacketReader, deferred deferredStrings) error {
 	propertyIndex, err := b.readUint8()
 	last := "none"
 	for err == nil && propertyIndex != 0xFF {
@@ -250,7 +252,7 @@ func (b *joinSerializeReader) ReadProperties(schema []*NetworkPropertySchema, pr
 			return errors.New("prop index oob, last was " + last)
 		}
 
-		value, err := b.ReadSerializedValue(reader, schema[propertyIndex].Type, schema[propertyIndex].EnumID)
+		value, err := b.ReadSerializedValue(reader, schema[propertyIndex].Type, schema[propertyIndex].EnumID, deferred)
 		if err != nil {
 			return err
 		}
