@@ -11,6 +11,7 @@ import (
 	"net"
 
 	"github.com/DataDog/zstd"
+	"github.com/robloxapi/rbxfile"
 
 	"github.com/Gskartwii/roblox-dissector/datamodel"
 )
@@ -407,4 +408,43 @@ func (b *extendedWriter) wrapZstd() *zstdExtendedWriter {
 		counter:          counter,
 		compressor:       compressor,
 	}
+}
+
+func newWriteDeferredStrings(writer PacketWriter) writeDeferredStrings {
+	return writeDeferredStrings{
+		m:                    make(map[string]rbxfile.ValueSharedString),
+		underlyingDictionary: writer.SharedStrings(),
+	}
+}
+
+func (m writeDeferredStrings) Defer(value *datamodel.ValueDeferredString) {
+	if _, ok := m.underlyingDictionary[value.Hash]; ok {
+		// already written
+		return
+	}
+	// if duplicated, overwritten -- doesn't matter
+	m.m[value.Hash] = value.Value
+}
+
+func (b *extendedWriter) resolveDeferredStrings(defers writeDeferredStrings) error {
+	var err error
+	for md5, value := range defers.m {
+		if len(md5) != 0x10 {
+			return errors.New("invalid md5")
+		}
+		err = b.writeASCII(md5)
+		if err != nil {
+			return err
+		}
+		err = b.WriteByte(0)
+		if err != nil {
+			return err
+		}
+		// TODO: Implement echo sending
+		err = b.allBytes(value)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

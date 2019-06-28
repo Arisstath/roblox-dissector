@@ -85,7 +85,7 @@ func decodeReplicationInstance(reader PacketReader, thisStream instanceReader, l
 }
 
 // Serialize serializes an instance creation packet to its network format
-func (instance *ReplicationInstance) Serialize(writer PacketWriter, stream instanceWriter) error {
+func (instance *ReplicationInstance) Serialize(writer PacketWriter, stream instanceWriter, deferred writeDeferredStrings) error {
 	var err error
 	if instance == nil || instance.Instance == nil {
 		return errors.New("self is nil in serialize repl inst")
@@ -104,7 +104,7 @@ func (instance *ReplicationInstance) Serialize(writer PacketWriter, stream insta
 		return err
 	}
 
-	err = stream.WriteProperties(instance.Schema.Properties, instance.Properties, writer)
+	err = stream.WriteProperties(instance.Schema.Properties, instance.Properties, writer, deferred)
 	if err != nil {
 		return err
 	}

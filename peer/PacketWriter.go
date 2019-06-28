@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"github.com/olebedev/emitter"
+	"github.com/robloxapi/rbxfile"
 )
 
 func min(x, y uint) uint {
@@ -55,7 +56,8 @@ func NewPacketWriter() *DefaultPacketWriter {
 		ErrorEmitter: emitter.New(0),
 
 		contextualHandler: contextualHandler{
-			caches: new(Caches),
+			caches:        new(Caches),
+			sharedStrings: make(map[string]rbxfile.ValueSharedString),
 		},
 	}
 }

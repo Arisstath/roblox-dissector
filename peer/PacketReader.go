@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Gskartwii/roblox-dissector/datamodel"
+	"github.com/robloxapi/rbxfile"
 
 	"github.com/olebedev/emitter"
 )
@@ -48,6 +49,7 @@ type ContextualHandler interface {
 	Context() *CommunicationContext
 	SetCaches(*Caches)
 	Caches() *Caches
+	SharedStrings() map[string]rbxfile.ValueSharedString
 }
 
 // PacketReader is an interface that can be passed to packet decoders
@@ -60,6 +62,8 @@ type PacketReader interface {
 type contextualHandler struct {
 	context *CommunicationContext
 	caches  *Caches
+	// sharedStrings contains a map of deferred strings indexed by their MD5 hash
+	sharedStrings map[string]rbxfile.ValueSharedString
 }
 
 func (handler *contextualHandler) Context() *CommunicationContext {
@@ -68,6 +72,10 @@ func (handler *contextualHandler) Context() *CommunicationContext {
 func (handler *contextualHandler) Caches() *Caches {
 	return handler.caches
 }
+func (handler *contextualHandler) SharedStrings() map[string]rbxfile.ValueSharedString {
+	return handler.sharedStrings
+}
+
 func (handler *contextualHandler) SetCaches(val *Caches) {
 	handler.caches = val
 }
@@ -125,7 +133,8 @@ func NewPacketReader() *DefaultPacketReader {
 		PacketEmitter: emitter.New(0),
 		DataEmitter:   emitter.New(0),
 		contextualHandler: contextualHandler{
-			caches: new(Caches),
+			caches:        new(Caches),
+			sharedStrings: make(map[string]rbxfile.ValueSharedString),
 		},
 
 		rmState: &reliableMessageState{

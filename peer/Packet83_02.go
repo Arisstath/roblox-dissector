@@ -26,7 +26,12 @@ func (thisStream *extendedReader) DecodePacket83_02(reader PacketReader, layers 
 
 // Serialize implements Packet83Subpacket.Serialize()
 func (layer *Packet83_02) Serialize(writer PacketWriter, stream *extendedWriter) error {
-	return layer.ReplicationInstance.Serialize(writer, stream)
+	deferred := newWriteDeferredStrings(writer)
+	err := layer.ReplicationInstance.Serialize(writer, stream, deferred)
+	if err != nil {
+		return err
+	}
+	return stream.resolveDeferredStrings(deferred)
 }
 
 // Type implements Packet83Subpacket.Type()

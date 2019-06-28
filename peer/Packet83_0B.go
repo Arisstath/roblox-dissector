@@ -54,16 +54,26 @@ func (layer *Packet83_0B) Serialize(writer PacketWriter, stream *extendedWriter)
 	}
 
 	err = stream.writeUint32BE(uint32(len(layer.Instances)))
+	if err != nil {
+		return err
+	}
 	zstdStream := stream.wrapZstd()
+	deferred := newWriteDeferredStrings(writer)
 
 	for i := 0; i < len(layer.Instances); i++ {
 		// It is safe to take .extendedWriter here
 		// because the .extendedWriter will write to the compression/counter writemux
-		err = layer.Instances[i].Serialize(writer, &joinSerializeWriter{zstdStream.extendedWriter})
+		err = layer.Instances[i].Serialize(writer, &joinSerializeWriter{zstdStream.extendedWriter}, deferred)
 		if err != nil {
 			zstdStream.Close()
 			return err
 		}
+	}
+
+	err = zstdStream.resolveDeferredStrings(deferred)
+	if err != nil {
+		zstdStream.Close()
+		return err
 	}
 
 	return zstdStream.Close()

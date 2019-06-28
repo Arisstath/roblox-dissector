@@ -31,14 +31,14 @@ func (schema *NetworkEventSchema) Decode(reader PacketReader, thisStream seriali
 }
 
 // Serialize serializes an event invocation packet to its network format
-func (schema *NetworkEventSchema) Serialize(event *ReplicationEvent, writer PacketWriter, stream serializeWriter) error {
+func (schema *NetworkEventSchema) Serialize(event *ReplicationEvent, writer PacketWriter, stream serializeWriter, deferred writeDeferredStrings) error {
 	if len(event.Arguments) != len(schema.Arguments) {
 		return errors.New("invalid number of event arguments")
 	}
 	for i, argSchema := range schema.Arguments {
 		//println("Writing argument", argSchema.Type)
 		if event.Arguments[i] != nil {
-			err := stream.WriteSerializedValue(event.Arguments[i], writer, argSchema.Type)
+			err := stream.WriteSerializedValue(event.Arguments[i], writer, argSchema.Type, deferred)
 			if err != nil {
 				return err
 			}

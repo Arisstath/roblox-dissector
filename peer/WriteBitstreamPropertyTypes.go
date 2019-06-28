@@ -332,7 +332,7 @@ var typeToNetworkConvTable = map[rbxfile.Type]uint8{
 	datamodel.TypeTuple:                  PropertyTypeTuple,
 	rbxfile.TypeInt64:                    PropertyTypeInt64,
 	datamodel.TypePathWaypoint:           PropertyTypePathWaypoint,
-	rbxfile.TypeSharedString:             PropertyTypeSharedString,
+	datamodel.TypeDeferredString:         PropertyTypeSharedString,
 }
 
 func typeToNetwork(val rbxfile.Value) (uint8, bool) {
@@ -343,10 +343,6 @@ func typeToNetwork(val rbxfile.Value) (uint8, bool) {
 	return typ, ok
 }
 func isCorrectType(val rbxfile.Value, expected uint8) bool {
-	// FIXME: rbxfile bug
-	if _, ok := val.(rbxfile.ValueColor3uint8); ok {
-		return expected == PropertyTypeColor3uint8
-	}
 	typ, ok := typeToNetworkConvTable[val.Type()]
 	if !ok {
 		return false
@@ -365,7 +361,7 @@ func isCorrectType(val rbxfile.Value, expected uint8) bool {
 	}
 }
 
-func (b *extendedWriter) writeSerializedValueGeneric(val rbxfile.Value, valueType uint8) error {
+func (b *extendedWriter) writeSerializedValueGeneric(val rbxfile.Value, valueType uint8, deferred writeDeferredStrings) error {
 	if val == nil {
 		return errors.New("can't write nil value")
 	}
@@ -438,14 +434,14 @@ func (b *extendedWriter) writeSerializedValueGeneric(val rbxfile.Value, valueTyp
 	case PropertyTypePathWaypoint:
 		err = b.writePathWaypoint(val.(datamodel.ValuePathWaypoint))
 	case PropertyTypeSharedString:
-		err = b.writeSharedString(val.(rbxfile.ValueSharedString))
+		err = b.writeSharedString(val.(*datamodel.ValueDeferredString), deferred)
 	default:
 		return errors.New("Unsupported property type: " + strconv.Itoa(int(valueType)))
 	}
 	return err
 }
 
-func (b *extendedWriter) writeNewTypeAndValue(val rbxfile.Value, writer PacketWriter) error {
+func (b *extendedWriter) writeNewTypeAndValue(val rbxfile.Value, writer PacketWriter, deferred writeDeferredStrings) error {
 	var err error
 	valueType, ok := typeToNetwork(val)
 	if !ok {
@@ -463,27 +459,27 @@ func (b *extendedWriter) writeNewTypeAndValue(val rbxfile.Value, writer PacketWr
 			return err
 		}
 	}
-	return b.WriteSerializedValue(val, writer, valueType)
+	return b.WriteSerializedValue(val, writer, valueType, deferred)
 }
 
-func (b *extendedWriter) writeNewTuple(val datamodel.ValueTuple, writer PacketWriter) error {
+func (b *extendedWriter) writeNewTuple(val datamodel.ValueTuple, writer PacketWriter, deferred writeDeferredStrings) error {
 	err := b.writeUintUTF8(uint32(len(val)))
 	if err != nil {
 		return err
 	}
 	for i := 0; i < len(val); i++ {
-		err = b.writeNewTypeAndValue(val[i], writer)
+		err = b.writeNewTypeAndValue(val[i], writer, deferred)
 		if err != nil {
 			return err
 		}
 	}
 	return nil
 }
-func (b *extendedWriter) writeNewArray(val datamodel.ValueArray, writer PacketWriter) error {
-	return b.writeNewTuple(datamodel.ValueTuple(val), writer)
+func (b *extendedWriter) writeNewArray(val datamodel.ValueArray, writer PacketWriter, deferred writeDeferredStrings) error {
+	return b.writeNewTuple(datamodel.ValueTuple(val), writer, deferred)
 }
 
-func (b *extendedWriter) writeNewDictionary(val datamodel.ValueDictionary, writer PacketWriter) error {
+func (b *extendedWriter) writeNewDictionary(val datamodel.ValueDictionary, writer PacketWriter, deferred writeDeferredStrings) error {
 	err := b.writeUintUTF8(uint32(len(val)))
 	if err != nil {
 		return err
@@ -497,15 +493,15 @@ func (b *extendedWriter) writeNewDictionary(val datamodel.ValueDictionary, write
 		if err != nil {
 			return err
 		}
-		err = b.writeNewTypeAndValue(value, writer)
+		err = b.writeNewTypeAndValue(value, writer, deferred)
 		if err != nil {
 			return err
 		}
 	}
 	return nil
 }
-func (b *extendedWriter) writeNewMap(val datamodel.ValueMap, writer PacketWriter) error {
-	return b.writeNewDictionary(datamodel.ValueDictionary(val), writer)
+func (b *extendedWriter) writeNewMap(val datamodel.ValueMap, writer PacketWriter, deferred writeDeferredStrings) error {
+	return b.writeNewDictionary(datamodel.ValueDictionary(val), writer, deferred)
 }
 
 func (b *extendedWriter) writeNumberSequenceKeypoint(val datamodel.ValueNumberSequenceKeypoint) error {
@@ -646,12 +642,17 @@ func (b *extendedWriter) writePathWaypoint(val datamodel.ValuePathWaypoint) erro
 	return b.writeUint32BE(val.Action)
 }
 
-func (b *extendedWriter) writeSharedString(val rbxfile.ValueSharedString) error {
-	err := b.writeASCII("0123456789abcdef")
+func (b *extendedWriter) writeSharedString(val *datamodel.ValueDeferredString, deferred writeDeferredStrings) error {
+	if len(val.Hash) != 0x10 {
+		return errors.New("invalid deferred hash")
+	}
+	err := b.writeASCII(val.Hash)
 	if err != nil {
 		return err
 	}
-	println("FIXME: wrote sharedstring (placeholder)")
+
+	deferred.Defer(val)
+
 	return nil
 }
 

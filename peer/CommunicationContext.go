@@ -4,7 +4,6 @@ import (
 	"bytes"
 
 	"github.com/Gskartwii/roblox-dissector/datamodel"
-	"github.com/robloxapi/rbxfile"
 )
 
 // Cache represents a network cache that stores repeatable objects such as strings.
@@ -147,8 +146,6 @@ type CommunicationContext struct {
 	NetworkSchema *NetworkSchema
 	// IsStudio
 	IsStudio bool
-	// SharedStrings contains a map of deferred strings indexed by their MD5 hash
-	SharedStrings map[string]rbxfile.ValueSharedString
 
 	// ScriptKey and CoreScriptKey are decryption keys for the
 	// replicated scripts as reported by the server
@@ -163,6 +160,5 @@ func NewCommunicationContext() *CommunicationContext {
 	return &CommunicationContext{
 		DataModel:            datamodel.New(),
 		InstancesByReference: datamodel.NewInstanceList(),
-		SharedStrings:        map[string]rbxfile.ValueSharedString{},
 	}
 }

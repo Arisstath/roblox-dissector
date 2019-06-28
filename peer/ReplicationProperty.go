@@ -19,6 +19,6 @@ func (schema *NetworkPropertySchema) Decode(reader PacketReader, stream serializ
 }
 
 // Serialize serializes a property change packet to its network format
-func (schema *NetworkPropertySchema) Serialize(value rbxfile.Value, writer PacketWriter, stream serializeWriter) error {
-	return stream.WriteSerializedValue(value, writer, schema.Type)
+func (schema *NetworkPropertySchema) Serialize(value rbxfile.Value, writer PacketWriter, stream serializeWriter, deferred writeDeferredStrings) error {
+	return stream.WriteSerializedValue(value, writer, schema.Type, deferred)
 }

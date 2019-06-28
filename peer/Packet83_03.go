@@ -142,8 +142,12 @@ func (layer *Packet83_03) Serialize(writer PacketWriter, stream *extendedWriter)
 	}
 
 	// TODO: A different system for this?
-	err = layer.Schema.Serialize(layer.Value, writer, stream)
-	return err
+	deferred := newWriteDeferredStrings(writer)
+	err = layer.Schema.Serialize(layer.Value, writer, stream, deferred)
+	if err != nil {
+		return err
+	}
+	return stream.resolveDeferredStrings(deferred)
 }
 
 // Type implements Packet83Subpacket.Type()

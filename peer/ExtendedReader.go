@@ -480,7 +480,7 @@ type deferredStrings struct {
 func newDeferredStrings(reader PacketReader) deferredStrings {
 	return deferredStrings{
 		m:                    make(map[string][]*datamodel.ValueDeferredString),
-		underlyingDictionary: reader.Context().SharedStrings,
+		underlyingDictionary: reader.SharedStrings(),
 	}
 }
 
@@ -500,6 +500,11 @@ func (m deferredStrings) Resolve(md5 string, value rbxfile.ValueSharedString) {
 	for _, resolvable := range m.m[md5] {
 		resolvable.Value = value
 	}
+}
+
+type writeDeferredStrings struct {
+	m                    map[string]rbxfile.ValueSharedString
+	underlyingDictionary map[string]rbxfile.ValueSharedString
 }
 
 func (b *extendedReader) resolveDeferredStrings(defers deferredStrings) error {
