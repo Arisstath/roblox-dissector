@@ -508,7 +508,6 @@ type writeDeferredStrings struct {
 }
 
 func (b *extendedReader) resolveDeferredStrings(defers deferredStrings) error {
-	println("len(defers) ==", len(defers.m))
 	for len(defers.m) > 0 {
 		md5, err := b.readASCII(0x10)
 		if err != nil {
@@ -538,16 +537,12 @@ func (b *extendedReader) resolveDeferredStrings(defers deferredStrings) error {
 			delete(defers.m, md5)
 
 			defers.underlyingDictionary[md5] = rbxfile.ValueSharedString(resolvedValue)
-
-			fmt.Printf("resolved %X\n", md5)
 		case 1:
 			if !cachedExists {
 				return fmt.Errorf("couldn't resolve deferred %X", md5)
 			}
 			defers.Resolve(md5, cachedValue)
 			delete(defers.m, md5)
-
-			fmt.Printf("cached %X\n", md5)
 		default:
 			return errors.New("invalid deferred string dictionary format")
 		}
