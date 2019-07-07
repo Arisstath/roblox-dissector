@@ -107,7 +107,8 @@ func (writer *DefaultPacketWriter) WriteOffline(packet RakNetPacket) error {
 	return nil
 }
 
-func (writer *DefaultPacketWriter) writeRakNet(layers *PacketLayers) error {
+// WriteRakNet writes the RakNetLayer contained in the PacketLayers
+func (writer *DefaultPacketWriter) WriteRakNet(layers *PacketLayers) error {
 	output := make([]byte, 0, 1492)
 	buffer := bytes.NewBuffer(output)
 	stream := &extendedWriter{buffer}
@@ -199,7 +200,7 @@ func (writer *DefaultPacketWriter) writeAsSplits(estHeaderLength int, data []byt
 		<-writer.LayerEmitter.Emit("reliability", newLayers)
 		<-writer.LayerEmitter.Emit("reliable", newLayers)
 
-		err = writer.writeRakNet(newLayers)
+		err = writer.WriteRakNet(newLayers)
 		if err != nil {
 			return err
 		}
@@ -267,7 +268,7 @@ func (writer *DefaultPacketWriter) writeReliablePacket(data []byte, layers *Pack
 		<-writer.LayerEmitter.Emit("reliable", layers)
 		<-writer.LayerEmitter.Emit("full-reliable", layers)
 
-		return writer.writeRakNet(layers)
+		return writer.WriteRakNet(layers)
 	}
 
 	return writer.writeAsSplits(estHeaderLength, data, layers)
@@ -384,7 +385,7 @@ func (writer *DefaultPacketWriter) WriteACKs(datagrams []int, isNAK bool) error 
 	}
 	<-writer.LayerEmitter.Emit("ack", layers)
 
-	return writer.writeRakNet(layers)
+	return writer.WriteRakNet(layers)
 }
 
 // Layers returns the emitter that emits packet layers while they are
