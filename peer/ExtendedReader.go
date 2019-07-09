@@ -456,7 +456,7 @@ func (b *extendedReader) readRakNetFlags() (RakNetFlags, error) {
 		val.HasBAndAS = flags>>5&1 == 1
 		return val, nil
 	}
-	val.IsNAK = flags>>5 == 1
+	val.IsNAK = flags>>5&1 == 1
 	if val.IsNAK {
 		val.HasBAndAS = flags>>4&1 == 1
 		return val, nil
