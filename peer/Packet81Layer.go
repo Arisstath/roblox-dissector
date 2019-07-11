@@ -25,6 +25,7 @@ type Packet81Layer struct {
 	CharacterAutoSpawn   bool
 	// Server's scope
 	ReferenceString string
+	PeerID          uint32
 	ScriptKey       uint32
 	CoreScriptKey   uint32
 	// List of services to be created
@@ -52,16 +53,25 @@ func (thisStream *extendedReader) DecodePacket81Layer(reader PacketReader, layer
 	if err != nil {
 		return layer, err
 	}
-	stringLen, err := thisStream.readUint32BE()
+	/*stringLen, err := thisStream.readUint32BE()
 	if err != nil {
 		return layer, err
 	}
+
 	layer.ReferenceString, err = thisStream.readASCII(int(stringLen))
 	if err != nil {
 		return layer, err
 	}
 	// This assignment is justifiable because a call to readJoinObject() below depends on it
-	reader.Context().InstanceTopScope = layer.ReferenceString
+	reader.Context().InstanceTopScope = layer.ReferenceString*/
+
+	peerID, err := thisStream.readVarint64()
+	if err != nil {
+		return layer, err
+	}
+	layer.PeerID = uint32(peerID)
+
+	reader.Context().ServerPeerID = layer.PeerID
 	if !reader.Context().IsStudio {
 		layer.ScriptKey, err = thisStream.readUint32BE()
 		if err != nil {

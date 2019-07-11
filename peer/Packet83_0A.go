@@ -19,7 +19,7 @@ func (thisStream *extendedReader) DecodePacket83_0A(reader PacketReader, layers 
 	var err error
 	layer := &Packet83_0A{}
 
-	reference, err := thisStream.readObject(reader.Caches())
+	reference, err := thisStream.ReadObject(reader)
 	if err != nil {
 		return layer, err
 	}
@@ -59,7 +59,7 @@ func (thisStream *extendedReader) DecodePacket83_0A(reader PacketReader, layers 
 
 // Serialize implements Packet83Subpacket.Serialize()
 func (layer *Packet83_0A) Serialize(writer PacketWriter, stream *extendedWriter) error {
-	err := stream.writeObject(layer.Instance, writer.Caches())
+	err := stream.WriteObject(layer.Instance, writer)
 	if err != nil {
 		return err
 	}

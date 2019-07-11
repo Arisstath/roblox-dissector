@@ -249,7 +249,7 @@ func (thisStream *extendedReader) DecodePacket8DLayer(reader PacketReader, layer
 
 	context := reader.Context()
 
-	reference, err := thisStream.readObject(reader.Caches())
+	reference, err := thisStream.ReadObject(reader)
 	if err != nil {
 		return nil, err
 	}

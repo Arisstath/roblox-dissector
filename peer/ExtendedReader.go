@@ -220,33 +220,58 @@ func (b *extendedReader) RegionToZStdStream() (*extendedReader, error) {
 	return &extendedReader{zstdStream}, nil
 }
 
-func (b *extendedReader) readJoinObject(context *CommunicationContext) (datamodel.Reference, error) {
+func (b *extendedReader) readObjectPeerID(context *CommunicationContext) (datamodel.Reference, error) {
 	ref := datamodel.Reference{}
-	stringLen, err := b.readUint8()
+	peerID, err := b.readVarint64()
 	if err != nil {
 		return ref, err
 	}
-	if stringLen == 0x00 {
+	ref.PeerId = uint32(peerID)
+	if peerID == 0 {
 		ref.IsNull = true
 		ref.Scope = "null"
 		return ref, err
+		// Approximately reflects handling in client?
+	} else if uint32(peerID) == context.ServerPeerID {
+		ref.Scope = "RBXServer"
+	} else {
+		ref.Scope = fmt.Sprintf("RBXPID%u", peerID)
 	}
-	var refString string
-	if stringLen != 0xFF {
-		refString, err = b.readASCII(int(stringLen))
+	ref.Id, err = b.readUint32LE()
+
+	return ref, nil
+}
+
+func (b *extendedReader) readJoinObject(context *CommunicationContext) (datamodel.Reference, error) {
+	ref := datamodel.Reference{}
+	if context.ServerPeerID == 0 {
+		// read scope using old system
+		stringLen, err := b.readUint8()
 		if err != nil {
 			return ref, err
 		}
-		if len(refString) != 0x23 {
-			return ref, errors.New("wrong scope len")
+		if stringLen == 0x00 {
+			ref.IsNull = true
+			ref.Scope = "null"
+			return ref, err
 		}
-		ref.Scope = refString
-	} else {
-		ref.Scope = context.InstanceTopScope
+		var refString string
+		if stringLen != 0xFF {
+			refString, err = b.readASCII(int(stringLen))
+			if err != nil {
+				return ref, err
+			}
+			if len(refString) != 0x23 {
+				return ref, errors.New("wrong scope len")
+			}
+			ref.Scope = refString
+		} else {
+			ref.Scope = context.InstanceTopScope
+		}
+		ref.Id, err = b.readUint32LE()
+		return ref, err
 	}
-
-	ref.Id, err = b.readUint32LE()
-	return ref, err
+	return b.readObjectPeerID(context)
 }
 
 func (b *extendedReader) readFloat16BE(floatMin float32, floatMax float32) (float32, error) {

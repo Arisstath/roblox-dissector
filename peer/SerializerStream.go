@@ -84,7 +84,7 @@ func (b *extendedReader) ReadSerializedValue(reader PacketReader, valueType uint
 	return result, err
 }
 func (b *extendedReader) ReadObject(reader PacketReader) (datamodel.Reference, error) {
-	return b.readObject(reader.Caches())
+	return b.readObject(reader.Context(), reader.Caches())
 }
 func (b *extendedReader) ReadProperties(schema []*NetworkPropertySchema, properties map[string]rbxfile.Value, reader PacketReader, deferred deferredStrings) error {
 	for i := 0; i < 2; i++ {
@@ -126,7 +126,7 @@ func (b *extendedWriter) WriteSerializedValue(val rbxfile.Value, writer PacketWr
 	case PropertyTypeProtectedString3:
 		err = b.writeNewProtectedString(val.(rbxfile.ValueProtectedString), writer.Caches())
 	case PropertyTypeInstance:
-		err = b.writeObject(val.(datamodel.ValueReference).Instance, writer.Caches())
+		err = b.WriteObject(val.(datamodel.ValueReference).Instance, writer)
 	case PropertyTypeContent:
 		err = b.writeNewContent(val.(rbxfile.ValueContent), writer.Caches())
 	case PropertyTypeSystemAddress:
@@ -145,7 +145,7 @@ func (b *extendedWriter) WriteSerializedValue(val rbxfile.Value, writer PacketWr
 	return err
 }
 func (b *extendedWriter) WriteObject(object *datamodel.Instance, writer PacketWriter) error {
-	return b.writeObject(object, writer.Caches())
+	return b.writeObject(object, writer.Context(), writer.Caches())
 }
 func (b *extendedWriter) WriteProperties(schema []*NetworkPropertySchema, properties map[string]rbxfile.Value, writer PacketWriter, deferred writeDeferredStrings) error {
 	var err error

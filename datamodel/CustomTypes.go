@@ -12,6 +12,7 @@ type Reference struct {
 	IsNull bool
 	Scope  string
 	Id     uint32
+	PeerId uint32
 }
 
 var NullReference = Reference{

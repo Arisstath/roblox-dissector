@@ -258,7 +258,10 @@ func (b *extendedReader) readBrickColor() (rbxfile.ValueBrickColor, error) {
 	return rbxfile.ValueBrickColor(val), err
 }
 
-func (b *extendedReader) readObject(caches *Caches) (datamodel.Reference, error) {
+func (b *extendedReader) readObject(context *CommunicationContext, caches *Caches) (datamodel.Reference, error) {
+	if context.ServerPeerID != 0 {
+		return b.readObjectPeerID(context)
+	}
 	scope, err := b.readCachedScope(caches)
 	if err != nil && err != ErrCacheReadOOB { // TODO: hack! physics packets may have problems with caches
 		return datamodel.Reference{}, err

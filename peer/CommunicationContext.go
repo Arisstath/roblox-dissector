@@ -151,6 +151,7 @@ type CommunicationContext struct {
 	// replicated scripts as reported by the server
 	ScriptKey     uint32
 	CoreScriptKey uint32
+	ServerPeerID  uint32
 
 	uniqueID uint32
 }

@@ -4,6 +4,7 @@ import (
 	"errors"
 )
 
+// TODO: Should work with PeerID
 type instanceScope struct {
 	Instances    map[uint32]*Instance
 	AddCallbacks map[uint32][]func(*Instance)
