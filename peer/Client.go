@@ -187,7 +187,6 @@ func NewCustomClient(ctx context.Context) *CustomClient {
 	client.RunningContext = ctx
 
 	client.createWriter()
-	client.bindDefaultHandlers()
 
 	return client
 }
@@ -581,6 +580,7 @@ func (myClient *CustomClient) rakConnect() error {
 	}
 	myClient.Address = myClient.Connection.LocalAddr().(*net.UDPAddr)
 
+	myClient.bindDefaultHandlers()
 	myClient.dial()
 	myClient.startAcker()
 
