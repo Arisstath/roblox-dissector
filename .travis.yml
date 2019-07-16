@@ -19,7 +19,7 @@ install:
 script:
 - go get -d -v ./...
 - x86_64-w64-mingw32-windres icon.rc -o icon_win64.syso
-- $GOPATH/bin/qtdeploy -docker build windows 2> fails.log || { tail -n50 fails.log; exit 1; }
+- $GOPATH/bin/qtdeploy -docker build windows 2> fails.log || { tail -n 100 fails.log; exit 1; }
 
 before_deploy:
   - git config --local user.name "Gskartwii"
