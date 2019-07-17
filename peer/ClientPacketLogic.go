@@ -73,7 +73,7 @@ func (myClient *CustomClient) sendResponse7() {
 		GUID:         myClient.GUID,
 		MTU:          1492,
 		IPAddress:    myClient.ServerAddress,
-		Capabilities: CapabilityAll,
+		Capabilities: CapabilityRoblox,
 	})
 }
 func (myClient *CustomClient) offline6Handler(e *emitter.Event) {
@@ -137,12 +137,11 @@ func (myClient *CustomClient) sendProtocolSync() {
 			"UseNativePathWaypoint",
 			"BodyColorsColor3PropertyReplicationEnabled",
 			"FixRaysInWedges",
-			"FixDictionaryScopePlatformsReplication",
 			"NewCharacterLoadingSignalOrdering",
-			"ReplicateInterpolateRelativeHumanoidPlatformsMotion",
 			"FixBallRaycasts",
 			"PgsForAll",
 			"TerrainRaycastsRespectCollisionGroups",
+			"NetworkUsePeerId",
 		},
 		JoinData: string(marshalledJoin),
 	}

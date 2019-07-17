@@ -39,7 +39,8 @@ const (
 	// CapabilityReplicateLuau indicates an unknown capability
 	CapabilityReplicateLuau = 0x800
 
-	CapabilityAll = CapabilityBasic | CapabilityServerCopiesPlayerGui3 | CapabilityDebugForceStreamingEnabled | CapabilityIHasMinDistToUnstreamed | CapabilityReplicateLuau
+	CapabilityRoblox = CapabilityBasic | CapabilityServerCopiesPlayerGui3 | CapabilityIHasMinDistToUnstreamed | CapabilityReplicateLuau
+	CapabilityAll    = CapabilityBasic | CapabilityServerCopiesPlayerGui3 | CapabilityDebugForceStreamingEnabled | CapabilityIHasMinDistToUnstreamed | CapabilityReplicateLuau
 )
 
 // IdentifyPassword identifies what RakNet password is being used
