@@ -235,7 +235,7 @@ func (b *extendedReader) readObjectPeerID(context *CommunicationContext) (datamo
 	} else if uint32(peerID) == context.ServerPeerID {
 		ref.Scope = "RBXServer"
 	} else {
-		ref.Scope = fmt.Sprintf("RBXPID%u", peerID)
+		ref.Scope = fmt.Sprintf("RBXPID%d", peerID)
 	}
 	ref.Id, err = b.readUint32LE()
 
