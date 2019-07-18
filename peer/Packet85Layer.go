@@ -65,15 +65,7 @@ func (b *extendedReader) readPhysicsData(data *PhysicsData, motors bool, reader 
 		return err
 	}
 	reference, err := b.ReadObject(reader)
-	if err != ErrCacheReadOOB {
-		if err != nil {
-			return err
-		}
-		reader.Context().InstancesByReference.OnAddInstance(reference, func(inst *datamodel.Instance) {
-			data.PlatformChild = inst
-		})
-		return nil
-	}
+	data.PlatformChild, _ = reader.Context().InstancesByReference.TryGetInstance(reference)
 	return nil
 }
 
@@ -91,12 +83,8 @@ func (b *extendedReader) DecodePacket85Layer(reader PacketReader, layers *Packet
 		}
 		layers.Root.Logger.Println("reading physics for ref", reference.String())
 		subpacket := &Packet85LayerSubpacket{}
-		// TODO: generic function for this
-		if err != ErrCacheReadOOB {
-			context.InstancesByReference.OnAddInstance(reference, func(inst *datamodel.Instance) {
-				subpacket.Data.Instance = inst
-			})
-		}
+		// ignore errors
+		subpacket.Data.Instance, _ = context.InstancesByReference.TryGetInstance(reference)
 
 		myFlags, err := b.readUint8()
 		if err != nil {
@@ -140,11 +128,8 @@ func (b *extendedReader) DecodePacket85Layer(reader PacketReader, layers *Packet
 			for object, err = b.ReadObject(reader); (err == nil || err == ErrCacheReadOOB) && !object.IsNull; object, err = b.ReadObject(reader) {
 				layers.Root.Logger.Println("reading physics child for ref", object.String())
 				child := new(PhysicsData)
-				if err != ErrCacheReadOOB { // TODO: hack! unordered packets may have problems with caches
-					context.InstancesByReference.OnAddInstance(object, func(inst *datamodel.Instance) {
-						child.Instance = inst
-					})
-				}
+				// ignore errors
+				child.Instance, _ = context.InstancesByReference.TryGetInstance(object)
 
 				err = b.readPhysicsData(child, true, reader)
 				if err != nil {

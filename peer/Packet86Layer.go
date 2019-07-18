@@ -32,9 +32,7 @@ func (thisStream *extendedReader) DecodePacket86Layer(reader PacketReader, layer
 		if reference.IsNull {
 			break
 		}
-		context.InstancesByReference.OnAddInstance(reference, func(inst *datamodel.Instance) {
-			subpacket.Instance1 = inst
-		})
+		subpacket.Instance1, _ = context.InstancesByReference.TryGetInstance(reference)
 
 		reference, err = thisStream.ReadObject(reader)
 		if err != nil {
@@ -43,9 +41,7 @@ func (thisStream *extendedReader) DecodePacket86Layer(reader PacketReader, layer
 		if reference.IsNull {
 			return layer, errors.New("NULL second touch reference")
 		}
-		context.InstancesByReference.OnAddInstance(reference, func(inst *datamodel.Instance) {
-			subpacket.Instance2 = inst
-		})
+		subpacket.Instance2, _ = context.InstancesByReference.TryGetInstance(reference)
 
 		subpacket.IsTouch, err = thisStream.readBoolByte()
 		if err != nil {
