@@ -69,6 +69,7 @@ func (l *InstanceList) AddInstance(ref Reference, instance *Instance) {
 	for _, callback := range l.getScope(ref).AddCallbacks[ref.Id] {
 		callback(instance)
 	}
+	l.getScope(ref).AddCallbacks[ref.Id] = nil
 }
 
 func (l *InstanceList) OnAddInstance(ref Reference, callback func(*Instance)) error {
