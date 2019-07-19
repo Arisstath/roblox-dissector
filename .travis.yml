@@ -13,10 +13,12 @@ services:
 - docker
 
 install:
-- docker pull therecipe/qt:windows_64_shared_512
+- export QT_API=5.12.0
+- docker pull therecipe/qt:windows_64_shared
 - go get -v -tags=no_env github.com/therecipe/qt/cmd/...
 
 script:
+- export QT_API=5.12.0
 - go get -d -v ./...
 - x86_64-w64-mingw32-windres icon.rc -o icon_win64.syso
 - $GOPATH/bin/qtdeploy -docker build windows
