@@ -180,11 +180,9 @@ func NewCustomClient(ctx context.Context) *CustomClient {
 		httpClient: &http.Client{},
 		GUID:       rand.Uint64(),
 
-		PacketLogicHandler: newPacketLogicHandler(context, false),
+		PacketLogicHandler: newPacketLogicHandler(ctx, context, false),
 		InstanceDictionary: datamodel.NewInstanceDictionary(),
 	}
-
-	client.RunningContext = ctx
 
 	client.createWriter()
 
@@ -542,6 +540,10 @@ func (myClient *CustomClient) mainReadLoop() error {
 		// this connection should be closed when the context expires
 		// hence we don't need to select{} RunningContext.Done()
 		n, _, err := myClient.Connection.ReadFromUDP(buf)
+		if !myClient.Connected {
+			myClient.Logger.Printf("connection closed, final error: %s", err)
+			return nil
+		}
 		if err != nil {
 			myClient.Logger.Println("fatal read err:", err.Error(), "read", n, "bytes")
 			return err // a read error may be a sign that the connection was closed

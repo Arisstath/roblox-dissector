@@ -19,6 +19,7 @@ type PacketLogicHandler struct {
 	*ConnectedPeer
 	Context        *CommunicationContext
 	RunningContext context.Context
+	CancelFunc     func()
 
 	ackTicker      *time.Ticker
 	dataPingTicker *time.Ticker
@@ -35,15 +36,18 @@ type PacketLogicHandler struct {
 	GenericEvents *emitter.Emitter
 }
 
-func newPacketLogicHandler(context *CommunicationContext, withClient bool) PacketLogicHandler {
+func newPacketLogicHandler(ctx context.Context, commContext *CommunicationContext, withClient bool) PacketLogicHandler {
+	ctx, cancelFunc := context.WithCancel(ctx)
 	return PacketLogicHandler{
-		ConnectedPeer: NewConnectedPeer(context, withClient),
+		ConnectedPeer: NewConnectedPeer(commContext, withClient),
 
 		remoteIndices: make(map[*datamodel.Instance]uint32),
 		remoteLock:    &sync.Mutex{},
 
-		Context:   context,
-		DataModel: context.DataModel,
+		Context:        commContext,
+		DataModel:      commContext.DataModel,
+		RunningContext: ctx,
+		CancelFunc:     cancelFunc,
 
 		GenericEvents: emitter.New(0),
 	}
@@ -92,7 +96,6 @@ func (logicHandler *PacketLogicHandler) defaultReliabilityLayerHandler(e *emitte
 }
 
 func (logicHandler *PacketLogicHandler) cleanup() {
-	logicHandler.Connected = false
 	// Note: these will NOT close the channel!
 	if logicHandler.ackTicker != nil {
 		logicHandler.ackTicker.Stop()
@@ -100,6 +103,7 @@ func (logicHandler *PacketLogicHandler) cleanup() {
 	if logicHandler.dataPingTicker != nil {
 		logicHandler.dataPingTicker.Stop()
 	}
+	logicHandler.CancelFunc()
 }
 
 // DisconnectionSource is a type describing what caused a disconnection
@@ -122,7 +126,10 @@ func (logicHandler *PacketLogicHandler) Disconnect() {
 		logicHandler.WritePacket(&Packet15Layer{
 			Reason: -1,
 		})
+		logicHandler.Connected = false
 		<-logicHandler.GenericEvents.Emit("disconnected", LocalDisconnection, int32(-1))
+
+		logicHandler.Connection.Close()
 		logicHandler.cleanup()
 	}
 }
