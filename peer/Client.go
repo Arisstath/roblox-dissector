@@ -540,11 +540,11 @@ func (myClient *CustomClient) mainReadLoop() error {
 		// this connection should be closed when the context expires
 		// hence we don't need to select{} RunningContext.Done()
 		n, _, err := myClient.Connection.ReadFromUDP(buf)
-		if !myClient.Connected {
-			myClient.Logger.Printf("connection closed, final error: %s", err)
-			return nil
-		}
 		if err != nil {
+			if !myClient.Connected {
+				myClient.Logger.Printf("connection closed, final error: %s", err)
+				return nil
+			}
 			myClient.Logger.Println("fatal read err:", err.Error(), "read", n, "bytes")
 			return err // a read error may be a sign that the connection was closed
 			// hence we can't run this loop anymore; we would get infinitely many errors
