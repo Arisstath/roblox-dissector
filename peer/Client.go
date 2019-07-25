@@ -485,7 +485,7 @@ func (settings *windows10SecuritySettings) GenerateTicketHash(ticket string) uin
 	initHash := xxHash32.Checksum([]byte(ticket), 1)
 	result := -(bits.RotateLeft32(bits.RotateLeft32(bits.RotateLeft32((0x443921D5- bits.RotateLeft32(0x557BB5D7 * (bits.RotateLeft32(initHash + 0x557BB5D7, 7) - 0x557BB5D7), 0xD)) ^ 0x557BB5D7, 0x11)+ 0x664B2854,0x17) - 0x664B2854,-29) ^ 0x557BB5D7);
 
-	return initHash
+	return result
 }
 func (settings *windows10SecuritySettings) PatchTicketPacket(packet *Packet8ALayer) {
 	packet.SecurityKey = "2e427f51c4dab762fe9e3471c6cfa1650841723b!b503184b1a41087f9124e287c1d1729b\x0E"
