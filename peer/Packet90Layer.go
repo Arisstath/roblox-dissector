@@ -27,15 +27,15 @@ func (stream *extendedReader) DecodePacket90Layer(reader PacketReader, layers *P
 	if err != nil {
 		return layer, err
 	}
+	layer.Int2, err = thisStream.ReadByte()
+	if err != nil {
+		return layer, err
+	}
 	layer.SchemaVersion, err = thisStream.readUint32BE()
 	if err != nil {
 		return layer, err
 	}
 	layer.Int1, err = thisStream.ReadByte()
-	if err != nil {
-		return layer, err
-	}
-	layer.Int2, err = thisStream.ReadByte()
 	if err != nil {
 		return layer, err
 	}
@@ -120,15 +120,15 @@ func (stream *extendedReader) DecodePacket90Layer(reader PacketReader, layers *P
 func (layer *Packet90Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
 	rawStream := stream.aesEncrypt(packet90AESKey)
+	err = rawStream.WriteByte(layer.Int2)
+	if err != nil {
+		return err
+	}
 	err = rawStream.writeUint32BE(layer.SchemaVersion)
 	if err != nil {
 		return err
 	}
 	err = rawStream.WriteByte(layer.Int1)
-	if err != nil {
-		return err
-	}
-	err = rawStream.WriteByte(layer.Int2)
 	if err != nil {
 		return err
 	}
