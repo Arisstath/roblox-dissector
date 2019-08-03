@@ -23,7 +23,7 @@ func (stream *extendedReader) DecodePacket8ALayer(reader PacketReader, layers *P
 	layer := &Packet8ALayer{}
 
 	lenBytes := bitsToBytes(uint(layers.Reliability.LengthInBits)) - 1 // -1 for packet id
-	thisStream, err := stream.aesDecrypt(int(lenBytes))
+	thisStream, err := stream.aesDecrypt(int(lenBytes), reader.Context().GenerateSubmitTicketKey())
 	if err != nil {
 		return layer, err
 	}
@@ -97,7 +97,7 @@ func (stream *extendedReader) DecodePacket8ALayer(reader PacketReader, layers *P
 func (layer *Packet8ALayer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
 
-	rawStream := stream.aesEncrypt()
+	rawStream := stream.aesEncrypt(writer.Context().GenerateSubmitTicketKey())
 	err = rawStream.writeVarsint64(layer.PlayerID)
 	if err != nil {
 		return err

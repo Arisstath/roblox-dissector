@@ -13,6 +13,7 @@ func ShowPacket90(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 
 	layerLayout.AddWidget(NewQLabelF("Schema version: %d", MainLayer.SchemaVersion), 0, 0)
 	layerLayout.AddWidget(NewQLabelF("Int 1: %d", MainLayer.Int1), 0, 0)
+	layerLayout.AddWidget(NewQLabelF("Int 2: %d", MainLayer.Int2), 0, 0)
 
 	requestList := widgets.NewQTreeView(nil)
 	standardModel := NewProperSortModel(nil)
@@ -31,4 +32,5 @@ func ShowPacket90(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 	layerLayout.AddWidget(requestList, 0, 0)
 
 	layerLayout.AddWidget(widgets.NewQTextEdit2(fmt.Sprintf("Join data: %s", MainLayer.JoinData), nil), 0, 0)
+	layerLayout.AddWidget(widgets.NewQTextEdit2(fmt.Sprintf("Version ID: %X", MainLayer.VersionID[:]), nil), 0, 0)
 }

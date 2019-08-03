@@ -377,12 +377,14 @@ func calculateChecksum(data []byte) uint32 {
 	return sum
 }
 
-func (b *extendedReader) aesDecrypt(lenBytes int) (*extendedReader, error) {
+var packet90AESKey = [...]byte{0xFE, 0xF9, 0xF0, 0xEB, 0xE2, 0xDD, 0xD4, 0xCF, 0xC6, 0xC1, 0xB8, 0xB3, 0xAA, 0xA5, 0x9C, 0x97}
+
+func (b *extendedReader) aesDecrypt(lenBytes int, key [0x10]byte) (*extendedReader, error) {
 	data, err := b.readString(lenBytes)
 	if err != nil {
 		return nil, err
 	}
-	block, err := aes.NewCipher([]byte{0xFE, 0xF9, 0xF0, 0xEB, 0xE2, 0xDD, 0xD4, 0xCF, 0xC6, 0xC1, 0xB8, 0xB3, 0xAA, 0xA5, 0x9C, 0x97})
+	block, err := aes.NewCipher(key[:])
 	if err != nil {
 		return nil, err
 	}

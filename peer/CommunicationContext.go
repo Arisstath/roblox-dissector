@@ -2,8 +2,10 @@ package peer
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/Gskartwii/roblox-dissector/datamodel"
+	"github.com/robloxapi/rbxfile"
 )
 
 // Cache represents a network cache that stores repeatable objects such as strings.
@@ -146,11 +148,16 @@ type CommunicationContext struct {
 	NetworkSchema *NetworkSchema
 	// IsStudio
 	IsStudio bool
+	// SharedStrings contains a dictionary of SharedStrings indexed by their MD5 hash
+	SharedStrings map[string]rbxfile.ValueSharedString
 
 	// ScriptKey and CoreScriptKey are decryption keys for the
 	// replicated scripts as reported by the server
 	ScriptKey     uint32
 	CoreScriptKey uint32
+
+	PlaceID   int64
+	VersionID Packet90VersionID
 
 	uniqueID uint32
 }
@@ -161,4 +168,18 @@ func NewCommunicationContext() *CommunicationContext {
 		DataModel:            datamodel.New(),
 		InstancesByReference: datamodel.NewInstanceList(),
 	}
+}
+
+// GenerateSubmitTicketKey generates a key to be used by ID_SUBMIT_TICKET packets
+func (context *CommunicationContext) GenerateSubmitTicketKey() [0x10]byte {
+	var result [0x10]byte
+	str := fmt.Sprintf("%d%d%d%d",
+		int32(context.PlaceID),
+		context.VersionID[0],
+		context.VersionID[2],
+		context.VersionID[1])
+
+	copy(result[:], []byte(str)[:0x10])
+
+	return result
 }

@@ -38,8 +38,12 @@ const (
 	CapabilityIHasMinDistToUnstreamed = 0x400
 	// CapabilityReplicateLuau indicates an unknown capability
 	CapabilityReplicateLuau = 0x800
+	// CapabilityPositionBasedStreaming indicates whether the Character's region should be used for streaming
+	CapabilityPositionBasedStreaming = 0x1000
+	// CapabilityVersionedIDSync indicates an unknown capability
+	CapabilityVersionedIDSync = 0x2000
 
-	CapabilityAll = CapabilityBasic | CapabilityServerCopiesPlayerGui3 | CapabilityDebugForceStreamingEnabled | CapabilityIHasMinDistToUnstreamed | CapabilityReplicateLuau
+	CapabilityAll = CapabilityBasic | CapabilityServerCopiesPlayerGui3 | CapabilityDebugForceStreamingEnabled | CapabilityIHasMinDistToUnstreamed | CapabilityReplicateLuau | CapabilityPositionBasedStreaming | CapabilityVersionedIDSync
 )
 
 // IdentifyPassword identifies what RakNet password is being used

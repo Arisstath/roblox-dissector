@@ -277,6 +277,7 @@ type aesExtendedWriter struct {
 	*extendedWriter
 	buffer       *bytes.Buffer
 	targetStream io.Writer
+	key          [0x10]byte
 }
 
 func (b *aesExtendedWriter) Close() error {
@@ -298,7 +299,7 @@ func (b *aesExtendedWriter) Close() error {
 	// CBC blocks are encrypted in a weird order
 	dest := make([]byte, len(rawCopy))
 	shuffledEncryptable := shuffleSlice(rawCopy)
-	block, err := aes.NewCipher([]byte{0xFE, 0xF9, 0xF0, 0xEB, 0xE2, 0xDD, 0xD4, 0xCF, 0xC6, 0xC1, 0xB8, 0xB3, 0xAA, 0xA5, 0x9C, 0x97})
+	block, err := aes.NewCipher(b.key[:])
 	if err != nil {
 		return err
 	}
@@ -310,7 +311,7 @@ func (b *aesExtendedWriter) Close() error {
 	return err
 }
 
-func (b *extendedWriter) aesEncrypt() *aesExtendedWriter {
+func (b *extendedWriter) aesEncrypt(key [0x10]byte) *aesExtendedWriter {
 	rawBuffer := new(bytes.Buffer)
 	rawStream := &extendedWriter{rawBuffer}
 
@@ -318,6 +319,7 @@ func (b *extendedWriter) aesEncrypt() *aesExtendedWriter {
 		extendedWriter: rawStream,
 		targetStream:   b,
 		buffer:         rawBuffer,
+		key:            key,
 	}
 }
 

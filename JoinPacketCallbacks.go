@@ -1,9 +1,13 @@
 package main
 
-import "github.com/therecipe/qt/widgets"
-import "github.com/therecipe/qt/gui"
-import "github.com/Gskartwii/roblox-dissector/peer"
-import "strings"
+import (
+	"fmt"
+	"strings"
+
+	"github.com/Gskartwii/roblox-dissector/peer"
+	"github.com/therecipe/qt/gui"
+	"github.com/therecipe/qt/widgets"
+)
 
 func capabilitiesToString(cap uint64) string {
 	var builder strings.Builder
@@ -21,6 +25,15 @@ func capabilitiesToString(cap uint64) string {
 	}
 	if cap&peer.CapabilityReplicateLuau != 0 {
 		builder.WriteString("ReplicateLuau, ")
+	}
+	if cap&peer.CapabilityPositionBasedStreaming != 0 {
+		builder.WriteString("PositionBasedStreaming, ")
+	}
+	if cap&peer.CapabilityVersionedIDSync != 0 {
+		builder.WriteString("VersionedIDSync, ")
+	}
+	if cap&^peer.CapabilityAll != 0 {
+		fmt.Fprintf(&builder, "Unknown capabilities: %8X, ", cap&^peer.CapabilityAll)
 	}
 
 	if builder.Len() == 0 {
