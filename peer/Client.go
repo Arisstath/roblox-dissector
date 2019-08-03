@@ -488,16 +488,29 @@ func Win10Settings(args ...string) SecurityHandler {
 	return settings
 }
 func (settings *windows10SecuritySettings) GenerateIDResponse(challenge uint32) uint32 {
-	return 0x70D0B0BC - challenge
+	return 0x42792968 - challenge
 }
 func (settings *windows10SecuritySettings) GenerateTicketHash(ticket string) uint32 {
 	initHash := xxHash32.Checksum([]byte(ticket), 1)
-	result := -(bits.RotateLeft32(bits.RotateLeft32(bits.RotateLeft32((0x443921D5-bits.RotateLeft32(0x557BB5D7*(bits.RotateLeft32(initHash+0x557BB5D7, 7)-0x557BB5D7), 0xD))^0x557BB5D7, 0x11)+0x664B2854, 0x17)-0x664B2854, -29) ^ 0x557BB5D7)
+	result := -(bits.RotateLeft32(0x99B4D7AC-
+		bits.RotateLeft32(
+			bits.RotateLeft32(
+				(0x557BB5D7-
+					bits.RotateLeft32(
+						0x443921D5*(bits.RotateLeft32(
+							initHash+0x557BB5D7,
+							-7)-
+							0x443921D5),
+						0xD))^0x443921D5,
+				-0x11)+0x664B2854,
+			-0x17),
+		-0x1D) ^
+		0x443921D5)
 
 	return result
 }
 func (settings *windows10SecuritySettings) PatchTicketPacket(packet *Packet8ALayer) {
-	packet.SecurityKey = "2e427f51c4dab762fe9e3471c6cfa1650841723b!b503184b1a41087f9124e287c1d1729b\x0E"
+	packet.SecurityKey = "2e427f51c4dab762fe9e3471c6cfa1650841723b!7fa0b303dcba3f6bc22bd2e78bc8cd1e\x0E"
 	packet.GoldenHash = 0xC001CAFE
 	packet.DataModelHash = "ios,ios"
 	packet.Platform = settings.osPlatform

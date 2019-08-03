@@ -132,6 +132,7 @@ func (myClient *CustomClient) sendProtocolSync() {
 		return
 	}
 	response90 := &Packet90Layer{
+		Int2:          1,
 		SchemaVersion: 36,
 		RequestedFlags: []string{
 			"UseNativePathWaypoint",
@@ -191,7 +192,7 @@ func (myClient *CustomClient) packet10Handler(e *emitter.Event) {
 	myClient.sendPing()
 	myClient.sendPing()
 	myClient.sendProtocolSync()
-	myClient.sendPlaceIDVerification(0)
+	myClient.sendPlaceIDVerification(myClient.PlaceID)
 	myClient.submitTicket()
 	myClient.sendSpawnName()
 }
