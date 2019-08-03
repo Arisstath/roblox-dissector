@@ -143,7 +143,8 @@ func (myClient *CustomClient) sendProtocolSync() {
 			"TerrainRaycastsRespectCollisionGroups",
 			"NetworkUsePeerId",
 		},
-		JoinData: string(marshalledJoin),
+		JoinData:  string(marshalledJoin),
+		VersionID: myClient.SecuritySettings.VersionID(),
 	}
 	err = myClient.WritePacket(response90)
 	if err != nil {

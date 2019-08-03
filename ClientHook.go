@@ -15,7 +15,7 @@ func (captureContext *CaptureContext) HookClient(client *peer.CustomClient) {
 	captureContext.AddConversation(conversation)
 }
 
-func (session *CaptureSession) CaptureFromClient(client *peer.CustomClient, placeID uint32, authTicket string) {
+func (session *CaptureSession) CaptureFromClient(client *peer.CustomClient, placeID int64, authTicket string) {
 	session.CaptureContext.HookClient(client)
 
 	client.ConnectWithAuthTicket(placeID, authTicket)

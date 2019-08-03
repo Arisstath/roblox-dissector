@@ -85,6 +85,10 @@ type SecurityHandler interface {
 	// UserAgent should return a user agent string to be used in
 	// HTTP requests
 	UserAgent() string
+	// VersionID should return the version id to be passed to
+	// ID_PROTOCOL_SYNC serialization as well as used to generate the
+	// ID_SUBMIT_TICKET encryption key
+	VersionID() [5]int32
 }
 type securitySettings struct {
 	RakPassword   []byte
@@ -138,7 +142,7 @@ type CustomClient struct {
 	UserName              string
 	characterAppearance   string
 	characterAppearanceID int64
-	PlaceID               uint32
+	PlaceID               int64
 	httpClient            *http.Client
 	GUID                  uint64
 	BrowserTrackerID      uint64
@@ -424,7 +428,7 @@ func (myClient *CustomClient) joinWithPlaceLauncher(url string, cookies []*http.
 
 // ConnectWithAuthTicket requests Roblox to create a new game server for the specified place
 // and joins that server
-func (myClient *CustomClient) ConnectWithAuthTicket(placeID uint32, ticket string) error {
+func (myClient *CustomClient) ConnectWithAuthTicket(placeID int64, ticket string) error {
 	myClient.PlaceID = placeID
 	robloxCommClient := myClient.httpClient
 	negotiationRequest, err := http.NewRequest("POST", "https://www.roblox.com/Login/Negotiate.ashx?suggest="+ticket, nil)
@@ -471,9 +475,14 @@ func (settings *securitySettings) OSPlatform() string {
 
 // Win10Settings returns a SecurityHandler that imitates
 // a Win10Universal client (Windows Store version)
-func Win10Settings() SecurityHandler {
+// You can optionally pass a custom UserAgent as an argument
+func Win10Settings(args ...string) SecurityHandler {
 	settings := &windows10SecuritySettings{}
-	settings.userAgent = "Roblox/WinINet"
+	if len(args) != 0 {
+		settings.userAgent = args[0]
+	} else {
+		settings.userAgent = "Roblox/WinINet"
+	}
 	settings.osPlatform = "Windows_Universal"
 
 	return settings
@@ -483,7 +492,7 @@ func (settings *windows10SecuritySettings) GenerateIDResponse(challenge uint32) 
 }
 func (settings *windows10SecuritySettings) GenerateTicketHash(ticket string) uint32 {
 	initHash := xxHash32.Checksum([]byte(ticket), 1)
-	result := -(bits.RotateLeft32(bits.RotateLeft32(bits.RotateLeft32((0x443921D5- bits.RotateLeft32(0x557BB5D7 * (bits.RotateLeft32(initHash + 0x557BB5D7, 7) - 0x557BB5D7), 0xD)) ^ 0x557BB5D7, 0x11)+ 0x664B2854,0x17) - 0x664B2854,-29) ^ 0x557BB5D7);
+	result := -(bits.RotateLeft32(bits.RotateLeft32(bits.RotateLeft32((0x443921D5-bits.RotateLeft32(0x557BB5D7*(bits.RotateLeft32(initHash+0x557BB5D7, 7)-0x557BB5D7), 0xD))^0x557BB5D7, 0x11)+0x664B2854, 0x17)-0x664B2854, -29) ^ 0x557BB5D7)
 
 	return result
 }
@@ -493,6 +502,15 @@ func (settings *windows10SecuritySettings) PatchTicketPacket(packet *Packet8ALay
 	packet.DataModelHash = "ios,ios"
 	packet.Platform = settings.osPlatform
 	packet.TicketHash = settings.GenerateTicketHash(packet.ClientTicket)
+}
+func (settings *windows10SecuritySettings) VersionID() [5]int32 {
+	return [5]int32{
+		-0x743D2381,
+		-0x37D44560,
+		-0x322DC04D,
+		0x73F6F7E3,
+		-0x6E10C1CF,
+	}
 }
 
 func (myClient *CustomClient) dial() {
@@ -567,6 +585,9 @@ func (myClient *CustomClient) rakConnect() error {
 		return err
 	}
 	myClient.Address = myClient.Connection.LocalAddr().(*net.UDPAddr)
+
+	myClient.Context.PlaceID = myClient.PlaceID
+	myClient.Context.VersionID = myClient.SecuritySettings.VersionID()
 
 	myClient.bindDefaultHandlers()
 	myClient.dial()

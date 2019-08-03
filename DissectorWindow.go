@@ -162,7 +162,7 @@ func (window *DissectorWindow) CaptureFromLive(itfName string, promisc bool) {
 	}()
 }
 
-func (window *DissectorWindow) startClientWithArgs(placeID uint32, browserTrackerId uint64, authTicket string) {
+func (window *DissectorWindow) startClientWithArgs(placeID int64, browserTrackerId uint64, authTicket string) {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 
 	customClient := peer.NewCustomClient(ctx)
@@ -323,7 +323,7 @@ func (window *DissectorWindow) StartClient(uri string) {
 		placeID, _ := strconv.Atoi(parts[2])
 		browserTrackerId, _ := strconv.Atoi(parts[3])
 
-		window.startClientWithArgs(uint32(placeID), uint64(browserTrackerId), authTicket)
+		window.startClientWithArgs(int64(placeID), uint64(browserTrackerId), authTicket)
 	}
 }
 
