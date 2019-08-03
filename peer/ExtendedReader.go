@@ -14,6 +14,7 @@ import (
 
 	"github.com/DataDog/zstd"
 	"github.com/Gskartwii/roblox-dissector/datamodel"
+	"github.com/robloxapi/rbxfile"
 )
 
 // TODO: Move extendedReader to its own package (roblox-dissector/parser)?
@@ -219,33 +220,58 @@ func (b *extendedReader) RegionToZStdStream() (*extendedReader, error) {
 	return &extendedReader{zstdStream}, nil
 }
 
-func (b *extendedReader) readJoinObject(context *CommunicationContext) (datamodel.Reference, error) {
+func (b *extendedReader) readObjectPeerID(context *CommunicationContext) (datamodel.Reference, error) {
 	ref := datamodel.Reference{}
-	stringLen, err := b.readUint8()
+	peerID, err := b.readVarint64()
 	if err != nil {
 		return ref, err
 	}
-	if stringLen == 0x00 {
+	ref.PeerId = uint32(peerID)
+	if peerID == 0 {
 		ref.IsNull = true
 		ref.Scope = "null"
 		return ref, err
+		// Approximately reflects handling in client?
+	} else if uint32(peerID) == context.ServerPeerID {
+		ref.Scope = "RBXServer"
+	} else {
+		ref.Scope = fmt.Sprintf("RBXPID%d", peerID)
 	}
-	var refString string
-	if stringLen != 0xFF {
-		refString, err = b.readASCII(int(stringLen))
+	ref.Id, err = b.readUint32LE()
+
+	return ref, nil
+}
+
+func (b *extendedReader) readJoinObject(context *CommunicationContext) (datamodel.Reference, error) {
+	ref := datamodel.Reference{}
+	if context.ServerPeerID == 0 {
+		// read scope using old system
+		stringLen, err := b.readUint8()
 		if err != nil {
 			return ref, err
 		}
-		if len(refString) != 0x23 {
-			return ref, errors.New("wrong scope len")
+		if stringLen == 0x00 {
+			ref.IsNull = true
+			ref.Scope = "null"
+			return ref, err
 		}
-		ref.Scope = refString
-	} else {
-		ref.Scope = context.InstanceTopScope
+		var refString string
+		if stringLen != 0xFF {
+			refString, err = b.readASCII(int(stringLen))
+			if err != nil {
+				return ref, err
+			}
+			if len(refString) != 0x23 {
+				return ref, errors.New("wrong scope len")
+			}
+			ref.Scope = refString
+		} else {
+			ref.Scope = context.InstanceTopScope
+		}
+		ref.Id, err = b.readUint32LE()
+		return ref, err
 	}
-
-	ref.Id, err = b.readUint32LE()
-	return ref, err
+	return b.readObjectPeerID(context)
 }
 
 func (b *extendedReader) readFloat16BE(floatMin float32, floatMax float32) (float32, error) {
@@ -457,7 +483,7 @@ func (b *extendedReader) readRakNetFlags() (RakNetFlags, error) {
 		val.HasBAndAS = flags>>5&1 == 1
 		return val, nil
 	}
-	val.IsNAK = flags>>5 == 1
+	val.IsNAK = flags>>5&1 == 1
 	if val.IsNAK {
 		val.HasBAndAS = flags>>4&1 == 1
 		return val, nil
@@ -471,4 +497,82 @@ func (b *extendedReader) readRakNetFlags() (RakNetFlags, error) {
 func (b *extendedReader) readReliabilityFlags() (uint8, bool, error) {
 	flags, err := b.ReadByte()
 	return flags >> 5, flags>>4&1 == 1, err
+}
+
+type deferredStrings struct {
+	m                    map[string][]*datamodel.ValueDeferredString
+	underlyingDictionary map[string]rbxfile.ValueSharedString
+}
+
+func newDeferredStrings(reader PacketReader) deferredStrings {
+	return deferredStrings{
+		m:                    make(map[string][]*datamodel.ValueDeferredString),
+		underlyingDictionary: reader.SharedStrings(),
+	}
+}
+
+func (m deferredStrings) NewValue(md5 string) *datamodel.ValueDeferredString {
+	val := &datamodel.ValueDeferredString{Hash: md5}
+	if resolved, ok := m.underlyingDictionary[md5]; ok {
+		val.Value = resolved
+		return val
+	}
+
+	// doesn't matter if it's nil, we need to update it in the map anyway
+	m.m[md5] = append(m.m[md5], val)
+	return val
+}
+
+func (m deferredStrings) Resolve(md5 string, value rbxfile.ValueSharedString) {
+	for _, resolvable := range m.m[md5] {
+		resolvable.Value = value
+	}
+}
+
+type writeDeferredStrings struct {
+	m                    map[string]rbxfile.ValueSharedString
+	underlyingDictionary map[string]rbxfile.ValueSharedString
+}
+
+func (b *extendedReader) resolveDeferredStrings(defers deferredStrings) error {
+	for len(defers.m) > 0 {
+		md5, err := b.readASCII(0x10)
+		if err != nil {
+			return err
+		}
+		format, err := b.ReadByte()
+		if err != nil {
+			return err
+		}
+
+		_, isValid := defers.m[md5]
+		if !isValid {
+			return fmt.Errorf("didn't defer with md5 = %X", md5)
+		}
+
+		cachedValue, cachedExists := defers.underlyingDictionary[md5]
+		switch format {
+		case 0:
+			if cachedExists {
+				return fmt.Errorf("duplicated deferred resolve for %X", md5)
+			}
+			resolvedValue, err := b.readVarLengthString()
+			if err != nil {
+				return err
+			}
+			defers.Resolve(md5, rbxfile.ValueSharedString(resolvedValue))
+			delete(defers.m, md5)
+
+			defers.underlyingDictionary[md5] = rbxfile.ValueSharedString(resolvedValue)
+		case 1:
+			if !cachedExists {
+				return fmt.Errorf("couldn't resolve deferred %X", md5)
+			}
+			defers.Resolve(md5, cachedValue)
+			delete(defers.m, md5)
+		default:
+			return errors.New("invalid deferred string dictionary format")
+		}
+	}
+	return nil
 }

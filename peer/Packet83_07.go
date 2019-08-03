@@ -20,7 +20,7 @@ func (thisStream *extendedReader) DecodePacket83_07(reader PacketReader, layers 
 	var err error
 	layer := &Packet83_07{}
 
-	reference, err := thisStream.readObject(reader.Caches())
+	reference, err := thisStream.ReadObject(reader)
 	if err != nil {
 		return layer, err
 	}
@@ -42,15 +42,21 @@ func (thisStream *extendedReader) DecodePacket83_07(reader PacketReader, layers 
 		return layer, fmt.Errorf("event idx %d is higher than %d", eventIDx, len(context.NetworkSchema.Events))
 	}
 
+	deferred := newDeferredStrings(reader)
 	schema := context.NetworkSchema.Events[eventIDx]
 	layer.Schema = schema
 	layers.Root.Logger.Println("Decoding event", schema.Name)
-	layer.Event, err = schema.Decode(reader, thisStream, layers)
+	layer.Event, err = schema.Decode(reader, thisStream, layers, deferred)
 	if err != nil {
 		return layer, err
 	}
 
-	return layer, err
+	err = thisStream.resolveDeferredStrings(deferred)
+	if err != nil {
+		return layer, err
+	}
+
+	return layer, nil
 }
 
 // Serialize implements Packet83Subpacket.Serialize()
@@ -58,7 +64,7 @@ func (layer *Packet83_07) Serialize(writer PacketWriter, stream *extendedWriter)
 	if layer.Instance == nil {
 		return errors.New("self is nil in serialize repl inst")
 	}
-	err := stream.writeObject(layer.Instance, writer.Caches())
+	err := stream.WriteObject(layer.Instance, writer)
 	if err != nil {
 		return err
 	}
@@ -68,7 +74,13 @@ func (layer *Packet83_07) Serialize(writer PacketWriter, stream *extendedWriter)
 		return err
 	}
 
-	return layer.Schema.Serialize(layer.Event, writer, stream)
+	deferred := newWriteDeferredStrings(writer)
+	err = layer.Schema.Serialize(layer.Event, writer, stream, deferred)
+	if err != nil {
+		return err
+	}
+
+	return stream.resolveDeferredStrings(deferred)
 }
 
 // Type implements Packet83Subpacket.Type()

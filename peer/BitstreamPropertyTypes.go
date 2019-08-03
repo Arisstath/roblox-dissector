@@ -1,10 +1,13 @@
 package peer
 
-import "errors"
-import "github.com/robloxapi/rbxfile"
-import "github.com/Gskartwii/roblox-dissector/datamodel"
+import (
+	"errors"
+	"fmt"
+	"math"
 
-import "math"
+	"github.com/Gskartwii/roblox-dissector/datamodel"
+	"github.com/robloxapi/rbxfile"
+)
 
 // PhysicsMotor is an alias type for rbxfile.ValueCFrames. They are used to
 // describe motors in physics packets
@@ -255,7 +258,10 @@ func (b *extendedReader) readBrickColor() (rbxfile.ValueBrickColor, error) {
 	return rbxfile.ValueBrickColor(val), err
 }
 
-func (b *extendedReader) readObject(caches *Caches) (datamodel.Reference, error) {
+func (b *extendedReader) readObject(context *CommunicationContext, caches *Caches) (datamodel.Reference, error) {
+	if context.ServerPeerID != 0 {
+		return b.readObjectPeerID(context)
+	}
 	scope, err := b.readCachedScope(caches)
 	if err != nil && err != ErrCacheReadOOB { // TODO: hack! physics packets may have problems with caches
 		return datamodel.Reference{}, err
@@ -562,7 +568,7 @@ func getEnumName(context *CommunicationContext, id uint16) string {
 }
 
 // readNewTypeAndValue is never used by join data!
-func (b *extendedReader) readNewTypeAndValue(reader PacketReader) (rbxfile.Value, error) {
+func (b *extendedReader) readNewTypeAndValue(reader PacketReader, deferred deferredStrings) (rbxfile.Value, error) {
 	var val rbxfile.Value
 	thisType, err := b.readUint8()
 	if err != nil {
@@ -577,11 +583,11 @@ func (b *extendedReader) readNewTypeAndValue(reader PacketReader) (rbxfile.Value
 		}
 	}
 
-	val, err = b.ReadSerializedValue(reader, thisType, enumID)
+	val, err = b.ReadSerializedValue(reader, thisType, enumID, deferred)
 	return val, err
 }
 
-func (b *extendedReader) readNewTuple(reader PacketReader) (datamodel.ValueTuple, error) {
+func (b *extendedReader) readNewTuple(reader PacketReader, deferred deferredStrings) (datamodel.ValueTuple, error) {
 	var tuple datamodel.ValueTuple
 	tupleLen, err := b.readUintUTF8()
 	if err != nil {
@@ -592,7 +598,7 @@ func (b *extendedReader) readNewTuple(reader PacketReader) (datamodel.ValueTuple
 	}
 	tuple = make(datamodel.ValueTuple, tupleLen)
 	for i := 0; i < int(tupleLen); i++ {
-		val, err := b.readNewTypeAndValue(reader)
+		val, err := b.readNewTypeAndValue(reader, deferred)
 		if err != nil {
 			return tuple, err
 		}
@@ -602,12 +608,12 @@ func (b *extendedReader) readNewTuple(reader PacketReader) (datamodel.ValueTuple
 	return tuple, nil
 }
 
-func (b *extendedReader) readNewArray(reader PacketReader) (datamodel.ValueArray, error) {
-	array, err := b.readNewTuple(reader)
+func (b *extendedReader) readNewArray(reader PacketReader, deferred deferredStrings) (datamodel.ValueArray, error) {
+	array, err := b.readNewTuple(reader, deferred)
 	return datamodel.ValueArray(array), err
 }
 
-func (b *extendedReader) readNewDictionary(reader PacketReader) (datamodel.ValueDictionary, error) {
+func (b *extendedReader) readNewDictionary(reader PacketReader, deferred deferredStrings) (datamodel.ValueDictionary, error) {
 	var dictionary datamodel.ValueDictionary
 	dictionaryLen, err := b.readUintUTF8()
 	if err != nil {
@@ -626,7 +632,7 @@ func (b *extendedReader) readNewDictionary(reader PacketReader) (datamodel.Value
 		if err != nil {
 			return dictionary, err
 		}
-		dictionary[key], err = b.readNewTypeAndValue(reader)
+		dictionary[key], err = b.readNewTypeAndValue(reader, deferred)
 		if err != nil {
 			return dictionary, err
 		}
@@ -635,8 +641,8 @@ func (b *extendedReader) readNewDictionary(reader PacketReader) (datamodel.Value
 	return dictionary, nil
 }
 
-func (b *extendedReader) readNewMap(reader PacketReader) (datamodel.ValueMap, error) {
-	thisMap, err := b.readNewDictionary(reader)
+func (b *extendedReader) readNewMap(reader PacketReader, deferred deferredStrings) (datamodel.ValueMap, error) {
+	thisMap, err := b.readNewDictionary(reader, deferred)
 	return datamodel.ValueMap(thisMap), err
 }
 
@@ -1149,13 +1155,13 @@ func (b *extendedReader) readPathWaypoint() (datamodel.ValuePathWaypoint, error)
 	return val, err
 }
 
-func (b *extendedReader) readSharedString() (rbxfile.ValueSharedString, error) {
+func (b *extendedReader) readSharedString(deferred deferredStrings) (*datamodel.ValueDeferredString, error) {
 	md5, err := b.readASCII(0x10)
 	if err != nil {
-		return rbxfile.ValueSharedString{}, err
+		return nil, err
 	}
-	println("FIXME: read sharedstring (ignored) md5=", md5)
-	return rbxfile.ValueSharedString{}, nil
+
+	return deferred.NewValue(md5), nil
 }
 
 func (b *extendedReader) readPhysicsVelocity() (rbxfile.ValueVector3, error) {
@@ -1180,7 +1186,7 @@ func (b *extendedReader) readPhysicsVelocity() (rbxfile.ValueVector3, error) {
 	return val, err
 }
 
-func (b *extendedReader) readSerializedValueGeneric(reader PacketReader, valueType uint8, enumID uint16) (rbxfile.Value, error) {
+func (b *extendedReader) readSerializedValueGeneric(reader PacketReader, valueType uint8, enumID uint16, deferred deferredStrings) (rbxfile.Value, error) {
 	var err error
 	var result rbxfile.Value
 	var temp string
@@ -1256,7 +1262,9 @@ func (b *extendedReader) readSerializedValueGeneric(reader PacketReader, valueTy
 	case PropertyTypePathWaypoint:
 		result, err = b.readPathWaypoint()
 	case PropertyTypeSharedString:
-		result, err = b.readSharedString()
+		result, err = b.readSharedString(deferred)
+	default:
+		err = fmt.Errorf("unsupported value type %d", valueType)
 	}
 	return result, err
 }

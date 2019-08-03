@@ -18,10 +18,6 @@ func (thisStream *extendedReader) DecodePacket00Layer(reader PacketReader, layer
 // Serialize implements RakNetPacket.Serialize()
 func (layer *Packet00Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
-	err = stream.WriteByte(0)
-	if err != nil {
-		return err
-	}
 	err = stream.writeUint64BE(layer.SendPingTime)
 	return err
 }
@@ -63,10 +59,6 @@ func (thisStream *extendedReader) DecodePacket03Layer(reader PacketReader, layer
 // Serialize implements RakNetPacket.Serialize()
 func (layer *Packet03Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
 	var err error
-	err = stream.WriteByte(3)
-	if err != nil {
-		return err
-	}
 	err = stream.writeUint64BE(layer.SendPingTime)
 	if err != nil {
 		return err

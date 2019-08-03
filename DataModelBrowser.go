@@ -74,6 +74,11 @@ func dumpScripts(location string, instances []*rbxfile.Instance, parent widgets.
 			progressDialog.Cancel()
 			return err
 		}
+
+		// HACK: We clear the script source here to prevent issues with the XML parser
+		// This may be unexpected in the case of Studio, where the source code is not protected
+		delete(instProp.Instance.Properties, instProp.Name)
+
 		if progressDialog.WasCanceled() {
 			return nil
 		}

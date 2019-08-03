@@ -22,7 +22,7 @@ func is2ndRoundType(typeID uint8) bool {
 	return ((id-3) > 0x1F || ((1<<(id-3))&uint32(0xC200000F)) == 0) && (id != 1) // thank you ARM compiler for optimizing this <3
 }
 
-func decodeReplicationInstance(reader PacketReader, thisStream instanceReader, layers *PacketLayers) (*ReplicationInstance, error) {
+func decodeReplicationInstance(reader PacketReader, thisStream instanceReader, layers *PacketLayers, deferred deferredStrings) (*ReplicationInstance, error) {
 	var err error
 	repInstance := &ReplicationInstance{
 		Properties: make(map[string]rbxfile.Value),
@@ -57,7 +57,7 @@ func decodeReplicationInstance(reader PacketReader, thisStream instanceReader, l
 		return repInstance, err
 	}
 
-	err = thisStream.ReadProperties(schema.Properties, repInstance.Properties, reader)
+	err = thisStream.ReadProperties(schema.Properties, repInstance.Properties, reader, deferred)
 	if err != nil {
 		return repInstance, err
 	}
@@ -85,7 +85,7 @@ func decodeReplicationInstance(reader PacketReader, thisStream instanceReader, l
 }
 
 // Serialize serializes an instance creation packet to its network format
-func (instance *ReplicationInstance) Serialize(writer PacketWriter, stream instanceWriter) error {
+func (instance *ReplicationInstance) Serialize(writer PacketWriter, stream instanceWriter, deferred writeDeferredStrings) error {
 	var err error
 	if instance == nil || instance.Instance == nil {
 		return errors.New("self is nil in serialize repl inst")
@@ -104,7 +104,7 @@ func (instance *ReplicationInstance) Serialize(writer PacketWriter, stream insta
 		return err
 	}
 
-	err = stream.WriteProperties(instance.Schema.Properties, instance.Properties, writer)
+	err = stream.WriteProperties(instance.Schema.Properties, instance.Properties, writer, deferred)
 	if err != nil {
 		return err
 	}

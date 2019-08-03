@@ -43,7 +43,8 @@ const (
 	// CapabilityVersionedIDSync indicates an unknown capability
 	CapabilityVersionedIDSync = 0x2000
 
-	CapabilityAll = CapabilityBasic | CapabilityServerCopiesPlayerGui3 | CapabilityDebugForceStreamingEnabled | CapabilityIHasMinDistToUnstreamed | CapabilityReplicateLuau | CapabilityPositionBasedStreaming | CapabilityVersionedIDSync
+	CapabilityRoblox = CapabilityBasic | CapabilityServerCopiesPlayerGui3 | CapabilityIHasMinDistToUnstreamed | CapabilityReplicateLuau | CapabilityVersionedIDSync
+	CapabilityAll    = CapabilityBasic | CapabilityServerCopiesPlayerGui3 | CapabilityDebugForceStreamingEnabled | CapabilityIHasMinDistToUnstreamed | CapabilityReplicateLuau | CapabilityPositionBasedStreaming | CapabilityVersionedIDSync
 )
 
 // IdentifyPassword identifies what RakNet password is being used

@@ -40,7 +40,7 @@ func (thisStream *extendedReader) DecodePacket83_0E(reader PacketReader, layers 
 	}
 
 	for i := uint32(0); i < numInstances; i++ {
-		ref, err := thisStream.readObject(reader.Caches())
+		ref, err := thisStream.ReadObject(reader)
 		if err != nil {
 			return inner, err
 		}
@@ -73,7 +73,7 @@ func (layer *Packet83_0E) Serialize(writer PacketWriter, stream *extendedWriter)
 
 	zstdStream := stream.wrapZstd()
 	for _, inst := range layer.Instances {
-		err = zstdStream.writeObject(inst, writer.Caches())
+		err = zstdStream.WriteObject(inst, writer)
 		if err != nil {
 			zstdStream.Close()
 			return err

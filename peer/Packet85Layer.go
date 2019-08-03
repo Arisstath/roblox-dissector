@@ -64,16 +64,8 @@ func (b *extendedReader) readPhysicsData(data *PhysicsData, motors bool, reader 
 	if err != nil || !hasPlatformChild {
 		return err
 	}
-	reference, err := b.readObject(reader.Caches())
-	if err != ErrCacheReadOOB {
-		if err != nil {
-			return err
-		}
-		reader.Context().InstancesByReference.OnAddInstance(reference, func(inst *datamodel.Instance) {
-			data.PlatformChild = inst
-		})
-		return nil
-	}
+	reference, err := b.ReadObject(reader)
+	data.PlatformChild, _ = reader.Context().InstancesByReference.TryGetInstance(reference)
 	return nil
 }
 
@@ -81,7 +73,7 @@ func (b *extendedReader) DecodePacket85Layer(reader PacketReader, layers *Packet
 	context := reader.Context()
 	layer := &Packet85Layer{}
 	for {
-		reference, err := b.readObject(reader.Caches())
+		reference, err := b.ReadObject(reader)
 		// unordered packets may have problems with caches
 		if err != nil && err != ErrCacheReadOOB {
 			return layer, err
@@ -91,12 +83,8 @@ func (b *extendedReader) DecodePacket85Layer(reader PacketReader, layers *Packet
 		}
 		layers.Root.Logger.Println("reading physics for ref", reference.String())
 		subpacket := &Packet85LayerSubpacket{}
-		// TODO: generic function for this
-		if err != ErrCacheReadOOB {
-			context.InstancesByReference.OnAddInstance(reference, func(inst *datamodel.Instance) {
-				subpacket.Data.Instance = inst
-			})
-		}
+		// ignore errors
+		subpacket.Data.Instance, _ = context.InstancesByReference.TryGetInstance(reference)
 
 		myFlags, err := b.readUint8()
 		if err != nil {
@@ -135,14 +123,13 @@ func (b *extendedReader) DecodePacket85Layer(reader PacketReader, layers *Packet
 
 		if (myFlags>>5)&1 == 0 { // has children
 			var object datamodel.Reference
-			for object, err = b.readObject(reader.Caches()); (err == nil || err == ErrCacheReadOOB) && !object.IsNull; object, err = b.readObject(reader.Caches()) {
+			// peerID system shouldn't have caching problems anymore
+			// TODO: remove cache hack
+			for object, err = b.ReadObject(reader); (err == nil || err == ErrCacheReadOOB) && !object.IsNull; object, err = b.ReadObject(reader) {
 				layers.Root.Logger.Println("reading physics child for ref", object.String())
 				child := new(PhysicsData)
-				if err != ErrCacheReadOOB { // TODO: hack! unordered packets may have problems with caches
-					context.InstancesByReference.OnAddInstance(object, func(inst *datamodel.Instance) {
-						child.Instance = inst
-					})
-				}
+				// ignore errors
+				child.Instance, _ = context.InstancesByReference.TryGetInstance(object)
 
 				err = b.readPhysicsData(child, true, reader)
 				if err != nil {
@@ -190,7 +177,7 @@ func (b *extendedWriter) writePhysicsData(val *PhysicsData, motors bool, writer 
 		return err
 	}
 
-	err = b.writeObject(val.PlatformChild, writer.Caches())
+	err = b.WriteObject(val.PlatformChild, writer)
 	return err
 }
 
@@ -203,7 +190,7 @@ func (layer *Packet85Layer) Serialize(writer PacketWriter, stream *extendedWrite
 			println("WARNING: skipping 0x85 serialize because instance doesn't exist yet")
 			continue
 		}
-		err = stream.writeObject(subpacket.Data.Instance, writer.Caches())
+		err = stream.WriteObject(subpacket.Data.Instance, writer)
 		if err != nil {
 			return err
 		}
@@ -249,7 +236,7 @@ func (layer *Packet85Layer) Serialize(writer PacketWriter, stream *extendedWrite
 				println("WARNING: 0x85 skipping serialize because child doesn't exist yet!")
 				continue
 			}
-			err = stream.writeObject(child.Instance, writer.Caches())
+			err = stream.WriteObject(child.Instance, writer)
 			if err != nil {
 				return err
 			}
@@ -259,7 +246,7 @@ func (layer *Packet85Layer) Serialize(writer PacketWriter, stream *extendedWrite
 				return err
 			}
 		}
-		err = stream.writeObject(nil, writer.Caches()) // Terminator for children
+		err = stream.WriteObject(nil, writer) // Terminator for children
 		if err != nil {
 			return err
 		}

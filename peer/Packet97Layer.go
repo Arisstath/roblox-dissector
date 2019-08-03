@@ -113,7 +113,12 @@ func (thisStream *extendedReader) DecodePacket97Layer(reader PacketReader, layer
 			if err != nil {
 				return layer, err
 			}
-			thisProperty.TypeString = TypeNames[thisProperty.Type]
+			typeString, ok := TypeNames[thisProperty.Type]
+			if ok {
+				thisProperty.TypeString = typeString
+			} else {
+				thisProperty.TypeString = fmt.Sprintf("Unknown %d", thisProperty.Type)
+			}
 
 			if thisProperty.Type == 7 {
 				thisProperty.EnumID, err = stream.readUint16BE()

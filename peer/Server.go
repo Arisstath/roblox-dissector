@@ -97,12 +97,11 @@ func newServerClient(clientAddr *net.UDPAddr, server *CustomServer, context *Com
 
 	server.PlayerIndex++
 	newClient := &ServerClient{
-		PacketLogicHandler: newPacketLogicHandler(newContext, true),
+		PacketLogicHandler: newPacketLogicHandler(server.RunningContext, newContext, true),
 		Server:             server,
 		Address:            clientAddr,
 		Index:              server.PlayerIndex,
 	}
-	newClient.RunningContext = server.RunningContext
 
 	return newClient
 }

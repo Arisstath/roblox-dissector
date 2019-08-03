@@ -1,6 +1,10 @@
 package datamodel
 
-import "github.com/robloxapi/rbxfile"
+import (
+	"crypto/md5"
+
+	"github.com/robloxapi/rbxfile"
+)
 
 // RbxfileReferencePool holds a collection of visited instances
 // This prevents the conversion from creating a duplicate
@@ -105,6 +109,8 @@ func (instance *Instance) ToRbxfile(pool *RbxfileReferencePool) *rbxfile.Instanc
 			inst.Properties[name] = rbxfile.ValueReference{
 				Instance: pool.Make(value.(ValueReference).Instance),
 			}
+		case *ValueDeferredString:
+			inst.Properties[name] = value.(*ValueDeferredString).Value
 		case nil:
 			// Strip this property
 		default:
@@ -172,6 +178,14 @@ func InstanceFromRbxfile(inst *rbxfile.Instance, pool *SelfReferencePool, dictio
 			}
 
 			instance.Properties[name] = ValueColorSequence(newSeq)
+		case rbxfile.TypeSharedString:
+			newVal := &ValueDeferredString{
+				Value: value.(rbxfile.ValueSharedString),
+			}
+			sum := md5.Sum([]byte(newVal.Value))
+			newVal.Hash = string(sum[:])
+
+			instance.Properties[name] = newVal
 		}
 	}
 	instance.PropertiesMutex.Unlock()

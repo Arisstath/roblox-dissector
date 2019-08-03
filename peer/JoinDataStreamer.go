@@ -59,6 +59,8 @@ type JoinDataStreamer struct {
 	counter          *countWriter
 	rawLayer         *Packet83_0B
 	packetWriter     PacketWriter
+
+	deferredStringState writeDeferredStrings
 }
 
 // NewJoinDataStreamer returns a new JoinDataStreamer object
@@ -83,6 +85,8 @@ func (state *JoinDataStreamer) makeNewStream() *joinSerializeWriter {
 	writeMux := io.MultiWriter(state.compressor, state.counter)
 	state.writer = &joinSerializeWriter{&extendedWriter{writeMux}}
 
+	state.deferredStringState = newWriteDeferredStrings(state.packetWriter)
+
 	return state.writer
 }
 
@@ -94,7 +98,12 @@ func (state *JoinDataStreamer) Flush() error {
 		return nil
 	}
 
-	err := state.compressor.Close()
+	err := state.writer.resolveDeferredStrings(state.deferredStringState)
+	if err != nil {
+		return err
+	}
+
+	err = state.compressor.Close()
 	if err != nil {
 		return err
 	}
@@ -138,5 +147,5 @@ func (state *JoinDataStreamer) AddInstance(instance *ReplicationInstance) error 
 	state.rawLayer.Instances = append(state.rawLayer.Instances, instance)
 
 	// TODO: Caching?
-	return instance.Serialize(state.packetWriter, state.writer)
+	return instance.Serialize(state.packetWriter, state.writer, state.deferredStringState)
 }

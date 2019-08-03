@@ -11,6 +11,7 @@ import (
 	"net"
 
 	"github.com/DataDog/zstd"
+	"github.com/robloxapi/rbxfile"
 
 	"github.com/Gskartwii/roblox-dissector/datamodel"
 )
@@ -242,6 +243,14 @@ func (b *extendedWriter) writeJoinRef(ref datamodel.Reference, context *Communic
 	return b.writeUint32LE(ref.Id)
 }
 func (b *extendedWriter) writeJoinObject(object *datamodel.Instance, context *CommunicationContext) error {
+	if context.ServerPeerID != 0 {
+		if object == nil {
+			// Yes, I know it's equivalent to WriteByte(0)
+			// I think this is more clear though
+			return b.writeVarint64(0)
+		}
+		return b.writeRefPeerID(object.Ref, context)
+	}
 	if object == nil {
 		return b.WriteByte(0)
 	}
@@ -260,7 +269,15 @@ func (b *extendedWriter) writeRef(ref datamodel.Reference, caches *Caches) error
 }
 
 // TODO: Implement a similar system for readers, where it simply returns an instance
-func (b *extendedWriter) writeObject(object *datamodel.Instance, caches *Caches) error {
+func (b *extendedWriter) writeObject(object *datamodel.Instance, context *CommunicationContext, caches *Caches) error {
+	if context.ServerPeerID != 0 {
+		if object == nil {
+			// Yes, I know it's equivalent to WriteByte(0)
+			// I think this is more clear though
+			return b.writeVarint64(0)
+		}
+		return b.writeRefPeerID(object.Ref, context)
+	}
 	if object == nil {
 		return b.WriteByte(0)
 	}
@@ -270,7 +287,18 @@ func (b *extendedWriter) writeAnyObject(object *datamodel.Instance, writer Packe
 	if isJoinData {
 		return b.writeJoinObject(object, writer.Context())
 	}
-	return b.writeObject(object, writer.Caches())
+	return b.writeObject(object, writer.Context(), writer.Caches())
+}
+
+func (b *extendedWriter) writeRefPeerID(ref datamodel.Reference, context *CommunicationContext) error {
+	if ref.IsNull {
+		return b.writeVarint64(0)
+	}
+	err := b.writeVarint64(uint64(ref.PeerId))
+	if err != nil {
+		return err
+	}
+	return b.writeUint32LE(ref.Id)
 }
 
 type aesExtendedWriter struct {
@@ -409,4 +437,43 @@ func (b *extendedWriter) wrapZstd() *zstdExtendedWriter {
 		counter:          counter,
 		compressor:       compressor,
 	}
+}
+
+func newWriteDeferredStrings(writer PacketWriter) writeDeferredStrings {
+	return writeDeferredStrings{
+		m:                    make(map[string]rbxfile.ValueSharedString),
+		underlyingDictionary: writer.SharedStrings(),
+	}
+}
+
+func (m writeDeferredStrings) Defer(value *datamodel.ValueDeferredString) {
+	if _, ok := m.underlyingDictionary[value.Hash]; ok {
+		// already written
+		return
+	}
+	// if duplicated, overwritten -- doesn't matter
+	m.m[value.Hash] = value.Value
+}
+
+func (b *extendedWriter) resolveDeferredStrings(defers writeDeferredStrings) error {
+	var err error
+	for md5, value := range defers.m {
+		if len(md5) != 0x10 {
+			return errors.New("invalid md5")
+		}
+		err = b.writeASCII(md5)
+		if err != nil {
+			return err
+		}
+		err = b.WriteByte(0)
+		if err != nil {
+			return err
+		}
+		// TODO: Implement echo sending
+		err = b.allBytes(value)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

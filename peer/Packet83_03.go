@@ -23,7 +23,7 @@ func (thisStream *extendedReader) DecodePacket83_03(reader PacketReader, layers 
 	var err error
 	layer := &Packet83_03{}
 
-	reference, err := thisStream.readObject(reader.Caches())
+	reference, err := thisStream.ReadObject(reader)
 	if err != nil {
 		return layer, err
 	}
@@ -55,7 +55,7 @@ func (thisStream *extendedReader) DecodePacket83_03(reader PacketReader, layers 
 	context := reader.Context()
 	if int(propertyIDx) == int(len(context.NetworkSchema.Properties)) { // explicit Parent property system
 		var reference datamodel.Reference
-		reference, err = thisStream.readObject(reader.Caches())
+		reference, err = thisStream.ReadObject(reader)
 		if err != nil {
 			return layer, err
 		}
@@ -79,9 +79,18 @@ func (thisStream *extendedReader) DecodePacket83_03(reader PacketReader, layers 
 	schema := context.NetworkSchema.Properties[propertyIDx]
 	layer.Schema = schema
 
-	layer.Value, err = schema.Decode(reader, thisStream, layers)
+	deferred := newDeferredStrings(reader)
+	layer.Value, err = schema.Decode(reader, thisStream, layers, deferred)
+	if err != nil {
+		return layer, err
+	}
 
-	return layer, err
+	err = thisStream.resolveDeferredStrings(deferred)
+	if err != nil {
+		return layer, err
+	}
+
+	return layer, nil
 }
 
 // Serialize implements Packet83Subpacke.Serialize()
@@ -90,7 +99,7 @@ func (layer *Packet83_03) Serialize(writer PacketWriter, stream *extendedWriter)
 		return errors.New("self is nil in serialize repl prop")
 	}
 
-	err := stream.writeObject(layer.Instance, writer.Caches())
+	err := stream.WriteObject(layer.Instance, writer)
 	if err != nil {
 		return err
 	}
@@ -113,7 +122,7 @@ func (layer *Packet83_03) Serialize(writer PacketWriter, stream *extendedWriter)
 			}
 		}
 
-		return stream.writeObject(layer.Value.(datamodel.ValueReference).Instance, writer.Caches())
+		return stream.WriteObject(layer.Value.(datamodel.ValueReference).Instance, writer)
 	}
 
 	err = stream.writeUint16BE(layer.Schema.NetworkID)
@@ -133,8 +142,12 @@ func (layer *Packet83_03) Serialize(writer PacketWriter, stream *extendedWriter)
 	}
 
 	// TODO: A different system for this?
-	err = layer.Schema.Serialize(layer.Value, writer, stream)
-	return err
+	deferred := newWriteDeferredStrings(writer)
+	err = layer.Schema.Serialize(layer.Value, writer, stream, deferred)
+	if err != nil {
+		return err
+	}
+	return stream.resolveDeferredStrings(deferred)
 }
 
 // Type implements Packet83Subpacket.Type()

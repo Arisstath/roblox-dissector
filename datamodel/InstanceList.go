@@ -4,9 +4,9 @@ import (
 	"errors"
 )
 
+// TODO: Should work with PeerID
 type instanceScope struct {
-	Instances    map[uint32]*Instance
-	AddCallbacks map[uint32][]func(*Instance)
+	Instances map[uint32]*Instance
 }
 
 type InstanceList struct {
@@ -18,8 +18,7 @@ var ErrInstanceDoesntExist = errors.New("instance doesn't exist")
 
 func newInstanceScope() *instanceScope {
 	return &instanceScope{
-		Instances:    make(map[uint32]*Instance),
-		AddCallbacks: make(map[uint32][]func(*Instance)),
+		Instances: make(map[uint32]*Instance),
 	}
 }
 
@@ -65,25 +64,6 @@ func (l *InstanceList) TryGetInstance(ref Reference) (*Instance, error) {
 
 func (l *InstanceList) AddInstance(ref Reference, instance *Instance) {
 	l.getScope(ref).Instances[ref.Id] = instance
-	for _, callback := range l.getScope(ref).AddCallbacks[ref.Id] {
-		callback(instance)
-	}
-}
-
-func (l *InstanceList) OnAddInstance(ref Reference, callback func(*Instance)) error {
-	if ref.IsNull {
-		return ErrNullInstance
-	}
-
-	scope := l.getScope(ref)
-	instance := scope.Instances[ref.Id]
-	if instance == nil {
-		scope.AddCallbacks[ref.Id] = append(scope.AddCallbacks[ref.Id], callback)
-	} else {
-		callback(instance)
-	}
-
-	return nil
 }
 
 func (l *InstanceList) Populate(instances []*Instance) {

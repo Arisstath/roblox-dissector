@@ -5,6 +5,7 @@ import (
 	"math/rand"
 )
 
+// TODO: should work with PeerID
 type InstanceDictionary struct {
 	Scope         string
 	InstanceIndex uint32

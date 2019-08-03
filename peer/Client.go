@@ -180,13 +180,11 @@ func NewCustomClient(ctx context.Context) *CustomClient {
 		httpClient: &http.Client{},
 		GUID:       rand.Uint64(),
 
-		PacketLogicHandler: newPacketLogicHandler(context, false),
+		PacketLogicHandler: newPacketLogicHandler(ctx, context, false),
 		InstanceDictionary: datamodel.NewInstanceDictionary(),
 	}
 
-	client.RunningContext = ctx
 	client.createWriter()
-	client.bindDefaultHandlers()
 
 	return client
 }
@@ -481,30 +479,16 @@ func Win10Settings() SecurityHandler {
 	return settings
 }
 func (settings *windows10SecuritySettings) GenerateIDResponse(challenge uint32) uint32 {
-	return (^(challenge - 0x11429402)) - 0x54531E64
+	return 0x70D0B0BC - challenge
 }
 func (settings *windows10SecuritySettings) GenerateTicketHash(ticket string) uint32 {
-	var ecxHash uint32
 	initHash := xxHash32.Checksum([]byte(ticket), 1)
-	initHash += 0x557BB5D7
-	initHash = bits.RotateLeft32(initHash, 0x07)
-	initHash -= 0x557BB5D7
-	initHash *= 0x557BB5D7
-	initHash = bits.RotateLeft32(initHash, -0x0D)
-	ecxHash = 0x443921D5 - initHash
-	ecxHash ^= 0x443921D5
-	ecxHash = bits.RotateLeft32(ecxHash, -0x11)
-	ecxHash -= 0x664B2854
-	ecxHash = bits.RotateLeft32(ecxHash, 0x17)
-	initHash = ecxHash - 0x664B2854
-	initHash = bits.RotateLeft32(initHash, 0x1D)
-	initHash ^= 0x443921D5
-	//initHash = -initHash
+	result := -(bits.RotateLeft32(bits.RotateLeft32(bits.RotateLeft32((0x443921D5- bits.RotateLeft32(0x557BB5D7 * (bits.RotateLeft32(initHash + 0x557BB5D7, 7) - 0x557BB5D7), 0xD)) ^ 0x557BB5D7, 0x11)+ 0x664B2854,0x17) - 0x664B2854,-29) ^ 0x557BB5D7);
 
-	return initHash
+	return result
 }
 func (settings *windows10SecuritySettings) PatchTicketPacket(packet *Packet8ALayer) {
-	packet.SecurityKey = "2e427f51c4dab762fe9e3471c6cfa1650841723b!a9b2f6f09ef1deba1ee8515c17a29216\x0E"
+	packet.SecurityKey = "2e427f51c4dab762fe9e3471c6cfa1650841723b!b503184b1a41087f9124e287c1d1729b\x0E"
 	packet.GoldenHash = 0xC001CAFE
 	packet.DataModelHash = "ios,ios"
 	packet.Platform = settings.osPlatform
@@ -543,6 +527,10 @@ func (myClient *CustomClient) mainReadLoop() error {
 		// hence we don't need to select{} RunningContext.Done()
 		n, _, err := myClient.Connection.ReadFromUDP(buf)
 		if err != nil {
+			if !myClient.Connected {
+				myClient.Logger.Printf("connection closed, final error: %s", err)
+				return nil
+			}
 			myClient.Logger.Println("fatal read err:", err.Error(), "read", n, "bytes")
 			return err // a read error may be a sign that the connection was closed
 			// hence we can't run this loop anymore; we would get infinitely many errors
@@ -580,6 +568,7 @@ func (myClient *CustomClient) rakConnect() error {
 	}
 	myClient.Address = myClient.Connection.LocalAddr().(*net.UDPAddr)
 
+	myClient.bindDefaultHandlers()
 	myClient.dial()
 	myClient.startAcker()
 

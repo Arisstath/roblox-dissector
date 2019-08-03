@@ -25,28 +25,23 @@ func (thisStream *extendedReader) DecodePacket86Layer(reader PacketReader, layer
 	context := reader.Context()
 	for {
 		subpacket := &Packet86LayerSubpacket{}
-		reference, err := thisStream.readObject(reader.Caches())
-		// hopefully we don't need to check for CacheReadOOB here
+		reference, err := thisStream.ReadObject(reader)
 		if err != nil {
 			return layer, err
 		}
 		if reference.IsNull {
 			break
 		}
-		context.InstancesByReference.OnAddInstance(reference, func(inst *datamodel.Instance) {
-			subpacket.Instance1 = inst
-		})
+		subpacket.Instance1, _ = context.InstancesByReference.TryGetInstance(reference)
 
-		reference, err = thisStream.readObject(reader.Caches())
+		reference, err = thisStream.ReadObject(reader)
 		if err != nil {
 			return layer, err
 		}
 		if reference.IsNull {
 			return layer, errors.New("NULL second touch reference")
 		}
-		context.InstancesByReference.OnAddInstance(reference, func(inst *datamodel.Instance) {
-			subpacket.Instance2 = inst
-		})
+		subpacket.Instance2, _ = context.InstancesByReference.TryGetInstance(reference)
 
 		subpacket.IsTouch, err = thisStream.readBoolByte()
 		if err != nil {
@@ -67,11 +62,11 @@ func (layer *Packet86Layer) Serialize(writer PacketWriter, stream *extendedWrite
 			println("WARNING: 0x86 skipping serialize because instances don't exist yet!")
 			continue
 		}
-		err = stream.writeObject(subpacket.Instance1, writer.Caches())
+		err = stream.WriteObject(subpacket.Instance1, writer)
 		if err != nil {
 			return err
 		}
-		err = stream.writeObject(subpacket.Instance2, writer.Caches())
+		err = stream.WriteObject(subpacket.Instance2, writer)
 		if err != nil {
 			return err
 		}

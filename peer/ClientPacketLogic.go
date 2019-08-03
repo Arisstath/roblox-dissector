@@ -50,6 +50,7 @@ func (myClient *CustomClient) bindDefaultHandlers() {
 	pEmitter.On("ID_CONNECTION_ACCEPTED", myClient.packet10Handler, emitter.Void)
 	pEmitter.On("ID_DISCONNECTION_NOTIFICATION", myClient.disconnectionLogger, emitter.Void)
 	pEmitter.On("ID_SET_GLOBALS", myClient.topReplicationHandler, emitter.Void)
+	pEmitter.On("ID_MARKER", myClient.markerHandler, emitter.Void)
 
 	dataHandlers := myClient.DataEmitter
 	dataHandlers.On("ID_REPLIC_ROCKY", myClient.idChallengeHandler, emitter.Void)
@@ -72,7 +73,7 @@ func (myClient *CustomClient) sendResponse7() {
 		GUID:         myClient.GUID,
 		MTU:          1492,
 		IPAddress:    myClient.ServerAddress,
-		Capabilities: CapabilityAll,
+		Capabilities: CapabilityRoblox,
 	})
 }
 func (myClient *CustomClient) offline6Handler(e *emitter.Event) {
@@ -136,12 +137,11 @@ func (myClient *CustomClient) sendProtocolSync() {
 			"UseNativePathWaypoint",
 			"BodyColorsColor3PropertyReplicationEnabled",
 			"FixRaysInWedges",
-			"FixDictionaryScopePlatformsReplication",
 			"NewCharacterLoadingSignalOrdering",
-			"ReplicateInterpolateRelativeHumanoidPlatformsMotion",
 			"FixBallRaycasts",
 			"PgsForAll",
 			"TerrainRaycastsRespectCollisionGroups",
+			"NetworkUsePeerId",
 		},
 		JoinData: string(marshalledJoin),
 	}
@@ -197,6 +197,12 @@ func (myClient *CustomClient) packet10Handler(e *emitter.Event) {
 
 func (myClient *CustomClient) topReplicationHandler(e *emitter.Event) {
 	myClient.startDataPing()
+}
+
+func (myClient *CustomClient) markerHandler(e *emitter.Event) {
+	myClient.WriteDataPackets(&Packet83_04{
+		MarkerID: e.Args[0].(*Packet84Layer).MarkerID,
+	})
 }
 
 func (myClient *CustomClient) sendDataIDResponse(challengeInt uint32) {
