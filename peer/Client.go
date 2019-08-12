@@ -488,29 +488,16 @@ func Win10Settings(args ...string) SecurityHandler {
 	return settings
 }
 func (settings *windows10SecuritySettings) GenerateIDResponse(challenge uint32) uint32 {
-	return 0x42792968 - challenge
+	return 0x29E07F15 + challenge
 }
 func (settings *windows10SecuritySettings) GenerateTicketHash(ticket string) uint32 {
-	var ebxHash uint32
 	initHash := xxHash32.Checksum([]byte(ticket), 1)
-	initHash += 0x557BB5D7
-	initHash = bits.RotateLeft32(initHash, 7)
-	initHash -= 0x443921D5
-	initHash *= 0x557BB5D7
-	initHash = bits.RotateLeft32(initHash, -0xD)
-	ebxHash = 0x557BB5D7 - initHash
-	ebxHash ^= 0x557BB5D7
-	ebxHash = bits.RotateLeft32(ebxHash, -0x11)
-	ebxHash += 0x664B2854
-	ebxHash = bits.RotateLeft32(ebxHash, 0x17)
-	initHash = 0x99B4D7AC - ebxHash
-	initHash = bits.RotateLeft32(initHash, -0x1D)
-	initHash ^= 0x557BB5D7
-	
-	return initHash
+	result := bits.RotateLeft32(bits.RotateLeft32((0x443921D5 - bits.RotateLeft32(0x557BB5D7 * (bits.RotateLeft32(initHash + 0x557BB5D7, -7) - 0x557BB5D7), 0xD)) ^ 0x557BB5D7, 0x11) - 0x664B2854, 0x17);
+	result = bits.RotateLeft32(0x99B4D7AC - result, -0x1D) ^ 0x443921D5
+	return result
 }
 func (settings *windows10SecuritySettings) PatchTicketPacket(packet *Packet8ALayer) {
-	packet.SecurityKey = "2e427f51c4dab762fe9e3471c6cfa1650841723b!e4060dea1ecbcbfd53fd2aa3df599431\x0E"
+	packet.SecurityKey = "2e427f51c4dab762fe9e3471c6cfa1650841723b!dfe92b8fa7d12d6f3019765cbfc2946d\x0E"
 	packet.GoldenHash = 0xC001CAFE
 	packet.DataModelHash = "ios,ios"
 	packet.Platform = settings.osPlatform
@@ -518,11 +505,11 @@ func (settings *windows10SecuritySettings) PatchTicketPacket(packet *Packet8ALay
 }
 func (settings *windows10SecuritySettings) VersionID() [5]int32 {
 	return [5]int32{
-		-0x20ACE11C,
-		0x59FDCB06,
-		-0x6BD534F3,
-		0x5CBF50C8,
-		0x316487B1,
+		-0x40CF5821,
+		-0x3DE62E17,
+		-0x6B89D2D5,
+		0x47B80C0A,
+		-0xBA8B49,
 	}
 }
 
