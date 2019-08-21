@@ -491,7 +491,7 @@ func Win10Settings(args ...string) SecurityHandler {
 	return settings
 }
 func (settings *windows10SecuritySettings) GenerateIDResponse(challenge uint32) uint32 {
-	return 0x42792968 - challenge
+	return 0x29E07F15 + challenge
 }
 
 func (settings *windows10SecuritySettings) GenerateLuauResponse(ticket string) uint32 {
@@ -520,7 +520,7 @@ func (settings *windows10SecuritySettings) GenerateTicketHash(ticket string) uin
 	return result
 }
 func (settings *windows10SecuritySettings) PatchTicketPacket(packet *Packet8ALayer) {
-	packet.SecurityKey = "2e427f51c4dab762fe9e3471c6cfa1650841723b!7fa0b303dcba3f6bc22bd2e78bc8cd1e\x0E"
+	packet.SecurityKey = "2e427f51c4dab762fe9e3471c6cfa1650841723b!dfe92b8fa7d12d6f3019765cbfc2946d\x0E"
 	packet.GoldenHash = 0xC001CAFE
 	packet.DataModelHash = "ios,ios"
 	packet.Platform = settings.osPlatform
@@ -529,11 +529,11 @@ func (settings *windows10SecuritySettings) PatchTicketPacket(packet *Packet8ALay
 }
 func (settings *windows10SecuritySettings) VersionID() [5]int32 {
 	return [5]int32{
-		-0x743D2381,
-		-0x37D44560,
-		-0x322DC04D,
-		0x73F6F7E3,
-		-0x6E10C1CF,
+		-0x40CF5821,
+		-0x3DE62E17,
+		-0x6B89D2D5,
+		0x47B80C0A,
+		-0xBA8B49,
 	}
 }
 
