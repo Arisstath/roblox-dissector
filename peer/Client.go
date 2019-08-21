@@ -79,6 +79,9 @@ type SecurityHandler interface {
 	// GenerateTicketHash should implement the hashing algorithm
 	// used for auth ticket hashes in Packet8ALayer
 	GenerateTicketHash(ticket string) uint32
+	// GenerateLuauResponse should implement the Luau calback based
+	// hashing algorithm used in Packet8ALayer
+	GenerateLuauResponse(ticket string) uint32
 	// OSPlatform should return a string recognized by Roblox
 	// that names the Roblox client platform (Win32, Windows_Universal, Android, etc.)
 	OSPlatform() string
@@ -490,22 +493,29 @@ func Win10Settings(args ...string) SecurityHandler {
 func (settings *windows10SecuritySettings) GenerateIDResponse(challenge uint32) uint32 {
 	return 0x42792968 - challenge
 }
+
+func (settings *windows10SecuritySettings) GenerateLuauResponse(ticket string) uint32 {
+	simpleHash := xxHash32.Checksum([]byte(ticket), 1)
+	shuffledHash := settings.GenerateTicketHash(ticket)
+
+	return uint32(ResolveLuaChallenge(int32(shuffledHash), int32(simpleHash)))
+}
 func (settings *windows10SecuritySettings) GenerateTicketHash(ticket string) uint32 {
 	initHash := xxHash32.Checksum([]byte(ticket), 1)
-	result := -(bits.RotateLeft32(0x99B4D7AC-
+	result := -(bits.RotateLeft32(0x11429402-
 		bits.RotateLeft32(
 			bits.RotateLeft32(
 				(0x557BB5D7-
 					bits.RotateLeft32(
 						0x443921D5*(bits.RotateLeft32(
 							initHash+0x557BB5D7,
-							-7)-
-							0x443921D5),
+							7)-
+							0x557BB5D7),
 						0xD))^0x443921D5,
-				-0x11)+0x664B2854,
+				-0x11)-0x664B2854,
 			-0x17),
 		-0x1D) ^
-		0x443921D5)
+		0x557BB5D7)
 
 	return result
 }
@@ -515,6 +525,7 @@ func (settings *windows10SecuritySettings) PatchTicketPacket(packet *Packet8ALay
 	packet.DataModelHash = "ios,ios"
 	packet.Platform = settings.osPlatform
 	packet.TicketHash = settings.GenerateTicketHash(packet.ClientTicket)
+	packet.LuauResponse = settings.GenerateLuauResponse(packet.ClientTicket)
 }
 func (settings *windows10SecuritySettings) VersionID() [5]int32 {
 	return [5]int32{

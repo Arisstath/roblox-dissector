@@ -9,6 +9,7 @@ type Packet8ALayer struct {
 	PlayerID      int64
 	ClientTicket  string
 	TicketHash    uint32
+	LuauResponse  uint32
 	DataModelHash string
 	// Always 36?
 	ProtocolVersion   uint32
@@ -23,6 +24,8 @@ func (stream *extendedReader) DecodePacket8ALayer(reader PacketReader, layers *P
 	layer := &Packet8ALayer{}
 
 	lenBytes := bitsToBytes(uint(layers.Reliability.LengthInBits)) - 1 // -1 for packet id
+	key := reader.Context().GenerateSubmitTicketKey()
+	layers.Root.Logger.Println("using ticket key", string(key[:]))
 	thisStream, err := stream.aesDecrypt(int(lenBytes), reader.Context().GenerateSubmitTicketKey())
 	if err != nil {
 		return layer, err
@@ -75,8 +78,15 @@ func (stream *extendedReader) DecodePacket8ALayer(reader PacketReader, layers *P
 		if err != nil {
 			return layer, err
 		}
+		hash3, err := thisStream.readSintUTF8()
+		if err != nil {
+			return layer, err
+		}
+		layer.LuauResponse = uint32(hash3)
+
 		layers.Root.Logger.Println("hash2", hash2, "badfood check success: ", hash2 == layer.TicketHash-0xbadf00d)
 		layers.Root.Logger.Println("win10 check: ", hash == Win10Settings().GenerateTicketHash(layer.ClientTicket))
+		layers.Root.Logger.Println("win10 check luau: ", hash3 == int32(Win10Settings().GenerateLuauResponse(layer.ClientTicket)))
 	}
 
 	layer.SessionID, err = thisStream.readVarLengthString()
@@ -135,6 +145,7 @@ func (layer *Packet8ALayer) Serialize(writer PacketWriter, stream *extendedWrite
 		if err != nil {
 			return err
 		}
+		err = rawStream.writeVarint64(uint64(layer.LuauResponse))
 	}
 	err = rawStream.writeVarLengthString(layer.SessionID)
 	if err != nil {

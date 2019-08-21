@@ -10,6 +10,7 @@ func ShowPacket8A(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 	// We use QTextEdits here so that the data can be easily copied
 	layerLayout.AddWidget(widgets.NewQTextEdit2(fmt.Sprintf("Player Id: %d", MainLayer.PlayerID), nil), 0, 0)
 	layerLayout.AddWidget(widgets.NewQTextEdit2(fmt.Sprintf("Client ticket: %s", MainLayer.ClientTicket), nil), 0, 0)
+	layerLayout.AddWidget(widgets.NewQTextEdit2(fmt.Sprintf("Luau hash: %08X", MainLayer.LuauResponse), nil), 0, 0)
 	layerLayout.AddWidget(widgets.NewQTextEdit2(fmt.Sprintf("Data model hash: %s", MainLayer.DataModelHash), nil), 0, 0)
 	layerLayout.AddWidget(widgets.NewQTextEdit2(fmt.Sprintf("Protocol version: %d", MainLayer.ProtocolVersion), nil), 0, 0)
 	layerLayout.AddWidget(widgets.NewQTextEdit2(fmt.Sprintf("Security key: %s", MainLayer.SecurityKey), nil), 0, 0)
