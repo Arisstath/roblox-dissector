@@ -293,6 +293,9 @@ func (b *extendedWriter) writeVarint64(value uint64) error {
 func (b *extendedWriter) writeVarsint64(val int64) error {
 	return b.writeVarint64(uint64(val)<<1 ^ -(uint64(val) >> 63))
 }
+func (b *extendedWriter) writeVarsint32(val int32) error {
+	return b.writeVarint64(uint64(uint32(val)<<1^-(uint32(val)>>31)) & 0xFFFFFFFF)
+}
 
 var typeToNetworkConvTable = map[rbxfile.Type]uint8{
 	rbxfile.TypeString:                   PropertyTypeString,

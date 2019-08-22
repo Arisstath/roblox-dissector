@@ -145,7 +145,10 @@ func (layer *Packet8ALayer) Serialize(writer PacketWriter, stream *extendedWrite
 		if err != nil {
 			return err
 		}
-		err = rawStream.writeVarint64(uint64(layer.LuauResponse))
+		err = rawStream.writeVarsint32(int32(layer.LuauResponse))
+		if err != nil {
+			return err
+		}
 	}
 	err = rawStream.writeVarLengthString(layer.SessionID)
 	if err != nil {
