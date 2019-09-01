@@ -26,7 +26,7 @@ func (b *extendedReader) readUDim() (rbxfile.ValueUDim, error) {
 		return val, err
 	}
 	off, err := b.readUint32BE()
-	val.Offset = int16(off)
+	val.Offset = int32(off)
 	return val, err
 }
 
@@ -38,7 +38,7 @@ func (b *extendedReader) readUDim2() (rbxfile.ValueUDim2, error) {
 		return val, err
 	}
 	offx, err := b.readUint32BE()
-	val.X.Offset = int16(offx)
+	val.X.Offset = int32(offx)
 	if err != nil {
 		return val, err
 	}
@@ -47,7 +47,7 @@ func (b *extendedReader) readUDim2() (rbxfile.ValueUDim2, error) {
 		return val, err
 	}
 	offy, err := b.readUint32BE()
-	val.Y.Offset = int16(offy)
+	val.Y.Offset = int32(offy)
 	return val, err
 }
 
