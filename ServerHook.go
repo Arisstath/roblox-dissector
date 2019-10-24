@@ -5,22 +5,6 @@ import (
 	"github.com/olebedev/emitter"
 )
 
-func (captureContext *CaptureContext) HookClient(client *peer.CustomClient) {
-	conversation := NewProviderConversation(client.DefaultPacketWriter, client.DefaultPacketReader)
-	// The client address assigned here may be wrong. It doesn't really matter
-	conversation.ClientAddress = client.Address
-	conversation.ServerAddress = client.ServerAddress
-	conversation.Context = client.Context
-
-	captureContext.AddConversation(conversation)
-}
-
-func (session *CaptureSession) CaptureFromClient(client *peer.CustomClient, placeID int64, authTicket string) {
-	session.CaptureContext.HookClient(client)
-
-	client.ConnectWithAuthTicket(placeID, authTicket)
-}
-
 func (captureContext *CaptureContext) HookServer(server *peer.CustomServer) {
 	server.ClientEmitter.On("client", func(e *emitter.Event) {
 		client := e.Args[0].(*peer.ServerClient)

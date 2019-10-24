@@ -135,12 +135,7 @@ func GUIMain() {
 	window := NewDissectorWindow(nil, 0)
 	window.ShowMaximized()
 
-	joinFlag := flag.String("join", "", "roblox-dissector:<authTicket>:<placeID>:<browserTrackerID>")
 	flag.Parse()
-	if *joinFlag != "" {
-		println("Received protocol invocation?")
-		window.StartClient(*joinFlag)
-	}
 	openFile := flag.Arg(0)
 	// React to command line arg
 	if openFile != "" {

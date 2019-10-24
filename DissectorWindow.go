@@ -1,13 +1,11 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"math/rand"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"time"
 
@@ -162,27 +160,6 @@ func (window *DissectorWindow) CaptureFromLive(itfName string, promisc bool) {
 	}()
 }
 
-func (window *DissectorWindow) startClientWithArgs(placeID int64, browserTrackerId uint64, authTicket string) {
-	ctx, cancelFunc := context.WithCancel(context.Background())
-
-	customClient := peer.NewCustomClient(ctx)
-	customClient.SecuritySettings = peer.Win10Settings()
-	customClient.BrowserTrackerID = uint64(browserTrackerId)
-	// No more guests! Roblox won't let us connect as one.
-
-	nameBase := fmt.Sprintf("<CLIENT>:%d", placeID)
-	session := NewCaptureSession(nameBase, window)
-	session.SetModel = true
-	window.Sessions = append(window.Sessions, session)
-	index := window.TabWidget.AddTab(session.PacketListViewers[0], fmt.Sprintf("Conversation: %s#1", nameBase))
-	window.TabWidget.SetCurrentIndex(index)
-
-	console := NewClientConsole(window, customClient, 1, ctx, cancelFunc)
-	console.SetWindowTitle("Custom client console")
-	console.Show()
-	go session.CaptureFromClient(customClient, placeID, authTicket)
-}
-
 func (window *DissectorWindow) CaptureFromInjectionProxy(src string, dst string) {
 	/*go func() {
 		err := captureFromInjectionProxy(context.TODO(), src, dst, window)
@@ -313,20 +290,6 @@ func (window *DissectorWindow) TabSelected(index int) {
 	window.SessionSelected(window.CurrentSession, window.CurrentPacketListViewer, window.CurrentHTTPViewer)
 }
 
-func (window *DissectorWindow) StartClient(uri string) {
-	protocolRegex := regexp.MustCompile(`roblox-dissector:([0-9A-Fa-f]+):(\d+):(\d+)`)
-	parts := protocolRegex.FindStringSubmatch(uri)
-	if len(parts) < 4 {
-		widgets.QMessageBox_Critical(window, "Invalid protocol invocation", "Invalid protocol invocation: "+uri, widgets.QMessageBox__Ok, widgets.QMessageBox__NoButton)
-	} else {
-		authTicket := parts[1]
-		placeID, _ := strconv.Atoi(parts[2])
-		browserTrackerId, _ := strconv.Atoi(parts[3])
-
-		window.startClientWithArgs(int64(placeID), uint64(browserTrackerId), authTicket)
-	}
-}
-
 func NewDissectorWindow(parent widgets.QWidget_ITF, flags core.Qt__WindowType) *DissectorWindow {
 	window := &DissectorWindow{
 		QMainWindow: widgets.NewQMainWindow(parent, flags),
@@ -348,7 +311,6 @@ func NewDissectorWindow(parent widgets.QWidget_ITF, flags core.Qt__WindowType) *
 	captureDivertAction := captureBar.AddAction("From &WinDivert proxy...")
 
 	peersBar := window.MenuBar().AddMenu2("&Peers")
-	startClientAction := peersBar.AddAction("Start &client...")
 	startServerAction := peersBar.AddAction("Start &server...")
 
 	helpBar := window.MenuBar().AddMenu2("&Help")
@@ -404,9 +366,6 @@ WinDivert enabled: %v
 		}
 	})
 
-	startClientAction.ConnectTriggered(func(checked bool) {
-		NewClientStartWidget(window, window.StartClient)
-	})
 	startServerAction.ConnectTriggered(func(checked bool) {
 		NewServerStartWidget(window, window.ServerSettings, func(settings *ServerSettings) {
 			port, _ := strconv.Atoi(settings.Port)
