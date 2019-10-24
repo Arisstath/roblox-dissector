@@ -502,25 +502,11 @@ func (settings *windows10SecuritySettings) GenerateLuauResponse(ticket string) u
 }
 func (settings *windows10SecuritySettings) GenerateTicketHash(ticket string) uint32 {
 	initHash := xxHash32.Checksum([]byte(ticket), 1)
-	result := -(bits.RotateLeft32(0x11429402-
-		bits.RotateLeft32(
-			bits.RotateLeft32(
-				(0x557BB5D7-
-					bits.RotateLeft32(
-						0x443921D5*(bits.RotateLeft32(
-							initHash+0x557BB5D7,
-							7)-
-							0x557BB5D7),
-						0xD))^0x443921D5,
-				-0x11)-0x664B2854,
-			-0x17),
-		-0x1D) ^
-		0x557BB5D7)
-
+	result := -(bits.RotateLeft32(0x11429402- bits.RotateLeft32(bits.RotateLeft32((0x557BB5D7 - bits.RotateLeft32(0x557BB5D7 * (bits.RotateLeft32(initHash + 0x557BB5D7, -7) - 0x443921D5), -0xD)) ^ 0x557BB5D7, -17)- 0x664B2854, 0x17),-0x1D) ^ 0x443921D5);
 	return result
 }
 func (settings *windows10SecuritySettings) PatchTicketPacket(packet *Packet8ALayer) {
-	packet.SecurityKey = "2e427f51c4dab762fe9e3471c6cfa1650841723b!0edf5437b20b9540b729686fb8507865\x1E"
+	packet.SecurityKey = "2e427f51c4dab762fe9e3471c6cfa1650841723b!d1caf34d619f3bc73e0841daeb75c925\x1E"
 	packet.GoldenHash = 0xC001CAFE
 	packet.DataModelHash = "ios,ios"
 	packet.Platform = settings.osPlatform
@@ -529,11 +515,11 @@ func (settings *windows10SecuritySettings) PatchTicketPacket(packet *Packet8ALay
 }
 func (settings *windows10SecuritySettings) VersionID() [5]int32 {
 	return [5]int32{
-		-0x47484DF2,
-		+0x50290BDF,
-		+0x78689554,
-		-0x31307C53,
-		+0x00023F79,
+		-0x14C19E2F,
+		+0x75089FCA,
+		-0x36BEC40D,
+		+0x2501A2F1,
+		+0x7EEA9B30,
 	}
 }
 
