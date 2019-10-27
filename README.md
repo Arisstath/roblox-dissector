@@ -4,7 +4,7 @@
 [![Build Status](https://travis-ci.org/Gskartwii/roblox-dissector.svg?branch=master)](https://travis-ci.org/Gskartwii/roblox-dissector)
 [![Documentation](https://godoc.org/github.com/Gskartwii/roblox-dissector?status.svg)](https://godoc.org/github.com/Gskartwii/roblox-dissector)
 [![Go Report](https://goreportcard.com/badge/github.com/Gskartwii/roblox-dissector)](https://goreportcard.com/report/github.com/Gskartwii/roblox-dissector)
-[![Release v0.7.2beta](https://img.shields.io/badge/release-v0.7.2beta-blue.svg)](https://github.com/Gskartwii/roblox-dissector/releases)
+[![Release v0.7.3beta](https://img.shields.io/badge/release-v0.7.3beta-blue.svg)](https://github.com/Gskartwii/roblox-dissector/releases)
 
 [Discord Chat](https://discord.gg/zPbprKb)
 
@@ -37,9 +37,6 @@ If you have the right setup, you can also pass build tags to deploy. Use `-tags=
 * Capture packets on the fly
 * View multiple capture sessions at a time
 * Decode/encode most\* Roblox packets
-* Custom Roblox client (experimental)
-    - Bot that can follow players around the game
-    - Send and receive chat messages
 * Dump DataModels based on capture (with some limitations)
     - Only replicated instances can be dumped
     - Locally available scripts are dumped as *.rbxc files. You need a script decompiler to view them.
@@ -55,7 +52,6 @@ Packets for which encoding is not supported: memcheck hash packets
 * Possibly ID_ROCKY and memcheck hash support
 * Create and save PCAP files
 * Support platforms other than Windows
-* Automatically update security settings for client
 * Custom Roblox server
 
 ## Screenshots
