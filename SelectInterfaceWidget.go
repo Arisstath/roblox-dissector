@@ -9,7 +9,7 @@ import (
 	"github.com/therecipe/qt/widgets"
 )
 
-func NewSelectInterfaceWidget(parent widgets.QWidget_ITF, callback func(string, bool)) {
+func NewSelectInterfaceWidget(parent widgets.QWidget_ITF, callback func(string, bool)) error {
 	window := widgets.NewQWidget(parent, core.Qt__Window)
 	window.SetWindowTitle("Choose network interface")
 
@@ -28,8 +28,7 @@ func NewSelectInterfaceWidget(parent widgets.QWidget_ITF, callback func(string, 
 
 	devs, err := pcap.FindAllDevs()
 	if err != nil {
-		println("trying to get devs: " + err.Error())
-		return
+		return err
 	}
 
 	for _, dev := range devs {
@@ -68,4 +67,6 @@ func NewSelectInterfaceWidget(parent widgets.QWidget_ITF, callback func(string, 
 
 	window.SetLayout(layout)
 	window.Show()
+
+	return nil
 }
