@@ -210,6 +210,30 @@ func (b *extendedWriter) writeVarLengthString(val string) error {
 	return b.writeASCII(val)
 }
 
+func (b *extendedWriter) writeLuauProtectedStringRaw(val rbxfile.ValueProtectedString) error {
+	err := b.writeUintUTF8(uint32(len(val)))
+	if err != nil {
+		return err
+	}
+	err = b.allBytes([]byte(val))
+	if err != nil {
+		return err
+	}
+	err = b.writeUintUTF8(0x1C)
+	if err != nil {
+		return err
+	}
+	// TODO: Writes a zero signature for now
+	return b.allBytes(make([]byte, 0x1C))
+}
+
+func (b *joinSerializeWriter) writeLuauProtectedString(val rbxfile.ValueProtectedString) error {
+	return b.writeLuauProtectedStringRaw(val)
+}
+func (b *extendedWriter) writeLuauProtectedString(val rbxfile.ValueProtectedString, caches *Caches) error {
+	return b.writeLuauCachedProtectedString([]byte(val), caches)
+}
+
 func (b *extendedWriter) writeNewPString(val rbxfile.ValueString, caches *Caches) error {
 	return b.writeCached(string(val), caches)
 }

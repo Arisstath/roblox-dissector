@@ -213,6 +213,14 @@ func (b *extendedWriter) writeNewCachedProtectedString(val []byte, caches *Cache
 		return b.allBytes(val.([]byte))
 	})
 }
+func (b *extendedWriter) writeLuauCachedProtectedString(val []byte, caches *Caches) error {
+	cache := &caches.ProtectedString
+
+	return b.writeWithCache(val, cache, func(b *extendedWriter, val interface{}) error {
+		str := val.([]byte)
+		return b.writeLuauProtectedStringRaw(rbxfile.ValueProtectedString(str))
+	})
+}
 func (b *extendedWriter) writeCachedSystemAddress(val datamodel.ValueSystemAddress, caches *Caches) error {
 	cache := &caches.SystemAddress
 

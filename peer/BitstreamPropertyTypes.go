@@ -520,6 +520,30 @@ func (b *extendedReader) readVarLengthString() (string, error) {
 	return b.readASCII(int(stringLen))
 }
 
+func (b *extendedReader) readLuauProtectedStringRaw() (rbxfile.ValueProtectedString, error) {
+	stringLen, err := b.readUintUTF8()
+	if err != nil {
+		return rbxfile.ValueProtectedString(nil), err
+	}
+
+	val, err := b.readString(int(stringLen))
+	if err != nil {
+		return rbxfile.ValueProtectedString(nil), err
+	}
+
+	extraBytesLen, err := b.readUintUTF8()
+	if err != nil {
+		return rbxfile.ValueProtectedString(nil), err
+	}
+	extraBytes, err := b.readString(int(extraBytesLen))
+	if err != nil {
+		return rbxfile.ValueProtectedString(nil), err
+	}
+	fmt.Printf("extrabytes: %X\n", extraBytes)
+
+	return rbxfile.ValueProtectedString(val), nil
+}
+
 func (b *joinSerializeReader) readNewPString() (rbxfile.ValueString, error) {
 	val, err := b.readVarLengthString()
 	return rbxfile.ValueString(val), err
@@ -535,6 +559,14 @@ func (b *joinSerializeReader) readNewProtectedString() (rbxfile.ValueProtectedSt
 }
 func (b *extendedReader) readNewProtectedString(caches *Caches) (rbxfile.ValueProtectedString, error) {
 	res, err := b.readNewCachedProtectedString(caches)
+	return rbxfile.ValueProtectedString(res), err
+}
+
+func (b *joinSerializeReader) readLuauProtectedString() (rbxfile.ValueProtectedString, error) {
+	return b.readLuauProtectedStringRaw()
+}
+func (b *extendedReader) readLuauProtectedString(caches *Caches) (rbxfile.ValueProtectedString, error) {
+	res, err := b.readLuauCachedProtectedString(caches)
 	return rbxfile.ValueProtectedString(res), err
 }
 

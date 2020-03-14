@@ -380,6 +380,18 @@ func (b *extendedReader) readNewCachedProtectedString(caches *Caches) ([]byte, e
 	return thisString.([]byte), err
 }
 
+func (b *extendedReader) readLuauCachedProtectedString(caches *Caches) ([]byte, error) {
+	cache := &caches.ProtectedString
+	thisString, err := b.readWithCache(cache, func(b *extendedReader) (interface{}, error) {
+		str, err := b.readLuauProtectedStringRaw()
+		return []byte(str), err
+	})
+	if _, ok := thisString.(string); ok {
+		return nil, err
+	}
+	return thisString.([]byte), err
+}
+
 func shuffleSlice(src []byte) []byte {
 	ShuffledSrc := make([]byte, 0, len(src))
 	ShuffledSrc = append(ShuffledSrc, src[:0x10]...)

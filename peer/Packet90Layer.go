@@ -16,6 +16,7 @@ type Packet90Layer struct {
 	Int2           uint8
 	RequestedFlags []string
 	JoinData       string
+	PubKeyData     []byte
 	VersionID      Packet90VersionID
 }
 
@@ -60,6 +61,11 @@ func (stream *extendedReader) DecodePacket90Layer(reader PacketReader, layers *P
 	placeIDRegex := regexp.MustCompile(`placeId=(\d+)`)
 	placeID, _ := strconv.Atoi(placeIDRegex.FindStringSubmatch(layer.JoinData)[1])
 	reader.Context().PlaceID = int64(placeID)
+
+	layer.PubKeyData, err = thisStream.readString(32)
+	if err != nil {
+		return layer, err
+	}
 
 	id, err := thisStream.readUint32BE()
 	layer.VersionID[0] = int32(id)
@@ -143,6 +149,11 @@ func (layer *Packet90Layer) Serialize(writer PacketWriter, stream *extendedWrite
 		}
 	}
 	err = rawStream.writeVarLengthString(layer.JoinData)
+	if err != nil {
+		return err
+	}
+
+	err = rawStream.allBytes(layer.PubKeyData)
 	if err != nil {
 		return err
 	}

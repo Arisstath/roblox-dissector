@@ -32,5 +32,6 @@ func ShowPacket90(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 	layerLayout.AddWidget(requestList, 0, 0)
 
 	layerLayout.AddWidget(widgets.NewQTextEdit2(fmt.Sprintf("Join data: %s", MainLayer.JoinData), nil), 0, 0)
+	layerLayout.AddWidget(widgets.NewQTextEdit2(fmt.Sprintf("Pubkey data: %X", MainLayer.PubKeyData), nil), 0, 0)
 	layerLayout.AddWidget(widgets.NewQTextEdit2(fmt.Sprintf("Version ID: %X", MainLayer.VersionID[:]), nil), 0, 0)
 }
