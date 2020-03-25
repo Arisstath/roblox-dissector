@@ -756,7 +756,7 @@ func (b *extendedWriter) writePhysicsCoords(val rbxfile.ValueVector3) error {
 	if val.Y/scale > -1.0 {
 		yScale = val.Y / scale
 	}
-	if val.Y/scale > -1.0 {
+	if val.Z/scale > -1.0 {
 		zScale = val.Z / scale
 	}
 
