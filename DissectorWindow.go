@@ -365,7 +365,7 @@ WinDivert enabled: %v
 		if WinDivertEnabled {
 			NewPlayerProxyWidget(window, window.PlayerProxySettings, window.CaptureFromDivertProxy)
 		} else {
-			window.ShowCaptureError(errors.New("WinDivert disabled at build time"))
+			window.ShowCaptureError(errors.New("WinDivert disabled at build time for now, sorry!"))
 		}
 	})
 
