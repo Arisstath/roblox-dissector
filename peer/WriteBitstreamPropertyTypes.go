@@ -262,7 +262,22 @@ func (b *joinSerializeWriter) writeNewContent(val rbxfile.ValueContent) error {
 }
 
 func (b *extendedWriter) writeCFrameSimple(val rbxfile.ValueCFrame) error {
-	return errors.New("simple CFrame not implemented")
+	err := b.writeVector3Simple(val.Position)
+	if err != nil {
+		return err
+	}
+	err = b.writeBoolByte(false) // Not going to bother with lookup stuff
+	if err != nil {
+		return err
+	}
+
+	for i := 0; i < 9; i++ {
+		err = b.writeFloat32BE(val.Rotation[i])
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func rotMatrixToQuaternion(r [9]float32) [4]float32 {

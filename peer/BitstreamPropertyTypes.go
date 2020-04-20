@@ -277,7 +277,37 @@ func (b *extendedReader) readObject(context *CommunicationContext, caches *Cache
 }
 
 func (b *extendedReader) readCFrameSimple() (rbxfile.ValueCFrame, error) {
-	return rbxfile.ValueCFrame{}, errors.New("simple CFrame not implemented") // nop for now, since nothing uses this
+	var err error
+	val := rbxfile.ValueCFrame{}
+	val.Position, err = b.readVector3Simple()
+	if err != nil {
+		return val, err
+	}
+
+	// FIXME: There's something wrong with CFrame parsing? Or maybe writing them?
+	special, err := b.readUint8()
+	if err != nil {
+		return val, err
+	}
+	if special > 0 {
+		if err != nil {
+			return val, err
+		}
+		if special > 36 {
+			println("oob, special", special)
+			return val, errors.New("special rotmatrix oob")
+		}
+		val.Rotation = lookupRotMatrix(uint64(special - 1))
+	} else {
+		for i := 0; i < 9; i++ {
+			val.Rotation[i], err = b.readFloat32BE()
+			if err != nil {
+				return val, err
+			}
+		}
+	}
+
+	return val, nil
 }
 
 func quaternionToRotMatrix(q [4]float32) [9]float32 {
