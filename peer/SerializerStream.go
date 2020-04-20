@@ -21,6 +21,7 @@ type serializeReader interface {
 type instanceReader interface {
 	serializeReader
 	ReadProperties(schema []*NetworkPropertySchema, properties map[string]rbxfile.Value, reader PacketReader, deferred deferredStrings) error
+	resolveDeferredStrings(deferred deferredStrings) error
 }
 
 type serializeWriter interface {
@@ -34,6 +35,7 @@ type serializeWriter interface {
 type instanceWriter interface {
 	serializeWriter
 	WriteProperties(schema []*NetworkPropertySchema, properties map[string]rbxfile.Value, writer PacketWriter, deferred writeDeferredStrings) error
+	resolveDeferredStrings(deferred writeDeferredStrings) error
 }
 
 func (b *extendedReader) ReadSerializedValue(reader PacketReader, valueType uint8, enumID uint16, deferred deferredStrings) (rbxfile.Value, error) {

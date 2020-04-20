@@ -36,7 +36,7 @@ func (thisStream *extendedReader) DecodePacket83_0B(reader PacketReader, layers 
 	deferred := newDeferredStrings(reader)
 	var i uint32
 	for i = 0; i < arrayLen; i++ {
-		layer.Instances[i], err = decodeReplicationInstance(reader, &joinSerializeReader{zstdStream}, layers, deferred)
+		layer.Instances[i], err = decodeReplicationInstance(reader, &joinSerializeReader{zstdStream}, layers, deferred, false)
 		if err != nil {
 			return layer, err
 		}
@@ -63,7 +63,7 @@ func (layer *Packet83_0B) Serialize(writer PacketWriter, stream *extendedWriter)
 	for i := 0; i < len(layer.Instances); i++ {
 		// It is safe to take .extendedWriter here
 		// because the .extendedWriter will write to the compression/counter writemux
-		err = layer.Instances[i].Serialize(writer, &joinSerializeWriter{zstdStream.extendedWriter}, deferred)
+		err = layer.Instances[i].Serialize(writer, &joinSerializeWriter{zstdStream.extendedWriter}, deferred, false)
 		if err != nil {
 			zstdStream.Close()
 			return err
