@@ -422,6 +422,9 @@ func (b *extendedReader) aesDecrypt(lenBytes int, key [0x10]byte) (*extendedRead
 	if err != nil {
 		return nil, err
 	}
+	if len(data) < 0x10 || len(data) % 0x10 != 0 {
+		return nil, errors.New("not an AES block")
+	}
 	block, err := aes.NewCipher(key[:])
 	if err != nil {
 		return nil, err

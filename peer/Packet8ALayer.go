@@ -23,7 +23,7 @@ type Packet8ALayer struct {
 func (stream *extendedReader) DecodePacket8ALayer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := &Packet8ALayer{}
 
-	lenBytes := bitsToBytes(uint(layers.Reliability.LengthInBits)) - 1 // -1 for packet id
+	lenBytes := uint(layers.SplitPacket.RealLength) - 1 // -1 for packet id
 	key := reader.Context().GenerateSubmitTicketKey()
 	layers.Root.Logger.Println("using ticket key", string(key[:]))
 	thisStream, err := stream.aesDecrypt(int(lenBytes), reader.Context().GenerateSubmitTicketKey())
