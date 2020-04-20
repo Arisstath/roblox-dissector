@@ -334,7 +334,7 @@ func NewDissectorWindow(parent widgets.QWidget_ITF, flags core.Qt__WindowType) *
 	})
 	helpBar.AddAction("&About Sala...").ConnectTriggered(func(_ bool) {
 		widgets.QMessageBox_About(window, "About Sala", fmt.Sprintf(`
-<h1>Sala version 0.7.4 [beta]</h1>
+<h1>Sala version 0.7.5 [beta]</h1>
 <h2>The Essential Roblox Network Suite</h2>
 Codename “Maailman salaisuudet”<br>
 Previously known as “Roblox Dissector”<br>
