@@ -16,6 +16,7 @@ type Packet8ALayer struct {
 	SecurityKey       string
 	Platform          string
 	RobloxProductName string
+	CryptoHash        string
 	SessionID         string
 	GoldenHash        uint32
 }
@@ -82,6 +83,12 @@ func (stream *extendedReader) DecodePacket8ALayer(reader PacketReader, layers *P
 		if err != nil {
 			return layer, err
 		}
+		
+		cryptohash, err := thisStream.readVarLengthString()
+		if err != nil {
+			return layer, err
+		}
+		layer.CryptoHash = cryptohash
 		layer.LuauResponse = uint32(hash3)
 
 		layers.Root.Logger.Println("hash2", hash2, "badfood check success: ", hash2 == layer.TicketHash-0xbadf00d)
@@ -146,6 +153,10 @@ func (layer *Packet8ALayer) Serialize(writer PacketWriter, stream *extendedWrite
 			return err
 		}
 		err = rawStream.writeVarsint32(int32(layer.LuauResponse))
+		if err != nil {
+			return err
+		}
+		err = rawStream.writeVarLengthString(layer.CryptoHash)
 		if err != nil {
 			return err
 		}
