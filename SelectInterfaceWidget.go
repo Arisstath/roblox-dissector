@@ -57,6 +57,7 @@ func NewSelectInterfaceWidget(parent widgets.QWidget_ITF, callback func(string, 
 	layout.AddWidget(okButton, 0, 0)
 	okButton.ConnectReleased(func() {
 		if len(interfaces.SelectedIndexes()) < 1 {
+			window.Close()
 			return
 		}
 		useInterface := standardModel.Item(interfaces.SelectedIndexes()[0].Row(), 0).Data(0).ToString()
