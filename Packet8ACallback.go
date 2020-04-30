@@ -16,6 +16,7 @@ func ShowPacket8A(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 	layerLayout.AddWidget(widgets.NewQTextEdit2(fmt.Sprintf("Security key: %s", MainLayer.SecurityKey), nil), 0, 0)
 	layerLayout.AddWidget(widgets.NewQTextEdit2(fmt.Sprintf("Platform: %s", MainLayer.Platform), nil), 0, 0)
 	layerLayout.AddWidget(widgets.NewQTextEdit2(fmt.Sprintf("Roblox product name: %s", MainLayer.RobloxProductName), nil), 0, 0)
+	layerLayout.AddWidget(widgets.NewQTextEdit2(fmt.Sprintf("Crypto Hash: %s", MainLayer.CryptoHash), nil), 0, 0)
 	layerLayout.AddWidget(widgets.NewQTextEdit2(fmt.Sprintf("Session Id: %s", MainLayer.SessionID), nil), 0, 0)
 	layerLayout.AddWidget(widgets.NewQTextEdit2(fmt.Sprintf("Golden hash: %08X", MainLayer.GoldenHash), nil), 0, 0)
 }
