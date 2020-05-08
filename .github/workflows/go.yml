@@ -23,7 +23,7 @@ jobs:
       run: sudo apt-get install gcc-mingw-w64-x86-64 binutils-mingw-w64-x86-64
 
     - name: Check out code into the Go module directory
-      uses: actions/checkout@v2
+      run: go get -v -t -d github.com/Gskartwii/roblox-dissector/...
     
     - name: Install Qt bindings
       run: |
@@ -31,16 +31,9 @@ jobs:
         docker pull therecipe/qt:windows_64_shared
         go get -v -tags=no_env github.com/therecipe/qt/cmd/...
 
-    - name: Get dependencies
-      run: |
-        go get -v -t -d ./...
-        if [ -f Gopkg.toml ]; then
-            curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-            dep ensure
-        fi
-
     - name: Compile
       run: |
         export QT_API=5.12.0
+        cd `go env GOPATH`/src/github.com/Gskartwii/roblox-dissector
         x86_64-w64-mingw32-windres icon.rc -o icon_win64.syso
         qtdeploy -docker build windows
