@@ -3,7 +3,6 @@ package datamodel
 import (
 	"bytes"
 	"fmt"
-	"net"
 
 	"github.com/robloxapi/rbxfile"
 )
@@ -82,7 +81,7 @@ type ValueRegion3int16 struct {
 	Start rbxfile.ValueVector3int16
 	End   rbxfile.ValueVector3int16
 }
-type ValueSystemAddress net.UDPAddr
+type ValueSystemAddress uint64
 type ValueReference struct {
 	Reference Reference
 	Instance  *Instance
@@ -130,13 +129,10 @@ func (ValueSystemAddress) Type() rbxfile.Type {
 	return TypeSystemAddress
 }
 func (t ValueSystemAddress) String() string {
-	return ((*net.UDPAddr)(&t)).String()
+	return fmt.Sprintf("%d", t)
 }
 func (t ValueSystemAddress) Copy() rbxfile.Value {
-	c := new(net.UDPAddr)
-	copy(c.IP, t.IP)
-	c.Port = t.Port
-	return ValueSystemAddress(*c)
+	return t
 }
 
 // The following types should never be copied

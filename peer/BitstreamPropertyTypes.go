@@ -454,54 +454,20 @@ func (b *extendedReader) readContent(caches *Caches) (rbxfile.ValueContent, erro
 
 // TODO: Make this function uniform with other cache functions
 func (b *extendedReader) readSystemAddress(caches *Caches) (datamodel.ValueSystemAddress, error) {
-	cache := &caches.SystemAddress
-
-	thisAddress := datamodel.ValueSystemAddress{IP: make([]byte, 4)}
-	var err error
-	var cacheIndex uint8
-	cacheIndex, err = b.readUint8()
+	val, err := b.readVarint64()
 	if err != nil {
-		return thisAddress, err
+		return datamodel.ValueSystemAddress(0), err
 	}
-	if cacheIndex == 0x00 {
-		return thisAddress, err
-	}
-
-	if cacheIndex < 0x80 {
-		result, ok := cache.Get(cacheIndex)
-		if !ok {
-			return thisAddress, nil
-		}
-		return result.(datamodel.ValueSystemAddress), nil
-	}
-	err = b.bytes(thisAddress.IP, 4)
-	if err != nil {
-		return thisAddress, err
-	}
-	thisAddress.IP[0], thisAddress.IP[3] = thisAddress.IP[3], thisAddress.IP[0]
-	thisAddress.IP[1], thisAddress.IP[2] = thisAddress.IP[2], thisAddress.IP[1]
-
-	port, err := b.readUint16BE()
-	thisAddress.Port = int(port)
-	if err != nil {
-		return thisAddress, err
-	}
-
-	cache.Put(thisAddress, cacheIndex-0x80)
-
-	return datamodel.ValueSystemAddress(thisAddress), nil
+	thisAddress := datamodel.ValueSystemAddress(val)
+	return thisAddress, err
 }
 
 func (b *joinSerializeReader) readSystemAddress() (datamodel.ValueSystemAddress, error) {
-	var err error
-	thisAddress := datamodel.ValueSystemAddress{IP: make([]byte, 4)}
-	err = b.bytes(thisAddress.IP, 4)
+	val, err := b.readVarint64()
 	if err != nil {
-		return thisAddress, err
+		return datamodel.ValueSystemAddress(0), err
 	}
-
-	port, err := b.readUint16BE()
-	thisAddress.Port = int(port)
+	thisAddress := datamodel.ValueSystemAddress(val)
 	return thisAddress, err
 }
 
