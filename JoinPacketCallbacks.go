@@ -32,6 +32,26 @@ func capabilitiesToString(cap uint64) string {
 	if cap&peer.CapabilityVersionedIDSync != 0 {
 		builder.WriteString("VersionedIDSync, ")
 	}
+	
+	if cap&peer.CapabilityPubKeyExchange != 0 {
+		builder.WriteString("PubKeyExchange, ")
+	}
+	if cap&peer.CapabilitySystemAddressIsPeerId  != 0 {
+		builder.WriteString("SystemAddressIsPeerId, ")
+	}
+	if cap&peer.CapabilityStreamingPrefetch != 0 {
+		builder.WriteString("StreamingPrefetch, ")
+	}
+	if cap&peer.CapabilityTerrainReplicationUseLargerChunks != 0 {
+		builder.WriteString("TerrainReplicationUseLargerChunks , ")
+	}
+	if cap&peer.CapabilityUseBlake2BHashInSharedString != 0 {
+		builder.WriteString("UseBlake2BHashInSharedString, ")
+	}
+	if cap&peer.CapabilityUseSharedStringForScriptReplication != 0 {
+		builder.WriteString("UseSharedStringForScriptReplication, ")
+	}
+	
 	if cap&^peer.CapabilityAll != 0 {
 		fmt.Fprintf(&builder, "Unknown capabilities: %8X, ", cap&^peer.CapabilityAll)
 	}

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"net"
 	"strconv"
 
 	"github.com/Gskartwii/roblox-dissector/datamodel"
@@ -609,20 +608,7 @@ func (b *extendedWriter) writeNewEnumValue(val datamodel.ValueToken) error {
 }
 
 func (b *extendedWriter) writeSystemAddressRaw(val datamodel.ValueSystemAddress) error {
-	var err error
-	addr := net.UDPAddr(val)
-	if err != nil {
-		return err
-	}
-
-	tmpIPAddr := [...]byte{addr.IP[3], addr.IP[2], addr.IP[1], addr.IP[0]}
-
-	err = b.bytes(4, tmpIPAddr[:])
-	if err != nil {
-		return err
-	}
-
-	return b.writeUint16BE(uint16(addr.Port))
+	return b.writeVarint64(uint64(val))
 }
 
 func (b *extendedWriter) writeSystemAddress(val datamodel.ValueSystemAddress, caches *Caches) error {
