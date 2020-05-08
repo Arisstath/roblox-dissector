@@ -37,3 +37,12 @@ jobs:
         cd `go env GOPATH`/src/github.com/Gskartwii/roblox-dissector
         x86_64-w64-mingw32-windres icon.rc -o icon_win64.syso
         qtdeploy -docker build windows
+
+    - name: Move artifacts
+      run: cp -R `go env GOPATH`/src/github.com/Gskartwii/roblox-dissector/deploy ~/deploy-artifacts
+    
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: windows-binary
+        path: ~/deploy-artifacts/
