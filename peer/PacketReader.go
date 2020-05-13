@@ -340,6 +340,7 @@ func (reader *DefaultPacketReader) HandlePacket01(e *emitter.Event) {
 	if err != nil {
 		e.Args[1].(*PacketLayers).Root.Logger.Println("delete error:", err.Error())
 	}
+	reader.context.removeInstance(packet.Instance)
 }
 
 func (reader *DefaultPacketReader) handleReplicationInstance(inst *ReplicationInstance) error {

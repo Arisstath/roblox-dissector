@@ -184,3 +184,7 @@ func (context *CommunicationContext) GenerateSubmitTicketKey() [0x10]byte {
 
 	return result
 }
+
+func (context *CommunicationContext) removeInstance(instance *datamodel.Instance) {
+	context.InstancesByReference.RemoveTree(instance)
+}

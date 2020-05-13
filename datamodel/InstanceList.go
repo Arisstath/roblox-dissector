@@ -26,6 +26,10 @@ func NewInstanceList() *InstanceList {
 	return &InstanceList{scopes: make(map[string]*instanceScope)}
 }
 
+func (s *instanceScope) remove(id uint32) {
+	delete(s.Instances, id)
+}
+
 func (l *InstanceList) getScope(ref Reference) *instanceScope {
 	scope, ok := l.scopes[ref.Scope]
 	if !ok {
@@ -70,5 +74,13 @@ func (l *InstanceList) Populate(instances []*Instance) {
 	for _, inst := range instances {
 		l.AddInstance(inst.Ref, inst)
 		l.Populate(inst.Children)
+	}
+}
+
+func (l *InstanceList) RemoveTree(instance *Instance) {
+	l.getScope(instance.Ref).remove(instance.Ref.Id)
+
+	for _, child := range instance.Children {
+		l.RemoveTree(child)
 	}
 }
