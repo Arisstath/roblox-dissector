@@ -377,7 +377,7 @@ func transformQuaternionToMatrix(q [4]float32) [9]float32 {
 	return result
 }
 
-var specialRows = [6][3]float32{
+var specialColumns = [6][3]float32{
 	[3]float32{1, 0, 0},
 	[3]float32{0, 1, 0},
 	[3]float32{0, 0, 1},
@@ -387,25 +387,19 @@ var specialRows = [6][3]float32{
 }
 
 func lookupRotMatrix(special uint64) [9]float32 {
-	specialRowDiv6 := specialRows[special/6]
-	specialRowMod6 := specialRows[special%6]
+	column0 := specialColumns[special/6]
+	column1 := specialColumns[special%6]
 
 	ret := [9]float32{
-		0, 0, 0,
-		specialRowMod6[0], specialRowMod6[1], specialRowMod6[2],
-		specialRowDiv6[0], specialRowDiv6[1], specialRowDiv6[2],
+    		column0[0], column1[0], 0,
+    		column0[1], column1[1], 0,
+    		column0[2], column1[2], 0,
 	}
-	ret[0] = ret[2*3+1]*ret[1*3+2] - ret[2*3+2]*ret[1*3+1]
-	ret[1] = ret[1*3+0]*ret[2*3+2] - ret[2*3+0]*ret[1*3+2]
-	ret[2] = ret[2*3+0]*ret[1*3+1] - ret[1*3+0]*ret[2*3+1]
+	ret[2] = column0[1] * column1[2] - column1[1] * column0[2]
+	ret[5] = column1[0] * column0[2] - column0[0] * column1[2]
+	ret[8] = column0[0] * column1[1] - column1[0] * column0[1]
 
-	trueRet := [9]float32{
-		ret[6], ret[7], ret[8],
-		ret[3], ret[4], ret[5],
-		ret[0], ret[1], ret[2],
-	}
-
-	return trueRet
+	return ret
 }
 
 func (b *extendedReader) readCFrame() (rbxfile.ValueCFrame, error) {
