@@ -18,6 +18,7 @@ type Cell struct {
 type Chunk struct {
 	ChunkIndex datamodel.ValueVector3int32
 	SideLength uint32
+	Int1 uint8
 	CellCube   [][][]Cell
 }
 
@@ -95,9 +96,9 @@ func deserializeChunks(stream chunkDeserializer) ([]Chunk, error) {
 	var err error
 	for header, err = stream.readUint8(); err == nil; header, err = stream.readUint8() {
 		subpacket := Chunk{}
-		indexType := header & 0x60
+		indexType := header & 0x30
 		if indexType != 0 {
-			if indexType == 0x20 {
+			if indexType == 0x10 {
 				xDiff, err := stream.readUint16BE()
 				if err != nil {
 					return chunks, err
@@ -113,7 +114,7 @@ func deserializeChunks(stream chunkDeserializer) ([]Chunk, error) {
 				x += int32(int16(xDiff))
 				y += int32(int16(yDiff))
 				z += int32(int16(zDiff))
-			} else if indexType == 0x40 {
+			} else if indexType == 0x20 {
 				xDiff, err := stream.readUint32BE()
 				if err != nil {
 					return chunks, err
@@ -157,6 +158,7 @@ func deserializeChunks(stream chunkDeserializer) ([]Chunk, error) {
 
 		var cubeSideLength uint32 = 1 << (header & 0xF)
 		subpacket.SideLength = uint32(cubeSideLength)
+		subpacket.Int1 = header >> 6 // unknown value
 
 		isEmpty, err := stream.readBoolByte()
 		if err != nil {
@@ -312,9 +314,10 @@ func (layer *Packet8DLayer) serializeChunks(stream chunkSerializer) error {
 		lastX = thisX
 		lastY = thisY
 		lastZ = thisZ
+		extraInt := chunk.Int1 << 6
 
 		if areInBounds(-127, 127, diffX, diffY, diffZ) {
-			err = stream.WriteByte(cubeSideLog2)
+			err = stream.WriteByte(cubeSideLog2 | extraInt)
 			if err != nil {
 				return err
 			}
@@ -331,7 +334,7 @@ func (layer *Packet8DLayer) serializeChunks(stream chunkSerializer) error {
 				return err
 			}
 		} else if areInBounds(-32767, 32767, diffX, diffY, diffZ) {
-			err = stream.WriteByte(0x20 | cubeSideLog2)
+			err = stream.WriteByte(0x10 | cubeSideLog2 | extraInt)
 			if err != nil {
 				return err
 			}
@@ -348,7 +351,7 @@ func (layer *Packet8DLayer) serializeChunks(stream chunkSerializer) error {
 				return err
 			}
 		} else {
-			err = stream.WriteByte(0x40 | cubeSideLog2)
+			err = stream.WriteByte(0x20 | cubeSideLog2 | extraInt)
 			if err != nil {
 				return err
 			}

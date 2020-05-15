@@ -29,14 +29,15 @@ func ShowPacket8D(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 
 	chunkList := widgets.NewQTreeView(nil)
 	standardModel := NewProperSortModel(nil)
-	standardModel.SetHorizontalHeaderLabels([]string{"Index", "Dimensions"})
+	standardModel.SetHorizontalHeaderLabels([]string{"Index", "Dimensions", "Int 1"})
 
 	rootNode := standardModel.InvisibleRootItem()
 	for _, chunk := range MainLayer.Chunks {
 		indexItem := NewStringItem("Chunk: " + chunk.ChunkIndex.String())
 		countItem := NewQStandardItemF("%d x %d x %d", chunk.SideLength, chunk.SideLength, chunk.SideLength)
+		int1Item := NewUintItem(chunk.Int1)
 
-		rootNode.AppendRow([]*gui.QStandardItem{indexItem, countItem})
+		rootNode.AppendRow([]*gui.QStandardItem{indexItem, countItem, int1Item})
 	}
 
 	chunkList.SetModel(standardModel)
