@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"errors"
 )
 
 // Packet90VersionID represents a ID_PROTOCOL_SYNC version id
@@ -59,8 +60,13 @@ func (stream *extendedReader) DecodePacket90Layer(reader PacketReader, layers *P
 	}
 
 	placeIDRegex := regexp.MustCompile(`placeId=(\d+)`)
-	placeID, _ := strconv.Atoi(placeIDRegex.FindStringSubmatch(layer.JoinData)[1])
-	reader.Context().PlaceID = int64(placeID)
+	placeIDMatches := placeIDRegex.FindStringSubmatch(layer.JoinData)
+	if placeIDMatches != nil {
+		placeID, _ := strconv.Atoi(placeIDMatches[1])
+		reader.Context().PlaceID = int64(placeID)
+	} else {
+		return layer, errors.New("Could not match placeId regex (malformed JoinData)")
+	}
 
 	layer.PubKeyData, err = thisStream.readString(32)
 	if err != nil {
