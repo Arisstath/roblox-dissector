@@ -394,7 +394,7 @@ WinDivert enabled: %v
 			}
 
 			rand.Seed(time.Now().UnixNano())
-			instanceDictionary := datamodel.NewInstanceDictionary()
+			instanceDictionary := datamodel.NewInstanceDictionary(1)
 			thisRoot := datamodel.FromRbxfile(instanceDictionary, dataModelRoot)
 			normalizeRoot(thisRoot, schema)
 

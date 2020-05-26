@@ -93,6 +93,7 @@ func newServerClient(clientAddr *net.UDPAddr, server *CustomServer, context *Com
 		DataModel:            context.DataModel,
 		NetworkSchema:        context.NetworkSchema,
 		InstanceTopScope:     context.InstanceTopScope,
+		ServerPeerID:         1,
 	}
 
 	server.PlayerIndex++
@@ -181,6 +182,7 @@ func NewCustomServer(ctx context.Context, port uint16, schema *NetworkSchema, da
 	server.Context.NetworkSchema = schema
 	server.InstanceDictionary = dict
 	server.Context.InstanceTopScope = server.InstanceDictionary.Scope
+	server.Context.ServerPeerID = server.InstanceDictionary.PeerID
 	server.ClientEmitter = emitter.New(0)
 
 	return server, nil
