@@ -13,12 +13,20 @@ import (
 )
 
 func SrcAndDestFromGoPacket(packet gopacket.Packet) (*net.UDPAddr, *net.UDPAddr) {
+	var srcIP, dstIP net.IP
+	if ipv4, ok := packet.Layer(layers.LayerTypeIPv4).(*layers.IPv4); ok {
+		srcIP = ipv4.SrcIP
+		dstIP = ipv4.DstIP
+	} else if ipv6, ok := packet.Layer(layers.LayerTypeIPv6).(*layers.IPv6); ok {
+		srcIP = ipv6.SrcIP
+		dstIP = ipv6.DstIP
+	}
 	return &net.UDPAddr{
-			IP:   packet.Layer(layers.LayerTypeIPv4).(*layers.IPv4).SrcIP,
+			IP:   srcIP,
 			Port: int(packet.Layer(layers.LayerTypeUDP).(*layers.UDP).SrcPort),
 			Zone: "udp",
 		}, &net.UDPAddr{
-			IP:   packet.Layer(layers.LayerTypeIPv4).(*layers.IPv4).DstIP,
+			IP:   dstIP,
 			Port: int(packet.Layer(layers.LayerTypeUDP).(*layers.UDP).DstPort),
 			Zone: "udp",
 		}
@@ -122,7 +130,9 @@ func (captureContext *CaptureContext) Capture(ctx context.Context, packetSource 
 		default:
 		}
 		progress++
-		if packet.ApplicationLayer() == nil || packet.Layer(layers.LayerTypeIPv4) == nil || packet.Layer(layers.LayerTypeUDP) == nil {
+		if packet.ApplicationLayer() == nil ||
+			(packet.Layer(layers.LayerTypeIPv4) == nil && packet.Layer(layers.LayerTypeIPv6) == nil) ||
+			packet.Layer(layers.LayerTypeUDP) == nil {
 			continue
 		}
 		payload := packet.ApplicationLayer().Payload()
