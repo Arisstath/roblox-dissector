@@ -177,8 +177,11 @@ func (window *DissectorWindow) CaptureFromDivertProxy(settings *PlayerProxySetti
 	index := window.TabWidget.AddTab(session.PacketListViewers[0], fmt.Sprintf("Conversation: %s#1", nameBase))
 	window.TabWidget.SetCurrentIndex(index)
 
-	// TODO: How to stop capture?
-	go session.CaptureFromDivert(settings.Certfile, settings.Keyfile)
+	err := session.CaptureFromWinDivert()
+	if err != nil {
+		session.StopCapture()
+		window.ShowCaptureError(err)
+	}
 }
 func (window *DissectorWindow) CaptureFromPlayerProxy(_ *PlayerProxySettings) {
 	window.ShowCaptureError(errors.New("divert proxy is disabled (FIXME)"))
@@ -363,9 +366,9 @@ WinDivert enabled: %v
 	captureLiveAction.ConnectTriggered(window.OpenLiveInterfaceHandler)
 	captureDivertAction.ConnectTriggered(func(checked bool) {
 		if WinDivertEnabled {
-			NewPlayerProxyWidget(window, window.PlayerProxySettings, window.CaptureFromDivertProxy)
+			window.CaptureFromDivertProxy(window.PlayerProxySettings)
 		} else {
-			window.ShowCaptureError(errors.New("WinDivert disabled at build time for now, sorry!"))
+			window.ShowCaptureError(errors.New("WinDivert disabled at build time, sorry!"))
 		}
 	})
 

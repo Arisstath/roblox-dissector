@@ -53,17 +53,6 @@ func (thisStream *extendedReader) DecodePacket81Layer(reader PacketReader, layer
 	if err != nil {
 		return layer, err
 	}
-	/*stringLen, err := thisStream.readUint32BE()
-	if err != nil {
-		return layer, err
-	}
-
-	layer.ReferenceString, err = thisStream.readASCII(int(stringLen))
-	if err != nil {
-		return layer, err
-	}
-	// This assignment is justifiable because a call to readJoinObject() below depends on it
-	reader.Context().InstanceTopScope = layer.ReferenceString*/
 
 	peerID, err := thisStream.readVarint64()
 	if err != nil {
@@ -153,15 +142,6 @@ func (layer *Packet81Layer) Serialize(writer PacketWriter, stream *extendedWrite
 		return err
 	}
 	err = stream.writeBoolByte(layer.CharacterAutoSpawn)
-	if err != nil {
-		return err
-	}
-
-	err = stream.writeUint32BE(uint32(len(layer.ReferenceString)))
-	if err != nil {
-		return err
-	}
-	err = stream.writeASCII(layer.ReferenceString)
 	if err != nil {
 		return err
 	}

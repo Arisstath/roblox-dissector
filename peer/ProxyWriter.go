@@ -2,12 +2,10 @@ package peer
 
 import (
 	"context"
-	"encoding/json"
 	"net"
 	"time"
 
 	"github.com/olebedev/emitter"
-	"github.com/robloxapi/rbxfile"
 )
 
 // ProxyHalf describes a proxy connection to a connected peer.
@@ -132,87 +130,9 @@ func NewProxyWriter(ctx context.Context) *ProxyWriter {
 			return
 		}
 		switch packetType {
-		case 0x83:
-			mainLayer := layers.Main.(*Packet83Layer)
-			modifiedSubpackets := mainLayer.SubPackets[:0] // in case packets need to be dropped
-			for _, subpacket := range mainLayer.SubPackets {
-				switch subpacket.(type) {
-				// this packet will be sent if a debugger is detected
-				// we may want to debug the app, so hence we drop it
-				case *Packet83_07:
-					evtPacket := subpacket.(*Packet83_07)
-					if evtPacket.Schema.Name == "StatsAvailable" {
-						println("(RobloxApp has detected a hacker) permanently dropping statspacket, codename = ", evtPacket.Event.Arguments[0].String())
-					} else {
-						modifiedSubpackets = append(modifiedSubpackets, subpacket)
-					}
-				case *Packet83_02:
-					instPacket := subpacket.(*Packet83_02)
-					if instPacket.Schema.Name == "Player" {
-						println("patching osplatform", instPacket.Instance.Name())
-						// patch OSPlatform!
-						instPacket.Instance.Set("OsPlatform", rbxfile.ValueString(writer.SecuritySettings.OSPlatform()))
-					}
-					modifiedSubpackets = append(modifiedSubpackets, subpacket)
-				case *Packet83_09:
-					// patch id response
-					println("patching id resp")
-					pmcPacket := subpacket.(*Packet83_09)
-					switch pmcPacket.Subpacket.(type) {
-					case *Packet83_09_06:
-						pmcSubpacket := pmcPacket.Subpacket.(*Packet83_09_06)
-						pmcSubpacket.Response = writer.SecuritySettings.GenerateIDResponse(pmcSubpacket.Challenge)
-						modifiedSubpackets = append(modifiedSubpackets, subpacket)
-					} // if not type 6, drop it!
-				case *Packet83_12:
-					println("permanently dropping hash packet")
-					// IMPORTANT! We don't drop the entire hash packet 0x83 containers!
-					// Under heavy stress, the Roblox client may pack everything inside the container,
-					// including hash packets.
-					// It used to seem that this was not the case, but I was proven wrong.
-				case *Packet83_05:
-					pingPacket := subpacket.(*Packet83_05)
-					pingPacket.SendStats = 0
-					pingPacket.ExtraStats = 0
-					modifiedSubpackets = append(modifiedSubpackets, subpacket)
-				case *Packet83_06:
-					pingPacket := subpacket.(*Packet83_06)
-					pingPacket.SendStats = 0
-					pingPacket.ExtraStats = 0
-					modifiedSubpackets = append(modifiedSubpackets, subpacket)
-				default:
-					modifiedSubpackets = append(modifiedSubpackets, subpacket)
-				}
-			}
-			mainLayer.SubPackets = modifiedSubpackets
-
-			err = serverHalf.WritePacket(mainLayer)
-		case 0x8A:
-			mainLayer := layers.Main.(*Packet8ALayer)
-			writer.SecuritySettings.PatchTicketPacket(mainLayer)
-
-			err = serverHalf.WritePacket(mainLayer)
 		case 0x85:
 			mainLayer := layers.Main.(*Packet85Layer)
 			err = serverHalf.WriteTimestamped(layers.Timestamp, mainLayer)
-		case 0x90:
-			println("patching 0x90 osPlatform")
-			mainLayer := layers.Main.(*Packet90Layer)
-			var joinDataObject joinData
-			err = json.Unmarshal([]byte(mainLayer.JoinData), &joinDataObject)
-			// error handled below
-			if err != nil {
-				break
-			}
-			joinDataObject.OSPlatform = writer.SecuritySettings.OSPlatform()
-
-			var newJson []byte
-			newJson, err = joinDataObject.JSON()
-			if err != nil {
-				break
-			}
-			mainLayer.JoinData = string(newJson)
-			err = serverHalf.WritePacket(mainLayer)
 		default:
 			err = serverHalf.WritePacket(layers.Main.(RakNetPacket))
 		}

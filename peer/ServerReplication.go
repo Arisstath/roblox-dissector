@@ -397,6 +397,7 @@ func (client *ServerClient) replicateJoinDataChildren(children []*datamodel.Inst
 		config.hasReplicated = true
 
 		err := streamer.AddInstance(client.ReplicationInstance(child, false))
+		println("added child", child.GetFullName())
 		if err != nil {
 			return err
 		}
@@ -415,6 +416,7 @@ func (client *ServerClient) replicateJoinData(rootInstance *datamodel.Instance, 
 	// Here's a bad workaround
 	rootInstance.PropertiesMutex.RLock()
 	if rootConfig.ReplicateProperties && len(rootInstance.Properties) != 0 {
+		println("Writing instance with properties", rootInstance.ClassName)
 		rootConfig.hasReplicated = true
 		err = streamer.AddInstance(client.ReplicationInstance(rootInstance, false))
 		if err != nil {
@@ -430,6 +432,7 @@ func (client *ServerClient) replicateJoinData(rootInstance *datamodel.Instance, 
 			"StarterPack":
 			fmt.Printf("Warning: skipping replication of bad instance %s (no properties and no defaults), replicateProperties: %v\n", rootInstance.ClassName, rootConfig.ReplicateProperties)
 		default:
+			println("Writing instance without properties", rootInstance.ClassName)
 			rootConfig.hasReplicated = true
 			err = streamer.AddInstance(client.ReplicationInstance(rootInstance, false))
 			if err != nil {

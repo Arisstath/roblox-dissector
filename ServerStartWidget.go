@@ -25,6 +25,7 @@ var noLocalDefaults = map[string](map[string]rbxfile.Value){
 		// TODO: Set token ID correctly here_
 		"AutoJointsMode":             datamodel.ValueToken{Value: 0},
 		"CollisionGroups":            rbxfile.ValueString(""),
+		"DataModelPlaceVersion":      rbxfile.ValueInt(0),
 		"ExpSolverEnabled_Replicate": rbxfile.ValueBool(true),
 		"ExplicitAutoJoints":         rbxfile.ValueBool(true),
 		"FallenPartsDestroyHeight":   rbxfile.ValueFloat(-500.0),
@@ -63,9 +64,9 @@ var noLocalDefaults = map[string](map[string]rbxfile.Value){
 		"WebTableContents":     rbxfile.ValueString(""),
 	},
 	"Players": map[string]rbxfile.Value{
-		"Archivable":               rbxfile.ValueBool(true),
-		"MaxPlayersInternal":       rbxfile.ValueInt(6),
-		"Name":                     rbxfile.ValueString("Players"),
+		"Archivable":         rbxfile.ValueBool(true),
+		"MaxPlayersInternal": rbxfile.ValueInt(6),
+		"Name":               rbxfile.ValueString("Players"),
 		"PreferredPlayersInternal": rbxfile.ValueInt(6),
 		"RespawnTime":              rbxfile.ValueFloat(5.0),
 		"RobloxLocked":             rbxfile.ValueBool(false),
@@ -84,6 +85,10 @@ func normalizeTypes(children []*datamodel.Instance, schema *peer.NetworkSchema) 
 					instance.Properties[prop.Name] = defaultValues[prop.Name]
 				}
 			}
+		}
+		if val, ok := instance.Properties["AttributesReplicate"]; ok && val == nil {
+			println("Adding missing AttributesReplicate")
+			instance.Properties["AttributesReplicate"] = rbxfile.ValueString("")
 		}
 
 		// hack: color is saved in the wrong format

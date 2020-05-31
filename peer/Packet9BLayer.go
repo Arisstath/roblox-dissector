@@ -49,7 +49,7 @@ func (thisStream *extendedReader) DecodePacket9BLayer(reader PacketReader, layer
 
 // Serialize implements RakNetPacket.Serialize
 func (layer *Packet9BLayer) Serialize(writer PacketWriter, stream *extendedWriter) error {
-	if !writer.ToClient() {
+	if writer.ToClient() {
 		err := stream.writeUint32BE(layer.Int1)
 		if err != nil {
 			return err

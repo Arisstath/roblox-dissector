@@ -123,5 +123,8 @@ func (instance *ReplicationInstance) Serialize(writer PacketWriter, stream insta
 		}
 	}
 
+	if instance.Instance.IsService {
+		return stream.WriteObject(nil, writer)
+	}
 	return stream.WriteObject(instance.Parent, writer)
 }
