@@ -146,6 +146,11 @@ func (layer *Packet81Layer) Serialize(writer PacketWriter, stream *extendedWrite
 		return err
 	}
 
+	err = stream.writeVarint64(uint64(layer.PeerID))
+	if err != nil {
+		return err
+	}
+
 	if !writer.Context().IsStudio {
 		err = stream.writeUint32BE(layer.ScriptKey)
 		if err != nil {

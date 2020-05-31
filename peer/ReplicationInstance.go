@@ -82,9 +82,16 @@ func decodeReplicationInstance(reader PacketReader, thisStream instanceReader, l
 	if err != nil {
 		// service parents aren't excepted to exist
 		if err == datamodel.ErrInstanceDoesntExist && thisInstance.IsService {
-			return repInstance, nil
+			// create a dummy instance for DataModel
+			parent, err := context.InstancesByReference.CreateInstance(reference)
+			if err != nil {
+				return nil, err
+			}
+			parent.ClassName = "DataModel"
+			repInstance.Parent = parent
+		} else {
+			return repInstance, err
 		}
-		return repInstance, err
 	}
 	repInstance.Parent = parent
 
@@ -123,8 +130,5 @@ func (instance *ReplicationInstance) Serialize(writer PacketWriter, stream insta
 		}
 	}
 
-	if instance.Instance.IsService {
-		return stream.WriteObject(nil, writer)
-	}
 	return stream.WriteObject(instance.Parent, writer)
 }

@@ -118,6 +118,46 @@ func (layer *Packet83_09) Serialize(writer PacketWriter, stream *extendedWriter)
 	var err error
 	switch layer.Subpacket.(type) {
 	// TODO: implement unknown subpackets
+	case (*Packet83_09_00):
+		subpacket := layer.Subpacket.(*Packet83_09_00)
+		err = stream.WriteByte(0)
+		if err != nil {
+			return err
+		}
+		err = stream.writeUint32BE(subpacket.Int1)
+		if err != nil {
+			return err
+		}
+		err = stream.writeUint32BE(subpacket.Int2)
+		if err != nil {
+			return err
+		}
+		err = stream.writeUint32BE(subpacket.Int3)
+		if err != nil {
+			return err
+		}
+		err = stream.writeUint32BE(subpacket.Int4)
+		if err != nil {
+			return err
+		}
+		err = stream.writeUint32BE(subpacket.Int5)
+		if err != nil {
+			return err
+		}
+	case (*Packet83_09_04):
+		subpacket := layer.Subpacket.(*Packet83_09_04)
+		err = stream.WriteByte(4)
+		if err != nil {
+			return err
+		}
+		err = stream.WriteByte(subpacket.Int1)
+		if err != nil {
+			return err
+		}
+		err = stream.writeUint32BE(subpacket.Int2)
+		if err != nil {
+			return err
+		}
 	case (*Packet83_09_05):
 		subpacket := layer.Subpacket.(*Packet83_09_05)
 		err = stream.WriteByte(5)
