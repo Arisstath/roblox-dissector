@@ -391,13 +391,13 @@ func lookupRotMatrix(special uint64) [9]float32 {
 	column1 := specialColumns[special%6]
 
 	ret := [9]float32{
-    		column0[0], column1[0], 0,
-    		column0[1], column1[1], 0,
-    		column0[2], column1[2], 0,
+		column0[0], column1[0], 0,
+		column0[1], column1[1], 0,
+		column0[2], column1[2], 0,
 	}
-	ret[2] = column0[1] * column1[2] - column1[1] * column0[2]
-	ret[5] = column1[0] * column0[2] - column0[0] * column1[2]
-	ret[8] = column0[0] * column1[1] - column1[0] * column0[1]
+	ret[2] = column0[1]*column1[2] - column1[1]*column0[2]
+	ret[5] = column1[0]*column0[2] - column0[0]*column1[2]
+	ret[8] = column0[0]*column1[1] - column1[0]*column0[1]
 
 	return ret
 }
@@ -510,28 +510,30 @@ func (b *extendedReader) readVarLengthString() (string, error) {
 	return b.readASCII(int(stringLen))
 }
 
-func (b *extendedReader) readLuauProtectedStringRaw() (rbxfile.ValueProtectedString, error) {
+func (b *extendedReader) readLuauProtectedStringRaw() (datamodel.ValueSignedProtectedString, error) {
 	stringLen, err := b.readUintUTF8()
 	if err != nil {
-		return rbxfile.ValueProtectedString(nil), err
+		return datamodel.ValueSignedProtectedString{}, err
 	}
 
 	val, err := b.readString(int(stringLen))
 	if err != nil {
-		return rbxfile.ValueProtectedString(nil), err
+		return datamodel.ValueSignedProtectedString{}, err
 	}
 
 	extraBytesLen, err := b.readUintUTF8()
 	if err != nil {
-		return rbxfile.ValueProtectedString(nil), err
+		return datamodel.ValueSignedProtectedString{}, err
 	}
 	extraBytes, err := b.readString(int(extraBytesLen))
 	if err != nil {
-		return rbxfile.ValueProtectedString(nil), err
+		return datamodel.ValueSignedProtectedString{}, err
 	}
-	fmt.Printf("extrabytes: %X\n", extraBytes)
 
-	return rbxfile.ValueProtectedString(val), nil
+	return datamodel.ValueSignedProtectedString{
+		Value:     val,
+		Signature: extraBytes,
+	}, nil
 }
 
 func (b *joinSerializeReader) readNewPString() (rbxfile.ValueString, error) {
@@ -552,12 +554,12 @@ func (b *extendedReader) readNewProtectedString(caches *Caches) (rbxfile.ValuePr
 	return rbxfile.ValueProtectedString(res), err
 }
 
-func (b *joinSerializeReader) readLuauProtectedString() (rbxfile.ValueProtectedString, error) {
+func (b *joinSerializeReader) readLuauProtectedString() (datamodel.ValueSignedProtectedString, error) {
 	return b.readLuauProtectedStringRaw()
 }
-func (b *extendedReader) readLuauProtectedString(caches *Caches) (rbxfile.ValueProtectedString, error) {
+func (b *extendedReader) readLuauProtectedString(caches *Caches) (datamodel.ValueSignedProtectedString, error) {
 	res, err := b.readLuauCachedProtectedString(caches)
-	return rbxfile.ValueProtectedString(res), err
+	return res, err
 }
 
 func (b *joinSerializeReader) readNewContent() (rbxfile.ValueContent, error) {

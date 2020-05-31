@@ -39,7 +39,7 @@ func findScripts(instances []*rbxfile.Instance, propertyList []InstanceProperty)
 	for _, instance := range instances {
 		for name, property := range instance.Properties {
 			thisType := property.Type()
-			if thisType == rbxfile.TypeProtectedString {
+			if thisType == datamodel.TypeSignedProtectedString {
 				propertyList = append(propertyList, InstanceProperty{
 					Instance: instance,
 					Name:     name,
@@ -64,7 +64,7 @@ func dumpScripts(location string, instances []*rbxfile.Instance, parent widgets.
 			progressDialog.Cancel()
 			return err
 		}
-		_, err = file.Write([]byte(instProp.Instance.Properties[instProp.Name].(rbxfile.ValueProtectedString)))
+		_, err = file.Write([]byte(instProp.Instance.Properties[instProp.Name].(datamodel.ValueSignedProtectedString).Value))
 		if err != nil {
 			progressDialog.Cancel()
 			return err

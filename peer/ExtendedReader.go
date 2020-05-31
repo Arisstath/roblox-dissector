@@ -374,22 +374,18 @@ func (b *extendedReader) readNewCachedProtectedString(caches *Caches) ([]byte, e
 		thisString, err := b.readString(int(stringLen))
 		return thisString, err
 	})
-	if _, ok := thisString.(string); ok {
-		return nil, err
-	}
 	return thisString.([]byte), err
 }
 
-func (b *extendedReader) readLuauCachedProtectedString(caches *Caches) ([]byte, error) {
+func (b *extendedReader) readLuauCachedProtectedString(caches *Caches) (datamodel.ValueSignedProtectedString, error) {
 	cache := &caches.ProtectedString
+	var signature []byte
 	thisString, err := b.readWithCache(cache, func(b *extendedReader) (interface{}, error) {
 		str, err := b.readLuauProtectedStringRaw()
-		return []byte(str), err
+		signature = str.Signature
+		return []byte(str.Value), err
 	})
-	if _, ok := thisString.(string); ok {
-		return nil, err
-	}
-	return thisString.([]byte), err
+	return datamodel.ValueSignedProtectedString{Value: thisString.([]byte), Signature: signature}, err
 }
 
 func shuffleSlice(src []byte) []byte {
@@ -422,7 +418,7 @@ func (b *extendedReader) aesDecrypt(lenBytes int, key [0x10]byte) (*extendedRead
 	if err != nil {
 		return nil, err
 	}
-	if len(data) < 0x10 || len(data) % 0x10 != 0 {
+	if len(data) < 0x10 || len(data)%0x10 != 0 {
 		return nil, errors.New("not an AES block")
 	}
 	block, err := aes.NewCipher(key[:])

@@ -130,7 +130,7 @@ func (b *extendedWriter) WriteSerializedValue(val rbxfile.Value, writer PacketWr
 	case PropertyTypeProtectedString3:
 		err = b.writeNewProtectedString(val.(rbxfile.ValueProtectedString), writer.Caches())
 	case PropertyTypeLuauString:
-		err = b.writeLuauProtectedString(val.(rbxfile.ValueProtectedString), writer.Caches())
+		err = b.writeLuauProtectedString(val.(datamodel.ValueSignedProtectedString), writer.Caches())
 	case PropertyTypeInstance:
 		err = b.WriteObject(val.(datamodel.ValueReference).Instance, writer)
 	case PropertyTypeContent:
@@ -289,7 +289,7 @@ func (b *joinSerializeWriter) WriteSerializedValue(val rbxfile.Value, writer Pac
 	case PropertyTypeProtectedString3:
 		err = b.writeNewProtectedString(val.(rbxfile.ValueProtectedString))
 	case PropertyTypeLuauString:
-		err = b.writeLuauProtectedString(val.(rbxfile.ValueProtectedString))
+		err = b.writeLuauProtectedString(val.(datamodel.ValueSignedProtectedString))
 	case PropertyTypeInstance:
 		err = b.WriteObject(val.(datamodel.ValueReference).Instance, writer)
 	case PropertyTypeContent:

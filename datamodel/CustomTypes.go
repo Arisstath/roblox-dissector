@@ -41,9 +41,10 @@ const (
 	TypeReference                           = rbxfile.TypeSharedString + 1 + iota
 	TypeToken                               = rbxfile.TypeSharedString + 1 + iota
 	// used for terrain
-	TypeVector3int32   = rbxfile.TypeSharedString + 1 + iota
-	TypePathWaypoint   = rbxfile.TypeSharedString + 1 + iota
-	TypeDeferredString = rbxfile.TypeSharedString + 1 + iota
+	TypeVector3int32          = rbxfile.TypeSharedString + 1 + iota
+	TypePathWaypoint          = rbxfile.TypeSharedString + 1 + iota
+	TypeDeferredString        = rbxfile.TypeSharedString + 1 + iota
+	TypeSignedProtectedString = rbxfile.TypeSharedString + 1 + iota
 )
 
 var CustomTypeNames = map[rbxfile.Type]string{
@@ -105,6 +106,11 @@ type ValueVector3int32 struct {
 type ValueDeferredString struct {
 	Hash  string
 	Value rbxfile.ValueSharedString
+}
+
+type ValueSignedProtectedString struct {
+	Signature []byte
+	Value     []byte
 }
 
 func TypeString(val rbxfile.Value) string {
@@ -337,4 +343,17 @@ func (x *ValueDeferredString) String() string {
 }
 func (x *ValueDeferredString) Copy() rbxfile.Value {
 	return x
+}
+
+func (x ValueSignedProtectedString) Type() rbxfile.Type {
+	return TypeSignedProtectedString
+}
+func (x ValueSignedProtectedString) String() string {
+	return fmt.Sprintf("Signed string, len %d", len(x.Value))
+}
+func (x ValueSignedProtectedString) Copy() rbxfile.Value {
+	newString := new(ValueSignedProtectedString)
+	newString.Signature = append(newString.Signature, x.Signature...)
+	newString.Value = append(newString.Value, x.Value...)
+	return newString
 }
