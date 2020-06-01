@@ -279,12 +279,39 @@ func (b *extendedWriter) writeCFrameSimple(val rbxfile.ValueCFrame) error {
 }
 
 func rotMatrixToQuaternion(r [9]float32) [4]float32 {
-	q := float32(math.Sqrt(float64(1+r[0*3+0]+r[1*3+1]+r[2*3+2])) / 2)
-	return [4]float32{
-		(r[2*3+1] - r[1*3+2]) / (4 * q),
-		(r[0*3+2] - r[2*3+0]) / (4 * q),
-		(r[1*3+0] - r[0*3+1]) / (4 * q),
-		q,
+	diag_sum := 1 + r[0*3+0] + r[1*3+1] + r[2*3+2]
+	if diag_sum > 0 {
+		q := float32(math.Sqrt(float64(diag_sum)))
+		return [4]float32{
+			(r[2*3+1] - r[1*3+2]) / (2 * q),
+			(r[0*3+2] - r[2*3+0]) / (2 * q),
+			(r[1*3+0] - r[0*3+1]) / (2 * q),
+			q / 2.0,
+		}
+	} else if r[0] > r[4] && r[0] > r[8] {
+		q := -float32(math.Sqrt(float64(r[0] - r[4] - r[8] + 1)))
+		return [4]float32{
+			q / 2.0,
+			(r[3] + r[1]) / (2 * q),
+			(r[6] + r[2]) / (2 * q),
+			(r[7] - r[5]) / (2 * q),
+		}
+	} else if r[4] <= r[8] {
+		q := -float32(math.Sqrt(float64(r[8] - r[0] - r[4] + 1)))
+		return [4]float32{
+			(r[6] + r[2]) / (2 * q),
+			(r[7] + r[5]) / (2 * q),
+			q / 2.0,
+			(r[3] - r[1]) / (2 * q),
+		}
+	} else {
+		q := -float32(math.Sqrt(float64(r[4] - r[0] - r[8] + 1)))
+		return [4]float32{
+			(r[3] + r[1]) / (2 * q),
+			q / 2.0,
+			(r[7] + r[5]) / (2 * q),
+			(r[2] - r[6]) / (2 * q),
+		}
 	}
 } // So nice to not have to worry about normalization on this side!
 func (b *extendedWriter) writeCFrame(val rbxfile.ValueCFrame) error {
