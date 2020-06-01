@@ -18,8 +18,24 @@ type ReplicationInstance struct {
 }
 
 func is2ndRoundType(typeID uint8) bool {
-	id := uint32(typeID)
-	return ((id-3) > 0x1F || ((1<<(id-3))&uint32(0xC200000F)) == 0) && (id != 1) // thank you ARM compiler for optimizing this <3
+	switch typeID {
+	case PropertyTypeString:
+		return false
+	case PropertyTypeProtectedString0:
+		return false
+	case PropertyTypeProtectedString3:
+		return false
+	case PropertyTypeInstance:
+		return false
+	case PropertyTypeContent:
+		return false
+	case PropertyTypeSystemAddress:
+		return false
+	case PropertyTypeLuauString:
+		return false
+	default:
+		return true
+	}
 }
 
 func decodeReplicationInstance(reader PacketReader, thisStream instanceReader, layers *PacketLayers, deferred deferredStrings, readDefers bool) (*ReplicationInstance, error) {

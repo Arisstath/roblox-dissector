@@ -222,7 +222,6 @@ func (b *extendedWriter) writeLuauProtectedStringRaw(val datamodel.ValueSignedPr
 	if err != nil {
 		return err
 	}
-	// TODO: Writes a zero signature for now
 	return b.allBytes(val.Signature)
 }
 

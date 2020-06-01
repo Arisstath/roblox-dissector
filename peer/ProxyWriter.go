@@ -142,6 +142,7 @@ func NewProxyWriter(ctx context.Context) *ProxyWriter {
 	}, emitter.Void)
 
 	serverHalf.DefaultPacketReader.LayerEmitter.On("full-reliable", func(e *emitter.Event) {
+		var err error
 		layers := e.Args[0].(*PacketLayers)
 		packetType := layers.PacketType
 		if layers.Error != nil {
@@ -152,7 +153,13 @@ func NewProxyWriter(ctx context.Context) *ProxyWriter {
 			println("dropping nil packet??", packetType)
 			return
 		}
-		err := clientHalf.WritePacket(layers.Main.(RakNetPacket))
+		switch packetType {
+		case 0x85:
+			mainLayer := layers.Main.(*Packet85Layer)
+			err = clientHalf.WriteTimestamped(layers.Timestamp, mainLayer)
+		default:
+			err = clientHalf.WritePacket(layers.Main.(RakNetPacket))
+		}
 		if err != nil {
 			println("server serialize error: ", err.Error())
 			return
