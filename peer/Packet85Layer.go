@@ -177,6 +177,10 @@ func (b *extendedWriter) writePhysicsData(val *PhysicsData, motors bool, writer 
 		return err
 	}
 
+	if val.PlatformChild == nil {
+		return nil
+	}
+
 	err = b.WriteObject(val.PlatformChild, writer)
 	return err
 }
