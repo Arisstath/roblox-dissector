@@ -810,7 +810,7 @@ func (b *extendedWriter) writePhysicsCoords(val rbxfile.ValueVector3) error {
 		}
 
 		var val1 uint32
-		val1 |= uint32(xScaleInt<<20) & 0x3FF00000
+		val1 |= uint32(xScaleInt&0x3FF) << 20
 		val1 |= uint32(yScaleInt&0x3FF) << 10
 		val1 |= uint32(zScaleInt) & 0x3FF
 
@@ -846,9 +846,9 @@ func (b *extendedWriter) writePhysicsCoords(val rbxfile.ValueVector3) error {
 
 		var val1, val2 uint32
 		val1 |= uint32(xScaleInt << 11)
-		val1 |= uint32((yScaleInt >> 10) & 0x7FF)
+		val1 |= uint32(yScaleInt>>10) & 0x7FF
 
-		val2 |= uint32((yScaleInt << 21) & 0x7FE00000)
+		val2 |= uint32(yScaleInt&0x3FF) << 21
 		val2 |= uint32(zScaleInt & 0x1FFFFF)
 
 		err = b.writeUint32BE(val1)

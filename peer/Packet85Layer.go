@@ -74,8 +74,7 @@ func (b *extendedReader) DecodePacket85Layer(reader PacketReader, layers *Packet
 	layer := &Packet85Layer{}
 	for {
 		reference, err := b.ReadObject(reader)
-		// unordered packets may have problems with caches
-		if err != nil && err != ErrCacheReadOOB {
+		if err != nil {
 			return layer, err
 		}
 		if reference.IsNull {
@@ -191,7 +190,7 @@ func (layer *Packet85Layer) Serialize(writer PacketWriter, stream *extendedWrite
 	for i := 0; i < len(layer.SubPackets); i++ {
 		subpacket := layer.SubPackets[i]
 		if subpacket.Data.Instance == nil {
-			println("WARNING: skipping 0x85 serialize because instance doesn't exist yet")
+			println("WARNING: skipping 0x85 serialize because instance doesn't exist yet; to client: ", writer.ToClient())
 			continue
 		}
 		err = stream.WriteObject(subpacket.Data.Instance, writer)
