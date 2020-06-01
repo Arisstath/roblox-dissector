@@ -149,8 +149,7 @@ func genPayloadFilter(offset int, bytes []byte) string {
 func (session *CaptureSession) CaptureFromWinDivert() error {
 	ctx := session.Context
 	captureCtx := session.CaptureContext
-	//filter := genPayloadFilter(0, append([]byte{5}, peer.OfflineMessageID...))
-	filter := genPayloadFilter(0, []byte{5})
+	filter := genPayloadFilter(0, append([]byte{5}, peer.OfflineMessageID...))
 
 	divertConnection, err := windivert.Open(filter, windivert.LayerNetwork, 405, 0)
 	if err != nil {
