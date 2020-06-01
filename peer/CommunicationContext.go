@@ -54,39 +54,6 @@ func (c *StringCache) LastWrite() uint8 {
 	return c.lastWrite
 }
 
-// SysAddrCache is a Cache that stores SystemAddress values.
-type SysAddrCache struct {
-	// Values contains the stores SystemAddresses.
-	Values    [0x80]interface{}
-	lastWrite uint8
-}
-
-// Get implements Cache.Get().
-func (c *SysAddrCache) Get(index uint8) (interface{}, bool) {
-	a := c.Values[index]
-	return a, a != nil
-}
-
-// Put implements Cache.Put().
-func (c *SysAddrCache) Put(val interface{}, index uint8) {
-	c.Values[index] = val.(datamodel.ValueSystemAddress)
-	c.lastWrite = index
-}
-
-// Equal implements Cache.Equal().
-func (c *SysAddrCache) Equal(index uint8, val interface{}) (bool, bool) {
-	val1 := c.Values[index]
-	if val1 == nil || val == nil {
-		return val1 == val, val1 == nil
-	}
-	return val1.(datamodel.ValueSystemAddress).String() == val.(datamodel.ValueSystemAddress).String(), val1 != nil
-}
-
-// LastWrite implements Cache.LastWrite().
-func (c *SysAddrCache) LastWrite() uint8 {
-	return c.lastWrite
-}
-
 // ByteSliceCache is a Cache that stores []byte objects.
 type ByteSliceCache struct {
 	// Values contains the []byte objects.
@@ -125,7 +92,6 @@ type Caches struct {
 	String          StringCache
 	Object          StringCache
 	Content         StringCache
-	SystemAddress   SysAddrCache
 	ProtectedString ByteSliceCache
 }
 

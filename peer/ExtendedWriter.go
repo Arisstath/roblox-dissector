@@ -220,13 +220,6 @@ func (b *extendedWriter) writeLuauCachedProtectedString(val datamodel.ValueSigne
 		return b.writeLuauProtectedStringRaw(val)
 	})
 }
-func (b *extendedWriter) writeCachedSystemAddress(val datamodel.ValueSystemAddress, caches *Caches) error {
-	cache := &caches.SystemAddress
-
-	return b.writeWithCache(val, cache, func(b *extendedWriter, val interface{}) error {
-		return b.writeSystemAddressRaw(val.(datamodel.ValueSystemAddress))
-	})
-}
 
 func (b *extendedWriter) writeJoinRef(ref datamodel.Reference, context *CommunicationContext) error {
 	var err error

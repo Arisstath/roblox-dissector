@@ -453,6 +453,8 @@ func (b *extendedWriter) writeSerializedValueGeneric(val rbxfile.Value, valueTyp
 		err = b.writeCFrameSimple(val.(rbxfile.ValueCFrame))
 	case PropertyTypeComplicatedCFrame:
 		err = b.writeCFrame(val.(rbxfile.ValueCFrame))
+	case PropertyTypeSystemAddress:
+		err = b.writeSystemAddress(val.(datamodel.ValueSystemAddress))
 	case PropertyTypeNumberSequence:
 		err = b.writeNumberSequence(val.(datamodel.ValueNumberSequence))
 	case PropertyTypeNumberSequenceKeypoint:
@@ -606,15 +608,8 @@ func (b *extendedWriter) writeNewEnumValue(val datamodel.ValueToken) error {
 	return b.writeUintUTF8(val.Value)
 }
 
-func (b *extendedWriter) writeSystemAddressRaw(val datamodel.ValueSystemAddress) error {
+func (b *extendedWriter) writeSystemAddress(val datamodel.ValueSystemAddress) error {
 	return b.writeVarint64(uint64(val))
-}
-
-func (b *extendedWriter) writeSystemAddress(val datamodel.ValueSystemAddress, caches *Caches) error {
-	return b.writeCachedSystemAddress(val, caches)
-}
-func (b *joinSerializeWriter) writeSystemAddress(val datamodel.ValueSystemAddress) error {
-	return b.writeSystemAddressRaw(val)
 }
 
 func (b *extendedWriter) writeRect2D(val rbxfile.ValueRect2D) error {

@@ -72,8 +72,6 @@ func (b *extendedReader) ReadSerializedValue(reader PacketReader, valueType uint
 		}
 	case PropertyTypeContent:
 		result, err = b.readNewContent(reader.Caches())
-	case PropertyTypeSystemAddress:
-		result, err = b.readSystemAddress(reader.Caches())
 	case PropertyTypeTuple:
 		result, err = b.readNewTuple(reader, deferred)
 	case PropertyTypeArray:
@@ -135,8 +133,6 @@ func (b *extendedWriter) WriteSerializedValue(val rbxfile.Value, writer PacketWr
 		err = b.WriteObject(val.(datamodel.ValueReference).Instance, writer)
 	case PropertyTypeContent:
 		err = b.writeNewContent(val.(rbxfile.ValueContent), writer.Caches())
-	case PropertyTypeSystemAddress:
-		err = b.writeSystemAddress(val.(datamodel.ValueSystemAddress), writer.Caches())
 	case PropertyTypeTuple:
 		err = b.writeNewTuple(val.(datamodel.ValueTuple), writer, deferred)
 	case PropertyTypeArray:
@@ -242,8 +238,6 @@ func (b *joinSerializeReader) ReadSerializedValue(reader PacketReader, valueType
 		result = datamodel.ValueReference{Instance: instance, Reference: reference}
 	case PropertyTypeContent:
 		result, err = b.readNewContent()
-	case PropertyTypeSystemAddress:
-		result, err = b.readSystemAddress()
 	default:
 		return b.extendedReader.readSerializedValueGeneric(reader, valueType, enumID, deferred)
 	}
@@ -294,8 +288,6 @@ func (b *joinSerializeWriter) WriteSerializedValue(val rbxfile.Value, writer Pac
 		err = b.WriteObject(val.(datamodel.ValueReference).Instance, writer)
 	case PropertyTypeContent:
 		err = b.writeNewContent(val.(rbxfile.ValueContent))
-	case PropertyTypeSystemAddress:
-		err = b.writeSystemAddress(val.(datamodel.ValueSystemAddress))
 	default:
 		return b.writeSerializedValueGeneric(val, valueType, deferred)
 	}

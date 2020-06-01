@@ -447,16 +447,7 @@ func (b *extendedReader) readContent(caches *Caches) (rbxfile.ValueContent, erro
 }
 
 // TODO: Make this function uniform with other cache functions
-func (b *extendedReader) readSystemAddress(caches *Caches) (datamodel.ValueSystemAddress, error) {
-	val, err := b.readVarint64()
-	if err != nil {
-		return datamodel.ValueSystemAddress(0), err
-	}
-	thisAddress := datamodel.ValueSystemAddress(val)
-	return thisAddress, err
-}
-
-func (b *joinSerializeReader) readSystemAddress() (datamodel.ValueSystemAddress, error) {
+func (b *extendedReader) readSystemAddress() (datamodel.ValueSystemAddress, error) {
 	val, err := b.readVarint64()
 	if err != nil {
 		return datamodel.ValueSystemAddress(0), err
@@ -1263,6 +1254,8 @@ func (b *extendedReader) readSerializedValueGeneric(reader PacketReader, valueTy
 		result, err = b.readCFrameSimple()
 	case PropertyTypeComplicatedCFrame:
 		result, err = b.readCFrame()
+	case PropertyTypeSystemAddress:
+		result, err = b.readSystemAddress()
 	case PropertyTypeNumberSequence:
 		result, err = b.readNumberSequence()
 	case PropertyTypeNumberSequenceKeypoint:
