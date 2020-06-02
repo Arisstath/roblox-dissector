@@ -249,9 +249,11 @@ func (layer *Packet85Layer) Serialize(writer PacketWriter, stream *extendedWrite
 				return err
 			}
 		}
-		err = stream.WriteObject(nil, writer) // Terminator for children
-		if err != nil {
-			return err
+		if len(subpacket.Children) > 0 {
+			err = stream.WriteObject(nil, writer) // Terminator for children
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return stream.WriteByte(0x00) // reference to NULL instance; terminator
