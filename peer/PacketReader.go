@@ -336,6 +336,10 @@ func (reader *DefaultPacketReader) ReadPacket(payload []byte, layers *PacketLaye
 // HandlePacket01 is the default handler for ID_REPLIC_DELETE_INSTANCE packets
 func (reader *DefaultPacketReader) HandlePacket01(e *emitter.Event) {
 	packet := e.Args[0].(*Packet83_01)
+	// client only REQUESTS that an instance should be deleted
+	if e.Args[1].(*PacketLayers).Root.FromClient {
+		return
+	}
 	err := packet.Instance.SetParent(nil)
 	if err != nil {
 		e.Args[1].(*PacketLayers).Root.Logger.Println("delete error:", err.Error())
