@@ -1,47 +1,15 @@
 package peer
 
 import (
-	"errors"
 	"fmt"
 )
 
 // Packet83_12 represents ID_HASH
 type Packet83_12 struct {
-	HashList       []uint32
-	SecurityTokens [3]uint32
-}
-
-func getRbxNonce(base uint32, query uint32) uint32 {
-	baseState := base
-	queryState := query
-	var first13Bits uint32 = 0xFFF80000
-	var second13Bits uint32 = 0xFFF80000 >> 13
-	var first15Bits uint32 = 0xFFFE0000
-	var second15Bits uint32 = 0xFFFE0000 >> 15
-
-	baseState ^= baseState >> 16
-	queryState ^= queryState >> 16
-
-	baseState *= 0xA89ED915 // modinv 3
-	queryState *= 0xA89ED915
-	baseState ^= (baseState ^ first13Bits) >> 13
-	queryState ^= (queryState ^ first13Bits) >> 13
-	baseState ^= (baseState ^ second13Bits) >> 13
-	queryState ^= (queryState ^ second13Bits) >> 13
-
-	baseState *= 0xB6C92F47 // modinv 2
-	queryState *= 0xB6C92F47
-	baseState ^= (baseState ^ first15Bits) >> 15
-	queryState ^= (queryState ^ first15Bits) >> 15
-	baseState ^= (baseState ^ second15Bits) >> 15
-	queryState ^= (queryState ^ second15Bits) >> 15
-
-	baseState += 4
-
-	queryState *= 0xA0FE3BCF // modinv 4
-	queryState = queryState<<(32-17) | queryState>>17
-
-	return (queryState - baseState) * 0xA89ED915
+	HashList          []uint32
+	SecurityTokens    [3]uint64
+	Nonce             uint32
+	HasSecurityTokens bool
 }
 
 func (stream *extendedReader) DecodePacket83_12(reader PacketReader, layers *PacketLayers) (Packet83Subpacket, error) {
@@ -52,11 +20,9 @@ func (stream *extendedReader) DecodePacket83_12(reader PacketReader, layers *Pac
 		return inner, err
 	}
 
-	hasExtra := false
-
 	if numItems != 0xFF {
 		//println("noextranumitem")
-		hasExtra = true
+		inner.HasSecurityTokens = true
 	} else {
 		numItems, err = stream.readUint8()
 		if err != nil {
@@ -64,7 +30,7 @@ func (stream *extendedReader) DecodePacket83_12(reader PacketReader, layers *Pac
 		}
 	}
 
-	nonce, err := stream.readUint32BE()
+	inner.Nonce, err = stream.readUint32BE()
 	if err != nil {
 		return inner, err
 	}
@@ -76,24 +42,15 @@ func (stream *extendedReader) DecodePacket83_12(reader PacketReader, layers *Pac
 		}
 	}
 
-	if hasExtra {
-		var tokens [3]uint64
+	if inner.HasSecurityTokens {
 		for i := 0; i < 3; i++ {
-			tokens[i], err = stream.readUint64BE()
+			inner.SecurityTokens[i], err = stream.readUint64BE()
 			if err != nil {
 				return inner, err
 			}
 		}
 	}
 
-	for i := numItems - 2; i > 0; i-- {
-		hashList[i] ^= hashList[i-1]
-	}
-	hashList[0] ^= nonce
-	nonce ^= hashList[numItems-1]
-	//nonceDiff := nonce - getRbxNonce(hashList[1], hashList[2])
-
-	//fmt.Println("hashlist", hashList, nonce, nonceDiff)
 	inner.HashList = hashList
 
 	return inner, nil
@@ -101,7 +58,35 @@ func (stream *extendedReader) DecodePacket83_12(reader PacketReader, layers *Pac
 
 // Serialize implements Packet83Subpacket.Serialize()
 func (layer *Packet83_12) Serialize(writer PacketWriter, stream *extendedWriter) error {
-	return errors.New("hash packet not implemented")
+	if !layer.HasSecurityTokens {
+		err := stream.WriteByte(0xFF)
+		if err != nil {
+			return err
+		}
+	}
+	err := stream.WriteByte(uint8(len(layer.HashList)))
+	if err != nil {
+		return err
+	}
+	err = stream.writeUint32BE(layer.Nonce)
+	if err != nil {
+		return err
+	}
+	for _, hash := range layer.HashList {
+		err = stream.writeUint32BE(hash)
+		if err != nil {
+			return err
+		}
+	}
+	if layer.HasSecurityTokens {
+		for _, token := range layer.SecurityTokens {
+			err = stream.writeUint64BE(token)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // Type implements Packet83Subpacket.Type()
