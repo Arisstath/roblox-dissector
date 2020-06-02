@@ -17,7 +17,7 @@ func (thisStream *extendedReader) DecodePacket87Layer(reader PacketReader, layer
 	layer := &Packet87Layer{}
 	var ref datamodel.Reference
 
-	scope, err := thisStream.readLengthAndString()
+	peerID, err := thisStream.readVarint64()
 	if err != nil {
 		return layer, err
 	}
@@ -27,13 +27,17 @@ func (thisStream *extendedReader) DecodePacket87Layer(reader PacketReader, layer
 	}
 
 	// This reference will never be null
-	ref = datamodel.Reference{Scope: scope, Id: id}
+	ref = datamodel.Reference{Scope: fmt.Sprintf("RBXPID%d", peerID), Id: id, PeerId: uint32(peerID)}
 	layer.Instance, err = context.InstancesByReference.TryGetInstance(ref)
 	if err != nil {
 		return layer, err
 	}
 
-	layer.Message, err = thisStream.readLengthAndString()
+	messageLen, err := thisStream.readUint32BE()
+	if err != nil {
+		return layer, err
+	}
+	layer.Message, err = thisStream.readASCII(int(messageLen))
 	return layer, err
 }
 
