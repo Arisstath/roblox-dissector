@@ -43,7 +43,7 @@ func (thisStream *extendedReader) DecodePacket87Layer(reader PacketReader, layer
 
 // Serialize implements RakNetPacket.Serialize
 func (layer *Packet87Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
-	err := stream.writeUint32AndString(layer.Instance.Ref.Scope)
+	err := stream.writeVarint64(uint64(layer.Instance.Ref.PeerId))
 	if err != nil {
 		return err
 	}
