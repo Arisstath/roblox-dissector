@@ -23,6 +23,14 @@ jobs:
 
     - name: Check out code into the Go module directory
       run: go get -v -t -d -tags divert github.com/Gskartwii/roblox-dissector/...
+
+    - name: Download WinDivert binaries
+      run: |
+        wget https://reqrypt.org/download/WinDivert-2.2.0-A.zip -O ~/windivert.zip
+        unzip ~/windivert.zip -d ~/windivert
+    
+    - name: Make -lwindivert available
+      run: cp ~/windivert/WinDivert-2.2.0-A/x64/WinDivert.dll `go env GOPATH`/src/github.com/Gskartwii/windivert-go/libwindivert.dll
     
     - name: Install Qt bindings
       run: |
@@ -38,10 +46,7 @@ jobs:
         qtdeploy -docker -tags=divert build windows 2> ~/deploy-log.txt
 
     - name: Insert WinDivert binaries
-      run: |
-        wget https://reqrypt.org/download/WinDivert-2.2.0-A.zip -O windivert.zip
-        unzip windivert.zip -d windivert
-        cp windivert/WinDivert-2.2.0-A/x64/WinDivert{64.sys,.dll} `go env GOPATH`/src/github.com/Gskartwii/roblox-dissector/deploy/windows/
+      run: cp ~/windivert/WinDivert-2.2.0-A/x64/WinDivert{64.sys,.dll} `go env GOPATH`/src/github.com/Gskartwii/roblox-dissector/deploy/windows/
 
     - name: Move artifacts
       run: cp -R `go env GOPATH`/src/github.com/Gskartwii/roblox-dissector/deploy ~/deploy-artifacts
