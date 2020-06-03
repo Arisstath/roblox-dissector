@@ -19,8 +19,8 @@ jobs:
         go-version: ^1.13
       id: go
     
-    - name: Install packages for cross-compiling
-      run: sudo apt-get install gcc-mingw-w64-x86-64 binutils-mingw-w64-x86-64
+    - name: Install packages
+      run: sudo apt-get install gcc-mingw-w64-x86-64 binutils-mingw-w64-x86-64 unzip
 
     - name: Check out code into the Go module directory
       run: go get -v -t -d github.com/Gskartwii/roblox-dissector/...
@@ -36,7 +36,13 @@ jobs:
         export QT_API=5.12.0
         cd `go env GOPATH`/src/github.com/Gskartwii/roblox-dissector
         x86_64-w64-mingw32-windres icon.rc -o icon_win64.syso
-        qtdeploy -docker build windows
+        qtdeploy -docker -tags=divert build windows
+
+    - name: Insert WinDivert binaries
+      run: |
+        wget https://reqrypt.org/download/WinDivert-2.2.0-A.zip -O windivert.zip
+        unzip windivert.zip -d windivert
+        cp windivert/WinDivert-2.2.0-A/x64/WinDivert{64.sys,.dll} `go env GOPATH`/src/github.com/Gskartwii/roblox-dissector/deploy/windows/
 
     - name: Move artifacts
       run: cp -R `go env GOPATH`/src/github.com/Gskartwii/roblox-dissector/deploy ~/deploy-artifacts
