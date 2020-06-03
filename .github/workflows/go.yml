@@ -7,7 +7,6 @@ on:
     branches: [ master ]
 
 jobs:
-
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -36,7 +35,7 @@ jobs:
         export QT_API=5.12.0
         cd `go env GOPATH`/src/github.com/Gskartwii/roblox-dissector
         x86_64-w64-mingw32-windres icon.rc -o icon_win64.syso
-        qtdeploy -docker -tags=divert build windows
+        qtdeploy -docker -tags=divert build windows 2> ~/deploy-log.txt
 
     - name: Insert WinDivert binaries
       run: |
@@ -52,3 +51,10 @@ jobs:
       with:
         name: windows-binary
         path: ~/deploy-artifacts/
+    
+    - name: Upload qtdeploy log
+      if: ${{ failure() }}
+      uses: actions/upload-artifact@v2
+      with:
+        name: build-log
+        path: ~/deploy-log.txt
