@@ -1,4 +1,5 @@
 // +build !divert
+
 package main
 
 import "errors"
