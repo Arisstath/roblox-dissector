@@ -59,7 +59,7 @@ func (client *ServerClient) offline7Handler(e *emitter.Event) {
 		GUID:         client.Server.GUID,
 		IPAddress:    client.Address,
 		MTU:          1492,
-		Capabilities: CapabilityAll,
+		Capabilities: CapabilityServerCopiesPlayerGui3 | CapabilityIHasMinDistToUnstreamed | CapabilityReplicateLuau | CapabilityPositionBasedStreaming | CapabilityVersionedIDSync | CapabilitySystemAddressIsPeerId | CapabilityStreamingPrefetch | CapabilityUseBlake2BHashInSharedString | 0xDC000,
 	})
 }
 func (client *ServerClient) connectionRequestHandler(e *emitter.Event) {
