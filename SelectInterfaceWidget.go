@@ -23,7 +23,7 @@ func NewSelectInterfaceWidget(parent widgets.QWidget_ITF, callback func(string, 
 	interfaces := widgets.NewQTreeView(nil)
 
 	standardModel := NewProperSortModel(interfaces)
-	standardModel.SetHorizontalHeaderLabels([]string{"Interface Name", "IP addresses"})
+	standardModel.SetHorizontalHeaderLabels([]string{"Interface Name", "Description", "IP addresses"})
 	rootNode := standardModel.InvisibleRootItem()
 
 	devs, err := pcap.FindAllDevs()
@@ -32,19 +32,21 @@ func NewSelectInterfaceWidget(parent widgets.QWidget_ITF, callback func(string, 
 	}
 
 	for _, dev := range devs {
-		if len(dev.Addresses) < 1 {
-			println("skip", dev.Name)
-			continue
-		}
 		var addrStringBuilder strings.Builder
 		for _, addr := range dev.Addresses {
 			addrStringBuilder.WriteString(addr.IP.String())
 			addrStringBuilder.WriteString(", ")
 		}
+		var addrs string
+		if addrStringBuilder.Len() > 2 {
+			// Remove trailing comma
+			addrs = addrStringBuilder.String()[:addrStringBuilder.Len() - 2]
+		}
 		rootNode.AppendRow([]*gui.QStandardItem{
 			NewStringItem(dev.Name),
+			NewStringItem(dev.Description),
 			// Remove trailing comma
-			NewStringItem(addrStringBuilder.String()[:addrStringBuilder.Len()-2]),
+			NewStringItem(addrs),
 		})
 
 	}
