@@ -7,7 +7,7 @@
 [![Release v0.7.5beta](https://img.shields.io/badge/release-v0.7.5beta-blue.svg)](https://github.com/Gskartwii/roblox-dissector/releases)
 [![Discord Chat](https://img.shields.io/discord/564392147038502912)](https://discord.gg/zPbprKb)
 
-Sala is a suite of tools to aid developers, hackers\* and designers in understanding the internal workings of Roblox networking. Currently, Sala development is entering the beta stage. Contributions are welcome. Check out the GitHub Wiki for documentation.
+Sala is a suite of tools to aid developers, hackers\* and designers in understanding the internal workings of Roblox networking. Currently, Sala is in beta. Contributions are welcome. Check out the GitHub Wiki for documentation.
 
 \* The word “hacker” is used here in the same sense as Atom is a “hackable” editor.
 
