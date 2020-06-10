@@ -1,19 +1,18 @@
 # Sala
 ## The Essential Roblox Network Suite
 
-[![Build Status](https://travis-ci.org/Gskartwii/roblox-dissector.svg?branch=master)](https://travis-ci.org/Gskartwii/roblox-dissector)
+[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/Gskartwii/roblox-dissector/Go)](https://github.com/Gskartwii/roblox-dissector/actions)
 [![Documentation](https://godoc.org/github.com/Gskartwii/roblox-dissector?status.svg)](https://godoc.org/github.com/Gskartwii/roblox-dissector)
 [![Go Report](https://goreportcard.com/badge/github.com/Gskartwii/roblox-dissector)](https://goreportcard.com/report/github.com/Gskartwii/roblox-dissector)
 [![Release v0.7.5beta](https://img.shields.io/badge/release-v0.7.5beta-blue.svg)](https://github.com/Gskartwii/roblox-dissector/releases)
-
-[Discord Chat](https://discord.gg/zPbprKb)
+[![Discord Chat](https://img.shields.io/discord/564392147038502912)](https://discord.gg/zPbprKb)
 
 Sala is a suite of tools to aid developers, hackers\* and designers in understanding the internal workings of Roblox networking. Currently, Sala development is entering the beta stage. Contributions are welcome. Check out the GitHub Wiki for documentation.
 
 \* The word “hacker” is used here in the same sense as Atom is a “hackable” editor.
 
 ## Getting builds
-Some releases are available under the [releases tab](https://github.com/Gskartwii/roblox-dissector/releases). Nightly builds can be found by going to Commits, then clicking the latest checkmark, then Details -> Artifacts -> windows-binary. Instructions for compiling the project can be found on the Wiki.
+Some releases are available under the [releases tab](https://github.com/Gskartwii/roblox-dissector/releases). Nightly builds can be found by going to Actions and picking the latest commit and downloading `windows-binary` from under "Artifacts". Instructions for compiling the project can be found on the Wiki.
 
 ## Features
 * Read PCAP Files
