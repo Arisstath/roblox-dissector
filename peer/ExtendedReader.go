@@ -300,10 +300,10 @@ func (b *extendedReader) readWithCache(cache Cache, readCallback cacheReadCallba
 	var err error
 	cacheIndex, err := b.readUint8()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if cacheIndex == 0x00 {
-		return "NULL", nil
+		return nil, nil
 	}
 
 	if cacheIndex < 0x80 {
@@ -311,13 +311,13 @@ func (b *extendedReader) readWithCache(cache Cache, readCallback cacheReadCallba
 	} else {
 		result, err = readCallback(b)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 		cache.Put(result, cacheIndex&0x7F)
 	}
 
 	if result == nil {
-		return "", ErrCacheReadOOB
+		return nil, ErrCacheReadOOB
 	}
 
 	return result, err
@@ -347,12 +347,24 @@ func (b *extendedReader) readCached(caches *Caches) (string, error) {
 	cache := &caches.String
 
 	thisString, err := b.readWithCache(cache, (*extendedReader).readUint32AndString)
+	if err != nil {
+		return "", err
+	}
+	if thisString == nil {
+		return "", nil
+	}
 	return thisString.(string), err
 }
 
 func (b *extendedReader) readCachedScope(caches *Caches) (string, error) {
 	cache := &caches.Object
 	thisString, err := b.readWithCache(cache, (*extendedReader).readScope)
+	if err != nil {
+		return "", err
+	}
+	if thisString == nil {
+		return "NULL", nil
+	}
 	return thisString.(string), err
 }
 
@@ -360,6 +372,12 @@ func (b *extendedReader) readCachedContent(caches *Caches) (string, error) {
 	cache := &caches.Content
 
 	thisString, err := b.readWithCache(cache, (*extendedReader).readUint32AndString)
+	if err != nil {
+		return "", err
+	}
+	if thisString == nil {
+		return "", nil
+	}
 	return thisString.(string), err
 }
 
@@ -374,6 +392,12 @@ func (b *extendedReader) readNewCachedProtectedString(caches *Caches) ([]byte, e
 		thisString, err := b.readString(int(stringLen))
 		return thisString, err
 	})
+	if err != nil {
+		return nil, err
+	}
+	if thisString == nil {
+		return nil, errors.New("script can't be nil")
+	}
 	return thisString.([]byte), err
 }
 
@@ -385,6 +409,12 @@ func (b *extendedReader) readLuauCachedProtectedString(caches *Caches) (datamode
 		signature = str.Signature
 		return []byte(str.Value), err
 	})
+	if err != nil {
+		return datamodel.ValueSignedProtectedString{}, err
+	}
+	if thisString == nil {
+		return datamodel.ValueSignedProtectedString{}, errors.New("script can't be nil")
+	}
 	return datamodel.ValueSignedProtectedString{Value: thisString.([]byte), Signature: signature}, err
 }
 
