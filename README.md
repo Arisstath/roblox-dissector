@@ -8,51 +8,23 @@
 
 [Discord Chat](https://discord.gg/zPbprKb)
 
-Sala is a suite of tools to aid developers, hackers\* and designers in understanding the internal workings of Roblox networking. Currently, Sala development is entering the beta stage. Contributions are welcome.
+Sala is a suite of tools to aid developers, hackers\* and designers in understanding the internal workings of Roblox networking. Currently, Sala development is entering the beta stage. Contributions are welcome. Check out the GitHub Wiki for documentation.
 
 \* The word “hacker” is used here in the same sense as Atom is a “hackable” editor.
 
 ## Getting builds
-Some releases are available under the [releases tab](https://github.com/Gskartwii/roblox-dissector/releases).  
-To compile Sala, you must first install [TheRecipe's Go bindings for Qt](https://github.com/therecipe/qt). Preferably, use Qt 5.12.2 and 64-bit MinGW version 7.3. 
-Then fetch the repo and its dependencies: `go get -v github.com/Gskartwii/roblox-dissector/...`  
-And compile: 
-
-```
-cd %GOPATH%/src/github.com/Gskartwii/roblox-dissector
-%GOPATH%/bin/qtdeploy build windows
-```
-
-A directory named `deploy` should now exist in `$GOPATH/src/github/gskartwii/roblox-dissector`.  
-After the first compilation, you can pass the `-fast` flag to `qtdeploy` to speed up compilation, provided that you don't remove the `deploy` directory:
-
-```
-%GOPATH%/bin/qtdeploy -fast build windows
-```
-
-If you have the right setup, you can also pass build tags to deploy. Use `-tags=lumikide` to compile with Lumikide support (if you don't know what it is, you won't need it) and `-tags=divert` to compile with WinDivert support.
+Some releases are available under the [releases tab](https://github.com/Gskartwii/roblox-dissector/releases). Nightly builds can be found by going to Commits, then clicking the latest checkmark, then Details -> Artifacts -> windows-binary. Instructions for compiling the project can be found on the Wiki.
 
 ## Features
 * Read PCAP Files
 * Capture packets on the fly
 * View multiple capture sessions at a time
-* Decode/encode most\* Roblox packets
+* Decode/encode most Roblox packets
 * Dump DataModels based on capture (with some limitations)
     - Only replicated instances can be dumped
     - Locally available scripts are dumped as *.rbxc files. You need a script decompiler to view them.
-* Capture in proxy mode: inject packets on the fly! (experimental)
+* Capture in WinDivert proxy mode (experimental).
 * [Versatile API](https://godoc.org/github.com/Gskartwii/roblox-dissector/peer)
-
-\* Packets not yet supported: StreamingEnabled, Smooth Terrain, certain anti-cheat packets (ID_ROCKY)
-Packets for which encoding is not supported: memcheck hash packets
-
-### Planned features
-* StreamingEnabled support
-* Smooth Terrain support
-* Possibly ID_ROCKY and memcheck hash support
-* Create and save PCAP files
-* Support platforms other than Windows
-* Custom Roblox server
 
 ## Screenshots
 ![Sala provides a offline interface for exploring PCAP files.](https://user-images.githubusercontent.com/6651822/55480485-0fc92880-5629-11e9-93eb-8431f85dd793.png)
