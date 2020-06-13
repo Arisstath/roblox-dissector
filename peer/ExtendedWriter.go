@@ -447,11 +447,12 @@ func newWriteDeferredStrings(writer PacketWriter) writeDeferredStrings {
 }
 
 func (m writeDeferredStrings) Defer(value *datamodel.ValueDeferredString) {
-	if _, ok := m.underlyingDictionary[value.Hash]; ok {
-		// already written
-		return
-	}
-	// if duplicated, overwritten -- doesn't matter
+    // if previously sent in *another packet*, we're not expected to defer it
+    if _, ok := m.underlyingDictionary[value.Hash]; ok {
+        return
+    }
+	// if duplicated within the same packet, overwritten -- doesn't matter
+	// otherwise just add it to the defers
 	m.m[value.Hash] = value.Value
 }
 
@@ -465,15 +466,30 @@ func (b *extendedWriter) resolveDeferredStrings(defers writeDeferredStrings) err
 		if err != nil {
 			return err
 		}
+		if _, ok := defers.underlyingDictionary[md5]; ok {
+    		// the same sharedstring has been sent in the same packet before
+    		err = b.WriteByte(1)
+    		if err != nil {
+        		return err
+    		}
+    		continue
+		}
+
 		err = b.WriteByte(0)
 		if err != nil {
 			return err
 		}
-		// TODO: Implement echo sending
+		err = b.writeUintUTF8(uint32(len(value)))
+		if err != nil {
+    		return err
+		}
 		err = b.allBytes(value)
 		if err != nil {
 			return err
 		}
+
+		// Deduplicate shared string on subsequent sends
+		defers.underlyingDictionary[md5] = value
 	}
 	return nil
 }
