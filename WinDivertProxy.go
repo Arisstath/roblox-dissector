@@ -156,6 +156,8 @@ func (session *CaptureSession) CaptureFromWinDivert() error {
 		return err
 	}
 
+	hasClosed := false
+
 	go func() {
 		for {
 			payload := make([]byte, 1500)
@@ -164,7 +166,10 @@ func (session *CaptureSession) CaptureFromWinDivert() error {
 				fmt.Printf("divert recv fail: %s\n", err.Error())
 				return
 			}
-			divertConnection.Close()
+			if !hasClosed {
+    			divertConnection.Close()
+    			hasClosed = true
+			}
 			ifIdx := winDivertAddr.InterfaceIndex
 			subIfIdx := winDivertAddr.SubInterfaceIndex
 
@@ -182,7 +187,10 @@ func (session *CaptureSession) CaptureFromWinDivert() error {
 	}()
 	go func() {
 		<-ctx.Done()
-		divertConnection.Close()
+		if !hasClosed {
+    		divertConnection.Close()
+    		hasClosed = true
+		}
 	}()
 
 	return nil
