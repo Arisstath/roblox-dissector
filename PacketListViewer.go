@@ -12,6 +12,7 @@ import (
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/widgets"
+	"github.com/yuin/gopher-lua"
 )
 
 type PacketList map[uint32]([]*gui.QStandardItem)
@@ -42,6 +43,7 @@ type PacketListViewer struct {
 	Conversation *Conversation
 
 	DefaultPacketWindow *PacketDetailsViewer
+	Filter *lua.FunctionProto
 }
 
 func NewPacketListViewer(updateContext context.Context, parent widgets.QWidget_ITF, flags core.Qt__WindowType) *PacketListViewer {
@@ -72,8 +74,7 @@ func NewPacketListViewer(updateContext context.Context, parent widgets.QWidget_I
 
 	standardModel, proxy := NewFilteringModel(treeView)
 	proxy.ConnectFilterAcceptsRow(func(sourceRow int, sourceParent *core.QModelIndex) bool {
-		// TODO
-		return true
+		return listViewer.FilterAcceptsRow(sourceRow, sourceParent)
 	})
 	listViewer.StandardModel = standardModel
 	listViewer.ProxyModel = proxy
@@ -101,6 +102,37 @@ func NewPacketListViewer(updateContext context.Context, parent widgets.QWidget_I
 	listViewer.SetLayout(layout)
 	go listViewer.UpdateLoop()
 	return listViewer
+}
+
+func (m *PacketListViewer) SetFilter(filterScript string) {
+	compiled, err := CompileFilter(filterScript)
+	if err != nil {
+    	widgets.QMessageBox_Critical(m, "Filter Error", err.Error(), widgets.QMessageBox__Ok, widgets.QMessageBox__NoButton)
+    	return
+	}
+	m.Filter = compiled
+	m.ProxyModel.InvalidateFilter()
+}
+
+func (m *PacketListViewer) FilterAcceptsRow(sourceRow int, sourceParent *core.QModelIndex) bool {
+    if m.Filter == nil {
+        return true
+    }
+	realSelectedValue, _ := strconv.Atoi(m.StandardModel.Item(sourceRow, 0).Data(0).ToString())
+	if packet, ok := m.Packets[uint64(realSelectedValue)]; ok {
+    	if packet.Main == nil {
+        	return true
+    	}
+		acc, err := FilterAcceptsPacket(NewLuaFilterState(), m.Filter, packet.Main, realSelectedValue)
+		if err != nil {
+        	widgets.QMessageBox_Critical(m, fmt.Sprintf("Filter Error on packet %d", realSelectedValue), fmt.Sprintf("Error: %s\n\nThe filter will be reset.", err.Error()), widgets.QMessageBox__Ok, widgets.QMessageBox__NoButton)
+        	m.Filter = nil
+			return true
+		}
+		return acc
+	}
+	println("Warning: Packet to be filtered not found")
+	return true
 }
 
 func (m *PacketListViewer) registerSplitPacketRow(row []*gui.QStandardItem, context *peer.CommunicationContext, layers *peer.PacketLayers) {

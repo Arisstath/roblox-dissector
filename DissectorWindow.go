@@ -316,6 +316,28 @@ func NewDissectorWindow(parent widgets.QWidget_ITF, flags core.Qt__WindowType) *
 	captureLiveAction := captureBar.AddAction("From &live interface...")
 	captureDivertAction := captureBar.AddAction("From &WinDivert proxy...")
 
+	viewBar := window.MenuBar().AddMenu2("&View")
+	viewAction := viewBar.AddAction("Apply &filter...")
+	viewAction.ConnectTriggered(func(_ bool) {
+        viewer := window.CurrentPacketListViewer
+		if viewer != nil {
+			var ok bool
+			filterScript := widgets.QInputDialog_GetMultiLineText(
+    			window,
+    			"Enter filter Lua script",
+    			"Lua filter script",
+    			"",
+    			&ok,
+    			core.Qt__Dialog,
+    			core.Qt__ImhMultiLine,
+			)
+			if !ok {
+    			return
+			}
+			viewer.SetFilter(filterScript)
+		}
+	})
+
 	peersBar := window.MenuBar().AddMenu2("&Peers")
 	startServerAction := peersBar.AddAction("Start &server...")
 
