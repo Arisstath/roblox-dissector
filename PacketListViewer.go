@@ -142,7 +142,6 @@ func (m *PacketListViewer) registerSplitPacketRow(row []*gui.QStandardItem, cont
 func (m *PacketListViewer) AddSplitPacket(context *peer.CommunicationContext, layers *peer.PacketLayers) {
 	if _, ok := m.packetRowsByUniqueID[layers.Reliability.SplitBuffer.UniqueID]; !ok {
 		m.AddFullPacket(context, layers, nil)
-		m.BindDefaultCallback(context, layers)
 	} else {
 		m.handleSplitPacket(context, layers)
 	}
@@ -162,14 +161,6 @@ func (m *PacketListViewer) BindCallback(context *peer.CommunicationContext, laye
 			paintItems(row, gui.NewQColor3(255, 0, 0, 127))
 		}
 	}
-}
-
-// TODO: Is this still needed?
-func (m *PacketListViewer) BindDefaultCallback(context *peer.CommunicationContext, layers *peer.PacketLayers) {
-	row := m.packetRowsByUniqueID[layers.Reliability.SplitBuffer.UniqueID]
-	index, _ := strconv.Atoi(row[0].Data(0).ToString())
-
-	m.Packets[uint64(index)] = layers
 }
 
 func (m *PacketListViewer) handleSplitPacket(context *peer.CommunicationContext, layers *peer.PacketLayers) {
@@ -258,9 +249,8 @@ func (m *PacketListViewer) AddFullPacket(context *peer.CommunicationContext, lay
 		rootRow = append(rootRow, nil)
 	}
 
-	if layers.Reliability == nil { // Only bind if we're done parsing the packet
-		m.Packets[index] = layers
-	} else {
+	m.Packets[index] = layers
+	if layers.Reliability != nil {
 		paintItems(rootRow, gui.NewQColor3(255, 255, 0, 127))
 	}
 	if m.UpdatePassthrough {

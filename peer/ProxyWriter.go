@@ -114,7 +114,6 @@ func NewProxyWriter(ctx context.Context) *ProxyWriter {
 	clientHalf.DefaultPacketReader.LayerEmitter.On("full-reliable", func(e *emitter.Event) {
 		layers := e.Args[0].(*PacketLayers)
 		packetType := layers.PacketType
-		// FIXME: No streaming support
 		//println("client fullreliable", packetType)
 		var err error
 		if packetType == 0x15 {

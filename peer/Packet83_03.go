@@ -60,7 +60,6 @@ func (thisStream *extendedReader) DecodePacket83_03(reader PacketReader, layers 
 			return layer, err
 		}
 		// CreateInstance: allow forward references in ID_REPLIC_PROP
-		// TODO: too tolerant?
 		result := datamodel.ValueReference{Reference: reference}
 		refInstance, err := context.InstancesByReference.CreateInstance(reference)
 		if err != nil {

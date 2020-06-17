@@ -65,7 +65,6 @@ func (b *extendedReader) ReadSerializedValue(reader PacketReader, valueType uint
 			result = datamodel.ValueReference{Instance: nil, Reference: reference}
 		} else {
 			// CreateInstance: allow forward references in ID_NEW_INST or ID_PROP
-			// TODO: too tolerant?
 			var instance *datamodel.Instance
 			instance, err = reader.Context().InstancesByReference.CreateInstance(reference)
 			result = datamodel.ValueReference{Instance: instance, Reference: reference}

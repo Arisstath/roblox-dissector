@@ -1,25 +1,10 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/Gskartwii/roblox-dissector/peer"
 	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/widgets"
 )
-
-// TODO: Dynamically fetch?
-var TerrainMaterials = [...]string{
-	"Air",
-}
-
-func MaterialToString(material uint8) string {
-	if len(TerrainMaterials) > int(material) {
-		return TerrainMaterials[material]
-	}
-
-	return fmt.Sprintf("0x%02X", material)
-}
 
 func ShowPacket8D(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationContext, layers *peer.PacketLayers) {
 	MainLayer := layers.Main.(*peer.Packet8DLayer)

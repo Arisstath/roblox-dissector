@@ -140,10 +140,6 @@ func (client *ServerClient) topReplicate() error {
 		FilteringEnabled:     true,
 		AllowThirdPartySales: false,
 		CharacterAutoSpawn:   true,
-		ReferenceString:      client.Server.InstanceDictionary.Scope,
-		// TODO: VM ints
-		ScriptKey:     1,
-		CoreScriptKey: 1,
 		Items:         topReplicationItems,
 	})
 }
