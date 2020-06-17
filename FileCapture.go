@@ -37,7 +37,7 @@ type PacketProvider interface {
 	Errors() *emitter.Emitter
 }
 
-// TODO: Make multiple subclasses? ClientConversation, HTTPConversation?
+// TODO: Make multiple subclasses? ClientConversation
 type Conversation struct {
 	ClientAddress *net.UDPAddr
 	ServerAddress *net.UDPAddr
@@ -48,7 +48,6 @@ type Conversation struct {
 
 type CaptureContext struct {
 	Conversations       []*Conversation
-	HTTPConverations    []*HTTPConversation
 	ConversationEmitter *emitter.Emitter
 
 	Close func()

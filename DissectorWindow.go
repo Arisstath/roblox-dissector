@@ -227,7 +227,7 @@ func (window *DissectorWindow) TabSelected(index int) {
 	window.CurrentSession = nil
 	window.CurrentPacketListViewer = nil
 	if index == -1 {
-		window.SessionSelected(nil, nil, nil)
+		window.SessionSelected(nil, nil)
 		return
 	}
 	widget := window.TabWidget.Widget(index)
