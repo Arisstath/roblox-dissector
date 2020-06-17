@@ -31,7 +31,6 @@ type DissectorWindow struct {
 	CurrentSession *CaptureSession
 	// TODO: Can this use an interface?
 	CurrentPacketListViewer *PacketListViewer
-	CurrentHTTPViewer       *HTTPViewer
 	StopAction              *widgets.QAction
 	BrowseDataModelAction   *widgets.QAction
 	UpdatePauseAction       *widgets.QAction
@@ -203,7 +202,7 @@ func (window *DissectorWindow) UpdatePauseHandler(_ bool) {
 	window.SetupPauseAction()
 }
 
-func (window *DissectorWindow) SessionSelected(session *CaptureSession, viewer *PacketListViewer, httpViewer *HTTPViewer) {
+func (window *DissectorWindow) SessionSelected(session *CaptureSession, viewer *PacketListViewer) {
 	window.SetupPauseAction()
 	if viewer == nil || viewer.Conversation == nil {
 		window.BrowseDataModelAction.SetEnabled(false)
@@ -227,7 +226,6 @@ func (window *DissectorWindow) UpdateButtons() {
 func (window *DissectorWindow) TabSelected(index int) {
 	window.CurrentSession = nil
 	window.CurrentPacketListViewer = nil
-	window.CurrentHTTPViewer = nil
 	if index == -1 {
 		window.SessionSelected(nil, nil, nil)
 		return
@@ -240,15 +238,8 @@ func (window *DissectorWindow) TabSelected(index int) {
 			window.CurrentPacketListViewer = found
 			break
 		}
-
-		foundHTTPViewer := session.FindHTTPViewer(widget)
-		if foundHTTPViewer != nil {
-			window.CurrentSession = session
-			window.CurrentHTTPViewer = foundHTTPViewer
-			break
-		}
 	}
-	window.SessionSelected(window.CurrentSession, window.CurrentPacketListViewer, window.CurrentHTTPViewer)
+	window.SessionSelected(window.CurrentSession, window.CurrentPacketListViewer)
 }
 
 func NewDissectorWindow(parent widgets.QWidget_ITF, flags core.Qt__WindowType) *DissectorWindow {
