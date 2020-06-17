@@ -99,16 +99,6 @@ func DumpDataModel(context *peer.CommunicationContext, parent widgets.QWidget_IT
 		return
 	}
 
-	if LumikideEnabled {
-		err = LumikideProcessContext(parent, context, writableClone)
-		if err != nil {
-			widgets.QMessageBox_Critical(parent, "Error while processing with Lumikide", err.Error(), widgets.QMessageBox__Ok, widgets.QMessageBox__NoButton)
-			return
-		}
-	} else {
-		println("Lumikide disabled at compile time, skipping processing.")
-	}
-
 	scriptData, err := os.OpenFile(location+"/scriptKeys", os.O_RDWR|os.O_CREATE, 0666)
 	defer scriptData.Close()
 	if err != nil {
