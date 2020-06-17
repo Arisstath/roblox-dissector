@@ -19,36 +19,10 @@ import (
 	"github.com/therecipe/qt/widgets"
 )
 
-type StudioSettings struct {
-	Location string
-
-	Flags   string
-	Address string
-	Port    string
-	RBXL    string
-}
-
-type PlayerSettings struct {
-	Location   string
-	Flags      string
-	GameID     string
-	TrackerID  string
-	AuthTicket string
-}
-
 type ServerSettings struct {
 	Port           string
 	SchemaLocation string
 	RBXLLocation   string
-}
-
-type DefaultsSettings struct {
-	Files []string
-}
-
-type PlayerProxySettings struct {
-	Certfile string
-	Keyfile  string
 }
 
 type DissectorWindow struct {
@@ -65,14 +39,7 @@ type DissectorWindow struct {
 	TabWidget *widgets.QTabWidget
 	Sessions  []*CaptureSession
 
-	StudioVersion string
-	PlayerVersion string
-
-	StudioSettings      *StudioSettings
-	PlayerSettings      *PlayerSettings
 	ServerSettings      *ServerSettings
-	DefaultsSettings    *DefaultsSettings
-	PlayerProxySettings *PlayerProxySettings
 }
 
 func (window *DissectorWindow) ShowCaptureError(err error) {
@@ -160,16 +127,7 @@ func (window *DissectorWindow) CaptureFromLive(itfName string, promisc bool) {
 	}()
 }
 
-func (window *DissectorWindow) CaptureFromInjectionProxy(src string, dst string) {
-	/*go func() {
-		err := captureFromInjectionProxy(context.TODO(), src, dst, window)
-		if err != nil {
-			window.ShowCaptureError(err)
-		}
-	}()*/
-	window.ShowCaptureError(errors.New("injection proxy is disabled (FIXME)"))
-}
-func (window *DissectorWindow) CaptureFromDivertProxy(settings *PlayerProxySettings) {
+func (window *DissectorWindow) CaptureFromDivertProxy() {
 	nameBase := "<DIVERT>"
 	session := NewCaptureSession(nameBase, window)
 	session.SetModel = true
@@ -182,9 +140,6 @@ func (window *DissectorWindow) CaptureFromDivertProxy(settings *PlayerProxySetti
 		session.StopCapture()
 		window.ShowCaptureError(err)
 	}
-}
-func (window *DissectorWindow) CaptureFromPlayerProxy(_ *PlayerProxySettings) {
-	window.ShowCaptureError(errors.New("divert proxy is disabled (FIXME)"))
 }
 
 func (window *DissectorWindow) OpenFileHandler(_ bool) {
@@ -300,11 +255,7 @@ func NewDissectorWindow(parent widgets.QWidget_ITF, flags core.Qt__WindowType) *
 	window := &DissectorWindow{
 		QMainWindow: widgets.NewQMainWindow(parent, flags),
 
-		StudioSettings:      &StudioSettings{},
-		PlayerSettings:      &PlayerSettings{},
 		ServerSettings:      &ServerSettings{},
-		DefaultsSettings:    &DefaultsSettings{},
-		PlayerProxySettings: &PlayerProxySettings{},
 	}
 
 	window.SetWindowTitle("Sala Roblox Network Suite")
@@ -364,7 +315,7 @@ func NewDissectorWindow(parent widgets.QWidget_ITF, flags core.Qt__WindowType) *
 Codename “Maailman salaisuudet”<br>
 Previously known as “Roblox Dissector”<br>
 <br>
-Copyright © Aleksi “gskw” Hannula 2017–2019<br>
+Copyright © Aleksi “gskw” Hannula 2017–2020<br>
 Licensed under the MIT License (see LICENSE for more information).<br>
 Clarity Icons (© VMWare, Inc.) are licensed under the MIT License (see LICENSE.clarity for more information).<br>
 The application icon is a modified version of a Google Material Icon. Google Material Icons are licensed under the Apache License version 2.0 (see LICENSE.material for more information).<br>
@@ -388,7 +339,7 @@ WinDivert enabled: %v
 	captureLiveAction.ConnectTriggered(window.OpenLiveInterfaceHandler)
 	captureDivertAction.ConnectTriggered(func(checked bool) {
 		if WinDivertEnabled {
-			window.CaptureFromDivertProxy(window.PlayerProxySettings)
+			window.CaptureFromDivertProxy()
 		} else {
 			window.ShowCaptureError(errors.New("WinDivert disabled at build time, sorry!"))
 		}
