@@ -70,7 +70,7 @@ func (b *extendedReader) ReadSerializedValue(reader PacketReader, valueType uint
 			result = datamodel.ValueReference{Instance: instance, Reference: reference}
 		}
 	case PropertyTypeContent:
-		result, err = b.readNewContent(reader.Caches())
+		result, err = b.readNewContent()
 	case PropertyTypeTuple:
 		result, err = b.readNewTuple(reader, deferred)
 	case PropertyTypeArray:
@@ -131,7 +131,7 @@ func (b *extendedWriter) WriteSerializedValue(val rbxfile.Value, writer PacketWr
 	case PropertyTypeInstance:
 		err = b.WriteObject(val.(datamodel.ValueReference).Instance, writer)
 	case PropertyTypeContent:
-		err = b.writeNewContent(val.(rbxfile.ValueContent), writer.Caches())
+		err = b.writeNewContent(val.(rbxfile.ValueContent))
 	case PropertyTypeTuple:
 		err = b.writeNewTuple(val.(datamodel.ValueTuple), writer, deferred)
 	case PropertyTypeArray:

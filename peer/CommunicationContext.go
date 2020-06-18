@@ -91,7 +91,6 @@ func (c *ByteSliceCache) LastWrite() uint8 {
 type Caches struct {
 	String          StringCache
 	Object          StringCache
-	Content         StringCache
 	ProtectedString ByteSliceCache
 }
 

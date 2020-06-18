@@ -196,11 +196,7 @@ func (b *extendedWriter) writeCachedObject(val string, caches *Caches) error {
 
 	return b.writeWithCache(val, cache, (*extendedWriter).writeUint32AndString)
 }
-func (b *extendedWriter) writeCachedContent(val string, caches *Caches) error {
-	cache := &caches.Content
 
-	return b.writeWithCache(val, cache, (*extendedWriter).writeUint32AndString)
-}
 func (b *extendedWriter) writeNewCachedProtectedString(val []byte, caches *Caches) error {
 	cache := &caches.ProtectedString
 

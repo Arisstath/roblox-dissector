@@ -368,19 +368,6 @@ func (b *extendedReader) readCachedScope(caches *Caches) (string, error) {
 	return thisString.(string), err
 }
 
-func (b *extendedReader) readCachedContent(caches *Caches) (string, error) {
-	cache := &caches.Content
-
-	thisString, err := b.readWithCache(cache, (*extendedReader).readUint32AndString)
-	if err != nil {
-		return "", err
-	}
-	if thisString == nil {
-		return "", nil
-	}
-	return thisString.(string), err
-}
-
 func (b *extendedReader) readNewCachedProtectedString(caches *Caches) ([]byte, error) {
 	cache := &caches.ProtectedString
 
