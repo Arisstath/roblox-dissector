@@ -11,7 +11,7 @@ import (
 
 func capabilitiesToString(cap uint64) string {
 	var builder strings.Builder
-	if cap&peer.CapabilityBasic != 0 {
+	if cap&peer.CapabilityBasic == peer.CapabilityBasic {
 		builder.WriteString("Basic, ")
 	}
 	if cap&peer.CapabilityServerCopiesPlayerGui3 != 0 {
