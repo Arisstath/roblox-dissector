@@ -212,13 +212,13 @@ func (viewer *PacketDetailsViewer) Update(context *peer.CommunicationContext, la
 	viewer.TabLayout.SetCurrentIndex(originalIndex)
 }
 
-func NewPacketViewerMenu(parent widgets.QWidget_ITF, context *peer.CommunicationContext, layers *peer.PacketLayers, activationCallback ActivationCallback) *widgets.QMenu {
+func NewPacketViewerMenu(parent widgets.QWidget_ITF, context *peer.CommunicationContext, layers *peer.PacketLayers, activationCallback ActivationCallback, titleFormatter func() string) *widgets.QMenu {
 	menu := widgets.NewQMenu(parent)
 	showPacketAction := menu.AddAction("View in new window")
 	showPacketAction.ConnectTriggered(func(_ bool) {
 		window := NewPacketDetailsViewer(parent, core.Qt__Window)
 		window.Update(context, layers, activationCallback)
-		window.SetWindowTitle(fmt.Sprintf("Packet window: %s", layers.String()))
+		window.SetWindowTitle(titleFormatter())
 		window.Show()
 	})
 

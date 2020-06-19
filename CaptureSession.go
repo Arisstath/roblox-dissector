@@ -32,10 +32,11 @@ func (session *CaptureSession) AddConversation(conv *Conversation) *PacketListVi
 		viewer = session.PacketListViewers[0]
 	} else {
 		window := session.CaptureWindow
-		viewer = NewPacketListViewer(session.Context, window, 0)
+		title := fmt.Sprintf("%s#%d", session.Name, len(session.PacketListViewers))
+		viewer = NewPacketListViewer(session.Context, window, 0, title)
 		session.PacketListViewers = append(session.PacketListViewers, viewer)
 
-		window.TabWidget.AddTab(viewer, fmt.Sprintf("Converation: %s#%d", session.Name, len(session.PacketListViewers)))
+		window.TabWidget.AddTab(viewer, "Conversation: " + title)
 	}
 	viewer.BindToConversation(conv)
 	if session.SetModel {
@@ -65,7 +66,7 @@ func (session *CaptureSession) StopCapture() {
 func NewCaptureSession(name string, window *DissectorWindow) *CaptureSession {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	captureContext := NewCaptureContext()
-	initialViewer := NewPacketListViewer(ctx, window, 0)
+	initialViewer := NewPacketListViewer(ctx, window, 0, fmt.Sprintf("%s#1", name))
 
 	session := &CaptureSession{
 		IsCapturing:       true,

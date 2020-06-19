@@ -26,6 +26,7 @@ type PacketListViewer struct {
 	StandardModel *gui.QStandardItemModel
 	ProxyModel    *core.QSortFilterProxyModel
 	RootNode      *gui.QStandardItem
+	Title string
 
 	UpdateInterval    time.Duration
 	PendingRows       [][]*gui.QStandardItem
@@ -48,9 +49,10 @@ type PacketListViewer struct {
 	FilterUsesExtraInfo bool
 }
 
-func NewPacketListViewer(updateContext context.Context, parent widgets.QWidget_ITF, flags core.Qt__WindowType) *PacketListViewer {
+func NewPacketListViewer(updateContext context.Context, parent widgets.QWidget_ITF, flags core.Qt__WindowType, title string) *PacketListViewer {
 	listViewer := &PacketListViewer{
 		QWidget:              widgets.NewQWidget(parent, flags),
+		Title: title,
 		packetRowsByUniqueID: make(PacketList),
 
 		Packets: make(PacketLayerList),
@@ -95,7 +97,9 @@ func NewPacketListViewer(updateContext context.Context, parent widgets.QWidget_I
 			realSelectedValue, _ := strconv.Atoi(standardModel.Item(proxy.MapToSource(index).Row(), 0).Data(0).ToString())
 			if listViewer.Packets[uint64(realSelectedValue)] != nil {
 				thisPacket := listViewer.Packets[uint64(realSelectedValue)]
-				customPacketMenu := NewPacketViewerMenu(listViewer, listViewer.Context, thisPacket, ActivationCallbacks[thisPacket.PacketType])
+				customPacketMenu := NewPacketViewerMenu(listViewer, listViewer.Context, thisPacket, ActivationCallbacks[thisPacket.PacketType], func() string {
+					return fmt.Sprintf("(%s/%d): %s", listViewer.Title, realSelectedValue, thisPacket.String())
+				})
 				customPacketMenu.Exec2(treeView.Viewport().MapToGlobal(position), nil)
 			}
 		}
