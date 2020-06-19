@@ -263,20 +263,9 @@ func NewDissectorWindow(parent widgets.QWidget_ITF, flags core.Qt__WindowType) *
 	viewAction.ConnectTriggered(func(_ bool) {
         viewer := window.CurrentPacketListViewer
 		if viewer != nil {
-			var ok bool
-			filterScript := widgets.QInputDialog_GetMultiLineText(
-    			window,
-    			"Enter filter Lua script",
-    			"Lua filter script",
-    			"",
-    			&ok,
-    			core.Qt__Dialog,
-    			core.Qt__ImhMultiLine,
-			)
-			if !ok {
-    			return
-			}
-			viewer.SetFilter(filterScript)
+    		NewEditFilterWidget(viewer, viewer.CurrentFilterScript, viewer.FilterUsesExtraInfo, func(filterScript string, usesExtraInfo bool) {
+    			viewer.SetFilter(filterScript, usesExtraInfo)
+    		})
 		}
 	})
 

@@ -44,6 +44,8 @@ type PacketListViewer struct {
 
 	DefaultPacketWindow *PacketDetailsViewer
 	Filter *lua.FunctionProto
+	CurrentFilterScript string
+	FilterUsesExtraInfo bool
 }
 
 func NewPacketListViewer(updateContext context.Context, parent widgets.QWidget_ITF, flags core.Qt__WindowType) *PacketListViewer {
@@ -104,7 +106,13 @@ func NewPacketListViewer(updateContext context.Context, parent widgets.QWidget_I
 	return listViewer
 }
 
-func (m *PacketListViewer) SetFilter(filterScript string) {
+func (m *PacketListViewer) SetFilter(filterScript string, usesExtraInfo bool) {
+    m.CurrentFilterScript = filterScript
+    m.FilterUsesExtraInfo = usesExtraInfo
+    if filterScript == "" {
+        m.Filter = nil
+        return
+    }
 	compiled, err := CompileFilter(filterScript)
 	if err != nil {
     	widgets.QMessageBox_Critical(m, "Filter Error", err.Error(), widgets.QMessageBox__Ok, widgets.QMessageBox__NoButton)
@@ -120,12 +128,28 @@ func (m *PacketListViewer) FilterAcceptsRow(sourceRow int, sourceParent *core.QM
     }
 	realSelectedValue, _ := strconv.Atoi(m.StandardModel.Item(sourceRow, 0).Data(0).ToString())
 	if packet, ok := m.Packets[uint64(realSelectedValue)]; ok {
-    	if packet.Main == nil {
-        	return true
+    	var extraInfo *PacketInformation = nil
+    	if m.FilterUsesExtraInfo {
+			extraInfo = &PacketInformation{
+				Id: uint64(realSelectedValue),
+				HasError: packet.Error != nil,
+				Incomplete: packet.Main == nil && packet.Error != nil,
+				WellFormed: packet.Main != nil,
+				Type: packet.PacketType,
+			}
+    	} else {
+        	// when filtering, drop error packets by default
+        	if packet.Main == nil {
+            	return false
+        	}
+        	if packet.Error != nil {
+            	return false
+        	}
     	}
-		acc, err := FilterAcceptsPacket(NewLuaFilterState(), m.Filter, packet.Main, realSelectedValue)
+
+		acc, err := FilterAcceptsPacket(NewLuaFilterState(), m.Filter, packet.Main, extraInfo)
 		if err != nil {
-        	widgets.QMessageBox_Critical(m, fmt.Sprintf("Filter Error on packet %d", realSelectedValue), fmt.Sprintf("Error: %s\n\nThe filter will be reset.", err.Error()), widgets.QMessageBox__Ok, widgets.QMessageBox__NoButton)
+        	widgets.QMessageBox_Critical(m, fmt.Sprintf("Filter Error on packet %d", realSelectedValue), fmt.Sprintf("Error: %s\n\nThe filter won't be used.", err.Error()), widgets.QMessageBox__Ok, widgets.QMessageBox__NoButton)
         	m.Filter = nil
 			return true
 		}

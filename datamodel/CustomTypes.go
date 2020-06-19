@@ -26,6 +26,13 @@ func (ref Reference) String() string {
 	return fmt.Sprintf("%s_%d", ref.Scope, ref.Id)
 }
 
+func (ref Reference) Equal(other *Reference) bool {
+    if ref.IsNull {
+        return other.IsNull
+    }
+    return ref.Id == other.Id && ref.PeerId == other.PeerId
+}
+
 const (
 	TypeNumberSequenceKeypoint rbxfile.Type = rbxfile.TypeSharedString + 1 + iota
 	TypeColorSequenceKeypoint               = rbxfile.TypeSharedString + 1 + iota

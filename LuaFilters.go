@@ -20,47 +20,70 @@ var packetFields = map[string]lua.LGFunction{
     },
 }
 
+const NotReferenced = 0
+
 const (
-    NotReferenced = iota
-    InstanceDeletion
+    InstanceDeletion = 1 << iota
     InstanceCreation
 	InstanceSetProperty
 	InstanceEvent
 	InstanceAck
 	InstanceInValue
 	InstanceAsParent
+	InstanceTopReplicated
+	InstancePhysicsRoot
+	InstancePhysicsChild
+	InstancePhysicsPlatformChild
+	InstanceTouched
+	InstanceTouchEnded
 )
 
-func valReferencesInstance(val rbxfile.Value, peerId uint32, id uint32) bool {
+var instanceReferenceEnum = map[string]lua.LValue{
+    "Deletion": lua.LNumber(InstanceDeletion),
+    "Creation": lua.LNumber(InstanceCreation),
+	"SetProperty": lua.LNumber(InstanceSetProperty),
+	"Event": lua.LNumber(InstanceEvent),
+	"Ack": lua.LNumber(InstanceAck),
+	"InValue": lua.LNumber(InstanceInValue),
+	"AsParent": lua.LNumber(InstanceAsParent),
+	"TopReplicated": lua.LNumber(InstanceTopReplicated),
+	"PhysicsRoot": lua.LNumber(InstancePhysicsRoot),
+	"PhysicsChild": lua.LNumber(InstancePhysicsChild),
+	"PhysicsPlatformChild": lua.LNumber(InstancePhysicsPlatformChild),
+	"Touched": lua.LNumber(InstanceTouched),
+	"TouchedEnded": lua.LNumber(InstanceTouchEnded),
+}
+
+func valReferencesInstance(val rbxfile.Value, ref datamodel.Reference) bool {
 	switch val.Type() {
     case datamodel.TypeReference:
-		ref := val.(datamodel.ValueReference).Reference
-    	return ref.PeerId == peerId && ref.Id == id
+		valRef := val.(datamodel.ValueReference).Reference
+    	return valRef.Equal(&ref)
     case datamodel.TypeArray:
         arr := val.(datamodel.ValueArray)
         for _, subval := range arr {
-            if valReferencesInstance(subval, peerId, id) {
+            if valReferencesInstance(subval, ref) {
                 return true
             }
         }
     case datamodel.TypeTuple:
         arr := val.(datamodel.ValueTuple)
         for _, subval := range arr {
-            if valReferencesInstance(subval, peerId, id) {
+            if valReferencesInstance(subval, ref) {
                 return true
             }
         }
     case datamodel.TypeMap:
         arr := val.(datamodel.ValueMap)
         for _, subval := range arr {
-            if valReferencesInstance(subval, peerId, id) {
+            if valReferencesInstance(subval, ref) {
                 return true
             }
         }
     case datamodel.TypeDictionary:
         arr := val.(datamodel.ValueDictionary)
         for _, subval := range arr {
-            if valReferencesInstance(subval, peerId, id) {
+            if valReferencesInstance(subval, ref) {
                 return true
             }
         }
@@ -68,106 +91,173 @@ func valReferencesInstance(val rbxfile.Value, peerId uint32, id uint32) bool {
 	return false
 }
 
-func replicationInstanceReferences(repInst *peer.ReplicationInstance, peerId uint32, id uint32) uint {
-	ref := repInst.Instance.Ref
-	if ref.PeerId == peerId && ref.Id == id {
-		return InstanceCreation
+func replicationInstanceReferences(repInst *peer.ReplicationInstance, ref datamodel.Reference) uint {
+    var refType uint
+	creationRef := repInst.Instance.Ref
+	if creationRef.Equal(&ref) {
+		refType |= InstanceCreation
 	}
 	if repInst.Parent != nil {
-    	ref = repInst.Parent.Ref
-    	if ref.PeerId == peerId && ref.Id == id {
-    		return InstanceAsParent
+    	creationRef = repInst.Parent.Ref
+    	if creationRef.Equal(&ref) {
+    		refType |= InstanceAsParent
     	}
 	}
 	for _, val := range repInst.Properties {
-    	if valReferencesInstance(val, peerId, id) {
-        	return InstanceInValue
+    	if valReferencesInstance(val, ref) {
+        	refType |= InstanceInValue
+        	break // there's nothing this loop can change anymore
     	}
 	}
-	return NotReferenced
+	return refType
 }
 
-func referencesInstance(packet peer.Packet83Subpacket, peerId uint32, id uint32) uint {
+func referencesInstance(packet peer.Packet83Subpacket, ref datamodel.Reference) uint {
 	switch packet.Type() {
 	case 0x01:
 		deletion := packet.(*peer.Packet83_01)
-		ref := deletion.Instance.Ref
-		if ref.PeerId == peerId && ref.Id == id {
+		deletedRef := deletion.Instance.Ref
+		if deletedRef.Equal(&ref) {
     		return InstanceDeletion
 		}
 	case 0x02:
     	creation := packet.(*peer.Packet83_02)
-    	return replicationInstanceReferences(creation.ReplicationInstance, peerId, id)
+    	return replicationInstanceReferences(creation.ReplicationInstance, ref)
     case 0x03:
         propSet := packet.(*peer.Packet83_03)
-        ref := propSet.Instance.Ref
-    	if ref.PeerId == peerId && ref.Id == id {
-			return InstanceSetProperty
+        propRef := propSet.Instance.Ref
+        var refType uint
+    	if propRef.Equal(&ref) {
+			refType |= InstanceSetProperty
     	}
-    	if valReferencesInstance(propSet.Value, peerId, id) {
-        	return InstanceInValue
+    	if valReferencesInstance(propSet.Value, ref) {
+        	refType |= InstanceInValue
     	}
+    	return refType
     case 0x07:
         event := packet.(*peer.Packet83_07)
-        ref := event.Instance.Ref
-        if ref.PeerId == peerId && ref.Id == id {
-            return InstanceEvent
+        eventRef := event.Instance.Ref
+        var refType uint
+        if eventRef.Equal(&ref) {
+            refType |= InstanceEvent
         }
         for _, arg := range event.Event.Arguments {
-			if valReferencesInstance(arg, peerId, id) {
-    			return InstanceInValue
+			if valReferencesInstance(arg, ref) {
+    			refType |= InstanceInValue
+    			break // there's nothing this loop change anymore
 			}
         }
+        return refType
     case 0x0A:
         ack := packet.(*peer.Packet83_0A)
-        ref := ack.Instance.Ref
-        if ref.PeerId == peerId && ref.Id == id {
+        ackRef := ack.Instance.Ref
+        if ackRef.Equal(&ref) {
             return InstanceAck
         }
     case 0x0B:
 		joinData := packet.(*peer.Packet83_0B)
+		var refType uint
 		for _, inst := range joinData.Instances {
-    		if ref := replicationInstanceReferences(inst, peerId, id); ref != NotReferenced {
-        		return ref
-    		}
+    		refType |= replicationInstanceReferences(inst, ref)
 		}
+		return refType
 	}
 	// TODO: streaming stuff?
 	return NotReferenced
 }
 
+func physicsDataRefs(physicsData *peer.PhysicsData, ref datamodel.Reference) uint {
+    var referenceData uint
+	if inst := physicsData.Instance; inst != nil {
+    	physicsRef := inst.Ref
+		if physicsRef.Equal(&ref) {
+			referenceData |= InstancePhysicsRoot
+		}
+	}
+	if inst := physicsData.PlatformChild; inst != nil {
+    	physicsRef := inst.Ref
+		if physicsRef.Equal(&ref) {
+			referenceData |= InstancePhysicsPlatformChild
+		}
+	}
+	return referenceData
+}
+
+func packetInstanceReferenceDataMask(packet peer.RakNetPacket, ref datamodel.Reference) uint {
+    var referenceData uint
+
+	switch packet.Type() {
+	case 0x81:
+		topReplic := packet.(*peer.Packet81Layer)
+		for _, inst := range topReplic.Items {
+			topRef := inst.Instance.Ref
+			if topRef.Equal(&ref) {
+    			referenceData |= InstanceTopReplicated
+			}
+		}
+	case 0x83:
+		dataPacket := packet.(*peer.Packet83Layer)
+		for _, subpacket := range dataPacket.SubPackets {
+			if refType := referencesInstance(subpacket, ref); refType != NotReferenced {
+    			referenceData |= refType
+			}
+		}
+	case 0x85:
+    	physics := packet.(*peer.Packet85Layer)
+    	for _, subpacket := range physics.SubPackets {
+        	referenceData |= physicsDataRefs(&subpacket.Data, ref)
+			for _, child := range subpacket.Children {
+    			subRefData := physicsDataRefs(child, ref)
+    			if subRefData & InstancePhysicsRoot != 0 {
+					subRefData ^= InstancePhysicsRoot
+					referenceData |= InstancePhysicsChild
+    			}
+    			referenceData |= subRefData
+			}
+			for _, history := range subpacket.History {
+    			referenceData |= physicsDataRefs(history, ref)
+			}
+    	}
+    case 0x86:
+        touches := packet.(*peer.Packet86Layer)
+        for _, subpacket := range touches.SubPackets {
+			if subpacket.Instance1.Ref.Equal(&ref) || subpacket.Instance2.Ref.Equal(&ref) {
+    			if subpacket.IsTouch {
+        			referenceData |= InstanceTouched
+    			} else {
+        			referenceData |= InstanceTouchEnded
+    			}
+			}
+        }
+	}
+
+	return referenceData
+}
+
 var packetMethods = map[string]lua.LGFunction{
     "ReferencesInstance": func(L *lua.LState) int {
 		packet := checkPacket(L)
-		peerId := uint32(L.CheckInt(2))
-		id := uint32(L.CheckInt(3))
 
-		switch packet.Type() {
-		case 0x81:
-			topReplic := packet.(*peer.Packet81Layer)
-			for _, inst := range topReplic.Items {
-    			ref := inst.Instance.Ref
-    			if ref.PeerId == peerId && ref.Id == id {
-        			L.Push(lua.LBool(true))
-        			return 1
-    			}
-			}
-			L.Push(lua.LBool(false))
-			return 1
-		case 0x83:
-    		dataPacket := packet.(*peer.Packet83Layer)
-			for _, subpacket := range dataPacket.SubPackets {
-    			if referencesInstance(subpacket, peerId, id) != NotReferenced {
-        			L.Push(lua.LBool(true))
-        			return 1
-    			}
-			}
-			L.Push(lua.LBool(false))
-			return 1
-		default:
-    		L.Push(lua.LBool(false))
-    		return 1
+		var ref datamodel.Reference
+		var maskIdx int
+		if L.Get(2).Type() == lua.LTNil {
+			ref.IsNull = true
+			maskIdx = 3
+		} else {
+    		ref.PeerId = uint32(L.CheckInt(2))
+    		ref.Id = uint32(L.CheckInt(3))
+    		maskIdx = 4
 		}
+		var mask uint
+		if L.Get(maskIdx).Type() == lua.LTNil {
+    		mask = ^uint(0) // "any"
+		} else {
+    		mask = uint(L.CheckInt(maskIdx))
+		}
+
+		result := packetInstanceReferenceDataMask(packet, ref)
+		L.Push(lua.LBool(result & mask != 0)) // test if referenced bitset intersects with the one we asked for
+		return 1
     },
     "HasSubpacket": func(L *lua.LState) int {
         packet := checkPacket(L)
@@ -214,6 +304,14 @@ func registerPacketType(L *lua.LState) {
     L.SetField(mt, "__index", L.NewFunction(packetIndex))
 }
 
+func registerInstanceRefEnum(L *lua.LState) {
+    tab := L.CreateTable(0, len(instanceReferenceEnum))
+    for k, v := range instanceReferenceEnum {
+        tab.RawSetString(k, v)
+    }
+    L.SetGlobal("InstRefType", tab)
+}
+
 func BridgePacket(L *lua.LState, packet peer.RakNetPacket) lua.LValue {
 	ud := L.NewUserData()
 	ud.Value = packet
@@ -239,20 +337,45 @@ func NewLuaFilterState() *lua.LState {
     	IncludeGoStackTrace: true,
     })
     registerPacketType(L)
+    registerInstanceRefEnum(L)
 
     return L
 }
-func FilterAcceptsPacket(L *lua.LState, filter *lua.FunctionProto, packet peer.RakNetPacket, id int) (bool, error) {
+
+type PacketInformation struct {
+	Type uint8
+	HasError bool
+	Incomplete bool
+	WellFormed bool
+	Id uint64
+}
+
+func BridgeInformation(L *lua.LState, information *PacketInformation) lua.LValue {
+	tab := L.NewTable()
+	tab.RawSetString("Type", lua.LNumber(information.Type))
+	tab.RawSetString("HasError", lua.LBool(information.HasError))
+	tab.RawSetString("Incomplete", lua.LBool(information.Incomplete))
+	tab.RawSetString("Id", lua.LNumber(information.Id))
+	tab.RawSetString("WellFormed", lua.LBool(information.WellFormed))
+	return tab
+}
+
+func FilterAcceptsPacket(L *lua.LState, filter *lua.FunctionProto, packet peer.RakNetPacket, information *PacketInformation) (bool, error) {
 	lfunc := L.NewFunctionFromProto(filter)
 	L.Push(lfunc)
+	var numArgs int
     L.Push(BridgePacket(L, packet))
-    L.Push(lua.LNumber(float64(id)))
+    numArgs++
+    if information != nil {
+        L.Push(BridgeInformation(L, information))
+        numArgs++
+    }
 
-	err := L.PCall(2, lua.MultRet, nil)
+	err := L.PCall(numArgs, lua.MultRet, nil)
 	if err != nil {
     	return false, err
 	}
-	returnVal := L.CheckAny(1)
+	returnVal := L.Get(1)
 	if b, ok := returnVal.(lua.LBool); ok {
     	return bool(b), nil
 	}
