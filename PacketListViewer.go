@@ -154,8 +154,8 @@ func (m *PacketListViewer) FilterAcceptsRow(sourceRow int, sourceParent *core.QM
 
 		acc, err := FilterAcceptsPacket(NewLuaFilterState(), m.Filter, packet.Main, extraInfo)
 		if err != nil {
-        	widgets.QMessageBox_Critical(m, fmt.Sprintf("Filter Error on packet %d", realSelectedValue), fmt.Sprintf("Error: %s\n\nThe filter won't be used.", err.Error()), widgets.QMessageBox__Ok, widgets.QMessageBox__NoButton)
         	m.Filter = nil
+        	widgets.QMessageBox_Critical(m, fmt.Sprintf("Filter Error on packet %d", realSelectedValue), fmt.Sprintf("Error: %s\n\nThe filter won't be used.", err.Error()), widgets.QMessageBox__Ok, widgets.QMessageBox__NoButton)
 			return true
 		}
 		return acc
