@@ -136,6 +136,7 @@ func (m *PacketListViewer) FilterAcceptsRow(sourceRow int, sourceParent *core.QM
     	if m.FilterUsesExtraInfo {
 			extraInfo = &PacketInformation{
 				Id: uint64(realSelectedValue),
+				FromClient: packet.Root.FromClient,
 				HasError: packet.Error != nil,
 				Incomplete: packet.Main == nil && packet.Error != nil,
 				WellFormed: packet.Main != nil,

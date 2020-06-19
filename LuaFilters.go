@@ -313,6 +313,9 @@ func registerInstanceRefEnum(L *lua.LState) {
 }
 
 func BridgePacket(L *lua.LState, packet peer.RakNetPacket) lua.LValue {
+    if packet == nil {
+        return lua.LNil
+    }
 	ud := L.NewUserData()
 	ud.Value = packet
 	L.SetMetatable(ud, L.GetTypeMetatable("Packet"))
@@ -348,6 +351,7 @@ type PacketInformation struct {
 	Incomplete bool
 	WellFormed bool
 	Id uint64
+	FromClient bool
 }
 
 func BridgeInformation(L *lua.LState, information *PacketInformation) lua.LValue {
@@ -357,6 +361,7 @@ func BridgeInformation(L *lua.LState, information *PacketInformation) lua.LValue
 	tab.RawSetString("Incomplete", lua.LBool(information.Incomplete))
 	tab.RawSetString("Id", lua.LNumber(information.Id))
 	tab.RawSetString("WellFormed", lua.LBool(information.WellFormed))
+	tab.RawSetString("FromClient", lua.LBool(information.FromClient))
 	return tab
 }
 
