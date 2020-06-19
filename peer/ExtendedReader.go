@@ -399,8 +399,8 @@ func (b *extendedReader) readLuauCachedProtectedString(caches *Caches) (datamode
 	if err != nil {
 		return datamodel.ValueSignedProtectedString{}, err
 	}
-	if thisString == nil {
-		return datamodel.ValueSignedProtectedString{}, errors.New("script can't be nil")
+	if thisString == nil { // return zero value
+    	return datamodel.ValueSignedProtectedString{}, nil
 	}
 	return datamodel.ValueSignedProtectedString{Value: thisString.([]byte), Signature: signature}, err
 }

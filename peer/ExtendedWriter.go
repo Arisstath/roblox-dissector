@@ -212,6 +212,10 @@ func (b *extendedWriter) writeNewCachedProtectedString(val []byte, caches *Cache
 func (b *extendedWriter) writeLuauCachedProtectedString(val datamodel.ValueSignedProtectedString, caches *Caches) error {
 	cache := &caches.ProtectedString
 
+	if len(val.Value) == 0 {
+		return b.WriteByte(0)
+	}
+
 	return b.writeWithCache(val.Value, cache, func(b *extendedWriter, _ interface{}) error {
 		return b.writeLuauProtectedStringRaw(val)
 	})
