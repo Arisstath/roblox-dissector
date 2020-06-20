@@ -45,8 +45,10 @@ type PacketListViewer struct {
 
 	DefaultPacketWindow *PacketDetailsViewer
 	Filter *lua.FunctionProto
+	FilterState *lua.LState
 	CurrentFilterScript string
 	FilterUsesExtraInfo bool
+	FilterLogWidget *FilterLogWidget
 }
 
 func NewPacketListViewer(updateContext context.Context, parent widgets.QWidget_ITF, flags core.Qt__WindowType, title string) *PacketListViewer {
@@ -107,6 +109,10 @@ func NewPacketListViewer(updateContext context.Context, parent widgets.QWidget_I
 
 	listViewer.SetLayout(layout)
 	go listViewer.UpdateLoop()
+
+	filterLogger := NewFilterLogWidget(listViewer, listViewer.Title)
+	listViewer.FilterLogWidget = filterLogger
+
 	return listViewer
 }
 
@@ -115,6 +121,8 @@ func (m *PacketListViewer) SetFilter(filterScript string, usesExtraInfo bool) {
     m.FilterUsesExtraInfo = usesExtraInfo
     if filterScript == "" {
         m.Filter = nil
+        m.FilterState = nil
+        m.ProxyMode.InvalidateFilter()
         return
     }
 	compiled, err := CompileFilter(filterScript)
@@ -123,6 +131,7 @@ func (m *PacketListViewer) SetFilter(filterScript string, usesExtraInfo bool) {
     	return
 	}
 	m.Filter = compiled
+    m.FilterState = NewLuaFilterState(m.FilterLogWidget.AppendLog)
 	m.ProxyModel.InvalidateFilter()
 }
 
@@ -152,10 +161,13 @@ func (m *PacketListViewer) FilterAcceptsRow(sourceRow int, sourceParent *core.QM
         	}
     	}
 
-		acc, err := FilterAcceptsPacket(NewLuaFilterState(), m.Filter, packet.Main, extraInfo)
+		acc, err := FilterAcceptsPacket(m.FilterState, m.Filter, packet.Main, extraInfo)
 		if err != nil {
         	m.Filter = nil
-        	widgets.QMessageBox_Critical(m, fmt.Sprintf("Filter Error on packet %d", realSelectedValue), fmt.Sprintf("Error: %s\n\nThe filter won't be used.", err.Error()), widgets.QMessageBox__Ok, widgets.QMessageBox__NoButton)
+        	m.FilterState = nil
+        	m.FilterLogWidget.AppendLog(fmt.Sprintf("Filter error on packet %d\n", realSelectedValue))
+        	m.FilterLogWidget.AppendLog(err.Error())
+        	widgets.QMessageBox_Critical(m, fmt.Sprintf("Filter error on packet %d", realSelectedValue), fmt.Sprintf("Error: %s\n\nThe filter won't be used.", err.Error()), widgets.QMessageBox__Ok, widgets.QMessageBox__NoButton)
 			return true
 		}
 		return acc

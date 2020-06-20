@@ -335,12 +335,30 @@ func CompileFilter(filter string) (*lua.FunctionProto, error) {
     return proto, nil
 }
 
-func NewLuaFilterState() *lua.LState {
+func NewLuaFilterState(printFunc func(string)) *lua.LState {
     L := lua.NewState(lua.Options{
     	IncludeGoStackTrace: true,
     })
     registerPacketType(L)
     registerInstanceRefEnum(L)
+
+    L.Register("print", lua.LGFunction(func(L *lua.LState) int {
+		numArgs := L.GetTop()
+		if numArgs == 0 {
+			printFunc("\n")
+			return 0
+		}
+
+		var output strings.Builder
+		output.WriteString(L.Get(1).String())
+		for i := 2; i <= numArgs; i++ {
+			output.WriteString("\t")
+			output.WriteString(L.Get(i).String())
+		}
+		output.WriteString("\n")
+		printFunc(output.String())
+		return 0
+    }))
 
     return L
 }
@@ -381,6 +399,7 @@ func FilterAcceptsPacket(L *lua.LState, filter *lua.FunctionProto, packet peer.R
     	return false, err
 	}
 	returnVal := L.Get(1)
+	L.Pop(1)
 	if b, ok := returnVal.(lua.LBool); ok {
     	return bool(b), nil
 	}

@@ -259,14 +259,28 @@ func NewDissectorWindow(parent widgets.QWidget_ITF, flags core.Qt__WindowType) *
 	captureDivertAction := captureBar.AddAction("From &WinDivert proxy...")
 
 	viewBar := window.MenuBar().AddMenu2("&View")
-	viewAction := viewBar.AddAction("Apply &filter...")
-	viewAction.ConnectTriggered(func(_ bool) {
+	filterAction := viewBar.AddAction("Apply &filter...")
+	filterAction.ConnectTriggered(func(_ bool) {
         viewer := window.CurrentPacketListViewer
 		if viewer != nil {
     		NewEditFilterWidget(viewer, viewer.CurrentFilterScript, viewer.FilterUsesExtraInfo, func(filterScript string, usesExtraInfo bool) {
     			viewer.SetFilter(filterScript, usesExtraInfo)
     		})
 		}
+	})
+	showLogAction := viewBar.AddAction("Show filter &log...")
+	showLogAction.ConnectTriggered(func(_ bool) {
+    	viewer := window.CurrentPacketListViewer
+    	if viewer != nil && viewer.FilterLogWidget != nil {
+        	viewer.FilterLogWidget.Show()
+    	}
+	})
+	resetFilterAction := viewBar.AddAction("&Reset filter")
+	resetFilterAction.ConnectTriggered(func(_ bool) {
+    	viewer := window.CurrentPacketListViewer
+    	if viewer != nil {
+        	viewer.SetFilter("", false)
+    	}
 	})
 
 	peersBar := window.MenuBar().AddMenu2("&Peers")
