@@ -122,7 +122,7 @@ func (m *PacketListViewer) SetFilter(filterScript string, usesExtraInfo bool) {
     if filterScript == "" {
         m.Filter = nil
         m.FilterState = nil
-        m.ProxyMode.InvalidateFilter()
+        m.ProxyModel.InvalidateFilter()
         return
     }
 	compiled, err := CompileFilter(filterScript)
