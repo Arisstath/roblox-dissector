@@ -1,13 +1,5 @@
-deploy
-dissector.vim
-dumps
-.vscode
 *.sys
-*.idb
 *.exe
 *.dll
-moc*
-rcc*
-*.syso
-Lumikide*
 *.bin
+roblox-dissector
