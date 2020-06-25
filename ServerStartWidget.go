@@ -64,9 +64,9 @@ var noLocalDefaults = map[string](map[string]rbxfile.Value){
 		"WebTableContents":     rbxfile.ValueString(""),
 	},
 	"Players": map[string]rbxfile.Value{
-		"Archivable":         rbxfile.ValueBool(true),
-		"MaxPlayersInternal": rbxfile.ValueInt(6),
-		"Name":               rbxfile.ValueString("Players"),
+		"Archivable":               rbxfile.ValueBool(true),
+		"MaxPlayersInternal":       rbxfile.ValueInt(6),
+		"Name":                     rbxfile.ValueString("Players"),
 		"PreferredPlayersInternal": rbxfile.ValueInt(6),
 		"RespawnTime":              rbxfile.ValueFloat(5.0),
 		"RobloxLocked":             rbxfile.ValueBool(false),

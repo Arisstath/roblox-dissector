@@ -27,10 +27,10 @@ func (ref Reference) String() string {
 }
 
 func (ref Reference) Equal(other *Reference) bool {
-    if ref.IsNull {
-        return other.IsNull
-    }
-    return ref.Id == other.Id && ref.PeerId == other.PeerId
+	if ref.IsNull {
+		return other.IsNull
+	}
+	return ref.Id == other.Id && ref.PeerId == other.PeerId
 }
 
 const (

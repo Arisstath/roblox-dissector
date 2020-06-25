@@ -83,7 +83,7 @@ func (stream *extendedReader) DecodePacket8ALayer(reader PacketReader, layers *P
 		if err != nil {
 			return layer, err
 		}
-		
+
 		cryptohash, err := thisStream.readVarLengthString()
 		if err != nil {
 			return layer, err

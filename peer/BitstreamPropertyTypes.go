@@ -547,25 +547,25 @@ func (b *extendedReader) readLuauProtectedString(caches *Caches) (datamodel.Valu
 }
 
 var contentPrefixes = []string{
-    "",
-    "rbxassetid://",
-    "rbxgameasset://",
-    "http://www.roblox.com/",
-    "https://www.roblox.com/",
-    "http://www.roblox.com/asset/?id=",
-    "https://www.roblox.com/asset/?id=",
-    "http://assetgame.roblox.com/asset/?id=",
-    "https://assetgame.roblox.com/asset/?id=",
-    "http://assetdelivery.roblox.com/v1/asset/?id=",
-    "https://assetdelivery.roblox.com/v1/asset/?id=",
-    "http://www.roblox.qq.com/",
-    "https://www.roblox.qq.com/",
-    "http://www.roblox.qq.com/asset/?id=",
-    "https://www.roblox.qq.com/asset/?id=",
-    "http://assetgame.roblox.qq.com/asset/?id=",
-    "https://assetgame.roblox.qq.com/asset/?id=",
-    "http://assetdelivery.roblox.qq.com/v1/asset/?id=",
-    "https://assetdelivery.roblox.qq.com/v1/asset/?id=",
+	"",
+	"rbxassetid://",
+	"rbxgameasset://",
+	"http://www.roblox.com/",
+	"https://www.roblox.com/",
+	"http://www.roblox.com/asset/?id=",
+	"https://www.roblox.com/asset/?id=",
+	"http://assetgame.roblox.com/asset/?id=",
+	"https://assetgame.roblox.com/asset/?id=",
+	"http://assetdelivery.roblox.com/v1/asset/?id=",
+	"https://assetdelivery.roblox.com/v1/asset/?id=",
+	"http://www.roblox.qq.com/",
+	"https://www.roblox.qq.com/",
+	"http://www.roblox.qq.com/asset/?id=",
+	"https://www.roblox.qq.com/asset/?id=",
+	"http://assetgame.roblox.qq.com/asset/?id=",
+	"https://assetgame.roblox.qq.com/asset/?id=",
+	"http://assetdelivery.roblox.qq.com/v1/asset/?id=",
+	"https://assetdelivery.roblox.qq.com/v1/asset/?id=",
 }
 
 func (b *joinSerializeReader) readNewContent() (rbxfile.ValueContent, error) {
@@ -573,18 +573,18 @@ func (b *joinSerializeReader) readNewContent() (rbxfile.ValueContent, error) {
 	return rbxfile.ValueContent(res), err
 }
 func (b *extendedReader) readNewContent() (rbxfile.ValueContent, error) {
-    baseId, err := b.readUint8()
-    if err != nil {
-        return rbxfile.ValueContent(""), err
-    }
-    base := contentPrefixes[baseId >> 1]
-    if baseId & 1 == 0 {
-        res, err := b.readVarLengthString()
-        if err != nil {
-            return rbxfile.ValueContent(""), err
-        }
-    	return rbxfile.ValueContent(base + res), nil
-    }
+	baseId, err := b.readUint8()
+	if err != nil {
+		return rbxfile.ValueContent(""), err
+	}
+	base := contentPrefixes[baseId>>1]
+	if baseId&1 == 0 {
+		res, err := b.readVarLengthString()
+		if err != nil {
+			return rbxfile.ValueContent(""), err
+		}
+		return rbxfile.ValueContent(base + res), nil
+	}
 	// numeric id
 	number, err := b.readVarsint64()
 	if err != nil {

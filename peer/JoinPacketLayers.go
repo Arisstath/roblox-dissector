@@ -43,15 +43,15 @@ const (
 	// CapabilityVersionedIDSync indicates an unknown capability
 	CapabilityVersionedIDSync = 0x2000
 
-	CapabilityPubKeyExchange = 0x800000
-	CapabilitySystemAddressIsPeerId = 0x200000
-	CapabilityStreamingPrefetch = 0x1000000
-	CapabilityTerrainReplicationUseLargerChunks = 0x2000000
-	CapabilityUseBlake2BHashInSharedString = 0x100000
+	CapabilityPubKeyExchange                      = 0x800000
+	CapabilitySystemAddressIsPeerId               = 0x200000
+	CapabilityStreamingPrefetch                   = 0x1000000
+	CapabilityTerrainReplicationUseLargerChunks   = 0x2000000
+	CapabilityUseBlake2BHashInSharedString        = 0x100000
 	CapabilityUseSharedStringForScriptReplication = 0x200
 
 	CapabilityRoblox = CapabilityBasic | CapabilityServerCopiesPlayerGui3 | CapabilityIHasMinDistToUnstreamed | CapabilityReplicateLuau | CapabilityVersionedIDSync
-	CapabilityAll    = CapabilityBasic | CapabilityServerCopiesPlayerGui3 | CapabilityDebugForceStreamingEnabled | CapabilityIHasMinDistToUnstreamed | CapabilityReplicateLuau | CapabilityPositionBasedStreaming | CapabilityVersionedIDSync | CapabilityPubKeyExchange | CapabilitySystemAddressIsPeerId | CapabilityStreamingPrefetch | CapabilityTerrainReplicationUseLargerChunks | CapabilityUseBlake2BHashInSharedString | CapabilityUseSharedStringForScriptReplication   
+	CapabilityAll    = CapabilityBasic | CapabilityServerCopiesPlayerGui3 | CapabilityDebugForceStreamingEnabled | CapabilityIHasMinDistToUnstreamed | CapabilityReplicateLuau | CapabilityPositionBasedStreaming | CapabilityVersionedIDSync | CapabilityPubKeyExchange | CapabilitySystemAddressIsPeerId | CapabilityStreamingPrefetch | CapabilityTerrainReplicationUseLargerChunks | CapabilityUseBlake2BHashInSharedString | CapabilityUseSharedStringForScriptReplication
 )
 
 // IdentifyPassword identifies what RakNet password is being used

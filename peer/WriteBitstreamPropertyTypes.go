@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"strings"
 	"strconv"
+	"strings"
 
 	"github.com/Gskartwii/roblox-dissector/datamodel"
 	"github.com/robloxapi/rbxfile"
@@ -250,33 +250,33 @@ func (b *extendedWriter) writeNewContent(val rbxfile.ValueContent) error {
 	foundPrefixId := uint8(0) // default to empty prefix, if none are found
 	suffix := string(val)
 	for i := 1; i < len(contentPrefixes); i++ {
-    	if strings.HasPrefix(string(val), contentPrefixes[i]) {
-        	foundPrefixId = uint8(i)
-        	suffix = strings.TrimPrefix(string(val), contentPrefixes[i])
-        	break
-    	}
+		if strings.HasPrefix(string(val), contentPrefixes[i]) {
+			foundPrefixId = uint8(i)
+			suffix = strings.TrimPrefix(string(val), contentPrefixes[i])
+			break
+		}
 	}
 
 	asInt, err := strconv.ParseInt(suffix, 10, 64)
 	if err == nil {
 		// this is a numeric value
-		err := b.WriteByte(foundPrefixId << 1 | 1)
+		err := b.WriteByte(foundPrefixId<<1 | 1)
 		if err != nil {
-    		return err
+			return err
 		}
 		err = b.writeVarsint64(asInt)
 		if err != nil {
-    		return err
+			return err
 		}
 		return nil
 	}
 	err = b.WriteByte(foundPrefixId << 1)
 	if err != nil {
-    	return err
+		return err
 	}
 	err = b.writeVarLengthString(suffix)
 	if err != nil {
-    	return err
+		return err
 	}
 	return nil
 }

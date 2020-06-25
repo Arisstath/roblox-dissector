@@ -12,58 +12,58 @@ import (
 func capabilitiesToString(cap uint64) string {
 	var builder strings.Builder
 	if cap&peer.CapabilityBasic == peer.CapabilityBasic {
-    	cap ^= peer.CapabilityBasic
+		cap ^= peer.CapabilityBasic
 		builder.WriteString("Basic, ")
 	}
 	if cap&peer.CapabilityServerCopiesPlayerGui3 != 0 {
-    	cap ^= peer.CapabilityServerCopiesPlayerGui3
+		cap ^= peer.CapabilityServerCopiesPlayerGui3
 		builder.WriteString("ServerCopiesPlayerGui, ")
 	}
 	if cap&peer.CapabilityDebugForceStreamingEnabled != 0 {
-    	cap ^= peer.CapabilityDebugForceStreamingEnabled
+		cap ^= peer.CapabilityDebugForceStreamingEnabled
 		builder.WriteString("DebugForceStreamingEnabled, ")
 	}
 	if cap&peer.CapabilityIHasMinDistToUnstreamed != 0 {
-    	cap ^= peer.CapabilityIHasMinDistToUnstreamed
+		cap ^= peer.CapabilityIHasMinDistToUnstreamed
 		builder.WriteString("IHasMinDistToUnstreamed, ")
 	}
 	if cap&peer.CapabilityReplicateLuau != 0 {
-    	cap ^= peer.CapabilityReplicateLuau
+		cap ^= peer.CapabilityReplicateLuau
 		builder.WriteString("ReplicateLuau, ")
 	}
 	if cap&peer.CapabilityPositionBasedStreaming != 0 {
-    	cap ^= peer.CapabilityPositionBasedStreaming
+		cap ^= peer.CapabilityPositionBasedStreaming
 		builder.WriteString("PositionBasedStreaming, ")
 	}
 	if cap&peer.CapabilityVersionedIDSync != 0 {
-    	cap ^= peer.CapabilityVersionedIDSync
+		cap ^= peer.CapabilityVersionedIDSync
 		builder.WriteString("VersionedIDSync, ")
 	}
 	if cap&peer.CapabilityPubKeyExchange != 0 {
-    	cap ^= peer.CapabilityPubKeyExchange
+		cap ^= peer.CapabilityPubKeyExchange
 		builder.WriteString("PubKeyExchange, ")
 	}
-	if cap&peer.CapabilitySystemAddressIsPeerId  != 0 {
-    	cap ^= peer.CapabilitySystemAddressIsPeerId
+	if cap&peer.CapabilitySystemAddressIsPeerId != 0 {
+		cap ^= peer.CapabilitySystemAddressIsPeerId
 		builder.WriteString("SystemAddressIsPeerId, ")
 	}
 	if cap&peer.CapabilityStreamingPrefetch != 0 {
-    	cap ^= peer.CapabilityStreamingPrefetch
+		cap ^= peer.CapabilityStreamingPrefetch
 		builder.WriteString("StreamingPrefetch, ")
 	}
 	if cap&peer.CapabilityTerrainReplicationUseLargerChunks != 0 {
-    	cap ^= peer.CapabilityTerrainReplicationUseLargerChunks
+		cap ^= peer.CapabilityTerrainReplicationUseLargerChunks
 		builder.WriteString("TerrainReplicationUseLargerChunks , ")
 	}
 	if cap&peer.CapabilityUseBlake2BHashInSharedString != 0 {
-    	cap ^= peer.CapabilityUseBlake2BHashInSharedString
+		cap ^= peer.CapabilityUseBlake2BHashInSharedString
 		builder.WriteString("UseBlake2BHashInSharedString, ")
 	}
 	if cap&peer.CapabilityUseSharedStringForScriptReplication != 0 {
-    	cap ^= peer.CapabilityUseSharedStringForScriptReplication
+		cap ^= peer.CapabilityUseSharedStringForScriptReplication
 		builder.WriteString("UseSharedStringForScriptReplication, ")
 	}
-	
+
 	if cap != 0 {
 		fmt.Fprintf(&builder, "Unknown capabilities: %8X, ", cap)
 	}

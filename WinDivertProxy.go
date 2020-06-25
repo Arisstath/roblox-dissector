@@ -167,8 +167,8 @@ func (session *CaptureSession) CaptureFromWinDivert() error {
 				return
 			}
 			if !hasClosed {
-    			divertConnection.Close()
-    			hasClosed = true
+				divertConnection.Close()
+				hasClosed = true
 			}
 			ifIdx := winDivertAddr.InterfaceIndex
 			subIfIdx := winDivertAddr.SubInterfaceIndex
@@ -188,8 +188,8 @@ func (session *CaptureSession) CaptureFromWinDivert() error {
 	go func() {
 		<-ctx.Done()
 		if !hasClosed {
-    		divertConnection.Close()
-    		hasClosed = true
+			divertConnection.Close()
+			hasClosed = true
 		}
 	}()
 

@@ -6,8 +6,8 @@ import (
 )
 
 type FilterLogWidget struct {
-    *widgets.QWidget
-    LogBox *widgets.QPlainTextEdit
+	*widgets.QWidget
+	LogBox *widgets.QPlainTextEdit
 }
 
 func NewFilterLogWidget(parent widgets.QWidget_ITF, title string) *FilterLogWidget {
@@ -32,12 +32,12 @@ func NewFilterLogWidget(parent widgets.QWidget_ITF, title string) *FilterLogWidg
 	window.SetLayout(layout)
 
 	return &FilterLogWidget{
-    	QWidget: window,
+		QWidget: window,
 
 		LogBox: logBox,
 	}
 }
 
 func (widget *FilterLogWidget) AppendLog(log string) {
-    widget.LogBox.AppendPlainText(log)
+	widget.LogBox.AppendPlainText(log)
 }

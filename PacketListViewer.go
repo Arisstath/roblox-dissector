@@ -26,7 +26,7 @@ type PacketListViewer struct {
 	StandardModel *gui.QStandardItemModel
 	ProxyModel    *core.QSortFilterProxyModel
 	RootNode      *gui.QStandardItem
-	Title string
+	Title         string
 
 	UpdateInterval    time.Duration
 	PendingRows       [][]*gui.QStandardItem
@@ -44,17 +44,17 @@ type PacketListViewer struct {
 	Conversation *Conversation
 
 	DefaultPacketWindow *PacketDetailsViewer
-	Filter *lua.FunctionProto
-	FilterState *lua.LState
+	Filter              *lua.FunctionProto
+	FilterState         *lua.LState
 	CurrentFilterScript string
 	FilterUsesExtraInfo bool
-	FilterLogWidget *FilterLogWidget
+	FilterLogWidget     *FilterLogWidget
 }
 
 func NewPacketListViewer(updateContext context.Context, parent widgets.QWidget_ITF, flags core.Qt__WindowType, title string) *PacketListViewer {
 	listViewer := &PacketListViewer{
 		QWidget:              widgets.NewQWidget(parent, flags),
-		Title: title,
+		Title:                title,
 		packetRowsByUniqueID: make(PacketList),
 
 		Packets: make(PacketLayerList),
@@ -117,57 +117,57 @@ func NewPacketListViewer(updateContext context.Context, parent widgets.QWidget_I
 }
 
 func (m *PacketListViewer) SetFilter(filterScript string, usesExtraInfo bool) {
-    m.CurrentFilterScript = filterScript
-    m.FilterUsesExtraInfo = usesExtraInfo
-    if filterScript == "" {
-        m.Filter = nil
-        m.FilterState = nil
-        m.ProxyModel.InvalidateFilter()
-        return
-    }
+	m.CurrentFilterScript = filterScript
+	m.FilterUsesExtraInfo = usesExtraInfo
+	if filterScript == "" {
+		m.Filter = nil
+		m.FilterState = nil
+		m.ProxyModel.InvalidateFilter()
+		return
+	}
 	compiled, err := CompileFilter(filterScript)
 	if err != nil {
-    	widgets.QMessageBox_Critical(m, "Filter Error", err.Error(), widgets.QMessageBox__Ok, widgets.QMessageBox__NoButton)
-    	return
+		widgets.QMessageBox_Critical(m, "Filter Error", err.Error(), widgets.QMessageBox__Ok, widgets.QMessageBox__NoButton)
+		return
 	}
 	m.Filter = compiled
-    m.FilterState = NewLuaFilterState(m.FilterLogWidget.AppendLog)
+	m.FilterState = NewLuaFilterState(m.FilterLogWidget.AppendLog)
 	m.ProxyModel.InvalidateFilter()
 }
 
 func (m *PacketListViewer) FilterAcceptsRow(sourceRow int, sourceParent *core.QModelIndex) bool {
-    if m.Filter == nil {
-        return true
-    }
+	if m.Filter == nil {
+		return true
+	}
 	realSelectedValue, _ := strconv.Atoi(m.StandardModel.Item(sourceRow, 0).Data(0).ToString())
 	if packet, ok := m.Packets[uint64(realSelectedValue)]; ok {
-    	var extraInfo *PacketInformation = nil
-    	if m.FilterUsesExtraInfo {
+		var extraInfo *PacketInformation = nil
+		if m.FilterUsesExtraInfo {
 			extraInfo = &PacketInformation{
-				Id: uint64(realSelectedValue),
+				Id:         uint64(realSelectedValue),
 				FromClient: packet.Root.FromClient,
-				HasError: packet.Error != nil,
+				HasError:   packet.Error != nil,
 				Incomplete: packet.Main == nil && packet.Error != nil,
 				WellFormed: packet.Main != nil,
-				Type: packet.PacketType,
+				Type:       packet.PacketType,
 			}
-    	} else {
-        	// when filtering, drop error packets by default
-        	if packet.Main == nil {
-            	return false
-        	}
-        	if packet.Error != nil {
-            	return false
-        	}
-    	}
+		} else {
+			// when filtering, drop error packets by default
+			if packet.Main == nil {
+				return false
+			}
+			if packet.Error != nil {
+				return false
+			}
+		}
 
 		acc, err := FilterAcceptsPacket(m.FilterState, m.Filter, packet.Main, extraInfo)
 		if err != nil {
-        	m.Filter = nil
-        	m.FilterState = nil
-        	m.FilterLogWidget.AppendLog(fmt.Sprintf("Filter error on packet %d\n", realSelectedValue))
-        	m.FilterLogWidget.AppendLog(err.Error())
-        	widgets.QMessageBox_Critical(m, fmt.Sprintf("Filter error on packet %d", realSelectedValue), fmt.Sprintf("Error: %s\n\nThe filter won't be used.", err.Error()), widgets.QMessageBox__Ok, widgets.QMessageBox__NoButton)
+			m.Filter = nil
+			m.FilterState = nil
+			m.FilterLogWidget.AppendLog(fmt.Sprintf("Filter error on packet %d\n", realSelectedValue))
+			m.FilterLogWidget.AppendLog(err.Error())
+			widgets.QMessageBox_Critical(m, fmt.Sprintf("Filter error on packet %d", realSelectedValue), fmt.Sprintf("Error: %s\n\nThe filter won't be used.", err.Error()), widgets.QMessageBox__Ok, widgets.QMessageBox__NoButton)
 			return true
 		}
 		return acc

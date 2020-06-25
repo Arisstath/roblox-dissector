@@ -18,7 +18,7 @@ type Cell struct {
 type Chunk struct {
 	ChunkIndex datamodel.ValueVector3int32
 	SideLength uint32
-	Int1 uint8
+	Int1       uint8
 	CellCube   [][][]Cell
 }
 

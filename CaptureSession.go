@@ -36,7 +36,7 @@ func (session *CaptureSession) AddConversation(conv *Conversation) *PacketListVi
 		viewer = NewPacketListViewer(session.Context, window, 0, title)
 		session.PacketListViewers = append(session.PacketListViewers, viewer)
 
-		window.TabWidget.AddTab(viewer, "Conversation: " + title)
+		window.TabWidget.AddTab(viewer, "Conversation: "+title)
 	}
 	viewer.BindToConversation(conv)
 	if session.SetModel {

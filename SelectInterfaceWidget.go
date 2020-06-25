@@ -40,7 +40,7 @@ func NewSelectInterfaceWidget(parent widgets.QWidget_ITF, callback func(string, 
 		var addrs string
 		if addrStringBuilder.Len() > 2 {
 			// Remove trailing comma
-			addrs = addrStringBuilder.String()[:addrStringBuilder.Len() - 2]
+			addrs = addrStringBuilder.String()[:addrStringBuilder.Len()-2]
 		}
 		rootNode.AppendRow([]*gui.QStandardItem{
 			NewStringItem(dev.Name),

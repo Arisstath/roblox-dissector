@@ -27,7 +27,7 @@ func NewEditFilterWidget(parent widgets.QWidget_ITF, oldFilter string, oldUseExt
 	okButton := widgets.NewQPushButton2("Apply", nil)
 	layout.AddWidget(okButton, 0, 0)
 	okButton.ConnectReleased(func() {
-    	filterScript := filterInput.ToPlainText()
+		filterScript := filterInput.ToPlainText()
 		useExtraInfo := extraInfo.CheckState() == core.Qt__Checked
 		window.Close()
 		callback(filterScript, useExtraInfo)
