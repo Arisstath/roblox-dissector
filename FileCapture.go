@@ -87,7 +87,7 @@ func CaptureFromSource(ctx context.Context, convs Conversations, packetSource *g
 		}
 
 		src, dest := SrcAndDestFromGoPacket(packet)
-		conv := ConversationFor(src, dest, payload)
+		conv := convs.ConversationFor(src, dest, payload)
 		if conv == nil {
 			continue // Not a RakNet packet
 		}
