@@ -7,23 +7,17 @@ import (
 func main() {
 	gtk.Init(nil)
 
-	win, err := gtk.WindowNew(gtk.WINDOW_TOPLEVEL)
+	winBuilder, err := gtk.BuilderNewFromFile("dissectorwindow.ui")
 	if err != nil {
-		println("Failed to create window: ", err.Error())
+		println("Failed to create main window: ", err.Error())
 		return
 	}
-	win.SetTitle("Sala")
-	win.Connect("destroy", func() {
-		gtk.MainQuit()
-	})
-
-	label, err := gtk.LabelNew("Hello world!")
+	win, err := winBuilder.GetObject("dissectorwindow")
 	if err != nil {
-		println("Failed to create label: ", err.Error())
+		println("Failed to create main window: ", err.Error())
 		return
 	}
-	win.Add(label)
-	win.ShowAll()
+	win.(*gtk.Window).ShowAll()
 
 	gtk.Main()
 }

@@ -60,6 +60,7 @@ type PacketReader interface {
 	ContextualHandler
 	SetIsClient(bool)
 	IsClient() bool
+	ReadPacket(payload []byte, layers *PacketLayers)
 }
 
 type contextualHandler struct {
