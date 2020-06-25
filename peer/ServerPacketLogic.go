@@ -105,7 +105,7 @@ func (client *ServerClient) requestParamsHandler(e *emitter.Event) {
 	client.WritePacket(&Packet93Layer{
 		ProtocolSchemaSync:       false,
 		APIDictionaryCompression: false,
-		Params: params,
+		Params:                   params,
 	})
 }
 
@@ -140,7 +140,7 @@ func (client *ServerClient) topReplicate() error {
 		FilteringEnabled:     true,
 		AllowThirdPartySales: false,
 		CharacterAutoSpawn:   true,
-		Items:         topReplicationItems,
+		Items:                topReplicationItems,
 	})
 }
 

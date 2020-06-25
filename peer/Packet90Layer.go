@@ -1,10 +1,10 @@
 package peer
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
-	"errors"
 )
 
 // Packet90VersionID represents a ID_PROTOCOL_SYNC version id
