@@ -17,6 +17,9 @@ func main() {
 		println("Failed to create main window: ", err.Error())
 		return
 	}
+	win.Connect("destroy", func() {
+    	        gtk.MainQuit()
+	})
 	win.(*gtk.Window).ShowAll()
 
 	gtk.Main()
