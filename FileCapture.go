@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"net"
 
@@ -32,10 +31,6 @@ func SrcAndDestFromGoPacket(packet gopacket.Packet) (*net.UDPAddr, *net.UDPAddr)
 		}
 }
 
-func AddressEq(a *net.UDPAddr, b *net.UDPAddr) bool {
-	return a.Port == b.Port && bytes.Equal(a.IP, b.IP)
-}
-
 func NewLayers(source *net.UDPAddr, dest *net.UDPAddr, fromClient bool) *peer.PacketLayers {
 	return &peer.PacketLayers{
 		Root: peer.RootLayer{
@@ -51,14 +46,6 @@ type PacketProvider interface {
 	peer.PacketReader
 	Layers() *emitter.Emitter
 	Errors() *emitter.Emitter
-}
-
-type Conversation struct {
-	Client       *net.UDPAddr
-	Server       *net.UDPAddr
-	ClientReader PacketProvider
-	ServerReader PacketProvider
-	Context      *peer.CommunicationContext
 }
 
 type Conversations interface {

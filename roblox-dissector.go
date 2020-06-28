@@ -7,20 +7,15 @@ import (
 func main() {
 	gtk.Init(nil)
 
-	winBuilder, err := gtk.BuilderNewFromFile("dissectorwindow.ui")
+	win, err := NewDissectorWindow()
 	if err != nil {
-		println("Failed to create main window: ", err.Error())
+		println("Failed to create main window:", err.Error())
 		return
 	}
-	win, err := winBuilder.GetObject("dissectorwindow")
-	if err != nil {
-		println("Failed to create main window: ", err.Error())
-		return
-	}
-	win.(*gtk.Window).Connect("destroy", func() {
+	win.Connect("destroy", func() {
 		gtk.MainQuit()
 	})
-	win.(*gtk.Window).ShowAll()
+	win.ShowAll()
 
 	gtk.Main()
 }
