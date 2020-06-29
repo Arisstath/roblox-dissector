@@ -24,7 +24,7 @@ type CaptureSession struct {
 	CancelFunc            context.CancelFunc
 	InitialViewerOccupied bool
 	ListViewers           []*PacketListViewer
-	ListViewerCallback func(*PacketListViewer, error)
+	ListViewerCallback    func(*PacketListViewer, error)
 }
 
 func AddressEq(a *net.UDPAddr, b *net.UDPAddr) bool {
@@ -34,18 +34,18 @@ func AddressEq(a *net.UDPAddr, b *net.UDPAddr) bool {
 func NewCaptureSession(name string, cancelFunc context.CancelFunc, listViewerCallback func(*PacketListViewer, error)) (*CaptureSession, error) {
 	initialViewer, err := NewPacketListViewer(fmt.Sprintf("%s#%d", name, 1))
 	if err != nil {
-    	return nil, err
+		return nil, err
 	}
 	listViewerCallback(initialViewer, nil)
 
 	return &CaptureSession{
-    	Name: name,
-    	ViewerCounter: 2,
-    	IsCapturing: true,
-    	Conversations: nil,
-    	CancelFunc: cancelFunc,
-    	InitialViewerOccupied: false,
-    	ListViewers: []*PacketListViewer{initialViewer},
+		Name:                  name,
+		ViewerCounter:         2,
+		IsCapturing:           true,
+		Conversations:         nil,
+		CancelFunc:            cancelFunc,
+		InitialViewerOccupied: false,
+		ListViewers:           []*PacketListViewer{initialViewer},
 	}, nil
 }
 
@@ -88,7 +88,7 @@ func (session *CaptureSession) ConversationFor(source *net.UDPAddr, dest *net.UD
 }
 
 func (session *CaptureSession) AddConversation(conv *Conversation) (*PacketListViewer, error) {
-    var err error
+	var err error
 	var viewer *PacketListViewer
 	if !session.InitialViewerOccupied {
 		session.InitialViewerOccupied = true

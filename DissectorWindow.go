@@ -1,7 +1,7 @@
 package main
 
 import (
-    "context"
+	"context"
 	"errors"
 	"github.com/gotk3/gotk3/gtk"
 )
@@ -36,21 +36,21 @@ func (win *DissectorWindow) CaptureFromFile(filename string) {
 	println("Capture from", filename)
 	_, cancelFunc := context.WithCancel(context.TODO())
 	_, err := NewCaptureSession(filename, cancelFunc, func(listViewer *PacketListViewer, err error) {
-        if err != nil {
+		if err != nil {
 			win.ShowCaptureError(err, "Accepting new listviewer")
 			return
-        }
-        titleLabel, err := gtk.LabelNew(listViewer.title)
-        if err != nil {
-            win.ShowCaptureError(err, "Accepting new listviewer")
-            return
-        }
+		}
+		titleLabel, err := gtk.LabelNew(listViewer.title)
+		if err != nil {
+			win.ShowCaptureError(err, "Accepting new listviewer")
+			return
+		}
 		win.tabs.AppendPage(listViewer.treeView, titleLabel)
 		listViewer.treeView.ShowAll()
 		titleLabel.ShowAll()
 	})
 	if err != nil {
-    	win.ShowCaptureError(err, "Starting capture")
+		win.ShowCaptureError(err, "Starting capture")
 	}
 }
 
