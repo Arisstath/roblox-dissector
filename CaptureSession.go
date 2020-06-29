@@ -24,10 +24,29 @@ type CaptureSession struct {
 	CancelFunc            context.CancelFunc
 	InitialViewerOccupied bool
 	ListViewers           []*PacketListViewer
+	ListViewerCallback func(*PacketListViewer, error)
 }
 
 func AddressEq(a *net.UDPAddr, b *net.UDPAddr) bool {
 	return a.Port == b.Port && bytes.Equal(a.IP, b.IP)
+}
+
+func NewCaptureSession(name string, cancelFunc context.CancelFunc, listViewerCallback func(*PacketListViewer, error)) (*CaptureSession, error) {
+	initialViewer, err := NewPacketListViewer(fmt.Sprintf("%s#%d", name, 1))
+	if err != nil {
+    	return nil, err
+	}
+	listViewerCallback(initialViewer, nil)
+
+	return &CaptureSession{
+    	Name: name,
+    	ViewerCounter: 2,
+    	IsCapturing: true,
+    	Conversations: nil,
+    	CancelFunc: cancelFunc,
+    	InitialViewerOccupied: false,
+    	ListViewers: []*PacketListViewer{initialViewer},
+	}, nil
 }
 
 func (session *CaptureSession) ConversationFor(source *net.UDPAddr, dest *net.UDPAddr, payload []byte) *Conversation {
@@ -63,23 +82,25 @@ func (session *CaptureSession) ConversationFor(source *net.UDPAddr, dest *net.UD
 		ServerReader: serverR,
 		Context:      newContext,
 	}
-	session.Conversations = append(server.Conversations, newConv)
+	session.Conversations = append(session.Conversations, newConv)
 
 	return newConv
 }
 
-func (session *CaptureSession) AddConversation(conv *Conversation) *PacketListViewer {
+func (session *CaptureSession) AddConversation(conv *Conversation) (*PacketListViewer, error) {
+    var err error
 	var viewer *PacketListViewer
 	if !session.InitialViewerOccupied {
 		session.InitialViewerOccupied = true
 		viewer = session.ListViewers[0]
 	} else {
-		title := fmt.Sprintf("%s#d", session.Name, len(session.ViewerCounter))
+		title := fmt.Sprintf("%s#d", session.Name, session.ViewerCounter)
 		session.ViewerCounter++
-		viewer = NewPacketListViewer(title)
+		viewer, err = NewPacketListViewer(title)
+		session.ListViewerCallback(viewer, err)
 	}
 
-	return viewer
+	return viewer, err
 }
 
 func (session *CaptureSession) StopCapture() {

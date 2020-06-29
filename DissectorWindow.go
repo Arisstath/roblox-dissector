@@ -1,6 +1,7 @@
 package main
 
 import (
+    "context"
 	"errors"
 	"github.com/gotk3/gotk3/gtk"
 )
@@ -33,6 +34,24 @@ func (win *DissectorWindow) ShowCaptureError(err error, extrainfo string) {
 
 func (win *DissectorWindow) CaptureFromFile(filename string) {
 	println("Capture from", filename)
+	_, cancelFunc := context.WithCancel(context.TODO())
+	_, err := NewCaptureSession(filename, cancelFunc, func(listViewer *PacketListViewer, err error) {
+        if err != nil {
+			win.ShowCaptureError(err, "Accepting new listviewer")
+			return
+        }
+        titleLabel, err := gtk.LabelNew(listViewer.title)
+        if err != nil {
+            win.ShowCaptureError(err, "Accepting new listviewer")
+            return
+        }
+		win.tabs.AppendPage(listViewer.treeView, titleLabel)
+		listViewer.treeView.ShowAll()
+		titleLabel.ShowAll()
+	})
+	if err != nil {
+    	win.ShowCaptureError(err, "Starting capture")
+	}
 }
 
 func NewDissectorWindow() (*gtk.Window, error) {
