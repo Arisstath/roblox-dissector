@@ -15,10 +15,10 @@ import (
 type decoderFunc func(*extendedReader, PacketReader, *PacketLayers) (RakNetPacket, error)
 
 var packetDecoders = map[byte]decoderFunc{
-	0x05: (*extendedReader).DecodePacket05Layer,
-	0x06: (*extendedReader).DecodePacket06Layer,
-	0x07: (*extendedReader).DecodePacket07Layer,
-	0x08: (*extendedReader).DecodePacket08Layer,
+	0x7B: (*extendedReader).DecodePacket05Layer,
+	0x7E: (*extendedReader).DecodePacket06Layer,
+	0x78: (*extendedReader).DecodePacket07Layer,
+	0x7D: (*extendedReader).DecodePacket08Layer,
 	0x00: (*extendedReader).DecodePacket00Layer,
 	0x03: (*extendedReader).DecodePacket03Layer,
 	0x09: (*extendedReader).DecodePacket09Layer,
