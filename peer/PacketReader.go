@@ -1,6 +1,7 @@
 package peer
 
 import (
+    "bytes"
 	"errors"
 	"fmt"
 	"log"
@@ -173,9 +174,9 @@ func (reader *DefaultPacketReader) readOffline(stream *extendedReader, packetTyp
 		if err != nil {
 			layers.Error = fmt.Errorf("Failed to decode offline packet %02X: %s", packetType, err.Error())
 		}
+	} else {
+    	layers.Error = fmt.Errorf("Unknown offline packet %02X", packetType)
 	}
-
-	reader.emitLayers("offline", layers)
 }
 
 func (reader *DefaultPacketReader) readGeneric(stream *extendedReader, layers *PacketLayers) {
@@ -312,7 +313,12 @@ func (reader *DefaultPacketReader) ReadPacket(payload []byte, layers *PacketLaye
 
 		layers.PacketType = payload[0]
 		layers.OfflinePayload = payload
-		reader.readOffline(bufferToStream(payload[1+0x10:]), layers.PacketType, layers)
+		byteReader := bytes.NewReader(payload[1+0x10:])
+		reader.readOffline(&extendedReader{byteReader}, layers.PacketType, layers)
+		if byteReader.Len() != 0 && layers.Error == nil {
+			layers.Error = fmt.Errorf("parsed packet %02X but still have %d bytes remaining", layers.PacketType, byteReader.Len())
+		}
+		reader.emitLayers("offline", layers)
 		return
 	}
 
