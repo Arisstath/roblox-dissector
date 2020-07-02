@@ -125,7 +125,7 @@ type CommunicationContext struct {
 	PlaceID   int64
 	VersionID Packet90VersionID
 
-	uniqueID uint32
+	uniqueID uint64
 }
 
 // NewCommunicationContext returns a new CommunicationContext

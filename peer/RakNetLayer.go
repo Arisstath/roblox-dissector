@@ -69,9 +69,15 @@ type PacketLayers struct {
 	// Possible parsing error?
 	Error error
 
+	// First byte of the packet payload. Note that this might not be initialized for split packets.
 	PacketType     byte
+	// Packet83Subpacket. Only for internal use.
 	Subpacket      Packet83Subpacket
+	// Offline payload for offline messages.
 	OfflinePayload []byte
+	// Unique ID given to each packet. Splits of the same packet have the same ID.
+	// The value of this is field is undefined for "reliability" packets.
+	UniqueID uint64
 }
 
 // PacketNames contains the names of most packet types

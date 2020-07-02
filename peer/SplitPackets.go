@@ -30,17 +30,16 @@ type SplitPacketBuffer struct {
 
 	// Have all splits been received?
 	IsFinal bool
-	// Unique ID given to each packet. Splits of the same packet have the same ID.
-	UniqueID uint32
 	// Total length received so far, in bytes
 	RealLength uint32
+	UniqueID uint64
 
 	logBuffer *strings.Builder // must be a pointer because it may be copied!
 	Logger    *log.Logger
 }
 type splitPacketList map[uint16](*SplitPacketBuffer)
 
-func newSplitPacketBuffer(packet *ReliablePacket, context *CommunicationContext) *SplitPacketBuffer {
+func newSplitPacketBuffer(packet *ReliablePacket, context *CommunicationContext) (*SplitPacketBuffer, uint64) {
 	reliables := make([]*ReliablePacket, int(packet.SplitPacketCount))
 	raknets := make([]*RakNetLayer, 0, int(packet.SplitPacketCount))
 
@@ -53,7 +52,7 @@ func newSplitPacketBuffer(packet *ReliablePacket, context *CommunicationContext)
 	list.logBuffer = new(strings.Builder)
 	list.Logger = log.New(list.logBuffer, "", log.Lmicroseconds|log.Ltime)
 
-	return list
+	return list, list.UniqueID
 }
 
 func (list *SplitPacketBuffer) addPacket(packet *ReliablePacket, rakNetPacket *RakNetLayer, index uint32) {
@@ -72,26 +71,30 @@ func (reader *DefaultPacketReader) addSplitPacket(layers *PacketLayers) *SplitPa
 	splitPacketIndex := packet.SplitPacketIndex
 
 	if !packet.HasSplitPacket {
-		buffer := newSplitPacketBuffer(packet, reader.context)
+		buffer, id := newSplitPacketBuffer(packet, reader.context)
+		layers.UniqueID = id
 		buffer.addPacket(packet, layers.RakNet, 0)
 
 		return buffer
 	}
 
 	var buffer *SplitPacketBuffer
+	var id uint64
 	if reader.splitPackets == nil {
-		buffer = newSplitPacketBuffer(packet, reader.context)
+		buffer, id = newSplitPacketBuffer(packet, reader.context)
 
 		reader.splitPackets = map[uint16]*SplitPacketBuffer{splitPacketID: buffer}
 	} else if reader.splitPackets[splitPacketID] == nil {
-		buffer = newSplitPacketBuffer(packet, reader.context)
+		buffer, id = newSplitPacketBuffer(packet, reader.context)
 
 		reader.splitPackets[splitPacketID] = buffer
 	} else {
 		buffer = reader.splitPackets[splitPacketID]
+		id = buffer.UniqueID
 	}
 	buffer.addPacket(packet, layers.RakNet, splitPacketIndex)
 	packet.SplitBuffer = buffer
+	layers.UniqueID = id
 
 	return buffer
 }

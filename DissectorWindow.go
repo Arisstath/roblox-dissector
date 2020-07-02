@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/gotk3/gotk3/gtk"
+	"github.com/google/gopacket/pcap"
 )
 
 func invalidUi(name string) error {
@@ -34,8 +35,13 @@ func (win *DissectorWindow) ShowCaptureError(err error, extrainfo string) {
 
 func (win *DissectorWindow) CaptureFromFile(filename string) {
 	println("Capture from", filename)
-	_, cancelFunc := context.WithCancel(context.TODO())
-	_, err := NewCaptureSession(filename, cancelFunc, func(listViewer *PacketListViewer, err error) {
+	handle, err := pcap.OpenOffline(filename)
+	if err != nil {
+    	win.ShowCaptureError(err, "Starting capture")
+    	return
+	}
+	context, cancelFunc := context.WithCancel(context.TODO())
+	session, err := NewCaptureSession(filename, cancelFunc, func(listViewer *PacketListViewer, err error) {
 		if err != nil {
 			win.ShowCaptureError(err, "Accepting new listviewer")
 			return
@@ -51,7 +57,15 @@ func (win *DissectorWindow) CaptureFromFile(filename string) {
 	})
 	if err != nil {
 		win.ShowCaptureError(err, "Starting capture")
+		return
 	}
+	go func() {
+    	err := CaptureFromHandle(context, session, handle, nil)
+    	if err != nil {
+    		win.ShowCaptureError(err, "Starting capture")
+    		return
+    	}
+	}()
 }
 
 func NewDissectorWindow() (*gtk.Window, error) {
@@ -69,6 +83,7 @@ func NewDissectorWindow() (*gtk.Window, error) {
 		return nil, invalidUi("mainwindow")
 	}
 	wind.SetTitle("Sala")
+	wind.SetDefaultSize(800, 640)
 
 	dwin := &DissectorWindow{
 		Window: wind,

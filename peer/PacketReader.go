@@ -168,6 +168,8 @@ func (reader *DefaultPacketReader) readOffline(stream *extendedReader, packetTyp
 	var err error
 	layers.Root.logBuffer = new(strings.Builder)
 	layers.Root.Logger = log.New(layers.Root.logBuffer, "", log.Lmicroseconds|log.Ltime)
+	layers.UniqueID = reader.context.uniqueID
+	reader.context.uniqueID++
 	decoder := packetDecoders[packetType]
 	if decoder != nil {
 		layers.Main, err = decoder(stream, reader, layers)
@@ -329,6 +331,8 @@ func (reader *DefaultPacketReader) ReadPacket(payload []byte, layers *PacketLaye
 	}
 	layers.RakNet = rakNetLayer
 	if rakNetLayer.Flags.IsACK || rakNetLayer.Flags.IsNAK {
+		layers.UniqueID = reader.context.uniqueID
+		reader.context.uniqueID++
 		reader.emitLayers("ack", layers)
 	} else {
 		reader.readReliable(layers)
@@ -456,6 +460,7 @@ func (reader *DefaultPacketReader) bindDataPacketHandler() {
 				Timestamp:   layers.Timestamp,
 				Main:        layers.Main,
 				Error:       layers.Error,
+				UniqueID:    layers.UniqueID,
 				PacketType:  sub.Type(),
 				Subpacket:   sub,
 			}

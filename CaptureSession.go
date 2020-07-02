@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/gotk3/gotk3/glib"
 	"github.com/Gskartwii/roblox-dissector/peer"
+	"github.com/olebedev/emitter"
 	"net"
 )
 
@@ -83,6 +85,7 @@ func (session *CaptureSession) ConversationFor(source *net.UDPAddr, dest *net.UD
 		Context:      newContext,
 	}
 	session.Conversations = append(session.Conversations, newConv)
+	session.AddConversation(newConv)
 
 	return newConv
 }
@@ -94,11 +97,26 @@ func (session *CaptureSession) AddConversation(conv *Conversation) (*PacketListV
 		session.InitialViewerOccupied = true
 		viewer = session.ListViewers[0]
 	} else {
-		title := fmt.Sprintf("%s#d", session.Name, session.ViewerCounter)
+		title := fmt.Sprintf("%s#%d", session.Name, session.ViewerCounter)
 		session.ViewerCounter++
 		viewer, err = NewPacketListViewer(title)
 		session.ListViewerCallback(viewer, err)
 	}
+	handler := func(e *emitter.Event) {
+    	topic := e.OriginalTopic
+		layers := e.Args[0].(*peer.PacketLayers)
+		_, err := glib.IdleAdd(func() bool {
+           viewer.NotifyPacket(topic, layers)
+           return false
+        })
+		if err != nil {
+			println("idleadd failed:", err.Error())
+		}
+	}
+	conv.ClientReader.Layers().On("*", handler, emitter.Void)
+	conv.ClientReader.Errors().On("*", handler, emitter.Void)
+	conv.ServerReader.Layers().On("*", handler, emitter.Void)
+	conv.ServerReader.Errors().On("*", handler, emitter.Void)
 
 	return viewer, err
 }

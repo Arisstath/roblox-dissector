@@ -57,6 +57,7 @@ func CaptureFromSource(ctx context.Context, convs Conversations, packetSource *g
 	for packet := range packetSource.Packets() {
 		select {
 		case <-ctx.Done():
+    		print("done")
 			return nil
 		case progressChan <- progress:
 		default:
@@ -68,7 +69,7 @@ func CaptureFromSource(ctx context.Context, convs Conversations, packetSource *g
 			packet.Layer(layers.LayerTypeUDP) == nil {
 			continue
 		}
-		payload := packet.ApplicationLayer().LayerPayload()
+		payload := packet.ApplicationLayer().Payload()
 		if len(payload) == 0 {
 			continue
 		}
@@ -100,6 +101,5 @@ func CaptureFromHandle(ctx context.Context, convs Conversations, handle *pcap.Ha
 	}
 
 	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
-
 	return CaptureFromSource(ctx, convs, packetSource, progressChan)
 }
