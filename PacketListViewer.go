@@ -11,25 +11,32 @@ const (
 	COL_PACKET
 	COL_DIRECTION
 	COL_LEN_BYTES
+	COL_COLOR
 )
 
 type PacketListViewer struct {
 	title string
 
+	mainWidget  *gtk.ScrolledWindow
 	treeView    *gtk.TreeView
 	colRenderer *gtk.CellRendererText
 	model       *gtk.TreeStore
 	filterModel *gtk.TreeModelFilter
 	sortModel   *gtk.TreeModelSort
+
+	packetRows map[uint64]*gtk.TreePath
 }
 
 func NewPacketListViewer(title string) (*PacketListViewer, error) {
-	viewer := &PacketListViewer{}
+	viewer := &PacketListViewer{
+		packetRows: make(map[uint64]*gtk.TreePath),
+	}
 	model, err := gtk.TreeStoreNew(
 		glib.TYPE_INT64,
 		glib.TYPE_STRING,
 		glib.TYPE_STRING,
 		glib.TYPE_INT64,
+		glib.TYPE_STRING,
 	)
 	if err != nil {
 		return nil, err
@@ -64,10 +71,18 @@ func NewPacketListViewer(title string) (*PacketListViewer, error) {
 		if err != nil {
 			return nil, err
 		}
+		col.AddAttribute(colRenderer, "background", COL_COLOR)
 		treeView.AppendColumn(col)
 	}
 
+	mainWidget, err := gtk.ScrolledWindowNew(nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	mainWidget.Add(treeView)
+
 	viewer.title = title
+	viewer.mainWidget = mainWidget
 	viewer.treeView = treeView
 	viewer.colRenderer = colRenderer
 	viewer.model = model
@@ -80,7 +95,7 @@ func (viewer *PacketListViewer) FilterAcceptsPacket(model *gtk.TreeModelFilter, 
 	return true
 }
 
-func (viewer *PacketListViewer) NotifyOfflinePacket(layers *peer.PacketLayers) error {
+func (viewer *PacketListViewer) NotifyOfflinePacket(layers *peer.PacketLayers) {
 	id := layers.UniqueID
 	model := viewer.model
 	newRow := model.Append(nil)
@@ -97,19 +112,83 @@ func (viewer *PacketListViewer) NotifyOfflinePacket(layers *peer.PacketLayers) e
 	}
 	model.SetValue(newRow, COL_DIRECTION, direction)
 	model.SetValue(newRow, COL_LEN_BYTES, int64(len(layers.OfflinePayload)))
-	return nil
+	if layers.Error != nil {
+		model.SetValue(newRow, COL_COLOR, "rgba(255,0,0,.5)")
+	}
+	var err error
+	viewer.packetRows[id], err = model.GetPath(newRow)
+	if err != nil {
+		println("failed to get path:", err.Error())
+	}
+}
+
+func (viewer *PacketListViewer) updatePacketInfo(iter *gtk.TreeIter, layers *peer.PacketLayers) {
+	model := viewer.model
+	model.SetValue(iter, COL_PACKET, layers.String())
+	var direction string
+
+	if layers.Root.FromClient {
+		direction = "C->S"
+	} else if layers.Root.FromServer {
+		direction = "S->C"
+	} else {
+		direction = "???"
+	}
+	model.SetValue(iter, COL_DIRECTION, direction)
+	model.SetValue(iter, COL_LEN_BYTES, int64(layers.SplitPacket.RealLength))
+	model.SetValue(iter, COL_COLOR, "rgba(255,255,0,.5)")
+}
+
+func (viewer *PacketListViewer) appendPartialPacketRow(layers *peer.PacketLayers) {
+	id := layers.UniqueID
+	model := viewer.model
+	newRow := model.Append(nil)
+	model.SetValue(newRow, COL_ID, int64(id))
+	viewer.updatePacketInfo(newRow, layers)
+
+	var err error
+	viewer.packetRows[id], err = model.GetPath(newRow)
+	if err != nil {
+		println("failed to get path:", err.Error())
+	}
+}
+
+func (viewer *PacketListViewer) NotifyPartialPacket(layers *peer.PacketLayers) {
+	existingRow, ok := viewer.packetRows[layers.UniqueID]
+
+	if !ok {
+		viewer.appendPartialPacketRow(layers)
+	} else {
+		iter, err := viewer.model.GetIter(existingRow)
+		if err != nil {
+			println("failed to get iter:", err.Error())
+			return
+		}
+		viewer.updatePacketInfo(iter, layers)
+	}
+}
+
+func (viewer *PacketListViewer) NotifyFullPacket(layers *peer.PacketLayers) {
+	existingRow, ok := viewer.packetRows[layers.UniqueID]
+	if !ok {
+    	println("haven't seen this full packet yet:", layers.UniqueID)
+    	return
+	} else {
+    	iter, err := viewer.model.GetIter(existingRow)
+		if err != nil {
+			println("failed to get iter:", err.Error())
+			return
+		}
+		viewer.model.SetValue(iter, COL_COLOR, "rgba(255,255,255,1)") // finished with this packet
+	}
 }
 
 func (viewer *PacketListViewer) NotifyPacket(channel string, layers *peer.PacketLayers) {
-	var err error
 	if channel == "offline" {
-		err = viewer.NotifyOfflinePacket(layers)
+		viewer.NotifyOfflinePacket(layers)
 	} else if channel == "reliable" {
-		//viewer.NotifyPartialPacket(layers)
+		viewer.NotifyPartialPacket(layers)
 	} else if channel == "full-reliable" {
-		//viewer.NotifyFullPacket(layers)
-	}
-	if err != nil {
-		println("Error while adding packet:", err.Error())
+		viewer.NotifyFullPacket(layers)
 	}
 }

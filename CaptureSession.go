@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/gotk3/gotk3/glib"
 	"github.com/Gskartwii/roblox-dissector/peer"
+	"github.com/gotk3/gotk3/glib"
 	"github.com/olebedev/emitter"
 	"net"
 )
@@ -103,12 +103,12 @@ func (session *CaptureSession) AddConversation(conv *Conversation) (*PacketListV
 		session.ListViewerCallback(viewer, err)
 	}
 	handler := func(e *emitter.Event) {
-    	topic := e.OriginalTopic
+		topic := e.OriginalTopic
 		layers := e.Args[0].(*peer.PacketLayers)
 		_, err := glib.IdleAdd(func() bool {
-           viewer.NotifyPacket(topic, layers)
-           return false
-        })
+			viewer.NotifyPacket(topic, layers)
+			return false
+		})
 		if err != nil {
 			println("idleadd failed:", err.Error())
 		}

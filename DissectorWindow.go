@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 	"errors"
-	"github.com/gotk3/gotk3/gtk"
 	"github.com/google/gopacket/pcap"
+	"github.com/gotk3/gotk3/gtk"
 )
 
 func invalidUi(name string) error {
@@ -37,8 +37,8 @@ func (win *DissectorWindow) CaptureFromFile(filename string) {
 	println("Capture from", filename)
 	handle, err := pcap.OpenOffline(filename)
 	if err != nil {
-    	win.ShowCaptureError(err, "Starting capture")
-    	return
+		win.ShowCaptureError(err, "Starting capture")
+		return
 	}
 	context, cancelFunc := context.WithCancel(context.TODO())
 	session, err := NewCaptureSession(filename, cancelFunc, func(listViewer *PacketListViewer, err error) {
@@ -51,8 +51,8 @@ func (win *DissectorWindow) CaptureFromFile(filename string) {
 			win.ShowCaptureError(err, "Accepting new listviewer")
 			return
 		}
-		win.tabs.AppendPage(listViewer.treeView, titleLabel)
-		listViewer.treeView.ShowAll()
+		win.tabs.AppendPage(listViewer.mainWidget, titleLabel)
+		listViewer.mainWidget.ShowAll()
 		titleLabel.ShowAll()
 	})
 	if err != nil {
@@ -60,11 +60,11 @@ func (win *DissectorWindow) CaptureFromFile(filename string) {
 		return
 	}
 	go func() {
-    	err := CaptureFromHandle(context, session, handle, nil)
-    	if err != nil {
-    		win.ShowCaptureError(err, "Starting capture")
-    		return
-    	}
+		err := CaptureFromHandle(context, session, handle, nil)
+		if err != nil {
+			win.ShowCaptureError(err, "Starting capture")
+			return
+		}
 	}()
 }
 

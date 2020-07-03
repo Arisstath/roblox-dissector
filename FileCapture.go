@@ -57,7 +57,7 @@ func CaptureFromSource(ctx context.Context, convs Conversations, packetSource *g
 	for packet := range packetSource.Packets() {
 		select {
 		case <-ctx.Done():
-    		print("done")
+			print("done")
 			return nil
 		case progressChan <- progress:
 		default:
