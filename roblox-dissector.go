@@ -7,6 +7,13 @@ import (
 func main() {
 	gtk.Init(nil)
 
+	settings, err := gtk.SettingsGetDefault()
+	if err != nil {
+		println("Failed to get settings:", err.Error())
+		return
+	}
+	settings.Set("gtk-application-prefer-dark-theme", true)
+
 	win, err := NewDissectorWindow()
 	if err != nil {
 		println("Failed to create main window:", err.Error())

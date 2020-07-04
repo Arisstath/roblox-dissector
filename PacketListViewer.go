@@ -199,7 +199,8 @@ func (viewer *PacketListViewer) NotifyFullPacket(layers *peer.PacketLayers) {
 			println("failed to get iter:", err.Error())
 			return
 		}
-		viewer.model.SetValue(iter, COL_COLOR, "rgba(255,255,255,1)") // finished with this packet
+		// Why doesn't GTK have `transparent` for colors, like CSS?
+		viewer.model.SetValue(iter, COL_COLOR, "rgba(0,0,0,0)") // finished with this packet
 	}
 }
 
