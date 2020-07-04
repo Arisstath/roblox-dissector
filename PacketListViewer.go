@@ -17,12 +17,14 @@ const (
 type PacketListViewer struct {
 	title string
 
-	mainWidget  *gtk.ScrolledWindow
+	mainWidget  *gtk.Paned
 	treeView    *gtk.TreeView
 	colRenderer *gtk.CellRendererText
 	model       *gtk.TreeStore
 	filterModel *gtk.TreeModelFilter
 	sortModel   *gtk.TreeModelSort
+
+	packetDetailsViewer *PacketDetailsViewer
 
 	packetRows map[uint64]*gtk.TreePath
 }
@@ -75,13 +77,31 @@ func NewPacketListViewer(title string) (*PacketListViewer, error) {
 		treeView.AppendColumn(col)
 	}
 
-	mainWidget, err := gtk.ScrolledWindowNew(nil, nil)
+	scrolledList, err := gtk.ScrolledWindowNew(nil, nil)
 	if err != nil {
 		return nil, err
 	}
-	mainWidget.Add(treeView)
+	treeView.SetVExpand(true)
+	scrolledList.Add(treeView)
+
+	packetDetailsViewer, err := NewPacketDetailsViewer()
+	if err != nil {
+		return nil, err
+	}
+	packetDetailsViewer.mainWidget.SetVExpand(true)
+	packetDetailsViewer.mainWidget.SetVAlign(gtk.ALIGN_FILL)
+	scrolledList.SetVExpand(true)
+	scrolledList.SetVAlign(gtk.ALIGN_FILL)
+
+	mainWidget, err := gtk.PanedNew(gtk.ORIENTATION_VERTICAL)
+	if err != nil {
+		return nil, err
+	}
+	mainWidget.Add(scrolledList)
+	mainWidget.Add(packetDetailsViewer.mainWidget)
 
 	viewer.title = title
+	viewer.packetDetailsViewer = packetDetailsViewer
 	viewer.mainWidget = mainWidget
 	viewer.treeView = treeView
 	viewer.colRenderer = colRenderer
