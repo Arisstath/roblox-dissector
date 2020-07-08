@@ -130,6 +130,7 @@ func NewDissectorWindow() (*gtk.Window, error) {
 			return
 		}
 		filter.AddPattern("*.pcap")
+		filter.SetName("PCAP network capture files (*.pcap)")
 		chooser.AddFilter(filter)
 		resp := chooser.NativeDialog.Run()
 		if gtk.ResponseType(resp) == gtk.RESPONSE_ACCEPT {

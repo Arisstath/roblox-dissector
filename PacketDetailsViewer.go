@@ -124,6 +124,7 @@ func NewPacketDetailsViewer() (*PacketDetailsViewer, error) {
 			return
 		}
 		filter.AddPattern("*.bin")
+		filter.SetName("Packet binary files (*.bin)")
 		dialog.AddFilter(filter)
 		resp := dialog.Run()
 		if gtk.ResponseType(resp) == gtk.RESPONSE_ACCEPT {
