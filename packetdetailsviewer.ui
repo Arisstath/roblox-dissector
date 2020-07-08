@@ -26,16 +26,23 @@
           </packing>
         </child>
         <child>
-          <object class="GtkTextView" id="logbox">
+          <object class="GtkScrolledWindow" id="logboxscrollwindow">
             <property name="visible">True</property>
             <property name="can_focus">True</property>
-            <property name="editable">False</property>
-            <property name="left_margin">8</property>
-            <property name="right_margin">8</property>
-            <property name="top_margin">8</property>
-            <property name="bottom_margin">8</property>
-            <property name="cursor_visible">False</property>
-            <property name="monospace">True</property>
+            <property name="shadow_type">in</property>
+            <child>
+              <object class="GtkTextView" id="logbox">
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="editable">False</property>
+                <property name="left_margin">8</property>
+                <property name="right_margin">8</property>
+                <property name="top_margin">8</property>
+                <property name="bottom_margin">8</property>
+                <property name="cursor_visible">False</property>
+                <property name="monospace">True</property>
+              </object>
+            </child>
           </object>
           <packing>
             <property name="position">1</property>

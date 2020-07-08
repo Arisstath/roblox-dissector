@@ -287,7 +287,14 @@ func (viewer *PacketDetailsViewer) updateReliabilityTab(layers *peer.PacketLayer
 }
 
 func (viewer *PacketDetailsViewer) ShowPacket(layers *peer.PacketLayers) error {
-	err := viewer.updateHexTab(layers)
+   	logBuffer, err := gtk.TextBufferNew(nil)
+   	if err != nil {
+       	return err
+   	}
+   	logBuffer.SetText(layers.Root.GetLog())
+    viewer.logBox.SetBuffer(logBuffer)
+
+	err = viewer.updateHexTab(layers)
 	if err != nil {
     	return err
 	}
