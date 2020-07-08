@@ -50,7 +50,7 @@ func NewPacketListViewer(title string) (*PacketListViewer, error) {
 	if err != nil {
 		return nil, err
 	}
-	filterModel.SetVisibleFunc(func(model *gtk.TreeModelFilter, iter *gtk.TreeIter, userData interface{}) bool {
+	filterModel.SetVisibleFunc(func(model *gtk.TreeModelFilter, iter *gtk.TreeIter, userData ...interface{}) bool {
 		return viewer.FilterAcceptsPacket(model, iter, userData)
 	})
 	sortModel, err := gtk.TreeModelSortNew(filterModel)
@@ -252,4 +252,5 @@ func (viewer *PacketListViewer) selectionChanged(selection *gtk.TreeSelection) {
 	idU64 := uint64(idGoVal.(int64))
 
 	println("selected packet:", viewer.packetStore[idU64].String())
+	viewer.packetDetailsViewer.ShowPacket(viewer.packetStore[idU64])
 }

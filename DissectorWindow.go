@@ -17,9 +17,15 @@ type DissectorWindow struct {
 	tabs *gtk.Notebook
 }
 
-func (win *DissectorWindow) ShowCaptureError(err error, extrainfo string) {
+func ShowError(wdg gtk.IWidget, err error, extrainfo string) {
+	widget := wdg.ToWidget()
+	parentWindow, err := widget.GetToplevel()
+	if err != nil {
+		println("failed to find parent window:", err.Error())
+		return
+	}
 	dialog := gtk.MessageDialogNew(
-		win,
+		parentWindow.(gtk.IWindow),
 		gtk.DIALOG_DESTROY_WITH_PARENT|gtk.DIALOG_MODAL,
 		gtk.MESSAGE_ERROR,
 		gtk.BUTTONS_OK,
@@ -31,6 +37,10 @@ func (win *DissectorWindow) ShowCaptureError(err error, extrainfo string) {
 	dialog.ShowAll()
 	dialog.Show()
 	dialog.Run()
+}
+
+func (win *DissectorWindow) ShowCaptureError(err error, extrainfo string) {
+	ShowError(win, err, extrainfo)
 }
 
 func (win *DissectorWindow) CaptureFromFile(filename string) {
