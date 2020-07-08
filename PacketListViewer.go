@@ -217,8 +217,12 @@ func (viewer *PacketListViewer) NotifyFullPacket(layers *peer.PacketLayers) {
 			println("failed to get iter:", err.Error())
 			return
 		}
-		// Why doesn't GTK have `transparent` for colors, like CSS?
-		viewer.model.SetValue(iter, COL_COLOR, "rgba(0,0,0,0)") // finished with this packet
+    	if layers.Error != nil {
+    		viewer.model.SetValue(iter, COL_COLOR, "rgba(255,0,0,.5)")
+    	} else {
+    		// Why doesn't GTK have `transparent` for colors, like CSS?
+    		viewer.model.SetValue(iter, COL_COLOR, "rgba(0,0,0,0)") // finished with this packet
+    	}
 		viewer.updatePacketInfo(iter, layers)
 	}
 }
@@ -251,6 +255,5 @@ func (viewer *PacketListViewer) selectionChanged(selection *gtk.TreeSelection) {
 	}
 	idU64 := uint64(idGoVal.(int64))
 
-	println("selected packet:", viewer.packetStore[idU64].String())
 	viewer.packetDetailsViewer.ShowPacket(viewer.packetStore[idU64])
 }
