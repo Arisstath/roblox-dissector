@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io/ioutil"
-	"math"
 	"strconv"
 
 	"github.com/Gskartwii/roblox-dissector/peer"
@@ -196,7 +195,7 @@ func NewPacketDetailsViewer() (*PacketDetailsViewer, error) {
 		count := float64(viewer.countSplitPackets)
 		for _, range_ := range viewer.missingSplitPacketRanges {
 			startCoord := float64(range_.start) / count * viewWidth
-			width := math.Ceil(float64(range_.end - range_.start) / count) * viewWidth
+			width := float64(range_.end - range_.start + 1) / count * viewWidth
 			ctx.Rectangle(startCoord, 0, width, viewHeight)
 			ctx.Fill()
 		}
