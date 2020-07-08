@@ -1,15 +1,15 @@
 package main
 
 import (
-    "github.com/gotk3/gotk3/gtk"
+	"github.com/gotk3/gotk3/gtk"
 )
 
 type PacketDetailsViewer struct {
-    mainWidget *gtk.Notebook
+	mainWidget *gtk.Notebook
 }
 
 func NewPacketDetailsViewer() (*PacketDetailsViewer, error) {
-    viewer := &PacketDetailsViewer{}
+	viewer := &PacketDetailsViewer{}
 
 	builder, err := gtk.BuilderNewFromFile("packetdetailsviewer.ui")
 	if err != nil {
@@ -27,7 +27,7 @@ func NewPacketDetailsViewer() (*PacketDetailsViewer, error) {
 
 	notebookContainer_, err := builder.GetObject("packetdetailsviewerwindow")
 	if err != nil {
-    	return nil, err
+		return nil, err
 	}
 	notebookContainer, ok := notebookContainer_.(*gtk.Window)
 	if !ok {
