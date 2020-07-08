@@ -74,6 +74,7 @@ func NewPacketListViewer(title string) (*PacketListViewer, error) {
 			return nil, err
 		}
 		col.AddAttribute(colRenderer, "background", COL_COLOR)
+		col.SetSortColumnID(i)
 		treeView.AppendColumn(col)
 	}
 
