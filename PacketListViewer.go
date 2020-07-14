@@ -12,6 +12,8 @@ const (
 	COL_DIRECTION
 	COL_LEN_BYTES
 	COL_COLOR
+	COL_HAS_LENGTH
+	COL_PARENT_ID
 )
 
 type PacketListViewer struct {
@@ -19,7 +21,6 @@ type PacketListViewer struct {
 
 	mainWidget  *gtk.Paned
 	treeView    *gtk.TreeView
-	colRenderer *gtk.CellRendererText
 	model       *gtk.TreeStore
 	filterModel *gtk.TreeModelFilter
 	sortModel   *gtk.TreeModelSort
@@ -41,7 +42,8 @@ func NewPacketListViewer(title string) (*PacketListViewer, error) {
 		glib.TYPE_STRING,
 		glib.TYPE_INT64,
 		glib.TYPE_STRING,
-		glib.TYPE_VARIANT,
+		glib.TYPE_BOOLEAN,
+		glib.TYPE_INT64,
 	)
 	if err != nil {
 		return nil, err
@@ -61,12 +63,12 @@ func NewPacketListViewer(title string) (*PacketListViewer, error) {
 	if err != nil {
 		return nil, err
 	}
-	colRenderer, err := gtk.CellRendererTextNew()
-	if err != nil {
-		return nil, err
-	}
 
 	for i, colName := range []string{"ID", "Packet", "Direction", "Length in Bytes"} {
+		colRenderer, err := gtk.CellRendererTextNew()
+		if err != nil {
+			return nil, err
+		}
 		col, err := gtk.TreeViewColumnNewWithAttribute(
 			colName,
 			colRenderer,
@@ -77,6 +79,9 @@ func NewPacketListViewer(title string) (*PacketListViewer, error) {
 			return nil, err
 		}
 		col.AddAttribute(colRenderer, "background", COL_COLOR)
+		if i == COL_LEN_BYTES {
+			col.AddAttribute(colRenderer, "visible", COL_HAS_LENGTH)
+		}
 		col.SetSortColumnID(i)
 		treeView.AppendColumn(col)
 	}
@@ -117,7 +122,6 @@ func NewPacketListViewer(title string) (*PacketListViewer, error) {
 	viewer.packetDetailsViewer = packetDetailsViewer
 	viewer.mainWidget = mainWidget
 	viewer.treeView = treeView
-	viewer.colRenderer = colRenderer
 	viewer.model = model
 	viewer.filterModel = filterModel
 	viewer.sortModel = sortModel
@@ -134,6 +138,7 @@ func (viewer *PacketListViewer) NotifyOfflinePacket(layers *peer.PacketLayers) {
 	newRow := model.Append(nil)
 	viewer.packetStore[id] = layers
 	model.SetValue(newRow, COL_ID, int64(id))
+	model.SetValue(newRow, COL_PARENT_ID, int64(-1))
 	model.SetValue(newRow, COL_PACKET, layers.String())
 	var direction string
 
@@ -146,6 +151,7 @@ func (viewer *PacketListViewer) NotifyOfflinePacket(layers *peer.PacketLayers) {
 	}
 	model.SetValue(newRow, COL_DIRECTION, direction)
 	model.SetValue(newRow, COL_LEN_BYTES, int64(len(layers.OfflinePayload)))
+	model.SetValue(newRow, COL_HAS_LENGTH, true)
 	if layers.Error != nil {
 		model.SetValue(newRow, COL_COLOR, "rgba(255,0,0,.5)")
 	}
@@ -179,7 +185,9 @@ func (viewer *PacketListViewer) appendPartialPacketRow(layers *peer.PacketLayers
 	model := viewer.model
 	newRow := model.Append(nil)
 	model.SetValue(newRow, COL_ID, int64(id))
+	model.SetValue(newRow, COL_PARENT_ID, int64(-1))
 	model.SetValue(newRow, COL_COLOR, "rgba(255,255,0,.5)")
+	model.SetValue(newRow, COL_HAS_LENGTH, true)
 	viewer.updatePacketInfo(newRow, layers)
 
 	var err error
@@ -188,6 +196,21 @@ func (viewer *PacketListViewer) appendPartialPacketRow(layers *peer.PacketLayers
 		println("failed to get path:", err.Error())
 	}
 	viewer.packetStore[id] = layers
+}
+
+func (viewer *PacketListViewer) addSubpackets(iter *gtk.TreeIter, layers *peer.PacketLayers) {
+	model := viewer.model
+	switch layers.PacketType {
+	case 0x83:
+		mainLayer := layers.Main.(*peer.Packet83Layer)
+		for index, subpacket := range mainLayer.SubPackets {
+			newRow := model.Append(iter)
+			model.SetValue(newRow, COL_ID, int64(index))
+			model.SetValue(newRow, COL_PARENT_ID, int64(layers.UniqueID))
+			model.SetValue(newRow, COL_PACKET, subpacket.String())
+			model.SetValue(newRow, COL_HAS_LENGTH, false)
+		}
+	}
 }
 
 func (viewer *PacketListViewer) NotifyPartialPacket(layers *peer.PacketLayers) {
@@ -217,13 +240,15 @@ func (viewer *PacketListViewer) NotifyFullPacket(layers *peer.PacketLayers) {
 			println("failed to get iter:", err.Error())
 			return
 		}
-    	if layers.Error != nil {
-    		viewer.model.SetValue(iter, COL_COLOR, "rgba(255,0,0,.5)")
-    	} else {
-    		// Why doesn't GTK have `transparent` for colors, like CSS?
-    		viewer.model.SetValue(iter, COL_COLOR, "rgba(0,0,0,0)") // finished with this packet
-    	}
+		if layers.Error != nil {
+			viewer.model.SetValue(iter, COL_COLOR, "rgba(255,0,0,.5)")
+		} else {
+			// Why doesn't GTK have `transparent` for colors, like CSS?
+			viewer.model.SetValue(iter, COL_COLOR, "rgba(0,0,0,0)") // finished with this packet
+		}
 		viewer.updatePacketInfo(iter, layers)
+
+		viewer.addSubpackets(iter, layers)
 	}
 }
 
@@ -237,23 +262,47 @@ func (viewer *PacketListViewer) NotifyPacket(channel string, layers *peer.Packet
 	}
 }
 
+func (viewer *PacketListViewer) uint64FromIter(treeIter *gtk.TreeIter, col int) (uint64, error) {
+	id, err := viewer.sortModel.GetValue(treeIter, col)
+	if err != nil {
+		return 0, err
+	}
+	idGoVal, err := id.GoValue()
+	if err != nil {
+		return 0, err
+	}
+	idU64 := uint64(idGoVal.(int64))
+	return idU64, nil
+}
+
+func (viewer *PacketListViewer) uint64FromPath(path *gtk.TreePath, col int) (uint64, error) {
+	treeIter, err := viewer.sortModel.GetIter(path)
+	if err != nil {
+		return 0, err
+	}
+	return viewer.uint64FromIter(treeIter, col)
+}
+
 func (viewer *PacketListViewer) selectionChanged(selection *gtk.TreeSelection) {
 	_, treeIter, ok := selection.GetSelected()
 	if !ok {
 		println("nothing selected")
 		return
 	}
-	id, err := viewer.sortModel.GetValue(treeIter, COL_ID)
+	baseId, err := viewer.uint64FromIter(treeIter, COL_ID)
 	if err != nil {
-		println("failed to map selection to packet id")
+		println("failed to base id from selection")
 		return
 	}
-	idGoVal, err := id.GoValue()
+	parentId, err := viewer.uint64FromIter(treeIter, COL_PARENT_ID)
 	if err != nil {
-		println("failed to get go value for packet id")
+		println("failed to parent id from selection")
 		return
 	}
-	idU64 := uint64(idGoVal.(int64))
 
-	viewer.packetDetailsViewer.ShowPacket(viewer.packetStore[idU64])
+	if int64(parentId) == -1 {
+		viewer.packetDetailsViewer.ShowPacket(viewer.packetStore[baseId])
+	} else {
+		viewer.packetDetailsViewer.ShowPacket(viewer.packetStore[parentId])
+	}
 }

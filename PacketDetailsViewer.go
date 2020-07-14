@@ -13,25 +13,25 @@ import (
 )
 
 type splitPacketRange struct {
-    start uint32
-    end uint32 // inclusive
+	start uint32
+	end   uint32 // inclusive
 }
 
 type PacketDetailsViewer struct {
 	mainWidget *gtk.Notebook
 	logBox     *gtk.TextView
 
-	hexBox     *gtk.TextView
+	hexBox      *gtk.TextView
 	hexDumpData []byte
 
-	reliablity *gtk.Label
-	rmNumber *gtk.Label
-	channel *gtk.Label
-	index *gtk.Label
+	reliablity        *gtk.Label
+	rmNumber          *gtk.Label
+	channel           *gtk.Label
+	index             *gtk.Label
 	splitPacketsLabel *gtk.Label
 
 	missingSplitPacketRanges []splitPacketRange
-	countSplitPackets uint32
+	countSplitPackets        uint32
 }
 
 func NewPacketDetailsViewer() (*PacketDetailsViewer, error) {
@@ -138,56 +138,56 @@ func NewPacketDetailsViewer() (*PacketDetailsViewer, error) {
 
 	reliability_, err := builder.GetObject("reliabilitytype")
 	if err != nil {
-    	return nil, err
+		return nil, err
 	}
 	reliability, ok := reliability_.(*gtk.Label)
 	if !ok {
-    	return nil, invalidUi("reliabilitytype")
+		return nil, invalidUi("reliabilitytype")
 	}
 	rmNumber_, err := builder.GetObject("rmnumber")
 	if err != nil {
-    	return nil, err
+		return nil, err
 	}
 	rmNumber, ok := rmNumber_.(*gtk.Label)
 	if !ok {
-    	return nil, invalidUi("rmnumber")
+		return nil, invalidUi("rmnumber")
 	}
 	channel_, err := builder.GetObject("channel")
 	if err != nil {
-    	return nil, err
+		return nil, err
 	}
 	channel, ok := channel_.(*gtk.Label)
 	if !ok {
-    	return nil, invalidUi("channel")
+		return nil, invalidUi("channel")
 	}
 	index_, err := builder.GetObject("orderingidx")
 	if err != nil {
-    	return nil, err
+		return nil, err
 	}
 	index, ok := index_.(*gtk.Label)
 	if !ok {
-    	return nil, invalidUi("orderingidx")
+		return nil, invalidUi("orderingidx")
 	}
 	splitPacketsLabel_, err := builder.GetObject("splitpacketslabel")
 	if err != nil {
-    	return nil, err
+		return nil, err
 	}
 	splitPacketsLabel, ok := splitPacketsLabel_.(*gtk.Label)
 	if !ok {
-    	return nil, invalidUi("splitpacketslabel")
+		return nil, invalidUi("splitpacketslabel")
 	}
 
 	drawingArea_, err := builder.GetObject("splitpacketsdrawarea")
 	if err != nil {
-    	return nil, err
+		return nil, err
 	}
 	drawingArea, ok := drawingArea_.(*gtk.DrawingArea)
 	if !ok {
-    	return nil, invalidUi("drawingarea")
+		return nil, invalidUi("drawingarea")
 	}
 	drawingArea.Connect("draw", func(drawingArea *gtk.DrawingArea, ctx *cairo.Context) bool {
-        viewWidth := float64(drawingArea.GetAllocatedWidth())
-        viewHeight := float64(drawingArea.GetAllocatedHeight())
+		viewWidth := float64(drawingArea.GetAllocatedWidth())
+		viewHeight := float64(drawingArea.GetAllocatedHeight())
 		ctx.Rectangle(0, 0, viewWidth, viewHeight)
 		ctx.SetSourceRGB(46.0/255.0, 125.0/255.0, 50.0/255.0)
 		ctx.Fill()
@@ -196,7 +196,7 @@ func NewPacketDetailsViewer() (*PacketDetailsViewer, error) {
 		count := float64(viewer.countSplitPackets)
 		for _, range_ := range viewer.missingSplitPacketRanges {
 			startCoord := float64(range_.start) / count * viewWidth
-			width := float64(range_.end - range_.start + 1) / count * viewWidth
+			width := float64(range_.end-range_.start+1) / count * viewWidth
 			ctx.Rectangle(startCoord, 0, width, viewHeight)
 			ctx.Fill()
 		}
@@ -248,59 +248,59 @@ func (viewer *PacketDetailsViewer) updateReliabilityTab(layers *peer.PacketLayer
 		viewer.index.SetText("N/A")
 		viewer.splitPacketsLabel.SetText("Split packets (N/A):")
 	} else {
-    	viewer.reliablity.SetText(reliabilityNames[layers.Reliability.Reliability])
-    	if layers.Reliability.IsReliable() {
+		viewer.reliablity.SetText(reliabilityNames[layers.Reliability.Reliability])
+		if layers.Reliability.IsReliable() {
 			viewer.rmNumber.SetText(strconv.FormatInt(int64(layers.Reliability.ReliableMessageNumber), 10))
-    	} else {
-        	viewer.rmNumber.SetText("N/A")
-    	}
-    	if layers.Reliability.IsOrdered() {
+		} else {
+			viewer.rmNumber.SetText("N/A")
+		}
+		if layers.Reliability.IsOrdered() {
 			viewer.channel.SetText(strconv.FormatInt(int64(layers.Reliability.OrderingChannel), 10))
 			viewer.index.SetText(strconv.FormatInt(int64(layers.Reliability.OrderingIndex), 10))
-    	} else {
-        	viewer.channel.SetText("N/A")
-        	viewer.index.SetText("N/A")
-    	}
+		} else {
+			viewer.channel.SetText("N/A")
+			viewer.index.SetText("N/A")
+		}
 
 		viewer.countSplitPackets = layers.Reliability.SplitPacketCount
-    	viewer.missingSplitPacketRanges = nil
-    	received := 0
-    	for i := uint32(0); i < viewer.countSplitPackets; i++ {
-        	if layers.SplitPacket.ReliablePackets[i] == nil {
-            	rangeCount := len(viewer.missingSplitPacketRanges)
-				if rangeCount == 0 || viewer.missingSplitPacketRanges[rangeCount - 1].end != i - 1 {
-    				viewer.missingSplitPacketRanges = append(viewer.missingSplitPacketRanges, splitPacketRange{
-                         start: i,
-                         end: i,
-    				})
+		viewer.missingSplitPacketRanges = nil
+		received := 0
+		for i := uint32(0); i < viewer.countSplitPackets; i++ {
+			if layers.SplitPacket.ReliablePackets[i] == nil {
+				rangeCount := len(viewer.missingSplitPacketRanges)
+				if rangeCount == 0 || viewer.missingSplitPacketRanges[rangeCount-1].end != i-1 {
+					viewer.missingSplitPacketRanges = append(viewer.missingSplitPacketRanges, splitPacketRange{
+						start: i,
+						end:   i,
+					})
 				} else {
-    				viewer.missingSplitPacketRanges[rangeCount - 1].end++
+					viewer.missingSplitPacketRanges[rangeCount-1].end++
 				}
-        	} else {
-            	received++
-        	}
-    	}
-    	viewer.splitPacketsLabel.SetText(fmt.Sprintf("Split packets (%d/%d):", received, viewer.countSplitPackets))
+			} else {
+				received++
+			}
+		}
+		viewer.splitPacketsLabel.SetText(fmt.Sprintf("Split packets (%d/%d):", received, viewer.countSplitPackets))
 	}
 
 	return nil
 }
 
 func (viewer *PacketDetailsViewer) ShowPacket(layers *peer.PacketLayers) error {
-   	logBuffer, err := gtk.TextBufferNew(nil)
-   	if err != nil {
-       	return err
-   	}
-   	logBuffer.SetText(layers.Root.GetLog())
-    viewer.logBox.SetBuffer(logBuffer)
+	logBuffer, err := gtk.TextBufferNew(nil)
+	if err != nil {
+		return err
+	}
+	logBuffer.SetText(layers.Root.GetLog())
+	viewer.logBox.SetBuffer(logBuffer)
 
 	err = viewer.updateHexTab(layers)
 	if err != nil {
-    	return err
+		return err
 	}
 	err = viewer.updateReliabilityTab(layers)
 	if err != nil {
-    	return err
+		return err
 	}
 
 	return nil
