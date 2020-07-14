@@ -461,8 +461,7 @@ func (reader *DefaultPacketReader) bindDataPacketHandler() {
 				Main:        layers.Main,
 				Error:       layers.Error,
 				UniqueID:    layers.UniqueID,
-				PacketType:  sub.Type(),
-				Subpacket:   sub,
+				PacketType:  0x83,
 			}
 			<-reader.DataEmitter.Emit(sub.TypeString(), sub, subLayers)
 		}

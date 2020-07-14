@@ -72,8 +72,6 @@ type PacketLayers struct {
 	// First byte of the packet payload. Note that this might not be initialized for split packets.
 	PacketType     byte
 	// Packet83Subpacket. Only for internal use.
-	Subpacket      Packet83Subpacket
-	// Offline payload for offline messages.
 	OfflinePayload []byte
 	// Unique ID given to each packet. Splits of the same packet have the same ID.
 	// The value of this is field is undefined for "reliability" packets.
@@ -124,9 +122,6 @@ var PacketNames = map[byte]string{
 }
 
 func (layers *PacketLayers) String() string {
-	if layers.Subpacket != nil {
-		return layers.Subpacket.String()
-	}
 	if layers.Main != nil {
 		return layers.Main.String()
 	}
