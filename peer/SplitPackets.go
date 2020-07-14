@@ -32,7 +32,7 @@ type SplitPacketBuffer struct {
 	IsFinal bool
 	// Total length received so far, in bytes
 	RealLength uint32
-	UniqueID uint64
+	UniqueID   uint64
 
 	logBuffer *strings.Builder // must be a pointer because it may be copied!
 	Logger    *log.Logger

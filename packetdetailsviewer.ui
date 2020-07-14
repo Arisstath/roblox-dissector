@@ -9,17 +9,17 @@
         <property name="visible">True</property>
         <property name="can_focus">True</property>
         <child>
-          <object class="GtkLabel" id="placeholder_mainpacketpage">
+          <object class="GtkLabel" id="mainlayerplaceholder">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
-            <property name="label" translatable="yes">Lorem ipsum</property>
+            <property name="label" translatable="yes">Nothing selected.</property>
           </object>
         </child>
         <child type="tab">
           <object class="GtkLabel" id="mainlayerlabel">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
-            <property name="label" translatable="yes">ID_LOREM_IPSUM</property>
+            <property name="label" translatable="yes">Main layer</property>
           </object>
           <packing>
             <property name="tab_fill">False</property>

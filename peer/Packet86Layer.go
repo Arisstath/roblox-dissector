@@ -15,6 +15,16 @@ type Packet86LayerSubpacket struct {
 	IsTouch bool
 }
 
+// String() implements fmt.Stringer
+func (packet *Packet86LayerSubpacket) String() string {
+	// We use Name() to provide a summary here
+	if packet.IsTouch {
+		return packet.Instance1.Name() + " touched " + packet.Instance2.Name()
+	} else {
+		return packet.Instance1.Name() + " ended touch with " + packet.Instance2.Name()
+	}
+}
+
 // Packet86Layer represents ID_TOUCHES - client <-> server
 type Packet86Layer struct {
 	SubPackets []*Packet86LayerSubpacket

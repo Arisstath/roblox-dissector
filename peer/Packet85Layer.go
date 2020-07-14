@@ -18,6 +18,11 @@ type Packet85LayerSubpacket struct {
 	History  []*PhysicsData
 }
 
+// String() implements fmt.Stringer
+func (packet *Packet85LayerSubpacket) String() string {
+	return "Physics: " + packet.Data.Instance.GetFullName()
+}
+
 // PhysicsData represents generic physics data
 type PhysicsData struct {
 	Instance           *datamodel.Instance

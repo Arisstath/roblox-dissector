@@ -13,7 +13,17 @@ const (
 	COL_LEN_BYTES
 	COL_COLOR
 	COL_HAS_LENGTH
-	COL_PARENT_ID
+	COL_MAIN_PACKET_ID
+	COL_SUBPACKET_ID
+	COL_PACKET_KIND
+)
+
+const (
+	KIND_MAIN = iota
+	KIND_DATA_REPLIC
+	KIND_DATA_JOIN_DATA_INSTANCE
+	KIND_PHYSICS
+	KIND_TOUCH
 )
 
 type PacketListViewer struct {
@@ -37,13 +47,15 @@ func NewPacketListViewer(title string) (*PacketListViewer, error) {
 		packetStore: make(map[uint64]*peer.PacketLayers),
 	}
 	model, err := gtk.TreeStoreNew(
-		glib.TYPE_INT64,
-		glib.TYPE_STRING,
-		glib.TYPE_STRING,
-		glib.TYPE_INT64,
-		glib.TYPE_STRING,
-		glib.TYPE_BOOLEAN,
-		glib.TYPE_INT64,
+		glib.TYPE_INT64,   // COL_ID
+		glib.TYPE_STRING,  // COL_PACKET
+		glib.TYPE_STRING,  // COL_DIRECTION
+		glib.TYPE_INT64,   // COL_LEN_BYTES
+		glib.TYPE_STRING,  // COL_COLOR
+		glib.TYPE_BOOLEAN, // COL_HAS_LENGTH
+		glib.TYPE_INT64,   // COL_MAIN_PACKET_ID
+		glib.TYPE_INT64,   // COL_SUBPACKET_ID
+		glib.TYPE_INT64,   // COL_PACKET_KIND
 	)
 	if err != nil {
 		return nil, err
@@ -138,7 +150,6 @@ func (viewer *PacketListViewer) NotifyOfflinePacket(layers *peer.PacketLayers) {
 	newRow := model.Append(nil)
 	viewer.packetStore[id] = layers
 	model.SetValue(newRow, COL_ID, int64(id))
-	model.SetValue(newRow, COL_PARENT_ID, int64(-1))
 	model.SetValue(newRow, COL_PACKET, layers.String())
 	var direction string
 
@@ -152,6 +163,7 @@ func (viewer *PacketListViewer) NotifyOfflinePacket(layers *peer.PacketLayers) {
 	model.SetValue(newRow, COL_DIRECTION, direction)
 	model.SetValue(newRow, COL_LEN_BYTES, int64(len(layers.OfflinePayload)))
 	model.SetValue(newRow, COL_HAS_LENGTH, true)
+	model.SetValue(newRow, COL_PACKET_KIND, int64(KIND_MAIN))
 	if layers.Error != nil {
 		model.SetValue(newRow, COL_COLOR, "rgba(255,0,0,.5)")
 	}
@@ -185,9 +197,9 @@ func (viewer *PacketListViewer) appendPartialPacketRow(layers *peer.PacketLayers
 	model := viewer.model
 	newRow := model.Append(nil)
 	model.SetValue(newRow, COL_ID, int64(id))
-	model.SetValue(newRow, COL_PARENT_ID, int64(-1))
 	model.SetValue(newRow, COL_COLOR, "rgba(255,255,0,.5)")
 	model.SetValue(newRow, COL_HAS_LENGTH, true)
+	model.SetValue(newRow, COL_PACKET_KIND, int64(KIND_MAIN))
 	viewer.updatePacketInfo(newRow, layers)
 
 	var err error
@@ -206,9 +218,42 @@ func (viewer *PacketListViewer) addSubpackets(iter *gtk.TreeIter, layers *peer.P
 		for index, subpacket := range mainLayer.SubPackets {
 			newRow := model.Append(iter)
 			model.SetValue(newRow, COL_ID, int64(index))
-			model.SetValue(newRow, COL_PARENT_ID, int64(layers.UniqueID))
+			model.SetValue(newRow, COL_MAIN_PACKET_ID, int64(layers.UniqueID))
 			model.SetValue(newRow, COL_PACKET, subpacket.String())
 			model.SetValue(newRow, COL_HAS_LENGTH, false)
+			model.SetValue(newRow, COL_PACKET_KIND, int64(KIND_DATA_REPLIC))
+
+			if joinData, ok := subpacket.(*peer.Packet83_0B); ok {
+				for instanceIndex, instance := range joinData.Instances {
+					instanceRow := model.Append(newRow)
+					model.SetValue(instanceRow, COL_ID, int64(instanceIndex))
+					model.SetValue(instanceRow, COL_MAIN_PACKET_ID, int64(layers.UniqueID))
+					model.SetValue(instanceRow, COL_SUBPACKET_ID, int64(index))
+					model.SetValue(instanceRow, COL_PACKET, instance.Instance.GetFullName())
+					model.SetValue(instanceRow, COL_HAS_LENGTH, false)
+					model.SetValue(instanceRow, COL_PACKET_KIND, int64(KIND_DATA_JOIN_DATA_INSTANCE))
+				}
+			}
+		}
+	case 0x85:
+		mainLayer := layers.Main.(*peer.Packet85Layer)
+		for index, subpacket := range mainLayer.SubPackets {
+			newRow := model.Append(iter)
+			model.SetValue(newRow, COL_ID, int64(index))
+			model.SetValue(newRow, COL_MAIN_PACKET_ID, int64(layers.UniqueID))
+			model.SetValue(newRow, COL_PACKET, subpacket.String())
+			model.SetValue(newRow, COL_HAS_LENGTH, false)
+			model.SetValue(newRow, COL_PACKET_KIND, int64(KIND_PHYSICS))
+		}
+	case 0x86:
+		mainLayer := layers.Main.(*peer.Packet86Layer)
+		for index, subpacket := range mainLayer.SubPackets {
+			newRow := model.Append(iter)
+			model.SetValue(newRow, COL_ID, int64(index))
+			model.SetValue(newRow, COL_MAIN_PACKET_ID, int64(layers.UniqueID))
+			model.SetValue(newRow, COL_PACKET, subpacket.String())
+			model.SetValue(newRow, COL_HAS_LENGTH, false)
+			model.SetValue(newRow, COL_PACKET_KIND, int64(KIND_TOUCH))
 		}
 	}
 }
@@ -262,25 +307,28 @@ func (viewer *PacketListViewer) NotifyPacket(channel string, layers *peer.Packet
 	}
 }
 
-func (viewer *PacketListViewer) uint64FromIter(treeIter *gtk.TreeIter, col int) (uint64, error) {
+func (viewer *PacketListViewer) getGoValue(treeIter *gtk.TreeIter, col int) (interface{}, error) {
 	id, err := viewer.sortModel.GetValue(treeIter, col)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	idGoVal, err := id.GoValue()
-	if err != nil {
-		return 0, err
-	}
-	idU64 := uint64(idGoVal.(int64))
-	return idU64, nil
+	return id.GoValue()
 }
 
-func (viewer *PacketListViewer) uint64FromPath(path *gtk.TreePath, col int) (uint64, error) {
+func (viewer *PacketListViewer) goValueFromPath(path *gtk.TreePath, col int) (interface{}, error) {
 	treeIter, err := viewer.sortModel.GetIter(path)
+	if err != nil {
+		return nil, err
+	}
+	return viewer.getGoValue(treeIter, col)
+}
+
+func (viewer *PacketListViewer) uint64FromIter(treeIter *gtk.TreeIter, col int) (uint64, error) {
+	v, err := viewer.getGoValue(treeIter, col)
 	if err != nil {
 		return 0, err
 	}
-	return viewer.uint64FromIter(treeIter, col)
+	return uint64(v.(int64)), nil
 }
 
 func (viewer *PacketListViewer) selectionChanged(selection *gtk.TreeSelection) {
@@ -294,15 +342,20 @@ func (viewer *PacketListViewer) selectionChanged(selection *gtk.TreeSelection) {
 		println("failed to base id from selection")
 		return
 	}
-	parentId, err := viewer.uint64FromIter(treeIter, COL_PARENT_ID)
+	kind, err := viewer.uint64FromIter(treeIter, COL_PACKET_KIND)
 	if err != nil {
-		println("failed to parent id from selection")
+		println("failed to get packet kind from selection")
 		return
 	}
 
-	if int64(parentId) == -1 {
+	if kind == KIND_MAIN {
 		viewer.packetDetailsViewer.ShowPacket(viewer.packetStore[baseId])
 	} else {
-		viewer.packetDetailsViewer.ShowPacket(viewer.packetStore[parentId])
+		mainPacketId, err := viewer.uint64FromIter(treeIter, COL_MAIN_PACKET_ID)
+		if err != nil {
+			println("failed to parent id from selection")
+			return
+		}
+		viewer.packetDetailsViewer.ShowPacket(viewer.packetStore[mainPacketId])
 	}
 }

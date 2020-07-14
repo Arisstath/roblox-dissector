@@ -70,7 +70,7 @@ type PacketLayers struct {
 	Error error
 
 	// First byte of the packet payload. Note that this might not be initialized for split packets.
-	PacketType     byte
+	PacketType byte
 	// Packet83Subpacket. Only for internal use.
 	OfflinePayload []byte
 	// Unique ID given to each packet. Splits of the same packet have the same ID.
