@@ -354,7 +354,7 @@ func (viewer *PacketListViewer) selectionChanged(selection *gtk.TreeSelection) {
 		viewer.packetDetailsViewer.ShowPacket(viewer.packetStore[mainPacketId])
 
 		if kind == KIND_DATA_REPLIC {
-    		packetViewer, err := viewerForDataPacket(viewer.packetStore[mainPacketId].Main.(*peer.Packet83Layer).SubPackets[baseId])
+			packetViewer, err := viewerForDataPacket(viewer.packetStore[mainPacketId].Main.(*peer.Packet83Layer).SubPackets[baseId])
 			if err != nil {
 				println("failed to get subpacket viewer:", err.Error())
 				return

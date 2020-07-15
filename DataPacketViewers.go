@@ -12,7 +12,7 @@ func viewerForDataPacket(packet peer.Packet83Subpacket) (gtk.IWidget, error) {
 		delInst := packet.(*peer.Packet83_01)
 		viewer, err := gtk.LabelNew("Delete instance " + delInst.Instance.Ref.String() + ": " + delInst.Instance.Name())
 		if err != nil {
-    		return nil, err
+			return nil, err
 		}
 		viewer.SetHAlign(gtk.ALIGN_START)
 		viewer.SetVAlign(gtk.ALIGN_START)
@@ -34,28 +34,28 @@ func viewerForDataPacket(packet peer.Packet83Subpacket) (gtk.IWidget, error) {
 
 		return viewer.mainWidget, nil
 	case 0x03:
-    	prop := packet.(*peer.Packet83_03)
-    	viewer, err := NewPropertyEventViewer()
-    	if err != nil {
-        	return nil, err
-    	}
-    	var version = int32(-1)
-    	if prop.HasVersion {
-        	version = prop.Version
-    	}
+		prop := packet.(*peer.Packet83_03)
+		viewer, err := NewPropertyEventViewer()
+		if err != nil {
+			return nil, err
+		}
+		var version = int32(-1)
+		if prop.HasVersion {
+			version = prop.Version
+		}
 
-    	viewer.ViewPropertyUpdate(prop.Instance, prop.Schema.Name, prop.Value, version)
-    	viewer.mainWidget.ShowAll()
-    	return viewer.mainWidget, nil
+		viewer.ViewPropertyUpdate(prop.Instance, prop.Schema.Name, prop.Value, version)
+		viewer.mainWidget.ShowAll()
+		return viewer.mainWidget, nil
 	case 0x07:
-    	event := packet.(*peer.Packet83_07)
-    	viewer, err := NewPropertyEventViewer()
-    	if err != nil {
-        	return nil, err
-    	}
-    	viewer.ViewEvent(event.Instance, event.Schema.Name, event.Event.Arguments)
-    	viewer.mainWidget.ShowAll()
-    	return viewer.mainWidget, nil
+		event := packet.(*peer.Packet83_07)
+		viewer, err := NewPropertyEventViewer()
+		if err != nil {
+			return nil, err
+		}
+		viewer.ViewEvent(event.Instance, event.Schema.Name, event.Event.Arguments)
+		viewer.mainWidget.ShowAll()
+		return viewer.mainWidget, nil
 	}
 	return nil, errors.New("unimplemented")
 }

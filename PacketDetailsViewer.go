@@ -314,7 +314,7 @@ func (viewer *PacketDetailsViewer) ShowMainLayer(layer gtk.IWidget) {
 	selectedPage := viewer.mainWidget.GetCurrentPage()
 	res := viewer.mainWidget.PrependPage(layer, label)
 	if res == -1 {
-    	println("failed to prepend page")
+		println("failed to prepend page")
 	}
 
 	viewer.mainWidget.RemovePage(1)

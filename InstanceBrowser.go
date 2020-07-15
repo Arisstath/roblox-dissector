@@ -272,10 +272,10 @@ type PropEventViewer struct {
 	mainWidget *gtk.Box
 	model      *gtk.TreeStore
 
-	name *gtk.Label
-	id     *gtk.Label
+	name         *gtk.Label
+	id           *gtk.Label
 	instancename *gtk.Label
-	version *gtk.Label
+	version      *gtk.Label
 }
 
 func (viewer *PropEventViewer) ViewPropertyUpdate(instance *datamodel.Instance, name string, newValue rbxfile.Value, version int32) {
@@ -283,7 +283,7 @@ func (viewer *PropEventViewer) ViewPropertyUpdate(instance *datamodel.Instance, 
 	viewer.id.SetText("ID: " + instance.Ref.String())
 	viewer.version.SetVisible(true)
 	if version == -1 {
-    	viewer.version.SetText("Version: N/A")
+		viewer.version.SetText("Version: N/A")
 	} else {
 		viewer.version.SetText("Version: " + strconv.FormatInt(int64(version), 10))
 	}
@@ -300,7 +300,7 @@ func (viewer *PropEventViewer) ViewEvent(instance *datamodel.Instance, name stri
 
 	viewer.model.Clear()
 	for i, val := range arguments {
-    	appendValueRow(viewer.model, nil, "Argument " + strconv.Itoa(i), val)
+		appendValueRow(viewer.model, nil, "Argument "+strconv.Itoa(i), val)
 	}
 }
 
