@@ -166,5 +166,5 @@ func (layer *Packet83_03) String() string {
 	} else {
 		propName = layer.Schema.Name
 	}
-	return fmt.Sprintf("ID_REPLIC_PROP: %s[%s]", layer.Instance.GetFullName(), propName)
+	return fmt.Sprintf("ID_REPLIC_PROP: %s: %s[%s]", layer.Instance.Ref.String(), layer.Instance.Name(), propName)
 }

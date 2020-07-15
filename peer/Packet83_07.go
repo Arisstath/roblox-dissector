@@ -94,5 +94,5 @@ func (Packet83_07) TypeString() string {
 }
 
 func (layer *Packet83_07) String() string {
-	return fmt.Sprintf("ID_REPLIC_EVENT: %s::%s", layer.Instance.GetFullName(), layer.Schema.Name)
+	return fmt.Sprintf("ID_REPLIC_EVENT: %s: %s::%s", layer.Instance.Ref.String(), layer.Instance.Name(), layer.Schema.Name)
 }

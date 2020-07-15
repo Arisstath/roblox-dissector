@@ -353,7 +353,14 @@ func (viewer *PacketListViewer) selectionChanged(selection *gtk.TreeSelection) {
 		}
 		viewer.packetDetailsViewer.ShowPacket(viewer.packetStore[mainPacketId])
 
-		if kind == KIND_DATA_JOIN_DATA_INSTANCE {
+		if kind == KIND_DATA_REPLIC {
+    		packetViewer, err := viewerForDataPacket(viewer.packetStore[mainPacketId].Main.(*peer.Packet83Layer).SubPackets[baseId])
+			if err != nil {
+				println("failed to get subpacket viewer:", err.Error())
+				return
+			}
+			viewer.packetDetailsViewer.ShowMainLayer(packetViewer)
+		} else if kind == KIND_DATA_JOIN_DATA_INSTANCE {
 			joinDataSubpacket, err := viewer.uint64FromIter(treeIter, COL_SUBPACKET_ID)
 			if err != nil {
 				println("failed to subpacket id from selection:", err.Error())

@@ -312,7 +312,11 @@ func (viewer *PacketDetailsViewer) ShowMainLayer(layer gtk.IWidget) {
 		println("failed to make label:", err.Error())
 	}
 	selectedPage := viewer.mainWidget.GetCurrentPage()
-	viewer.mainWidget.PrependPage(layer, label)
+	res := viewer.mainWidget.PrependPage(layer, label)
+	if res == -1 {
+    	println("failed to prepend page")
+	}
+
 	viewer.mainWidget.RemovePage(1)
 	viewer.mainWidget.SetCurrentPage(selectedPage)
 }

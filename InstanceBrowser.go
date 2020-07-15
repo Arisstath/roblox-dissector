@@ -268,6 +268,157 @@ func NewInstanceViewer() (*InstanceViewer, error) {
 	return viewer, nil
 }
 
-type InstanceBrowser struct {
-	mainWidget *gtk.Paned
+type PropEventViewer struct {
+	mainWidget *gtk.Box
+	model      *gtk.TreeStore
+
+	name *gtk.Label
+	id     *gtk.Label
+	instancename *gtk.Label
+	version *gtk.Label
+}
+
+func (viewer *PropEventViewer) ViewPropertyUpdate(instance *datamodel.Instance, name string, newValue rbxfile.Value, version int32) {
+	viewer.name.SetText(name)
+	viewer.id.SetText("ID: " + instance.Ref.String())
+	viewer.version.SetVisible(true)
+	if version == -1 {
+    	viewer.version.SetText("Version: N/A")
+	} else {
+		viewer.version.SetText("Version: " + strconv.FormatInt(int64(version), 10))
+	}
+	viewer.instancename.SetText("Instance name: " + instance.Name())
+
+	viewer.model.Clear()
+	appendValueRow(viewer.model, nil, name, newValue)
+}
+func (viewer *PropEventViewer) ViewEvent(instance *datamodel.Instance, name string, arguments []rbxfile.Value) {
+	viewer.name.SetText(name)
+	viewer.id.SetText("ID: " + instance.Ref.String())
+	viewer.version.SetVisible(false)
+	viewer.instancename.SetText("Instance name: " + instance.Name())
+
+	viewer.model.Clear()
+	for i, val := range arguments {
+    	appendValueRow(viewer.model, nil, "Argument " + strconv.Itoa(i), val)
+	}
+}
+
+func NewPropertyEventViewer() (*PropEventViewer, error) {
+	viewer := &PropEventViewer{}
+
+	builder, err := gtk.BuilderNewFromFile("propeventviewer.ui")
+	if err != nil {
+		return nil, err
+	}
+	mainWidget_, err := builder.GetObject("propertyinfobox")
+	if err != nil {
+		return nil, err
+	}
+	mainWidget, ok := mainWidget_.(*gtk.Box)
+	if !ok {
+		return nil, invalidUi("propertyinfobox")
+	}
+
+	mainContainer_, err := builder.GetObject("propertiesviewcontainer")
+	if err != nil {
+		return nil, err
+	}
+	mainContainer, ok := mainContainer_.(*gtk.Window)
+	if !ok {
+		return nil, invalidUi("propertiesviewcontainer")
+	}
+	mainContainer.Remove(mainWidget)
+
+	valuesContainer_, err := builder.GetObject("valuescontainer")
+	if err != nil {
+		return nil, err
+	}
+	valuesContainer, ok := valuesContainer_.(*gtk.ScrolledWindow)
+	if !ok {
+		return nil, invalidUi("valuescontainer")
+	}
+
+	model, err := gtk.TreeStoreNew(
+		glib.TYPE_STRING, // COL_PROP_NAME
+		glib.TYPE_STRING, // COL_PROP_TYPE
+		glib.TYPE_STRING, // COL_PROP_VALUE
+	)
+	if err != nil {
+		return nil, err
+	}
+	treeView, err := gtk.TreeViewNewWithModel(model)
+	if err != nil {
+		return nil, err
+	}
+	treeView.SetHExpand(true)
+	valuesContainer.Add(treeView)
+
+	for i, colName := range []string{"Name", "Type", "Value"} {
+		colRenderer, err := gtk.CellRendererTextNew()
+		if err != nil {
+			return nil, err
+		}
+		col, err := gtk.TreeViewColumnNewWithAttribute(
+			colName,
+			colRenderer,
+			"text",
+			i,
+		)
+		if err != nil {
+			return nil, err
+		}
+		col.SetSortColumnID(i)
+
+		if i == COL_PROP_VALUE {
+			colRenderer.Set("ellipsize", int(pango.ELLIPSIZE_END))
+		}
+
+		treeView.AppendColumn(col)
+	}
+
+	name_, err := builder.GetObject("namelabel")
+	if err != nil {
+		return nil, err
+	}
+	name, ok := name_.(*gtk.Label)
+	if !ok {
+		return nil, invalidUi("namelabel")
+	}
+
+	id_, err := builder.GetObject("instanceidlabel")
+	if err != nil {
+		return nil, err
+	}
+	id, ok := id_.(*gtk.Label)
+	if !ok {
+		return nil, invalidUi("instanceidlabel")
+	}
+
+	instancename_, err := builder.GetObject("instancenamelabel")
+	if err != nil {
+		return nil, err
+	}
+	instancename, ok := instancename_.(*gtk.Label)
+	if !ok {
+		return nil, invalidUi("instancenamelabel")
+	}
+
+	version_, err := builder.GetObject("versionlabel")
+	if err != nil {
+		return nil, err
+	}
+	version, ok := version_.(*gtk.Label)
+	if !ok {
+		return nil, invalidUi("versionlabel")
+	}
+
+	viewer.mainWidget = mainWidget
+	viewer.model = model
+	viewer.id = id
+	viewer.name = name
+	viewer.instancename = instancename
+	viewer.version = version
+
+	return viewer, nil
 }
