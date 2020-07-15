@@ -224,7 +224,7 @@ func (viewer *PacketListViewer) addSubpackets(iter *gtk.TreeIter, layers *peer.P
 					model.SetValue(instanceRow, COL_ID, int64(instanceIndex))
 					model.SetValue(instanceRow, COL_MAIN_PACKET_ID, int64(layers.UniqueID))
 					model.SetValue(instanceRow, COL_SUBPACKET_ID, int64(index))
-					model.SetValue(instanceRow, COL_PACKET, instance.Instance.GetFullName())
+					model.SetValue(instanceRow, COL_PACKET, instance.Instance.Ref.String()+": "+instance.Instance.Name())
 					model.SetValue(instanceRow, COL_HAS_LENGTH, false)
 					model.SetValue(instanceRow, COL_PACKET_KIND, int64(KIND_DATA_JOIN_DATA_INSTANCE))
 				}

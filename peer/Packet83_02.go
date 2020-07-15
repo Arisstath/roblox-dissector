@@ -41,5 +41,5 @@ func (Packet83_02) TypeString() string {
 }
 
 func (layer *Packet83_02) String() string {
-	return fmt.Sprintf("ID_REPLIC_NEW_INSTANCE: %s (%s)", layer.Instance.GetFullName(), layer.Schema.Name)
+	return fmt.Sprintf("ID_REPLIC_NEW_INSTANCE: %s: %s (%s)", layer.Instance.Ref, layer.Instance.Name(), layer.Schema.Name)
 }

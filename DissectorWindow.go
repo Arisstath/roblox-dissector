@@ -44,7 +44,6 @@ func (win *DissectorWindow) ShowCaptureError(err error, extrainfo string) {
 }
 
 func (win *DissectorWindow) CaptureFromFile(filename string) {
-	println("Capture from", filename)
 	handle, err := pcap.OpenOffline(filename)
 	if err != nil {
 		win.ShowCaptureError(err, "Starting capture")
