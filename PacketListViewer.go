@@ -376,6 +376,16 @@ func (viewer *PacketListViewer) selectionChanged(selection *gtk.TreeSelection) {
 			instViewer.mainWidget.ShowAll()
 
 			viewer.packetDetailsViewer.ShowMainLayer(instViewer.mainWidget)
+		} else if kind == KIND_PHYSICS {
+			physicsPacketViewer, err := NewPhysicsPacketViewer()
+			if err != nil {
+				println("failed to create physics packet viewer:", err.Error())
+				return
+			}
+			physicsPacketViewer.ViewPacket(viewer.packetStore[mainPacketId].Main.(*peer.Packet85Layer).SubPackets[baseId])
+			physicsPacketViewer.mainWidget.ShowAll()
+
+			viewer.packetDetailsViewer.ShowMainLayer(physicsPacketViewer.mainWidget)
 		}
 	}
 }
