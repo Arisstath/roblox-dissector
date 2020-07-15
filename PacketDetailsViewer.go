@@ -305,3 +305,14 @@ func (viewer *PacketDetailsViewer) ShowPacket(layers *peer.PacketLayers) error {
 
 	return nil
 }
+
+func (viewer *PacketDetailsViewer) ShowMainLayer(layer gtk.IWidget) {
+	label, err := gtk.LabelNew("Main Layer")
+	if err != nil {
+		println("failed to make label:", err.Error())
+	}
+	selectedPage := viewer.mainWidget.GetCurrentPage()
+	viewer.mainWidget.PrependPage(layer, label)
+	viewer.mainWidget.RemovePage(1)
+	viewer.mainWidget.SetCurrentPage(selectedPage)
+}

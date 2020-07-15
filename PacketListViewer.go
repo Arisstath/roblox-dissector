@@ -353,9 +353,27 @@ func (viewer *PacketListViewer) selectionChanged(selection *gtk.TreeSelection) {
 	} else {
 		mainPacketId, err := viewer.uint64FromIter(treeIter, COL_MAIN_PACKET_ID)
 		if err != nil {
-			println("failed to parent id from selection")
+			println("failed to parent id from selection:", err.Error())
 			return
 		}
 		viewer.packetDetailsViewer.ShowPacket(viewer.packetStore[mainPacketId])
+
+		if kind == KIND_DATA_JOIN_DATA_INSTANCE {
+			joinDataSubpacket, err := viewer.uint64FromIter(treeIter, COL_SUBPACKET_ID)
+			if err != nil {
+				println("failed to subpacket id from selection:", err.Error())
+				return
+			}
+
+			instViewer, err := NewInstanceViewer()
+			if err != nil {
+				println("failed to make make subpacket window:", err.Error())
+				return
+			}
+			instViewer.ViewInstance(viewer.packetStore[mainPacketId].Main.(*peer.Packet83Layer).SubPackets[joinDataSubpacket].(*peer.Packet83_0B).Instances[baseId])
+			instViewer.mainWidget.ShowAll()
+
+			viewer.packetDetailsViewer.ShowMainLayer(instViewer.mainWidget)
+		}
 	}
 }
