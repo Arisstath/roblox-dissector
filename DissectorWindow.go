@@ -64,6 +64,11 @@ func (win *DissectorWindow) CaptureFromFile(filename string) {
 		win.tabs.AppendPage(listViewer.mainWidget, titleLabel)
 		listViewer.mainWidget.ShowAll()
 		titleLabel.ShowAll()
+
+		windowHeight := win.GetAllocatedHeight()
+		paneHeight := int(0.6 * float64(windowHeight))
+		listViewer.mainWidget.SetPosition(paneHeight)
+		listViewer.mainWidget.SetWideHandle(true)
 	})
 	if err != nil {
 		win.ShowCaptureError(err, "Starting capture")

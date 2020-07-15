@@ -102,17 +102,12 @@ func NewPacketListViewer(title string) (*PacketListViewer, error) {
 	if err != nil {
 		return nil, err
 	}
-	treeView.SetVExpand(true)
 	scrolledList.Add(treeView)
 
 	packetDetailsViewer, err := NewPacketDetailsViewer()
 	if err != nil {
 		return nil, err
 	}
-	packetDetailsViewer.mainWidget.SetVExpand(true)
-	packetDetailsViewer.mainWidget.SetVAlign(gtk.ALIGN_FILL)
-	scrolledList.SetVExpand(true)
-	scrolledList.SetVAlign(gtk.ALIGN_FILL)
 
 	mainWidget, err := gtk.PanedNew(gtk.ORIENTATION_VERTICAL)
 	if err != nil {
