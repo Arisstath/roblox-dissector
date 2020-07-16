@@ -10,7 +10,9 @@ func ShowPacket81(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 
 	layerLayout.AddWidget(NewQLabelF("Stream job: %v", MainLayer.StreamJob), 0, 0)
 	layerLayout.AddWidget(NewQLabelF("Filtering enabled: %v", MainLayer.FilteringEnabled), 0, 0)
-	layerLayout.AddWidget(NewQLabelF("Allow third party sales: %v", MainLayer.AllowThirdPartySales), 0, 0)
+	layerLayout.AddWidget(NewQLabelF("Bool 1: %v", MainLayer.Bool1), 0, 0)
+	layerLayout.AddWidget(NewQLabelF("Bool 2: %v", MainLayer.Bool2), 0, 0)
+	layerLayout.AddWidget(NewQLabelF("BOol 3: %v", MainLayer.Bool3), 0, 0)
 	layerLayout.AddWidget(NewQLabelF("Character auto spawn: %v", MainLayer.CharacterAutoSpawn), 0, 0)
 	referenceStringLabel := NewQLabelF("Top replication scope: %s", MainLayer.ReferenceString)
 	layerLayout.AddWidget(referenceStringLabel, 0, 0)

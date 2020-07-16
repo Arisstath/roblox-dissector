@@ -20,9 +20,11 @@ type Packet81Layer struct {
 	// Is streaming enabled?
 	StreamJob bool
 	// Is Filtering enabled?
-	FilteringEnabled     bool
-	AllowThirdPartySales bool
-	CharacterAutoSpawn   bool
+	FilteringEnabled   bool
+	Bool1              bool
+	Bool2              bool
+	Bool3              bool
+	CharacterAutoSpawn bool
 	// Server's scope
 	ReferenceString string
 	PeerID          uint32
@@ -30,6 +32,8 @@ type Packet81Layer struct {
 	CoreScriptKey   uint32
 	// List of services to be created
 	Items []*Packet81LayerItem
+
+	Int1 uint16
 }
 
 func (thisStream *extendedReader) DecodePacket81Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
@@ -45,7 +49,15 @@ func (thisStream *extendedReader) DecodePacket81Layer(reader PacketReader, layer
 	if err != nil {
 		return layer, err
 	}
-	layer.AllowThirdPartySales, err = thisStream.readBoolByte()
+	layer.Bool1, err = thisStream.readBoolByte()
+	if err != nil {
+		return layer, err
+	}
+	layer.Bool2, err = thisStream.readBoolByte()
+	if err != nil {
+		return layer, err
+	}
+	layer.Bool3, err = thisStream.readBoolByte()
 	if err != nil {
 		return layer, err
 	}
@@ -59,6 +71,12 @@ func (thisStream *extendedReader) DecodePacket81Layer(reader PacketReader, layer
 		return layer, err
 	}
 	layer.PeerID = uint32(peerID)
+
+	int1, err := thisStream.readUint16BE()
+	if err != nil {
+		return layer, err
+	}
+	layer.Int1 = int1
 
 	reader.Context().ServerPeerID = layer.PeerID
 	if !reader.Context().IsStudio {
