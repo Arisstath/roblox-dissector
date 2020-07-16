@@ -156,7 +156,7 @@ func (captureContext *CaptureContext) Capture(ctx context.Context, packetSource 
 				// skip this packet
 				continue
 			}
-			if payload[0] != 0x7B {
+			if payload[0] != 5 {
 				println("Warning: receiving unknown offline message: ", payload[0])
 				continue
 			}
