@@ -155,7 +155,15 @@ func (layer *Packet81Layer) Serialize(writer PacketWriter, stream *extendedWrite
 	if err != nil {
 		return err
 	}
-	err = stream.writeBoolByte(layer.AllowThirdPartySales)
+	err = stream.writeBoolByte(layer.Bool1)
+	if err != nil {
+		return err
+	}
+	err = stream.writeBoolByte(layer.Bool2)
+	if err != nil {
+		return err
+	}
+	err = stream.writeBoolByte(layer.Bool3)
 	if err != nil {
 		return err
 	}
