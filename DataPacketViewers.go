@@ -6,23 +6,27 @@ import (
 	"github.com/gotk3/gotk3/gtk"
 )
 
+func blanketViewer(content string) (gtk.IWidget, error) {
+	viewer, err := gtk.LabelNew(content)
+	if err != nil {
+		return nil, err
+	}
+	viewer.SetHAlign(gtk.ALIGN_START)
+	viewer.SetVAlign(gtk.ALIGN_START)
+	viewer.SetMarginTop(8)
+	viewer.SetMarginBottom(8)
+	viewer.SetMarginStart(8)
+	viewer.SetMarginEnd(8)
+	viewer.ShowAll()
+
+	return viewer, nil
+}
+
 func viewerForDataPacket(packet peer.Packet83Subpacket) (gtk.IWidget, error) {
 	switch packet.Type() {
 	case 0x01:
 		delInst := packet.(*peer.Packet83_01)
-		viewer, err := gtk.LabelNew("Delete instance " + delInst.Instance.Ref.String() + ": " + delInst.Instance.Name())
-		if err != nil {
-			return nil, err
-		}
-		viewer.SetHAlign(gtk.ALIGN_START)
-		viewer.SetVAlign(gtk.ALIGN_START)
-		viewer.SetMarginTop(8)
-		viewer.SetMarginBottom(8)
-		viewer.SetMarginStart(8)
-		viewer.SetMarginEnd(8)
-		viewer.ShowAll()
-
-		return viewer, nil
+		return blanketViewer("Delete instance " + delInst.Instance.Ref.String() + ": " + delInst.Instance.Name())
 	case 0x02:
 		newInst := packet.(*peer.Packet83_02)
 		viewer, err := NewInstanceViewer()

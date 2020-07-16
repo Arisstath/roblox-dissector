@@ -386,6 +386,14 @@ func (viewer *PacketListViewer) selectionChanged(selection *gtk.TreeSelection) {
 			physicsPacketViewer.mainWidget.ShowAll()
 
 			viewer.packetDetailsViewer.ShowMainLayer(physicsPacketViewer.mainWidget)
+		} else if kind == KIND_TOUCH {
+			packet := viewer.packetStore[mainPacketId].Main.(*peer.Packet86Layer).SubPackets[baseId]
+			packetViewer, err := blanketViewer(packet.String())
+			if err != nil {
+				println("failed to get subpacket viewer:", err.Error())
+				return
+			}
+			viewer.packetDetailsViewer.ShowMainLayer(packetViewer)
 		}
 	}
 }

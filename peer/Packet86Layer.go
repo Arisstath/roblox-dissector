@@ -18,10 +18,12 @@ type Packet86LayerSubpacket struct {
 // String() implements fmt.Stringer
 func (packet *Packet86LayerSubpacket) String() string {
 	// We use Name() to provide a summary here
+	inst1Name := packet.Instance1.Ref.String() + ": " + packet.Instance1.Name() 
+	inst2Name := packet.Instance2.Ref.String() + ": " + packet.Instance2.Name() 
 	if packet.IsTouch {
-		return packet.Instance1.Name() + " touched " + packet.Instance2.Name()
+		return inst1Name + " touched " + inst2Name
 	} else {
-		return packet.Instance1.Name() + " ended touch with " + packet.Instance2.Name()
+		return inst1Name + " ended touch with " + inst2Name
 	}
 }
 
