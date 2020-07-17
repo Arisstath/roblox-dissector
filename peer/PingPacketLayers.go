@@ -1,5 +1,9 @@
 package peer
 
+import (
+	"fmt"
+)
+
 // Packet00Layer represents ID_CONNECTED_PING - client <-> server
 type Packet00Layer struct {
 	// Timestamp (seconds)
@@ -22,7 +26,7 @@ func (layer *Packet00Layer) Serialize(writer PacketWriter, stream *extendedWrite
 	return err
 }
 func (layer *Packet00Layer) String() string {
-	return "ID_CONNECTED_PING"
+	return fmt.Sprintf("ID_CONNECTED_PING: %d", layer.SendPingTime)
 }
 
 // TypeString implements RakNetPacket.TypeString()
@@ -68,7 +72,7 @@ func (layer *Packet03Layer) Serialize(writer PacketWriter, stream *extendedWrite
 }
 
 func (layer *Packet03Layer) String() string {
-	return "ID_CONNECTED_PONG"
+	return fmt.Sprintf("ID_CONNECTED_PONG %d -> %d", layer.SendPingTime, layer.SendPongTime)
 }
 
 // TypeString implements RakNetPacket.TypeString()

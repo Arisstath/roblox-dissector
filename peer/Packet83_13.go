@@ -57,5 +57,5 @@ func (Packet83_13) TypeString() string {
 }
 
 func (layer *Packet83_13) String() string {
-	return fmt.Sprintf("ID_REPLIC_ATOMIC: %s", layer.Instance.GetFullName())
+	return fmt.Sprintf("ID_REPLIC_ATOMIC: %s: %s parented to %s: %s", layer.Instance.Ref.String(), layer.Instance.Name(), layer.Parent.Ref.String(), layer.Parent.Name())
 }

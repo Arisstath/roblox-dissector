@@ -24,9 +24,8 @@ func blanketViewer(content string) (gtk.IWidget, error) {
 
 func viewerForDataPacket(packet peer.Packet83Subpacket) (gtk.IWidget, error) {
 	switch packet.Type() {
-	case 0x01:
-		delInst := packet.(*peer.Packet83_01)
-		return blanketViewer("Delete instance " + delInst.Instance.Ref.String() + ": " + delInst.Instance.Name())
+	case 0x01, 0x04, 0x0B, 0x10, 0x13, 0x14:
+		return blanketViewer(packet.String())
 	case 0x02:
 		newInst := packet.(*peer.Packet83_02)
 		viewer, err := NewInstanceViewer()
