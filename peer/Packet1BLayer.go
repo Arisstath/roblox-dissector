@@ -1,5 +1,9 @@
 package peer
 
+import (
+	"fmt"
+)
+
 // Packet1BLayer represents ID_TIMESTAMP - client <-> server
 type Packet1BLayer struct {
 	// Timestamp of when this packet was sent
@@ -35,7 +39,7 @@ func (layer *Packet1BLayer) Serialize(writer PacketWriter, stream *extendedWrite
 }
 
 func (layer *Packet1BLayer) String() string {
-	return "ID_TIMESTAMP"
+	return fmt.Sprintf("ID_TIMESTAMP #%d @%d", layer.Timestamp2, layer.Timestamp)
 }
 
 // TypeString implements RakNetPacket.TypeString()

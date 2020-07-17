@@ -28,6 +28,7 @@ type PacketDetailsViewer struct {
 	rmNumber          *gtk.Label
 	channel           *gtk.Label
 	index             *gtk.Label
+	timestamp         *gtk.Label
 	splitPacketsLabel *gtk.Label
 
 	missingSplitPacketRanges []splitPacketRange
@@ -168,6 +169,14 @@ func NewPacketDetailsViewer() (*PacketDetailsViewer, error) {
 	if !ok {
 		return nil, invalidUi("orderingidx")
 	}
+	timestamp_, err := builder.GetObject("timestamp")
+	if err != nil {
+		return nil, err
+	}
+	timestamp, ok := timestamp_.(*gtk.Label)
+	if !ok {
+		return nil, invalidUi("timestamp")
+	}
 	splitPacketsLabel_, err := builder.GetObject("splitpacketslabel")
 	if err != nil {
 		return nil, err
@@ -211,6 +220,7 @@ func NewPacketDetailsViewer() (*PacketDetailsViewer, error) {
 	viewer.rmNumber = rmNumber
 	viewer.channel = channel
 	viewer.index = index
+	viewer.timestamp = timestamp
 	viewer.splitPacketsLabel = splitPacketsLabel
 
 	return viewer, nil
@@ -240,6 +250,12 @@ var reliabilityNames = []string{
 }
 
 func (viewer *PacketDetailsViewer) updateReliabilityTab(layers *peer.PacketLayers) error {
+	if layers.Timestamp == nil {
+		viewer.timestamp.SetText("N/A")
+	} else {
+		viewer.timestamp.SetText(layers.Timestamp.String())
+	}
+
 	if layers.OfflinePayload != nil {
 		viewer.missingSplitPacketRanges = nil
 		viewer.reliablity.SetText("N/A")
