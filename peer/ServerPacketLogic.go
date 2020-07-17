@@ -136,11 +136,13 @@ func (client *ServerClient) topReplicate() error {
 	}
 
 	return client.WritePacket(&Packet81Layer{
-		StreamJob:            false,
-		FilteringEnabled:     true,
-		AllowThirdPartySales: false,
-		CharacterAutoSpawn:   true,
-		Items:                topReplicationItems,
+		StreamJob:          false,
+		FilteringEnabled:   true,
+		Bool1:              true,
+		Bool2:              true,
+		Bool3:              true,
+		CharacterAutoSpawn: true,
+		Items:              topReplicationItems,
 	})
 }
 

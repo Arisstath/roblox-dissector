@@ -20,9 +20,11 @@ type Packet81Layer struct {
 	// Is streaming enabled?
 	StreamJob bool
 	// Is Filtering enabled?
-	FilteringEnabled     bool
-	AllowThirdPartySales bool
-	CharacterAutoSpawn   bool
+	FilteringEnabled   bool
+	Bool1              bool
+	Bool2              bool
+	Bool3              bool
+	CharacterAutoSpawn bool
 	// Server's scope
 	ReferenceString string
 	PeerID          uint32
@@ -45,7 +47,15 @@ func (thisStream *extendedReader) DecodePacket81Layer(reader PacketReader, layer
 	if err != nil {
 		return layer, err
 	}
-	layer.AllowThirdPartySales, err = thisStream.readBoolByte()
+	layer.Bool1, err = thisStream.readBoolByte()
+	if err != nil {
+		return layer, err
+	}
+	layer.Bool2, err = thisStream.readBoolByte()
+	if err != nil {
+		return layer, err
+	}
+	layer.Bool3, err = thisStream.readBoolByte()
 	if err != nil {
 		return layer, err
 	}
@@ -137,7 +147,15 @@ func (layer *Packet81Layer) Serialize(writer PacketWriter, stream *extendedWrite
 	if err != nil {
 		return err
 	}
-	err = stream.writeBoolByte(layer.AllowThirdPartySales)
+	err = stream.writeBoolByte(layer.Bool1)
+	if err != nil {
+		return err
+	}
+	err = stream.writeBoolByte(layer.Bool2)
+	if err != nil {
+		return err
+	}
+	err = stream.writeBoolByte(layer.Bool3)
 	if err != nil {
 		return err
 	}

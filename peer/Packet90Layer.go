@@ -24,7 +24,7 @@ type Packet90Layer struct {
 func (stream *extendedReader) DecodePacket90Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
 	layer := &Packet90Layer{}
 
-	lenBytes := bitsToBytes(uint(layers.Reliability.LengthInBits)) - 1 // -1 for packet id
+	lenBytes := uint(layers.SplitPacket.RealLength) - 1 // -1 for packet id
 	thisStream, err := stream.aesDecrypt(int(lenBytes), packet90AESKey)
 	if err != nil {
 		return layer, err
