@@ -24,7 +24,6 @@ type Packet81Layer struct {
 	Bool1              bool
 	Bool2              bool
 	Bool3              bool
-	Bool4              bool
 	CharacterAutoSpawn bool
 	// Server's scope
 	ReferenceString string
@@ -57,10 +56,6 @@ func (thisStream *extendedReader) DecodePacket81Layer(reader PacketReader, layer
 		return layer, err
 	}
 	layer.Bool3, err = thisStream.readBoolByte()
-	if err != nil {
-		return layer, err
-	}
-	layer.Bool4, err = thisStream.readBoolByte()
 	if err != nil {
 		return layer, err
 	}
@@ -161,10 +156,6 @@ func (layer *Packet81Layer) Serialize(writer PacketWriter, stream *extendedWrite
 		return err
 	}
 	err = stream.writeBoolByte(layer.Bool3)
-	if err != nil {
-		return err
-	}
-	err = stream.writeBoolByte(layer.Bool4)
 	if err != nil {
 		return err
 	}

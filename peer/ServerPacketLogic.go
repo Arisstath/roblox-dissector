@@ -141,7 +141,6 @@ func (client *ServerClient) topReplicate() error {
 		Bool1:              true,
 		Bool2:              true,
 		Bool3:              true,
-		Bool4:              true,
 		CharacterAutoSpawn: true,
 		Items:              topReplicationItems,
 	})
