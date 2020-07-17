@@ -24,6 +24,7 @@ type Packet81Layer struct {
 	Bool1              bool
 	Bool2              bool
 	Bool3              bool
+	Bool4              bool
 	CharacterAutoSpawn bool
 	// Server's scope
 	ReferenceString string
@@ -32,8 +33,6 @@ type Packet81Layer struct {
 	CoreScriptKey   uint32
 	// List of services to be created
 	Items []*Packet81LayerItem
-
-	Int1 uint16
 }
 
 func (thisStream *extendedReader) DecodePacket81Layer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
@@ -61,6 +60,10 @@ func (thisStream *extendedReader) DecodePacket81Layer(reader PacketReader, layer
 	if err != nil {
 		return layer, err
 	}
+	layer.Bool4, err = thisStream.readBoolByte()
+	if err != nil {
+		return layer, err
+	}
 	layer.CharacterAutoSpawn, err = thisStream.readBoolByte()
 	if err != nil {
 		return layer, err
@@ -71,12 +74,6 @@ func (thisStream *extendedReader) DecodePacket81Layer(reader PacketReader, layer
 		return layer, err
 	}
 	layer.PeerID = uint32(peerID)
-
-	int1, err := thisStream.readUint16BE()
-	if err != nil {
-		return layer, err
-	}
-	layer.Int1 = int1
 
 	reader.Context().ServerPeerID = layer.PeerID
 	if !reader.Context().IsStudio {
@@ -164,6 +161,10 @@ func (layer *Packet81Layer) Serialize(writer PacketWriter, stream *extendedWrite
 		return err
 	}
 	err = stream.writeBoolByte(layer.Bool3)
+	if err != nil {
+		return err
+	}
+	err = stream.writeBoolByte(layer.Bool4)
 	if err != nil {
 		return err
 	}
