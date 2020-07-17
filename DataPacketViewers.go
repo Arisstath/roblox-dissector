@@ -24,7 +24,7 @@ func blanketViewer(content string) (gtk.IWidget, error) {
 
 func viewerForDataPacket(packet peer.Packet83Subpacket) (gtk.IWidget, error) {
 	switch packet.Type() {
-	case 0x01, 0x04, 0x0B, 0x10, 0x13, 0x14:
+	case 0x01, 0x04, 0x0B, 0x0C, 0x0F, 0x10, 0x13, 0x14:
 		return blanketViewer(packet.String())
 	case 0x02:
 		newInst := packet.(*peer.Packet83_02)

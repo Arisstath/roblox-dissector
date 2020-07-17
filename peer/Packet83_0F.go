@@ -41,5 +41,5 @@ func (Packet83_0F) TypeString() string {
 }
 
 func (layer *Packet83_0F) String() string {
-	return "ID_REPLIC_INSTANCE_REMOVAL: " + layer.Instance.GetFullName()
+	return "ID_REPLIC_INSTANCE_REMOVAL: " + layer.Instance.Ref.String() + ": " + layer.Instance.Name()
 }
