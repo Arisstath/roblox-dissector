@@ -72,7 +72,7 @@ func (layer *Packet03Layer) Serialize(writer PacketWriter, stream *extendedWrite
 }
 
 func (layer *Packet03Layer) String() string {
-	return fmt.Sprintf("ID_CONNECTED_PONG %d -> %d", layer.SendPingTime, layer.SendPongTime)
+	return fmt.Sprintf("ID_CONNECTED_PONG: %d -> %d", layer.SendPingTime, layer.SendPongTime)
 }
 
 // TypeString implements RakNetPacket.TypeString()

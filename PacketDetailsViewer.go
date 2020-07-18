@@ -323,7 +323,7 @@ func (viewer *PacketDetailsViewer) ShowPacket(layers *peer.PacketLayers) error {
 }
 
 func (viewer *PacketDetailsViewer) ShowMainLayer(layer gtk.IWidget) {
-	label, err := gtk.LabelNew("Main Layer")
+	label, err := gtk.LabelNew("Main layer")
 	if err != nil {
 		println("failed to make label:", err.Error())
 	}

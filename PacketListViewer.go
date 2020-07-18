@@ -76,7 +76,7 @@ func NewPacketListViewer(title string) (*PacketListViewer, error) {
 		return nil, err
 	}
 
-	for i, colName := range []string{"ID", "Packet", "Direction", "Length in Bytes"} {
+	for i, colName := range []string{"ID", "Packet", "Direction", "Length in bytes"} {
 		colRenderer, err := gtk.CellRendererTextNew()
 		if err != nil {
 			return nil, err
