@@ -4,12 +4,51 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"strings"
 
 	"github.com/Gskartwii/roblox-dissector/peer"
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
+	"github.com/robloxapi/rbxapi/rbxapijson"
+	"github.com/robloxapi/rbxapiref/fetch"
 )
+
+// Can't use https:// because the site is broken
+const CDNURL = "http://setup.roblox.com/"
+
+var latestRobloxAPI *rbxapijson.Root
+var latestRobloxAPIChan chan struct{} // Closed when retrievement is done
+
+func init() {
+	latestRobloxAPIChan = make(chan struct{})
+	go func() {
+		defer func() {
+			close(latestRobloxAPIChan)
+		}()
+		robloxApiClient := &fetch.Client{
+			Client: &http.Client{},
+			Config: fetch.Config{
+				Builds:             []fetch.Location{fetch.NewLocation(CDNURL + "DeployHistory.txt")},
+				Latest:             []fetch.Location{fetch.NewLocation(CDNURL + "versionQTStudio")},
+				APIDump:            []fetch.Location{fetch.NewLocation(CDNURL + "$HASH-API-Dump.json")},
+				ReflectionMetadata: []fetch.Location{fetch.NewLocation(CDNURL + "$HASH-RobloxStudio.zip#ReflectionMetadata.xml")},
+				ExplorerIcons:      []fetch.Location{fetch.NewLocation(CDNURL + "$HASH-RobloxStudio.zip#RobloxStudioBeta.exe")},
+			},
+		}
+		latestBuild, err := robloxApiClient.Latest()
+		if err != nil {
+			fmt.Println("Error retrieving API:", err.Error())
+			return
+		}
+		apiDump, err := robloxApiClient.APIDump(latestBuild.Hash)
+		if err != nil {
+			fmt.Println("Error retrieving API:", err.Error())
+			return
+		}
+		latestRobloxAPI = apiDump
+	}()
+}
 
 func capabilitiesToString(cap uint64) string {
 	var builder strings.Builder
@@ -345,7 +384,60 @@ func newIncomingConnectionViewer(packet *peer.Packet13Layer) (gtk.IWidget, error
 	return box, nil
 }
 func disconnectionNotificationViewer(packet *peer.Packet15Layer) (gtk.IWidget, error) {
-	return nil, errors.New("unimplemented")
+	reasonLabel, err := gtk.LabelNew(fmt.Sprintf("Resolving disconnection reason (%d)...", packet.Reason))
+	if err != nil {
+		return nil, err
+	}
+	reasonLabel.SetHAlign(gtk.ALIGN_START)
+	reasonLabel.SetVAlign(gtk.ALIGN_START)
+	reasonLabel.SetMarginTop(8)
+	reasonLabel.SetMarginBottom(8)
+	reasonLabel.SetMarginStart(8)
+	reasonLabel.SetMarginEnd(8)
+	if packet.Reason == -1 {
+		reasonLabel.SetText("Generic disconnection -1")
+	} else {
+		handleAPIAvailable := func() {
+			if !reasonLabel.IsVisible() {
+				return
+			}
+			disconnectionEnum := latestRobloxAPI.GetEnum("ConnectionError")
+			if disconnectionEnum == nil {
+				reasonLabel.SetText(fmt.Sprintf("ConnectionError Enum not available; disconnection reason %d", packet.Reason))
+				return
+			}
+			for _, item := range disconnectionEnum.GetEnumItems() {
+				if item.GetValue() == int(packet.Reason) {
+					reasonLabel.SetText("Reason: " + item.GetName())
+					return
+				}
+			}
+			reasonLabel.SetText(fmt.Sprintf("Unknown disconnection reason (%d)", packet.Reason))
+		}
+		if latestRobloxAPI != nil {
+			handleAPIAvailable()
+		} else {
+			go func() {
+				if latestRobloxAPI != nil {
+					glib.IdleAdd(func() bool {
+						handleAPIAvailable()
+						return false
+					})
+				}
+				wait := true
+				for wait {
+					_, wait = <-latestRobloxAPIChan
+				}
+				glib.IdleAdd(func() bool {
+					handleAPIAvailable()
+					return false
+				})
+			}()
+		}
+	}
+	reasonLabel.ShowAll()
+
+	return reasonLabel, nil
 }
 func topReplicViewer(packet *peer.Packet81Layer) (gtk.IWidget, error) {
 	return nil, errors.New("unimplemented")
