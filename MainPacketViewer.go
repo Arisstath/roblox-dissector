@@ -3,31 +3,346 @@ package main
 import (
 	"errors"
 	"fmt"
+	"net"
+	"strings"
 
 	"github.com/Gskartwii/roblox-dissector/peer"
+	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
 )
 
+func capabilitiesToString(cap uint64) string {
+	var builder strings.Builder
+	if cap&peer.CapabilityBasic == peer.CapabilityBasic {
+		cap ^= peer.CapabilityBasic
+		builder.WriteString("Basic, ")
+	}
+	if cap&peer.CapabilityServerCopiesPlayerGui3 != 0 {
+		cap ^= peer.CapabilityServerCopiesPlayerGui3
+		builder.WriteString("ServerCopiesPlayerGui, ")
+	}
+	if cap&peer.CapabilityDebugForceStreamingEnabled != 0 {
+		cap ^= peer.CapabilityDebugForceStreamingEnabled
+		builder.WriteString("DebugForceStreamingEnabled, ")
+	}
+	if cap&peer.CapabilityIHasMinDistToUnstreamed != 0 {
+		cap ^= peer.CapabilityIHasMinDistToUnstreamed
+		builder.WriteString("IHasMinDistToUnstreamed, ")
+	}
+	if cap&peer.CapabilityReplicateLuau != 0 {
+		cap ^= peer.CapabilityReplicateLuau
+		builder.WriteString("ReplicateLuau, ")
+	}
+	if cap&peer.CapabilityPositionBasedStreaming != 0 {
+		cap ^= peer.CapabilityPositionBasedStreaming
+		builder.WriteString("PositionBasedStreaming, ")
+	}
+	if cap&peer.CapabilityVersionedIDSync != 0 {
+		cap ^= peer.CapabilityVersionedIDSync
+		builder.WriteString("VersionedIDSync, ")
+	}
+	if cap&peer.CapabilityPubKeyExchange != 0 {
+		cap ^= peer.CapabilityPubKeyExchange
+		builder.WriteString("PubKeyExchange, ")
+	}
+	if cap&peer.CapabilitySystemAddressIsPeerId != 0 {
+		cap ^= peer.CapabilitySystemAddressIsPeerId
+		builder.WriteString("SystemAddressIsPeerId, ")
+	}
+	if cap&peer.CapabilityStreamingPrefetch != 0 {
+		cap ^= peer.CapabilityStreamingPrefetch
+		builder.WriteString("StreamingPrefetch, ")
+	}
+	if cap&peer.CapabilityTerrainReplicationUseLargerChunks != 0 {
+		cap ^= peer.CapabilityTerrainReplicationUseLargerChunks
+		builder.WriteString("TerrainReplicationUseLargerChunks , ")
+	}
+	if cap&peer.CapabilityUseBlake2BHashInSharedString != 0 {
+		cap ^= peer.CapabilityUseBlake2BHashInSharedString
+		builder.WriteString("UseBlake2BHashInSharedString, ")
+	}
+	if cap&peer.CapabilityUseSharedStringForScriptReplication != 0 {
+		cap ^= peer.CapabilityUseSharedStringForScriptReplication
+		builder.WriteString("UseSharedStringForScriptReplication, ")
+	}
+
+	if cap != 0 {
+		fmt.Fprintf(&builder, "Unknown capabilities: %8X, ", cap)
+	}
+
+	if builder.Len() == 0 {
+		return ""
+	}
+	return builder.String()[:builder.Len()-2]
+}
+
+func boxWithMargin() (*gtk.Box, error) {
+	box, err := gtk.BoxNew(gtk.ORIENTATION_VERTICAL, 4)
+	if err != nil {
+		return nil, err
+	}
+	box.SetMarginTop(8)
+	box.SetMarginBottom(8)
+	box.SetMarginStart(8)
+	box.SetMarginEnd(8)
+	return box, nil
+}
+
+func newLabelF(fmtS string, rest ...interface{}) (*gtk.Label, error) {
+	label, err := gtk.LabelNew(fmt.Sprintf(fmtS, rest...))
+	if err != nil {
+		return nil, err
+	}
+	label.SetHAlign(gtk.ALIGN_START)
+	return label, nil
+}
+
+func newIpAddressScrolledList(addrs []*net.UDPAddr) (*gtk.ScrolledWindow, error) {
+	ipAddrStore, err := gtk.ListStoreNew(glib.TYPE_STRING)
+	if err != nil {
+		return nil, err
+	}
+	ipAddrView, err := gtk.TreeViewNewWithModel(ipAddrStore)
+	if err != nil {
+		return nil, err
+	}
+	colRender, err := gtk.CellRendererTextNew()
+	if err != nil {
+		return nil, err
+	}
+	column, err := gtk.TreeViewColumnNewWithAttribute("Address", colRender, "text", 0)
+	if err != nil {
+		return nil, err
+	}
+	ipAddrView.AppendColumn(column)
+	for _, addr := range addrs {
+		row := ipAddrStore.Append()
+		err = ipAddrStore.SetValue(row, 0, addr.String())
+		if err != nil {
+			return nil, err
+		}
+	}
+	ipAddrScrolledView, err := gtk.ScrolledWindowNew(nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	ipAddrScrolledView.Add(ipAddrView)
+	ipAddrScrolledView.SetVExpand(true)
+	return ipAddrScrolledView, nil
+}
+
 func openConnectionReq1Viewer(packet *peer.Packet05Layer) (gtk.IWidget, error) {
-	return nil, errors.New("unimplemented")
+	box, err := boxWithMargin()
+	if err != nil {
+		return nil, err
+	}
+	versionLabel, err := newLabelF("Version: %d", packet.ProtocolVersion)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(versionLabel)
+	paddingLenLabel, err := newLabelF("Padding length: %d", packet.MTUPaddingLength)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(paddingLenLabel)
+	box.ShowAll()
+	return box, nil
 }
 func openConnectionResp1Viewer(packet *peer.Packet06Layer) (gtk.IWidget, error) {
-	return nil, errors.New("unimplemented")
+	box, err := boxWithMargin()
+	if err != nil {
+		return nil, err
+	}
+	guidLabel, err := newLabelF("GUID: %08X", packet.GUID)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(guidLabel)
+	securityLabel, err := newLabelF("Use security: %v", packet.UseSecurity)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(securityLabel)
+	mtuSizeLabel, err := newLabelF("MTU: %d", packet.MTU)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(mtuSizeLabel)
+	box.ShowAll()
+	return box, nil
 }
 func openConnectionReq2Viewer(packet *peer.Packet07Layer) (gtk.IWidget, error) {
-	return nil, errors.New("unimplemented")
+	box, err := boxWithMargin()
+	if err != nil {
+		return nil, err
+	}
+	ipAddrLabel, err := newLabelF("IP address: %s", packet.IPAddress)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(ipAddrLabel)
+	mtuSizeLabel, err := newLabelF("MTU: %d", packet.MTU)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(mtuSizeLabel)
+	guidLabel, err := newLabelF("GUID: %08X", packet.GUID)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(guidLabel)
+	supportedVersionLabel, err := newLabelF("Supported version: %d", packet.SupportedVersion)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(supportedVersionLabel)
+	capabilitiesLabel, err := newLabelF("Capabilities: %s", capabilitiesToString(packet.Capabilities))
+	if err != nil {
+		return nil, err
+	}
+	box.Add(capabilitiesLabel)
+	box.ShowAll()
+	return box, nil
 }
 func openConnectionResp2Viewer(packet *peer.Packet08Layer) (gtk.IWidget, error) {
-	return nil, errors.New("unimplemented")
+	box, err := boxWithMargin()
+	if err != nil {
+		return nil, err
+	}
+	guidLabel, err := newLabelF("GUID: %08X", packet.GUID)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(guidLabel)
+	ipAddrLabel, err := newLabelF("IP address: %s", packet.IPAddress)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(ipAddrLabel)
+	mtuSizeLabel, err := newLabelF("MTU: %d", packet.MTU)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(mtuSizeLabel)
+	supportedVersionLabel, err := newLabelF("Supported version: %d", packet.SupportedVersion)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(supportedVersionLabel)
+	capabilitiesLabel, err := newLabelF("Capabilities: %s", capabilitiesToString(packet.Capabilities))
+	if err != nil {
+		return nil, err
+	}
+	box.Add(capabilitiesLabel)
+	box.ShowAll()
+	return box, nil
 }
 func connectionRequestViewer(packet *peer.Packet09Layer) (gtk.IWidget, error) {
-	return nil, errors.New("unimplemented")
+	box, err := boxWithMargin()
+	if err != nil {
+		return nil, err
+	}
+	guidLabel, err := newLabelF("GUID: %08X", packet.GUID)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(guidLabel)
+	timeLabel, err := newLabelF("Timestamp: %d", packet.Timestamp)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(timeLabel)
+	securityLabel, err := newLabelF("Use security: %v", packet.UseSecurity)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(securityLabel)
+	passwordLabel, err := newLabelF("Password: %X", packet.Password)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(passwordLabel)
+
+	box.ShowAll()
+	return box, nil
 }
 func connectionAcceptedViewer(packet *peer.Packet10Layer) (gtk.IWidget, error) {
-	return nil, errors.New("unimplemented")
+	box, err := boxWithMargin()
+	if err != nil {
+		return nil, err
+	}
+	ipAddrLabel, err := newLabelF("IP address: %s", packet.IPAddress)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(ipAddrLabel)
+	indexLabel, err := newLabelF("System index: %d", packet.SystemIndex)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(indexLabel)
+	remotesLabel, err := newLabelF("Remote IP addresses:")
+	if err != nil {
+		return nil, err
+	}
+	box.Add(remotesLabel)
+
+	ipAddrScrolledView, err := newIpAddressScrolledList(packet.Addresses[:])
+	if err != nil {
+		return nil, err
+	}
+	box.Add(ipAddrScrolledView)
+
+	sendPingTime, err := newLabelF("Send ping time: %d", packet.SendPingTime)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(sendPingTime)
+	sendPongTime, err := newLabelF("Send pong time: %d", packet.SendPongTime)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(sendPongTime)
+
+	box.ShowAll()
+	return box, nil
 }
 func newIncomingConnectionViewer(packet *peer.Packet13Layer) (gtk.IWidget, error) {
-	return nil, errors.New("unimplemented")
+	box, err := boxWithMargin()
+	if err != nil {
+		return nil, err
+	}
+	ipAddrLabel, err := newLabelF("IP address: %s", packet.IPAddress)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(ipAddrLabel)
+	remotesLabel, err := newLabelF("Remote IP addresses:")
+	if err != nil {
+		return nil, err
+	}
+	box.Add(remotesLabel)
+
+	ipAddrScrolledView, err := newIpAddressScrolledList(packet.Addresses[:])
+	if err != nil {
+		return nil, err
+	}
+	box.Add(ipAddrScrolledView)
+
+	sendPingTime, err := newLabelF("Send ping time: %d", packet.SendPingTime)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(sendPingTime)
+	sendPongTime, err := newLabelF("Send pong time: %d", packet.SendPongTime)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(sendPongTime)
+
+	box.ShowAll()
+	return box, nil
 }
 func disconnectionNotificationViewer(packet *peer.Packet15Layer) (gtk.IWidget, error) {
 	return nil, errors.New("unimplemented")
