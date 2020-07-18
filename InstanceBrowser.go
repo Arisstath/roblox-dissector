@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/Gskartwii/roblox-dissector/datamodel"
 	"github.com/Gskartwii/roblox-dissector/peer"
+	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
 	"github.com/gotk3/gotk3/pango"
@@ -21,10 +22,65 @@ const (
 type InstanceViewer struct {
 	mainWidget *gtk.Box
 	model      *gtk.TreeStore
+	view       *gtk.TreeView
 
 	class  *gtk.Label
 	id     *gtk.Label
 	parent *gtk.Label
+}
+
+func bindValueCopy(model *gtk.TreeStore, view *gtk.TreeView) error {
+	_, err := view.Connect("button-press-event", func(_ gtk.IWidget, evt *gdk.Event) {
+		trueEvt := gdk.EventButtonNewFromEvent(evt)
+		// only care about right clicks
+		if trueEvt.Button() != gdk.BUTTON_SECONDARY {
+			return
+		}
+		x := trueEvt.X()
+		y := trueEvt.Y()
+		path, _, _, _, _ := view.GetPathAtPos(int(x), int(y))
+		if path == nil {
+			// There's no row here
+			return
+		}
+		iter, err := model.GetIter(path)
+		if err != nil {
+			println("Failed to get iter:", err.Error())
+			return
+		}
+		popupMenu, err := gtk.MenuNew()
+		if err != nil {
+			println("Failed to make menu:", err.Error())
+			return
+		}
+		copyAction, err := gtk.MenuItemNewWithLabel("Copy value")
+		if err != nil {
+			println("Failed to make menu:", err.Error())
+			return
+		}
+		copyAction.Connect("activate", func() {
+			copied, err := model.GetValue(iter, COL_PROP_VALUE)
+			if err != nil {
+				println("Failed to copy:", err.Error())
+				return
+			}
+			val, err := copied.GetString()
+			if err != nil {
+				println("Failed to copy:", err.Error())
+				return
+			}
+			clipboard, err := gtk.ClipboardGet(gdk.GdkAtomIntern("CLIPBOARD", true))
+			if err != nil {
+				println("Failed to get clipboard:", err.Error())
+				return
+			}
+			clipboard.SetText(val)
+		})
+		popupMenu.Append(copyAction)
+		popupMenu.ShowAll()
+		popupMenu.PopupAtPointer(evt)
+	})
+	return err
 }
 
 func appendValueRow(model *gtk.TreeStore, parent *gtk.TreeIter, name string, value rbxfile.Value) {
@@ -232,6 +288,11 @@ func NewInstanceViewer() (*InstanceViewer, error) {
 		treeView.AppendColumn(col)
 	}
 
+	err = bindValueCopy(model, treeView)
+	if err != nil {
+		return nil, err
+	}
+
 	id_, err := builder.GetObject("instanceidlabel")
 	if err != nil {
 		return nil, err
@@ -260,6 +321,7 @@ func NewInstanceViewer() (*InstanceViewer, error) {
 	}
 
 	viewer.mainWidget = mainWidget
+	viewer.view = treeView
 	viewer.model = model
 	viewer.id = id
 	viewer.class = class
@@ -375,6 +437,10 @@ func NewPropertyEventViewer() (*PropEventViewer, error) {
 		}
 
 		treeView.AppendColumn(col)
+	}
+	err = bindValueCopy(model, treeView)
+	if err != nil {
+		return nil, err
 	}
 
 	name_, err := builder.GetObject("namelabel")
