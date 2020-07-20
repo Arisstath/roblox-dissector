@@ -27,7 +27,7 @@ func NewEditFilterWidget(parent widgets.QWidget_ITF, oldFilter string, oldUseExt
 	layout.AddWidget(filterInput, 0, 0)
 
 	buttonRow := widgets.NewQHBoxLayout()
-	buttonRow.SetAlignment(core.QtAlign__Left)
+	buttonRow.SetAlignment(core.Qt__AlignLeft)
 
 	okButton := widgets.NewQPushButton2("Apply", nil)
 	buttonRow.AddWidget(okButton, 0, 0)
@@ -38,7 +38,7 @@ func NewEditFilterWidget(parent widgets.QWidget_ITF, oldFilter string, oldUseExt
 		callback(filterScript, useExtraInfo)
 	})
 	loadFromFileButton := widgets.NewQPushButton2("Open file...", nil)
-	buttonRow.AddWidget(loadFromFileButton)
+	buttonRow.AddWidget(loadFromFileButton, 0, 0)
 	loadFromFileButton.ConnectReleased(func() {
 		file := widgets.QFileDialog_GetOpenFileName(window, "Open filter script file", "", "Lua filter scripts (*.lua)", "", 0)
 		if file != "" {
@@ -51,7 +51,9 @@ func NewEditFilterWidget(parent widgets.QWidget_ITF, oldFilter string, oldUseExt
 		}
 	})
 
-	layout.AddWidget(buttonRow, 0, 0)
+	buttonRowWidget := widgets.NewQWidget(nil, 0)
+	buttonRowWidget.SetLayout(buttonRow)
+	layout.AddWidget(buttonRowWidget, 0, 0)
 
 	window.SetLayout(layout)
 	window.Show()
