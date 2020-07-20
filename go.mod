@@ -2,6 +2,8 @@ module github.com/Gskartwii/roblox-dissector
 
 go 1.13
 
+replace github.com/gotk3/gotk3 => ./gotk3
+
 require (
 	github.com/DataDog/zstd v1.4.5
 	github.com/google/gopacket v1.1.17

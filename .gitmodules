@@ -1,0 +1,3 @@
+[submodule "gotk3"]
+	path = gotk3
+	url = https://github.com/Gskartwii/gotk3
