@@ -88,7 +88,7 @@ func bindValueCopy(model *gtk.TreeStore, view *gtk.TreeView) error {
 	return err
 }
 
-func appendValueRow(model *gtk.TreeStore, parent *gtk.TreeIter, name string, value rbxfile.Value, treeView  *gtk.TreeView) {
+func appendValueRow(model *gtk.TreeStore, parent *gtk.TreeIter, name string, value rbxfile.Value, treeView *gtk.TreeView) {
 	newRow := model.Append(parent)
 	model.SetValue(newRow, COL_PROP_NAME, name)
 	model.SetValue(newRow, COL_PROP_TYPE, datamodel.TypeString(value))
@@ -113,11 +113,11 @@ func appendValueRow(model *gtk.TreeStore, parent *gtk.TreeIter, name string, val
 
 		styles, err := treeView.GetStyleContext()
 		if err != nil {
-    		println("failed to get style context")
-    		return
+			println("failed to get style context")
+			return
 		}
 		borderColor := styles.GetColor(gtk.STATE_FLAG_NORMAL).Floats()
-		
+
 		surface := cairo.CreateImageSurface(cairo.FORMAT_ARGB32, 16, 16)
 		context := cairo.Create(surface)
 
@@ -132,8 +132,8 @@ func appendValueRow(model *gtk.TreeStore, parent *gtk.TreeIter, name string, val
 		surface.Flush()
 		pixbuf, err := gdk.PixbufGetFromSurface(surface, 0, 0, 16, 16)
 		if err != nil {
-    		println("failed to get pixbuf")
-    		return
+			println("failed to get pixbuf")
+			return
 		}
 		model.SetValue(newRow, COL_PIXBUF, pixbuf)
 		model.SetValue(newRow, COL_SHOW_PIXBUF, true)
@@ -234,8 +234,8 @@ func appendValueRow(model *gtk.TreeStore, parent *gtk.TreeIter, name string, val
 			appendValueRow(model, newRow, strconv.Itoa(i), v, treeView)
 		}
 	case datamodel.TypeSignedProtectedString:
-    	str := value.(datamodel.ValueSignedProtectedString)
-    	model.SetValue(newRow, COL_PROP_ADDITIONAL_VALUE, hex.EncodeToString(str.Value))
+		str := value.(datamodel.ValueSignedProtectedString)
+		model.SetValue(newRow, COL_PROP_ADDITIONAL_VALUE, hex.EncodeToString(str.Value))
 	}
 }
 
@@ -299,7 +299,7 @@ func NewInstanceViewer() (*InstanceViewer, error) {
 		glib.TYPE_STRING,               // COL_PROP_VALUE
 		glib.TYPE_BOOLEAN,              // COL_SHOW_PIXBUF
 		emptyPixbuf.TypeFromInstance(), // COL_PIXBUF
-		glib.TYPE_STRING, // COL_PROP_ADDITIONAL_VALUE
+		glib.TYPE_STRING,               // COL_PROP_ADDITIONAL_VALUE
 	)
 	if err != nil {
 		return nil, err
@@ -398,7 +398,7 @@ func NewInstanceViewer() (*InstanceViewer, error) {
 type PropEventViewer struct {
 	mainWidget *gtk.Box
 	model      *gtk.TreeStore
-	view *gtk.TreeView
+	view       *gtk.TreeView
 
 	name         *gtk.Label
 	id           *gtk.Label
@@ -473,12 +473,12 @@ func NewPropertyEventViewer() (*PropEventViewer, error) {
 	}
 
 	model, err := gtk.TreeStoreNew(
-		glib.TYPE_STRING, // COL_PROP_NAME
-		glib.TYPE_STRING, // COL_PROP_TYPE
-		glib.TYPE_STRING, // COL_PROP_VALUE
-    	glib.TYPE_BOOLEAN, // COL_SHOW_PIXBUF
+		glib.TYPE_STRING,               // COL_PROP_NAME
+		glib.TYPE_STRING,               // COL_PROP_TYPE
+		glib.TYPE_STRING,               // COL_PROP_VALUE
+		glib.TYPE_BOOLEAN,              // COL_SHOW_PIXBUF
 		emptyPixbuf.TypeFromInstance(), // COL_PIXBUF
-    	glib.TYPE_STRING, // COL_PROP_ADDITIONAL_VALUE
+		glib.TYPE_STRING,               // COL_PROP_ADDITIONAL_VALUE
 	)
 	if err != nil {
 		return nil, err
