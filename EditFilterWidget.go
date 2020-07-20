@@ -1,7 +1,7 @@
 package main
 
 import (
-    "io/ioutil"
+	"io/ioutil"
 
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/gui"
@@ -44,8 +44,8 @@ func NewEditFilterWidget(parent widgets.QWidget_ITF, oldFilter string, oldUseExt
 		if file != "" {
 			script, err := ioutil.ReadFile(file)
 			if err != nil {
-    			println("failed to open file:", err.Error())
-    			return
+				println("failed to open file:", err.Error())
+				return
 			}
 			filterInput.SetPlainText(string(script))
 		}
