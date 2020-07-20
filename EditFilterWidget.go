@@ -27,7 +27,7 @@ func NewEditFilterWidget(parent widgets.QWidget_ITF, oldFilter string, oldUseExt
 	layout.AddWidget(filterInput, 0, 0)
 
 	buttonRow := widgets.NewQHBoxLayout()
-	buttonRow.SetAlignment(core.Qt__AlignLeft)
+	buttonRow.SetAlign(core.Qt__AlignLeft)
 
 	okButton := widgets.NewQPushButton2("Apply", nil)
 	buttonRow.AddWidget(okButton, 0, 0)
