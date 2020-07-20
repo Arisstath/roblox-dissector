@@ -50,16 +50,16 @@ type PacketProvider interface {
 
 type Conversations interface {
 	ConversationFor(source *net.UDPAddr, dest *net.UDPAddr, payload []byte) *Conversation
+	SetProgress(int)
 }
 
-func CaptureFromSource(ctx context.Context, convs Conversations, packetSource *gopacket.PacketSource, progressChan chan int) error {
+func CaptureFromSource(ctx context.Context, convs Conversations, packetSource *gopacket.PacketSource) error {
 	var progress int
 	for packet := range packetSource.Packets() {
 		select {
 		case <-ctx.Done():
 			print("done")
 			return nil
-		case progressChan <- progress:
 		default:
 		}
 		progress++
@@ -89,17 +89,18 @@ func CaptureFromSource(ctx context.Context, convs Conversations, packetSource *g
 			reader = conv.ServerReader
 		}
 		reader.ReadPacket(payload, layers)
+		convs.SetProgress(progress)
 	}
 
 	return nil
 }
 
-func CaptureFromHandle(ctx context.Context, convs Conversations, handle *pcap.Handle, progressChan chan int) error {
+func CaptureFromHandle(ctx context.Context, convs Conversations, handle *pcap.Handle) error {
 	err := handle.SetBPFFilter("udp")
 	if err != nil {
 		return err
 	}
 
 	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
-	return CaptureFromSource(ctx, convs, packetSource, progressChan)
+	return CaptureFromSource(ctx, convs, packetSource)
 }

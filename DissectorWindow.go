@@ -3,7 +3,12 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
+	"time"
+
+	"github.com/dreadl0ck/gopcap"
 	"github.com/google/gopacket/pcap"
+	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
 )
 
@@ -50,6 +55,32 @@ func (win *DissectorWindow) CaptureFromFile(filename string) {
 		return
 	}
 	context, cancelFunc := context.WithCancel(context.TODO())
+
+	progressDialog, err := gtk.DialogNew()
+	if err != nil {
+		win.ShowCaptureError(err, "Creating progress dialog")
+		return
+	}
+	progressDialog.SetTitle("File capture in progress")
+	contentArea, err := progressDialog.GetContentArea()
+	if err != nil {
+		win.ShowCaptureError(err, "Creating progress dialog")
+		return
+	}
+	progressBar, err := gtk.ProgressBarNew()
+	if err != nil {
+		win.ShowCaptureError(err, "Creating progress dialog")
+		return
+	}
+	progressBar.Pulse()
+	progressBar.SetShowText(true)
+	progressBar.SetText("Scanning for packets...")
+	contentArea.Add(progressBar)
+	progressDialog.SetDeletable(false) // Hide "close" button
+	progressDialog.SetModal(true)
+	progressDialog.SetSizeRequest(200, 32)
+	progressDialog.ShowAll()
+
 	session, err := NewCaptureSession(filename, cancelFunc, func(listViewer *PacketListViewer, err error) {
 		if err != nil {
 			win.ShowCaptureError(err, "Accepting new listviewer")
@@ -73,8 +104,45 @@ func (win *DissectorWindow) CaptureFromFile(filename string) {
 		win.ShowCaptureError(err, "Starting capture")
 		return
 	}
+
+	countPackets := 0.0
+	frac := 0.0
+
+	lastUpdate := time.Now()
+	session.ProgressCallback = func(progress int) {
+		if progress == -1 {
+			progressDialog.Close()
+			return
+		}
+
+		now := time.Now()
+		if now.Sub(lastUpdate) < 100*time.Millisecond {
+			return
+		}
+		lastUpdate = now
+
+		frac = float64(progress) / countPackets
+		progressBar.SetFraction(frac)
+		progressBar.SetText(fmt.Sprintf("Reading packets: %.1f %%", frac*100))
+
+		// Force redraw of this progress bar
+		// We only force this every 100 ms, so it shouldn't be too bad
+		glib.MainContextDefault().Iteration(false)
+	}
+
 	go func() {
-		err := CaptureFromHandle(context, session, handle, nil)
+		count, err := gopcap.Count(filename)
+		if err != nil {
+			glib.IdleAdd(func() bool {
+				progressDialog.Close()
+				return false
+			})
+		} else {
+			countPackets = float64(count)
+		}
+
+		err = CaptureFromHandle(context, session, handle)
+		session.ReportDone()
 		if err != nil {
 			win.ShowCaptureError(err, "Starting capture")
 			return

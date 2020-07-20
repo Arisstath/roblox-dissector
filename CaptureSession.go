@@ -27,6 +27,8 @@ type CaptureSession struct {
 	InitialViewerOccupied bool
 	ListViewers           []*PacketListViewer
 	ListViewerCallback    func(*PacketListViewer, error)
+	ProgressCallback      func(int)
+	progress              int
 }
 
 func AddressEq(a *net.UDPAddr, b *net.UDPAddr) bool {
@@ -49,6 +51,10 @@ func NewCaptureSession(name string, cancelFunc context.CancelFunc, listViewerCal
 		InitialViewerOccupied: false,
 		ListViewers:           []*PacketListViewer{initialViewer},
 	}, nil
+}
+
+func (session *CaptureSession) SetProgress(prog int) {
+	session.progress = prog
 }
 
 func (session *CaptureSession) ConversationFor(source *net.UDPAddr, dest *net.UDPAddr, payload []byte) *Conversation {
@@ -105,8 +111,11 @@ func (session *CaptureSession) AddConversation(conv *Conversation) (*PacketListV
 	handler := func(e *emitter.Event) {
 		topic := e.OriginalTopic
 		layers := e.Args[0].(*peer.PacketLayers)
+
+		associatedProgress := session.progress
 		_, err := glib.IdleAdd(func() bool {
 			viewer.NotifyPacket(topic, layers)
+			session.ProgressCallback(associatedProgress)
 			return false
 		})
 		if err != nil {
@@ -126,4 +135,13 @@ func (session *CaptureSession) StopCapture() {
 		session.IsCapturing = false
 		session.CancelFunc()
 	}
+}
+
+func (session *CaptureSession) ReportDone() {
+	glib.IdleAdd(func() bool {
+		if session.ProgressCallback != nil {
+			session.ProgressCallback(-1)
+		}
+		return false
+	})
 }
