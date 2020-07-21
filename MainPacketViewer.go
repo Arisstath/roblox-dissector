@@ -542,7 +542,79 @@ func topReplicViewer(packet *peer.Packet81Layer) (gtk.IWidget, error) {
 	return box, nil
 }
 func submitTicketViewer(packet *peer.Packet8ALayer) (gtk.IWidget, error) {
-	return nil, errors.New("unimplemented")
+	scrollWindow, err := gtk.ScrolledWindowNew(nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	scrollWindow.SetMarginTop(8)
+	scrollWindow.SetMarginBottom(8)
+	scrollWindow.SetMarginStart(8)
+	scrollWindow.SetMarginEnd(8)
+	scrollWindow.SetVExpand(true)
+	box, err := gtk.BoxNew(gtk.ORIENTATION_VERTICAL, 4)
+	if err != nil {
+		return nil, err
+	}
+
+	playerID, err := newLabelF("Player ID: %d", packet.PlayerID)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(playerID)
+	clientTicket, err := newLabelF("Client ticket: %s", packet.ClientTicket)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(clientTicket)
+	ticketHash, err := newLabelF("Ticket hash: %08X", packet.TicketHash)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(ticketHash)
+	luauResponse, err := newLabelF("Luau response: %08X", packet.LuauResponse)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(luauResponse)
+	dataModelHash, err := newLabelF("DataModel hash: %08x", packet.DataModelHash)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(dataModelHash)
+	protocolVersion, err := newLabelF("Protocol version: %d", packet.ProtocolVersion)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(protocolVersion)
+	securityKey, err := newLabelF("Security key: %s", packet.SecurityKey)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(securityKey)
+	platform, err := newLabelF("Platform: %s", packet.Platform)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(platform)
+	robloxProductName, err := newLabelF("Roblox product name: %s", packet.RobloxProductName)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(robloxProductName)
+	sessionID, err := newLabelF("Session ID: %s", packet.SessionID)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(sessionID)
+	goldenHash, err := newLabelF("Golden hash: %08X", packet.GoldenHash)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(goldenHash)
+
+	scrollWindow.Add(box)
+	scrollWindow.ShowAll()
+	return scrollWindow, nil
 }
 func clusterViewer(packet *peer.Packet8DLayer) (gtk.IWidget, error) {
 	return nil, errors.New("unimplemented")
