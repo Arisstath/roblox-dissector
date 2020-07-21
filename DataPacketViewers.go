@@ -2,6 +2,8 @@ package main
 
 import (
 	"errors"
+	"strconv"
+
 	"github.com/Gskartwii/roblox-dissector/peer"
 	"github.com/gotk3/gotk3/gtk"
 )
@@ -127,6 +129,43 @@ func viewerForDataPacket(packet peer.Packet83Subpacket) (gtk.IWidget, error) {
 		viewer.ViewEvent(event.Instance, event.Schema.Name, event.Event.Arguments)
 		viewer.mainWidget.ShowAll()
 		return viewer.mainWidget, nil
+	case 0x0A:
+		ack := packet.(*peer.Packet83_0A)
+		box, err := boxWithMargin()
+		if err != nil {
+			return nil, err
+		}
+		instance, err := gtk.LabelNew("Instance: " + ack.Instance.Name())
+		if err != nil {
+			return nil, err
+		}
+		instance.SetHAlign(gtk.ALIGN_START)
+		box.Add(instance)
+		ref, err := gtk.LabelNew("Reference: " + ack.Instance.Ref.String())
+		if err != nil {
+			return nil, err
+		}
+		ref.SetHAlign(gtk.ALIGN_START)
+		box.Add(ref)
+		property, err := gtk.LabelNew("Property: " + ack.Schema.Name)
+		if err != nil {
+			return nil, err
+		}
+		property.SetHAlign(gtk.ALIGN_START)
+		box.Add(property)
+		versionsString := "Versions: "
+		for _, ver := range ack.Versions {
+    		versionsString += strconv.Itoa(int(ver)) + ", "
+		}
+		versions, err := gtk.LabelNew(versionsString[:len(versionsString) - 2])
+		if err != nil {
+			return nil, err
+		}
+		versions.SetHAlign(gtk.ALIGN_START)
+		box.Add(versions)
+		box.ShowAll()
+
+		return box, nil
 	}
 	return nil, errors.New("unimplemented")
 }
