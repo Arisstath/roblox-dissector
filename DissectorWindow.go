@@ -116,7 +116,7 @@ func (win *DissectorWindow) CaptureFromFile(filename string) {
 		}
 
 		now := time.Now()
-		if now.Sub(lastUpdate) < 100*time.Millisecond {
+		if now.Sub(lastUpdate) < 500*time.Millisecond {
 			return
 		}
 		lastUpdate = now
