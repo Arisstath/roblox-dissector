@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/Gskartwii/roblox-dissector/peer"
+	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
 )
 
@@ -166,6 +167,48 @@ func viewerForDataPacket(packet peer.Packet83Subpacket) (gtk.IWidget, error) {
 		box.ShowAll()
 
 		return box, nil
+	case 0x0E:
+		removal := packet.(*peer.Packet83_0E)
+		model, err := gtk.ListStoreNew(
+			glib.TYPE_INT,    // id
+			glib.TYPE_STRING, // ref
+			glib.TYPE_STRING, // name
+		)
+		if err != nil {
+			return nil, err
+		}
+		view, err := gtk.TreeViewNewWithModel(model)
+		if err != nil {
+			return nil, err
+		}
+		renderer, err := gtk.CellRendererTextNew()
+		if err != nil {
+			return nil, err
+		}
+		for i, title := range []string{"ID", "Reference", "Name"} {
+			col, err := gtk.TreeViewColumnNewWithAttribute(title, renderer, "text", i)
+			if err != nil {
+				return nil, err
+			}
+			view.AppendColumn(col)
+		}
+		for i, instance := range removal.Instances {
+			row := model.Append()
+			model.SetValue(row, 0, i)
+			model.SetValue(row, 1, instance.Ref.String())
+			model.SetValue(row, 2, instance.Name())
+		}
+		scrolled, err := gtk.ScrolledWindowNew(nil, nil)
+		if err != nil {
+			return nil, err
+		}
+		scrolled.SetMarginTop(8)
+		scrolled.SetMarginBottom(8)
+		scrolled.SetMarginStart(8)
+		scrolled.SetMarginEnd(8)
+		scrolled.Add(view)
+		scrolled.ShowAll()
+		return scrolled, nil
 	}
 	return nil, errors.New("unimplemented")
 }
