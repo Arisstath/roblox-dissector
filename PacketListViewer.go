@@ -38,14 +38,18 @@ type PacketListViewer struct {
 
 	packetDetailsViewer *PacketDetailsViewer
 
-	packetRows  map[uint64]*gtk.TreePath
-	packetStore map[uint64]*peer.PacketLayers
+	packetRows        map[uint64]*gtk.TreePath
+	packetStore       map[uint64]*peer.PacketLayers
+	packetTypeApplied map[uint64]bool
+	lazyLoadFakeRows  map[uint64]*gtk.TreePath
 }
 
 func NewPacketListViewer(title string) (*PacketListViewer, error) {
 	viewer := &PacketListViewer{
-		packetRows:  make(map[uint64]*gtk.TreePath),
-		packetStore: make(map[uint64]*peer.PacketLayers),
+		packetRows:        make(map[uint64]*gtk.TreePath),
+		packetStore:       make(map[uint64]*peer.PacketLayers),
+		packetTypeApplied: make(map[uint64]bool),
+		lazyLoadFakeRows:  make(map[uint64]*gtk.TreePath),
 	}
 	model, err := gtk.TreeStoreNew(
 		glib.TYPE_INT64,   // COL_ID
@@ -125,6 +129,30 @@ func NewPacketListViewer(title string) (*PacketListViewer, error) {
 	sel.Connect("changed", func(selection *gtk.TreeSelection) {
 		viewer.selectionChanged(selection)
 	})
+	treeView.Connect("row-expanded", func(_ *gtk.TreeView, iter *gtk.TreeIter, path *gtk.TreePath) {
+		baseId, err := viewer.uint64FromIter(iter, COL_ID)
+		if err != nil {
+			println("failed to base id from selection")
+			return
+		}
+		if fakeRow, ok := viewer.lazyLoadFakeRows[baseId]; ok {
+			fakeIter, err := model.GetIter(fakeRow)
+			if err != nil {
+				println("failed to fake iter from selection")
+				return
+			}
+			model.Remove(fakeIter)
+
+			rootRow, err := model.GetIter(path)
+			if err != nil {
+				println("failed to root iter from selection")
+				return
+			}
+			viewer.addSubpackets(rootRow, viewer.packetStore[baseId])
+			delete(viewer.lazyLoadFakeRows, baseId)
+			viewer.treeView.ExpandRow(path, false)
+		}
+	})
 
 	viewer.title = title
 	viewer.packetDetailsViewer = packetDetailsViewer
@@ -173,7 +201,16 @@ func (viewer *PacketListViewer) NotifyOfflinePacket(layers *peer.PacketLayers) {
 
 func (viewer *PacketListViewer) updatePacketInfo(iter *gtk.TreeIter, layers *peer.PacketLayers) {
 	model := viewer.model
-	model.SetValue(iter, COL_PACKET, layers.String())
+	if !viewer.packetTypeApplied[layers.UniqueID] && layers.SplitPacket.HasPacketType {
+		model.SetValue(iter, COL_PACKET, layers.String())
+		viewer.packetTypeApplied[layers.UniqueID] = true
+	}
+	viewer.packetStore[layers.UniqueID] = layers
+}
+
+func (viewer *PacketListViewer) appendPartialPacketRow(layers *peer.PacketLayers) {
+	id := layers.UniqueID
+	model := viewer.model
 	var direction string
 
 	if layers.Root.FromClient {
@@ -183,23 +220,18 @@ func (viewer *PacketListViewer) updatePacketInfo(iter *gtk.TreeIter, layers *pee
 	} else {
 		direction = "???"
 	}
-	model.SetValue(iter, COL_DIRECTION, direction)
-	model.SetValue(iter, COL_LEN_BYTES, int64(layers.SplitPacket.RealLength))
-	viewer.packetStore[layers.UniqueID] = layers
-}
-
-func (viewer *PacketListViewer) appendPartialPacketRow(layers *peer.PacketLayers) {
-	id := layers.UniqueID
-	model := viewer.model
-	newRow := model.Append(nil)
-	model.SetValue(newRow, COL_ID, int64(id))
-	model.SetValue(newRow, COL_COLOR, "rgba(255,255,0,.5)")
-	model.SetValue(newRow, COL_HAS_LENGTH, true)
-	model.SetValue(newRow, COL_PACKET_KIND, int64(KIND_MAIN))
-	viewer.updatePacketInfo(newRow, layers)
+	var newRow gtk.TreeIter
+	model.InsertWithValues(&newRow, nil, -1, []int{COL_ID, COL_COLOR, COL_HAS_LENGTH, COL_PACKET_KIND, COL_DIRECTION}, []interface{}{
+		int64(id),
+		"rgba(255,255,0,.5)",
+		true,
+		int64(KIND_MAIN),
+		direction,
+	},
+	)
 
 	var err error
-	viewer.packetRows[id], err = model.GetPath(newRow)
+	viewer.packetRows[id], err = model.GetPath(&newRow)
 	if err != nil {
 		println("failed to get path:", err.Error())
 	}
@@ -212,32 +244,56 @@ func (viewer *PacketListViewer) addSubpackets(iter *gtk.TreeIter, layers *peer.P
 	case 0x83:
 		mainLayer := layers.Main.(*peer.Packet83Layer)
 		for index, subpacket := range mainLayer.SubPackets {
-			newRow := model.Append(iter)
-			model.SetValue(newRow, COL_ID, int64(index))
-			model.SetValue(newRow, COL_MAIN_PACKET_ID, int64(layers.UniqueID))
-			model.SetValue(newRow, COL_PACKET, subpacket.String())
-			model.SetValue(newRow, COL_HAS_LENGTH, false)
-			model.SetValue(newRow, COL_PACKET_KIND, int64(KIND_DATA_REPLIC))
+			var newRow gtk.TreeIter
+			model.InsertWithValues(&newRow, iter, -1, []int{
+				COL_ID,
+				COL_MAIN_PACKET_ID,
+				COL_PACKET,
+				COL_HAS_LENGTH,
+				COL_PACKET_KIND,
+			}, []interface{}{
+				int64(index),
+				int64(layers.UniqueID),
+				subpacket.String(),
+				false,
+				int64(KIND_DATA_REPLIC),
+			})
 
 			if joinData, ok := subpacket.(*peer.Packet83_0B); ok {
 				for instanceIndex, instance := range joinData.Instances {
-					instanceRow := model.Append(newRow)
-					model.SetValue(instanceRow, COL_ID, int64(instanceIndex))
-					model.SetValue(instanceRow, COL_MAIN_PACKET_ID, int64(layers.UniqueID))
-					model.SetValue(instanceRow, COL_SUBPACKET_ID, int64(index))
-					model.SetValue(instanceRow, COL_PACKET, instance.Instance.Ref.String()+": "+instance.Instance.Name())
-					model.SetValue(instanceRow, COL_HAS_LENGTH, false)
-					model.SetValue(instanceRow, COL_PACKET_KIND, int64(KIND_DATA_JOIN_DATA_INSTANCE))
+					model.InsertWithValues(nil, &newRow, -1, []int{
+						COL_ID,
+						COL_MAIN_PACKET_ID,
+						COL_SUBPACKET_ID,
+						COL_PACKET,
+						COL_HAS_LENGTH,
+						COL_PACKET_KIND,
+					}, []interface{}{
+						int64(instanceIndex),
+						int64(layers.UniqueID),
+						int64(index),
+						instance.Instance.Ref.String() + ": " + instance.Instance.Name(),
+						false,
+						int64(KIND_DATA_JOIN_DATA_INSTANCE),
+					})
 				}
 			} else if streamData, ok := subpacket.(*peer.Packet83_0D); ok {
 				for instanceIndex, instance := range streamData.Instances {
-					instanceRow := model.Append(newRow)
-					model.SetValue(instanceRow, COL_ID, int64(instanceIndex))
-					model.SetValue(instanceRow, COL_MAIN_PACKET_ID, int64(layers.UniqueID))
-					model.SetValue(instanceRow, COL_SUBPACKET_ID, int64(index))
-					model.SetValue(instanceRow, COL_PACKET, instance.Instance.Ref.String()+": "+instance.Instance.Name())
-					model.SetValue(instanceRow, COL_HAS_LENGTH, false)
-					model.SetValue(instanceRow, COL_PACKET_KIND, int64(KIND_DATA_STREAM_DATA_INSTANCE))
+					model.InsertWithValues(nil, &newRow, -1, []int{
+						COL_ID,
+						COL_MAIN_PACKET_ID,
+						COL_SUBPACKET_ID,
+						COL_PACKET,
+						COL_HAS_LENGTH,
+						COL_PACKET_KIND,
+					}, []interface{}{
+						int64(instanceIndex),
+						int64(layers.UniqueID),
+						int64(index),
+						instance.Instance.Ref.String() + ": " + instance.Instance.Name(),
+						false,
+						int64(KIND_DATA_STREAM_DATA_INSTANCE),
+					})
 				}
 			}
 		}
@@ -264,6 +320,35 @@ func (viewer *PacketListViewer) addSubpackets(iter *gtk.TreeIter, layers *peer.P
 	}
 }
 
+func (viewer *PacketListViewer) addLazySubpackets(iter *gtk.TreeIter, layers *peer.PacketLayers) {
+	model := viewer.model
+
+	var lazyIter *gtk.TreeIter
+	switch layers.PacketType {
+	case 0x83:
+		mainLayer := layers.Main.(*peer.Packet83Layer)
+		if len(mainLayer.SubPackets) > 0 {
+			lazyIter = model.Append(iter)
+		}
+	case 0x85:
+		mainLayer := layers.Main.(*peer.Packet85Layer)
+		if len(mainLayer.SubPackets) > 0 {
+			lazyIter = model.Append(iter)
+		}
+	case 0x86:
+		mainLayer := layers.Main.(*peer.Packet86Layer)
+		if len(mainLayer.SubPackets) > 0 {
+			lazyIter = model.Append(iter)
+		}
+	}
+	if lazyIter != nil {
+		var err error
+		viewer.lazyLoadFakeRows[layers.UniqueID], err = model.GetPath(lazyIter)
+		if err != nil {
+			println("failed to get lazy iter path:", err.Error())
+		}
+	}
+}
 func (viewer *PacketListViewer) NotifyPartialPacket(layers *peer.PacketLayers) {
 	existingRow, ok := viewer.packetRows[layers.UniqueID]
 
@@ -286,6 +371,8 @@ func (viewer *PacketListViewer) NotifyFullPacket(layers *peer.PacketLayers) {
 		return
 	} else {
 		delete(viewer.packetRows, layers.UniqueID)
+		delete(viewer.packetTypeApplied, layers.UniqueID)
+
 		iter, err := viewer.model.GetIter(existingRow)
 		if err != nil {
 			println("failed to get iter:", err.Error())
@@ -296,9 +383,10 @@ func (viewer *PacketListViewer) NotifyFullPacket(layers *peer.PacketLayers) {
 		} else {
 			// Why doesn't GTK have `transparent` for colors, like CSS?
 			viewer.model.SetValue(iter, COL_COLOR, "rgba(0,0,0,0)") // finished with this packet
-			viewer.addSubpackets(iter, layers)
+			viewer.addLazySubpackets(iter, layers)
 		}
-		viewer.updatePacketInfo(iter, layers)
+		viewer.model.SetValue(iter, COL_LEN_BYTES, int64(layers.SplitPacket.RealLength))
+		viewer.model.SetValue(iter, COL_PACKET, layers.String())
 	}
 }
 
