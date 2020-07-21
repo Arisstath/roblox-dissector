@@ -356,15 +356,22 @@ func (viewer *PacketListViewer) selectionChanged(selection *gtk.TreeSelection) {
 	if kind == KIND_MAIN {
 		layers := viewer.packetStore[baseId]
 		viewer.packetDetailsViewer.ShowPacket(layers)
-		if layers.Error == nil {
+		if layers.Main != nil {
 			packetViewer, err := viewerForMainPacket(layers.Main)
 			if err != nil {
 				println("failed to get packet viewer:", err.Error())
 				return
 			}
 			viewer.packetDetailsViewer.ShowMainLayer(packetViewer)
-		} else {
+		} else if layers.Error != nil {
 			packetViewer, err := blanketViewer("Error while decoding: " + layers.Error.Error() + "\n\n" + layers.String())
+			if err != nil {
+				println("failed to get packet viewer:", err.Error())
+				return
+			}
+			viewer.packetDetailsViewer.ShowMainLayer(packetViewer)
+		} else {
+			packetViewer, err := blanketViewer("Incomplete packet")
 			if err != nil {
 				println("failed to get packet viewer:", err.Error())
 				return
