@@ -50,6 +50,74 @@ func viewerForDataPacket(packet peer.Packet83Subpacket) (gtk.IWidget, error) {
 		viewer.ViewPropertyUpdate(prop.Instance, prop.Schema.Name, prop.Value, version)
 		viewer.mainWidget.ShowAll()
 		return viewer.mainWidget, nil
+	case 0x05:
+		ping := packet.(*peer.Packet83_05)
+		box, err := boxWithMargin()
+		if err != nil {
+			return nil, err
+		}
+		timestamp, err := newLabelF("Timestamp: %d", ping.Timestamp)
+		if err != nil {
+			return nil, err
+		}
+		box.Add(timestamp)
+		sendStats, err := newLabelF("Send stats: %08X", ping.SendStats)
+		if err != nil {
+			return nil, err
+		}
+		box.Add(sendStats)
+		extraStats, err := newLabelF("Extra stats: %08X", ping.ExtraStats)
+		if err != nil {
+			return nil, err
+		}
+		box.Add(extraStats)
+		if ping.PacketVersion == 2 {
+			int1, err := newLabelF("Int 1: %d", ping.Int1)
+			if err != nil {
+				return nil, err
+			}
+			box.Add(int1)
+			fps1, err := newLabelF("Fps 1: %f", ping.Fps1)
+			if err != nil {
+				return nil, err
+			}
+			box.Add(fps1)
+			fps2, err := newLabelF("Fps 2: %f", ping.Fps2)
+			if err != nil {
+				return nil, err
+			}
+			box.Add(fps2)
+			fps3, err := newLabelF("Fps 3: %f", ping.Fps3)
+			if err != nil {
+				return nil, err
+			}
+			box.Add(fps3)
+		}
+		box.ShowAll()
+		return box, nil
+	case 0x06:
+		ping := packet.(*peer.Packet83_06)
+		box, err := boxWithMargin()
+		if err != nil {
+			return nil, err
+		}
+		timestamp, err := newLabelF("Timestamp: %d", ping.Timestamp)
+		if err != nil {
+			return nil, err
+		}
+		box.Add(timestamp)
+		sendStats, err := newLabelF("Send stats: %08X", ping.SendStats)
+		if err != nil {
+			return nil, err
+		}
+		box.Add(sendStats)
+		extraStats, err := newLabelF("Extra stats: %08X", ping.ExtraStats)
+		if err != nil {
+			return nil, err
+		}
+		box.Add(extraStats)
+		box.ShowAll()
+		return box, nil
 	case 0x07:
 		event := packet.(*peer.Packet83_07)
 		viewer, err := NewPropertyEventViewer()
