@@ -440,7 +440,106 @@ func disconnectionNotificationViewer(packet *peer.Packet15Layer) (gtk.IWidget, e
 	return reasonLabel, nil
 }
 func topReplicViewer(packet *peer.Packet81Layer) (gtk.IWidget, error) {
-	return nil, errors.New("unimplemented")
+	box, err := boxWithMargin()
+	if err != nil {
+		return nil, err
+	}
+	streamJob, err := newLabelF("StreamingEnabled: %v", packet.StreamJob)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(streamJob)
+	filteringEnabled, err := newLabelF("FilteringEnabled: %v", packet.FilteringEnabled)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(filteringEnabled)
+	bool1, err := newLabelF("Bool1: %v", packet.Bool1)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(bool1)
+	bool2, err := newLabelF("Bool2: %v", packet.Bool2)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(bool2)
+	bool3, err := newLabelF("Bool3: %v", packet.Bool3)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(bool3)
+	characterAutoSpawn, err := newLabelF("CharacterAutoSpawn (?): %v", packet.CharacterAutoSpawn)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(characterAutoSpawn)
+	peerId, err := newLabelF("Client peerid: %d", packet.PeerID)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(peerId)
+
+	model, err := gtk.ListStoreNew(
+		glib.TYPE_INT,     // id
+		glib.TYPE_STRING,  // class name
+		glib.TYPE_STRING,  // reference
+		glib.TYPE_BOOLEAN, // watch changes
+		glib.TYPE_BOOLEAN, // watch children
+	)
+	if err != nil {
+		return nil, err
+	}
+	view, err := gtk.TreeViewNewWithModel(model)
+	if err != nil {
+		return nil, err
+	}
+	colRenderer, err := gtk.CellRendererTextNew()
+	if err != nil {
+		return nil, err
+	}
+	for i, name := range []string{"ID", "Class", "Reference", "Watch changes", "Watch children"} {
+		col, err := gtk.TreeViewColumnNewWithAttribute(
+			name,
+			colRenderer,
+			"text",
+			i,
+		)
+		if err != nil {
+			return nil, err
+		}
+		view.AppendColumn(col)
+	}
+	for i, item := range packet.Items {
+		row := model.Append()
+		model.SetValue(row, 0, i)
+		model.SetValue(row, 1, item.Schema.Name)
+		model.SetValue(row, 2, item.Instance.Ref.String())
+		model.SetValue(row, 3, item.WatchChanges)
+		model.SetValue(row, 4, item.WatchChildren)
+	}
+	scrolled, err := gtk.ScrolledWindowNew(nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	scrolled.SetVExpand(true)
+	scrolled.Add(view)
+	separator, err := gtk.SeparatorNew(gtk.ORIENTATION_HORIZONTAL)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(separator)
+	label, err := gtk.LabelNew("Top replication containers:")
+	if err != nil {
+		return nil, err
+	}
+	label.SetHAlign(gtk.ALIGN_START)
+	box.Add(label)
+	box.Add(scrolled)
+
+	box.ShowAll()
+
+	return box, nil
 }
 func submitTicketViewer(packet *peer.Packet8ALayer) (gtk.IWidget, error) {
 	return nil, errors.New("unimplemented")
