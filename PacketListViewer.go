@@ -22,6 +22,7 @@ const (
 	KIND_MAIN = iota
 	KIND_DATA_REPLIC
 	KIND_DATA_JOIN_DATA_INSTANCE
+	KIND_DATA_STREAM_DATA_INSTANCE
 	KIND_PHYSICS
 	KIND_TOUCH
 )
@@ -228,6 +229,16 @@ func (viewer *PacketListViewer) addSubpackets(iter *gtk.TreeIter, layers *peer.P
 					model.SetValue(instanceRow, COL_HAS_LENGTH, false)
 					model.SetValue(instanceRow, COL_PACKET_KIND, int64(KIND_DATA_JOIN_DATA_INSTANCE))
 				}
+			} else if streamData, ok := subpacket.(*peer.Packet83_0D); ok {
+				for instanceIndex, instance := range streamData.Instances {
+					instanceRow := model.Append(newRow)
+					model.SetValue(instanceRow, COL_ID, int64(instanceIndex))
+					model.SetValue(instanceRow, COL_MAIN_PACKET_ID, int64(layers.UniqueID))
+					model.SetValue(instanceRow, COL_SUBPACKET_ID, int64(index))
+					model.SetValue(instanceRow, COL_PACKET, instance.Instance.Ref.String()+": "+instance.Instance.Name())
+					model.SetValue(instanceRow, COL_HAS_LENGTH, false)
+					model.SetValue(instanceRow, COL_PACKET_KIND, int64(KIND_DATA_STREAM_DATA_INSTANCE))
+				}
 			}
 		}
 	case 0x85:
@@ -368,14 +379,15 @@ func (viewer *PacketListViewer) selectionChanged(selection *gtk.TreeSelection) {
 		}
 		viewer.packetDetailsViewer.ShowPacket(viewer.packetStore[mainPacketId])
 
-		if kind == KIND_DATA_REPLIC {
+		switch kind {
+		case KIND_DATA_REPLIC:
 			packetViewer, err := viewerForDataPacket(viewer.packetStore[mainPacketId].Main.(*peer.Packet83Layer).SubPackets[baseId])
 			if err != nil {
 				println("failed to get subpacket viewer:", err.Error())
 				return
 			}
 			viewer.packetDetailsViewer.ShowMainLayer(packetViewer)
-		} else if kind == KIND_DATA_JOIN_DATA_INSTANCE {
+		case KIND_DATA_JOIN_DATA_INSTANCE, KIND_DATA_STREAM_DATA_INSTANCE:
 			joinDataSubpacket, err := viewer.uint64FromIter(treeIter, COL_SUBPACKET_ID)
 			if err != nil {
 				println("failed to subpacket id from selection:", err.Error())
@@ -387,11 +399,19 @@ func (viewer *PacketListViewer) selectionChanged(selection *gtk.TreeSelection) {
 				println("failed to make make subpacket window:", err.Error())
 				return
 			}
-			instViewer.ViewInstance(viewer.packetStore[mainPacketId].Main.(*peer.Packet83Layer).SubPackets[joinDataSubpacket].(*peer.Packet83_0B).Instances[baseId])
+			subpacket := viewer.packetStore[mainPacketId].Main.(*peer.Packet83Layer).SubPackets[joinDataSubpacket]
+			var joinDataInstances []*peer.ReplicationInstance
+			if kind == KIND_DATA_JOIN_DATA_INSTANCE {
+				joinDataInstances = subpacket.(*peer.Packet83_0B).Instances
+			} else {
+				joinDataInstances = subpacket.(*peer.Packet83_0D).Instances
+			}
+
+			instViewer.ViewInstance(joinDataInstances[baseId])
 			instViewer.mainWidget.ShowAll()
 
 			viewer.packetDetailsViewer.ShowMainLayer(instViewer.mainWidget)
-		} else if kind == KIND_PHYSICS {
+		case KIND_PHYSICS:
 			physicsPacketViewer, err := NewPhysicsPacketViewer()
 			if err != nil {
 				println("failed to create physics packet viewer:", err.Error())
@@ -401,7 +421,7 @@ func (viewer *PacketListViewer) selectionChanged(selection *gtk.TreeSelection) {
 			physicsPacketViewer.mainWidget.ShowAll()
 
 			viewer.packetDetailsViewer.ShowMainLayer(physicsPacketViewer.mainWidget)
-		} else if kind == KIND_TOUCH {
+		case KIND_TOUCH:
 			packet := viewer.packetStore[mainPacketId].Main.(*peer.Packet86Layer).SubPackets[baseId]
 			packetViewer, err := blanketViewer(packet.String())
 			if err != nil {
