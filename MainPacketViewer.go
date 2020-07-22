@@ -730,7 +730,66 @@ func protocolSyncViewer(packet *peer.Packet90Layer) (gtk.IWidget, error) {
 	return scrollWindow, nil
 }
 func dictionaryFormatViewer(packet *peer.Packet93Layer) (gtk.IWidget, error) {
-	return nil, errors.New("unimplemented")
+	box, err := boxWithMargin()
+	if err != nil {
+		return nil, err
+	}
+	protocolSchemaSync, err := newLabelF("Protocol schema sync: %v", packet.ProtocolSchemaSync)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(protocolSchemaSync)
+	apiDictionaryCompression, err := newLabelF("API dictionary compression: %v", packet.APIDictionaryCompression)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(apiDictionaryCompression)
+
+	flagsLabel, err := newLabelF("FFlags:")
+	if err != nil {
+		return nil, err
+	}
+	box.Add(flagsLabel)
+	scrolled, err := gtk.ScrolledWindowNew(nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	model, err := gtk.TreeStoreNew(
+		glib.TYPE_STRING,
+		glib.TYPE_BOOLEAN,
+	)
+	if err != nil {
+		return nil, err
+	}
+	view, err := gtk.TreeViewNewWithModel(model)
+	if err != nil {
+		return nil, err
+	}
+	renderer, err := gtk.CellRendererTextNew()
+	if err != nil {
+		return nil, err
+	}
+	for i, title := range []string{"Flag name", "Value"} {
+		col, err := gtk.TreeViewColumnNewWithAttribute(
+			title,
+			renderer,
+			"text",
+			i,
+		)
+		if err != nil {
+			return nil, err
+		}
+		view.AppendColumn(col)
+	}
+	for name, value := range packet.Params {
+		model.InsertWithValues(nil, nil, -1, []int{0, 1}, []interface{}{name, value})
+	}
+	scrolled.Add(view)
+	scrolled.SetVExpand(true)
+	box.Add(scrolled)
+
+	box.ShowAll()
+	return box, nil
 }
 func schemaViewer(packet *peer.Packet97Layer) (gtk.IWidget, error) {
 	return nil, errors.New("unimplemented")
