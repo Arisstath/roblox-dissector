@@ -10,6 +10,7 @@ import (
 	"github.com/Gskartwii/roblox-dissector/peer"
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
+	"github.com/gotk3/gotk3/pango"
 	"github.com/robloxapi/rbxapi/rbxapijson"
 	"github.com/robloxapi/rbxapiref/fetch"
 )
@@ -620,7 +621,104 @@ func clusterViewer(packet *peer.Packet8DLayer) (gtk.IWidget, error) {
 	return nil, errors.New("unimplemented")
 }
 func protocolSyncViewer(packet *peer.Packet90Layer) (gtk.IWidget, error) {
-	return nil, errors.New("unimplemented")
+	scrollWindow, err := gtk.ScrolledWindowNew(nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	scrollWindow.SetMarginTop(8)
+	scrollWindow.SetMarginBottom(8)
+	scrollWindow.SetMarginStart(8)
+	scrollWindow.SetMarginEnd(8)
+	scrollWindow.SetVExpand(true)
+	box, err := gtk.BoxNew(gtk.ORIENTATION_VERTICAL, 4)
+	if err != nil {
+		return nil, err
+	}
+
+	schemaVersion, err := newLabelF("Schema version: %d", packet.SchemaVersion)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(schemaVersion)
+	int1, err := newLabelF("Int 1: %d", packet.Int1)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(int1)
+	int2, err := newLabelF("Int 2: %d", packet.Int2)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(int2)
+
+	flagsLabel, err := gtk.LabelNew("Requested FFlags:")
+	if err != nil {
+		return nil, err
+	}
+	flagsLabel.SetHAlign(gtk.ALIGN_START)
+	box.Add(flagsLabel)
+
+	model, err := gtk.TreeStoreNew(
+		glib.TYPE_INT,
+		glib.TYPE_STRING,
+	)
+	if err != nil {
+		return nil, err
+	}
+	view, err := gtk.TreeViewNewWithModel(model)
+	if err != nil {
+		return nil, err
+	}
+	renderer, err := gtk.CellRendererTextNew()
+	if err != nil {
+		return nil, err
+	}
+	for i, title := range []string{"Index", "Flag name"} {
+		col, err := gtk.TreeViewColumnNewWithAttribute(
+			title,
+			renderer,
+			"text",
+			i,
+		)
+		if err != nil {
+			return nil, err
+		}
+		view.AppendColumn(col)
+	}
+	for i, flag := range packet.RequestedFlags {
+		model.InsertWithValues(nil, nil, -1, []int{0, 1}, []interface{}{i, flag})
+	}
+	view.SetVExpand(true)
+	box.Add(view)
+
+	joinData, err := newLabelF("Join data: %s", packet.JoinData)
+	if err != nil {
+		return nil, err
+	}
+	joinData.SetLineWrap(true)
+	joinData.SetLineWrapMode(pango.WRAP_CHAR)
+	attrs := pango.AttrListNew()
+	attrs.Insert(pango.AttrInsertHyphensNew(false))
+	joinData.SetAttributes(attrs)
+
+	box.Add(joinData)
+	pubKeyData, err := newLabelF("Public key data: %X", packet.PubKeyData)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(pubKeyData)
+
+	for i, ver := range packet.VersionID {
+		label, err := newLabelF("Version id %d: %08X", i, uint32(ver))
+		if err != nil {
+			return nil, err
+		}
+		box.Add(label)
+	}
+
+	scrollWindow.Add(box)
+	scrollWindow.ShowAll()
+	return scrollWindow, nil
 }
 func dictionaryFormatViewer(packet *peer.Packet93Layer) (gtk.IWidget, error) {
 	return nil, errors.New("unimplemented")
