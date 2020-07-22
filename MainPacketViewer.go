@@ -136,6 +136,21 @@ func newLabelF(fmtS string, rest ...interface{}) (*gtk.Label, error) {
 	label.SetHAlign(gtk.ALIGN_START)
 	return label, nil
 }
+func newWrappingLabelF(fmtS string, rest ...interface{}) (*gtk.Label, error) {
+	label, err := gtk.LabelNew(fmt.Sprintf(fmtS, rest...))
+	if err != nil {
+		return nil, err
+	}
+	label.SetHAlign(gtk.ALIGN_START)
+
+	label.SetLineWrap(true)
+	label.SetLineWrapMode(pango.WRAP_WORD_CHAR)
+	attrs := pango.AttrListNew()
+	attrs.Insert(pango.AttrInsertHyphensNew(false))
+	label.SetAttributes(attrs)
+
+	return label, nil
+}
 
 func newIpAddressScrolledList(addrs []*net.UDPAddr) (*gtk.ScrolledWindow, error) {
 	ipAddrStore, err := gtk.ListStoreNew(glib.TYPE_STRING)
@@ -562,7 +577,7 @@ func submitTicketViewer(packet *peer.Packet8ALayer) (gtk.IWidget, error) {
 		return nil, err
 	}
 	box.Add(playerID)
-	clientTicket, err := newLabelF("Client ticket: %s", packet.ClientTicket)
+	clientTicket, err := newWrappingLabelF("Client ticket: %s", packet.ClientTicket)
 	if err != nil {
 		return nil, err
 	}
@@ -587,22 +602,22 @@ func submitTicketViewer(packet *peer.Packet8ALayer) (gtk.IWidget, error) {
 		return nil, err
 	}
 	box.Add(protocolVersion)
-	securityKey, err := newLabelF("Security key: %s", packet.SecurityKey)
+	securityKey, err := newWrappingLabelF("Security key: %s", packet.SecurityKey)
 	if err != nil {
 		return nil, err
 	}
 	box.Add(securityKey)
-	platform, err := newLabelF("Platform: %s", packet.Platform)
+	platform, err := newWrappingLabelF("Platform: %s", packet.Platform)
 	if err != nil {
 		return nil, err
 	}
 	box.Add(platform)
-	robloxProductName, err := newLabelF("Roblox product name: %s", packet.RobloxProductName)
+	robloxProductName, err := newWrappingLabelF("Roblox product name: %s", packet.RobloxProductName)
 	if err != nil {
 		return nil, err
 	}
 	box.Add(robloxProductName)
-	sessionID, err := newLabelF("Session ID: %s", packet.SessionID)
+	sessionID, err := newWrappingLabelF("Session ID: %s", packet.SessionID)
 	if err != nil {
 		return nil, err
 	}
@@ -691,16 +706,10 @@ func protocolSyncViewer(packet *peer.Packet90Layer) (gtk.IWidget, error) {
 	view.SetVExpand(true)
 	box.Add(view)
 
-	joinData, err := newLabelF("Join data: %s", packet.JoinData)
+	joinData, err := newWrappingLabelF("Join data: %s", packet.JoinData)
 	if err != nil {
 		return nil, err
 	}
-	joinData.SetLineWrap(true)
-	joinData.SetLineWrapMode(pango.WRAP_CHAR)
-	attrs := pango.AttrListNew()
-	attrs.Insert(pango.AttrInsertHyphensNew(false))
-	joinData.SetAttributes(attrs)
-
 	box.Add(joinData)
 	pubKeyData, err := newLabelF("Public key data: %X", packet.PubKeyData)
 	if err != nil {
