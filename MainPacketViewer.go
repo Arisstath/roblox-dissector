@@ -592,6 +592,11 @@ func submitTicketViewer(packet *peer.Packet8ALayer) (gtk.IWidget, error) {
 		return nil, err
 	}
 	box.Add(luauResponse)
+	acHash, err := newWrappingLabelF("AC hash: %s", packet.CryptoHash)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(acHash)
 	dataModelHash, err := newLabelF("DataModel hash: %08x", packet.DataModelHash)
 	if err != nil {
 		return nil, err
