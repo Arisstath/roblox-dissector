@@ -800,7 +800,31 @@ func schemaViewer(packet *peer.Packet97Layer) (gtk.IWidget, error) {
 	return nil, errors.New("unimplemented")
 }
 func luauChallengeViewer(packet *peer.Packet9BLayer) (gtk.IWidget, error) {
-	return nil, errors.New("unimplemented")
+	hasResponse := len(packet.Script) == 0
+	box, err := boxWithMargin()
+	if err != nil {
+		return nil, err
+	}
+	challenge, err := newLabelF("Challenge: %08X", packet.Challenge)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(challenge)
+	if hasResponse {
+		response, err := newLabelF("Response: %08X", packet.Response)
+		if err != nil {
+			return nil, err
+		}
+		box.Add(response)
+	} else {
+		int1, err := newLabelF("Int 1: %08X", packet.Int1)
+		if err != nil {
+			return nil, err
+		}
+		box.Add(int1)
+	}
+	box.ShowAll()
+	return box, nil
 }
 
 func viewerForMainPacket(packet peer.RakNetPacket) (gtk.IWidget, error) {
