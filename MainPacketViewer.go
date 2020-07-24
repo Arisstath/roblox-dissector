@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -640,7 +639,63 @@ func submitTicketViewer(packet *peer.Packet8ALayer) (gtk.IWidget, error) {
 	return scrollWindow, nil
 }
 func clusterViewer(packet *peer.Packet8DLayer) (gtk.IWidget, error) {
-	return nil, errors.New("unimplemented")
+	box, err := boxWithMargin()
+	if err != nil {
+		return nil, err
+	}
+
+	instanceInfo, err := newLabelF("Cluster replication for %s (%s):", packet.Instance.Name(), packet.Instance.Ref)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(instanceInfo)
+	label, err := newLabelF("Terrain cluster (%d chunks):", len(packet.Chunks))
+	if err != nil {
+		return nil, err
+	}
+	box.Add(label)
+
+	scrolled, err := gtk.ScrolledWindowNew(nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	model, err := gtk.ListStoreNew(
+		glib.TYPE_STRING,
+		glib.TYPE_STRING,
+		glib.TYPE_INT,
+	)
+	if err != nil {
+		return nil, err
+	}
+	view, err := gtk.TreeViewNewWithModel(model)
+	if err != nil {
+		return nil, err
+	}
+	renderer, err := gtk.CellRendererTextNew()
+	if err != nil {
+		return nil, err
+	}
+	for i, title := range []string{"Index", "Dimensions", "Int 1"} {
+		col, err := gtk.TreeViewColumnNewWithAttribute(
+			title,
+			renderer,
+			"text",
+			i,
+		)
+		if err != nil {
+			return nil, err
+		}
+		view.AppendColumn(col)
+	}
+	for _, chunk := range packet.Chunks {
+		model.InsertWithValues(nil, -1, []int{0, 1, 2}, []interface{}{chunk.ChunkIndex.String(), fmt.Sprintf("%d x %d x %d", chunk.SideLength, chunk.SideLength, chunk.SideLength), int(chunk.Int1)})
+	}
+	scrolled.Add(view)
+	scrolled.SetVExpand(true)
+	box.Add(scrolled)
+
+	box.ShowAll()
+	return box, nil
 }
 func protocolSyncViewer(packet *peer.Packet90Layer) (gtk.IWidget, error) {
 	scrollWindow, err := gtk.ScrolledWindowNew(nil, nil)
