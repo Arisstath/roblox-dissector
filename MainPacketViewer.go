@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
 
 	"github.com/Gskartwii/roblox-dissector/peer"
@@ -759,7 +761,7 @@ func dictionaryFormatViewer(packet *peer.Packet93Layer) (gtk.IWidget, error) {
 	if err != nil {
 		return nil, err
 	}
-	model, err := gtk.TreeStoreNew(
+	model, err := gtk.ListStoreNew(
 		glib.TYPE_STRING,
 		glib.TYPE_BOOLEAN,
 	)
@@ -787,7 +789,7 @@ func dictionaryFormatViewer(packet *peer.Packet93Layer) (gtk.IWidget, error) {
 		view.AppendColumn(col)
 	}
 	for name, value := range packet.Params {
-		model.InsertWithValues(nil, nil, -1, []int{0, 1}, []interface{}{name, value})
+		model.InsertWithValues(nil, -1, []int{0, 1}, []interface{}{name, value})
 	}
 	scrolled.Add(view)
 	scrolled.SetVExpand(true)
@@ -797,7 +799,164 @@ func dictionaryFormatViewer(packet *peer.Packet93Layer) (gtk.IWidget, error) {
 	return box, nil
 }
 func schemaViewer(packet *peer.Packet97Layer) (gtk.IWidget, error) {
-	return nil, errors.New("unimplemented")
+	box, err := boxWithMargin()
+	if err != nil {
+		return nil, err
+	}
+
+	enumLabel, err := newLabelF("Enum schema (%d entries):", len(packet.Schema.Enums))
+	if err != nil {
+		return nil, err
+	}
+	box.Add(enumLabel)
+	scrolled, err := gtk.ScrolledWindowNew(nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	model, err := gtk.ListStoreNew(
+		glib.TYPE_STRING,
+		glib.TYPE_INT,
+	)
+	if err != nil {
+		return nil, err
+	}
+	view, err := gtk.TreeViewNewWithModel(model)
+	if err != nil {
+		return nil, err
+	}
+	renderer, err := gtk.CellRendererTextNew()
+	if err != nil {
+		return nil, err
+	}
+	for i, title := range []string{"Name", "Size"} {
+		col, err := gtk.TreeViewColumnNewWithAttribute(
+			title,
+			renderer,
+			"text",
+			i,
+		)
+		if err != nil {
+			return nil, err
+		}
+		view.AppendColumn(col)
+	}
+	for _, value := range packet.Schema.Enums {
+		model.InsertWithValues(nil, -1, []int{0, 1}, []interface{}{value.Name, value.BitSize})
+	}
+	scrolled.Add(view)
+	scrolled.SetVExpand(true)
+	box.Add(scrolled)
+
+	sep, err := gtk.SeparatorNew(gtk.ORIENTATION_HORIZONTAL)
+	if err != nil {
+		return nil, err
+	}
+	box.Add(sep)
+
+	classLabel, err := newLabelF("Class schema (%d classes, %d properties, %d events):", len(packet.Schema.Instances), len(packet.Schema.Properties), len(packet.Schema.Events))
+	if err != nil {
+		return nil, err
+	}
+	box.Add(classLabel)
+	classesScrolled, err := gtk.ScrolledWindowNew(nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	classModel, err := gtk.TreeStoreNew(
+		glib.TYPE_STRING,
+		glib.TYPE_STRING,
+	)
+	if err != nil {
+		return nil, err
+	}
+	classesView, err := gtk.TreeViewNewWithModel(classModel)
+	if err != nil {
+		return nil, err
+	}
+	classesRenderer, err := gtk.CellRendererTextNew()
+	if err != nil {
+		return nil, err
+	}
+	for i, title := range []string{"Name", "Type"} {
+		col, err := gtk.TreeViewColumnNewWithAttribute(
+			title,
+			classesRenderer,
+			"text",
+			i,
+		)
+		if err != nil {
+			return nil, err
+		}
+		classesView.AppendColumn(col)
+	}
+	for _, class := range packet.Schema.Instances {
+		var classRowIter gtk.TreeIter
+		classModel.InsertWithValues(&classRowIter, nil, -1, []int{0}, []interface{}{class.Name})
+		for _, prop := range class.Properties {
+			classModel.InsertWithValues(nil, &classRowIter, -1, []int{0, 1}, []interface{}{"Property \"" + prop.Name + "\"", prop.TypeString})
+		}
+		for _, evt := range class.Events {
+			var evtRowIter gtk.TreeIter
+			classModel.InsertWithValues(&evtRowIter, &classRowIter, -1, []int{0}, []interface{}{"Event \"" + evt.Name + "\""})
+			for i, arg := range evt.Arguments {
+				classModel.InsertWithValues(nil, &evtRowIter, -1, []int{0, 1}, []interface{}{"Argument " + strconv.Itoa(i), arg.TypeString})
+			}
+		}
+	}
+	classesScrolled.Add(classesView)
+	classesScrolled.SetVExpand(true)
+	box.Add(classesScrolled)
+
+	dumpSchemaBtn, err := gtk.ButtonNew()
+	if err != nil {
+		return nil, err
+	}
+	dumpSchemaBtn.SetLabel("Dump...")
+	dumpSchemaBtn.Connect("clicked", func() {
+		parentWindow, err := dumpSchemaBtn.GetToplevel()
+		if err != nil {
+			println("Failed to get parent window:", err.Error())
+			return
+		}
+		dialog, err := gtk.FileChooserNativeDialogNew(
+			"Dump schema",
+			parentWindow.(gtk.IWindow),
+			gtk.FILE_CHOOSER_ACTION_SAVE,
+			"Save",
+			"Cancel",
+		)
+		if err != nil {
+			println("Failed to make dialog:", err.Error())
+			return
+		}
+		filter, err := gtk.FileFilterNew()
+		if err != nil {
+			println("Failed to make filter:", err.Error())
+			return
+		}
+		filter.AddPattern("*.txt")
+		filter.SetName("TXT files (*.txt)")
+		dialog.AddFilter(filter)
+		resp := dialog.Run()
+		if gtk.ResponseType(resp) == gtk.RESPONSE_ACCEPT {
+			filename := dialog.GetFilename()
+			schemaFile, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+			if err != nil {
+				ShowError(box, err, "Saving schema to file")
+				return
+			}
+			err = packet.Schema.Dump(schemaFile)
+			if err != nil {
+				ShowError(box, err, "Saving schema to file")
+			}
+		}
+	})
+	dumpSchemaBtn.SetHExpand(false)
+	dumpSchemaBtn.SetHAlign(gtk.ALIGN_START)
+	box.Add(dumpSchemaBtn)
+
+	box.ShowAll()
+	return box, nil
 }
 func luauChallengeViewer(packet *peer.Packet9BLayer) (gtk.IWidget, error) {
 	hasResponse := len(packet.Script) == 0
