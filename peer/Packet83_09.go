@@ -204,8 +204,8 @@ func (layer *Packet83_09) String() string {
 	return fmt.Sprintf("ID_REPLIC_ROCKY: %s", layer.Subpacket.String())
 }
 
-func (Packet83_09_00) String() string {
-	return "Unknown NetPMC 0x00"
+func (layer *Packet83_09_00) String() string {
+	return fmt.Sprintf("0x00: %d, %d, %d, %d, %d", layer.Int1, layer.Int2, layer.Int3, layer.Int4, layer.Int5)
 }
 
 // Type implements Packet83_09Subpacket.Type()
@@ -217,8 +217,8 @@ func (Packet83_09_00) Type() byte {
 func (Packet83_09_00) TypeString() string {
 	return "ID_ROCKY_UNKNOWN_0"
 }
-func (Packet83_09_04) String() string {
-	return "Unknown NetPMC 0x04"
+func (layer *Packet83_09_04) String() string {
+	return fmt.Sprintf("0x04: %d, %d", layer.Int1, layer.Int2)
 }
 
 // Type implements Packet83_09Subpacket.Type()
@@ -230,8 +230,8 @@ func (Packet83_09_04) Type() byte {
 func (Packet83_09_04) TypeString() string {
 	return "ID_ROCKY_UNKNOWN_4"
 }
-func (Packet83_09_05) String() string {
-	return "IdChallenge"
+func (layer *Packet83_09_05) String() string {
+	return fmt.Sprintf("IdChallenge %08X", layer.Challenge)
 }
 
 // Type implements Packet83_09Subpacket.Type()
@@ -243,8 +243,8 @@ func (Packet83_09_05) Type() byte {
 func (Packet83_09_05) TypeString() string {
 	return "ID_ROCKY_ID_CHALLENGE"
 }
-func (Packet83_09_06) String() string {
-	return "IdResponse"
+func (layer *Packet83_09_06) String() string {
+	return fmt.Sprintf("IdResponse %08X->%08X", layer.Challenge, layer.Response)
 }
 
 // Type implements Packet83_09Subpacket.Type()
