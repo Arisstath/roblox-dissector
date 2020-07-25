@@ -35,7 +35,7 @@ jobs:
     #   run: cp ~/windivert/WinDivert-2.2.0-A/x64/WinDivert.dll `go env GOPATH`/src/github.com/Gskartwii/windivert-go/libwindivert.dll
 
     - name: Compile
-      run: C:\tools\msys64\usr\bin\bash -lc "PATH=/c/Go/bin:/c/Program\ Files/Git/bin:$PATH (cd `go env GOPATH`/src/github.com/Gskartwii/roblox-dissector; go build)"
+      run: C:\tools\msys64\usr\bin\bash -lc "PATH=/c/Go/bin:/c/Program\ Files/Git/bin:$PATH cd `go env GOPATH`/src/github.com/Gskartwii/roblox-dissector; go build"
 
     # - name: Insert WinDivert binaries
     #   run: cp ~/windivert/WinDivert-2.2.0-A/x64/WinDivert{64.sys,.dll} `go env GOPATH`/src/github.com/Gskartwii/roblox-dissector/deploy/windows/
