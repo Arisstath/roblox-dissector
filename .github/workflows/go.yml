@@ -18,7 +18,7 @@ jobs:
         args: install golang git msys2
 
     - name: Install MinGW packages
-      run: C:\tools\msys64\usr\bin\bash -lc "pacman -Syu && pacman -S mingw-w64_64-gtk3 mingw-w64-x86_64-toolchain base-devel glib2-devel pkg-config"
+      run: C:\tools\msys64\usr\bin\bash -lc "pacman -S mingw-w64-x86_64-gtk3 mingw-w64-x86_64-toolchain base-devel glib2-devel pkg-config"
 
     - name: Patch pkg-config bug
       run: C:\tools\msys64\usr\bin\bash -lc "sed -i -e 's/-Wl,-luuid/-luuid/g' /mingw64/lib/pkgconfig/gdk-3.0.pc"
