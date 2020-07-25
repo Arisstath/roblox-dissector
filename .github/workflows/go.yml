@@ -41,7 +41,7 @@ jobs:
     #   run: cp ~/windivert/WinDivert-2.2.0-A/x64/WinDivert{64.sys,.dll} `go env GOPATH`/src/github.com/Gskartwii/roblox-dissector/deploy/windows/
 
     - name: Copy artifacts
-      run: C:\tools\msys64\usr\bin\bash -lc "PATH=/c/Go/bin:/c/Program\ Files/Git/bin:$PATH mkdir /c/artifacts && cp $(go env GOPATH)/src/github.com/Gskartwii/roblox-dissector/roblox-dissector.exe /c/artifacts/"
+      run: C:\tools\msys64\usr\bin\bash -lc "PATH=/c/Go/bin:/c/Program\ Files/Git/bin:/usr/bin:$PATH mkdir /c/artifacts && cp $(go env GOPATH)/src/github.com/Gskartwii/roblox-dissector/roblox-dissector.exe /c/artifacts/"
     
     - name: Upload artifacts
       uses: actions/upload-artifact@v2
