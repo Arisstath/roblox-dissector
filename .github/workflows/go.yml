@@ -23,6 +23,7 @@ jobs:
         release: false
         update: false
         install: 'mingw-w64-x86_64-gtk3 mingw-w64-x86_64-toolchain base-devel glib2-devel pkg-config'
+        path-type: inherit
 
     - name: Patch pkg-config bug
       shell: msys2 {0}
