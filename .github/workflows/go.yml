@@ -9,57 +9,42 @@ on:
 jobs:
   build:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
 
-    - name: Set up Go 1.x
-      uses: actions/setup-go@v2
+    - name: Install Chocolatey packages
+      uses: crazy-max/ghaction-chocolatey@v2
       with:
-        go-version: ^1.13
-      id: go
-    
-    - name: Install packages
-      run: sudo apt-get install gcc-mingw-w64-x86-64 binutils-mingw-w64-x86-64 unzip
+        args: install golang git msys2
+
+    - name: Install MinGW packages
+      run: C:\tools\msys64\usr\bin\bash -lc "pacman -S mingw-w64_64-gtk3 mingw-w64-x86_64-toolchain base-devel glib2-devel pkg-config"
+
+    - name: Patch pkg-config bug
+      run: C:\tools\msys64\usr\bin\bash -lc "sed -i -e 's/-Wl,-luuid/-luuid/g' /mingw64/lib/pkgconfig/gdk-3.0.pc"
 
     - name: Check out code into the Go module directory
-      run: go get -v -t -d -tags divert github.com/Gskartwii/roblox-dissector/...
+      run: C:\tools\msys64\usr\bin\bash -lc "PATH=/c/Go/bin:/c/Program\ Files/Git/bin:$PATH go get -v -t -d -tags divert github.com/Gskartwii/roblox-dissector/..."
 
-    - name: Download WinDivert binaries
-      run: |
-        wget https://reqrypt.org/download/WinDivert-2.2.0-A.zip -O ~/windivert.zip
-        unzip ~/windivert.zip -d ~/windivert
-    
-    - name: Make -lwindivert available
-      run: cp ~/windivert/WinDivert-2.2.0-A/x64/WinDivert.dll `go env GOPATH`/src/github.com/Gskartwii/windivert-go/libwindivert.dll
-    
-    - name: Install Qt bindings
-      run: |
-        export QT_API=5.12.0
-        docker pull therecipe/qt:windows_64_shared
-        go get -v -tags=no_env,divert github.com/therecipe/qt/cmd/...
+    # - name: Download WinDivert binaries
+    #   run: |
+    #     wget https://reqrypt.org/download/WinDivert-2.2.0-A.zip -O ~/windivert.zip
+    #     unzip ~/windivert.zip -d ~/windivert
+    #
+    # - name: Make -lwindivert available
+    #   run: cp ~/windivert/WinDivert-2.2.0-A/x64/WinDivert.dll `go env GOPATH`/src/github.com/Gskartwii/windivert-go/libwindivert.dll
 
     - name: Compile
-      run: |
-        export QT_API=5.12.0
-        cd `go env GOPATH`/src/github.com/Gskartwii/roblox-dissector
-        x86_64-w64-mingw32-windres icon.rc -o icon_win64.syso
-        qtdeploy -docker -tags=divert build windows 2> ~/deploy-log.txt
+      run: C:\tools\msys64\usr\bin\bash -lc "PATH=/c/Go/bin:/c/Program\ Files/Git/bin:$PATH (cd `go env GOPATH`/src/github.com/Gskartwii/roblox-dissector; go build)"
 
-    - name: Insert WinDivert binaries
-      run: cp ~/windivert/WinDivert-2.2.0-A/x64/WinDivert{64.sys,.dll} `go env GOPATH`/src/github.com/Gskartwii/roblox-dissector/deploy/windows/
+    # - name: Insert WinDivert binaries
+    #   run: cp ~/windivert/WinDivert-2.2.0-A/x64/WinDivert{64.sys,.dll} `go env GOPATH`/src/github.com/Gskartwii/roblox-dissector/deploy/windows/
 
-    - name: Move artifacts
-      run: cp -R `go env GOPATH`/src/github.com/Gskartwii/roblox-dissector/deploy ~/deploy-artifacts
+    - name: Copy artifacts
+      run: C:\tools\msys64\usr\bin\bash -lc "PATH=/c/Go/bin:/c/Program\ Files/Git/bin:$PATH (mkdir /c/artifacts; cp `go env GOPATH`/src/github.com/Gskartwii/roblox-dissector/roblox-dissector.exe /c/artifacts/)"
     
     - name: Upload artifacts
       uses: actions/upload-artifact@v2
       with:
         name: windows-binary
-        path: ~/deploy-artifacts/
-    
-    - name: Upload qtdeploy log
-      if: ${{ failure() }}
-      uses: actions/upload-artifact@v2
-      with:
-        name: build-log
-        path: ~/deploy-log.txt
+        path: C:\artifacts
