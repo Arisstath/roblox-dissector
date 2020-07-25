@@ -129,12 +129,23 @@ func NewPacketListViewer(title string) (*PacketListViewer, error) {
 	sel.Connect("changed", func(selection *gtk.TreeSelection) {
 		viewer.selectionChanged(selection)
 	})
-	treeView.Connect("row-expanded", func(_ *gtk.TreeView, iter *gtk.TreeIter, path *gtk.TreePath) {
+	treeView.Connect("row-expanded", func(_ *gtk.TreeView, iter *gtk.TreeIter, sortFilterPath *gtk.TreePath) {
 		baseId, err := viewer.uint64FromIter(iter, COL_ID)
 		if err != nil {
 			println("failed to base id from selection")
 			return
 		}
+		kind, err := viewer.uint64FromIter(iter, COL_PACKET_KIND)
+		if err != nil {
+			println("failed to get packet kind from selection")
+			return
+		}
+
+		if kind != KIND_MAIN {
+			// Packets that aren't MAIN will never have lazy-loading
+			return
+		}
+
 		if fakeRow, ok := viewer.lazyLoadFakeRows[baseId]; ok {
 			fakeIter, err := model.GetIter(fakeRow)
 			if err != nil {
@@ -143,14 +154,25 @@ func NewPacketListViewer(title string) (*PacketListViewer, error) {
 			}
 			model.Remove(fakeIter)
 
-			rootRow, err := model.GetIter(path)
-			if err != nil {
-				println("failed to root iter from selection")
+			filterPath := sortModel.ConvertPathToChildPath(sortFilterPath)
+			if filterPath == nil {
+				println("failed to filterpath from selection")
 				return
 			}
-			viewer.addSubpackets(rootRow, viewer.packetStore[baseId])
+			modelPath := filterModel.ConvertPathToChildPath(filterPath)
+			if filterPath == nil {
+				println("failed to modelpath from selection")
+				return
+			}
+			iter, err = model.GetIter(modelPath)
+			if err != nil {
+				println("failed to real iter from selection")
+				return
+			}
+
+			viewer.addSubpackets(iter, viewer.packetStore[baseId])
 			delete(viewer.lazyLoadFakeRows, baseId)
-			viewer.treeView.ExpandRow(path, false)
+			viewer.treeView.ExpandRow(sortFilterPath, false)
 		}
 	})
 
@@ -245,7 +267,7 @@ func (viewer *PacketListViewer) addSubpackets(iter *gtk.TreeIter, layers *peer.P
 		mainLayer := layers.Main.(*peer.Packet83Layer)
 		for index, subpacket := range mainLayer.SubPackets {
 			var newRow gtk.TreeIter
-			model.InsertWithValues(&newRow, iter, -1, []int{
+			err := model.InsertWithValues(&newRow, iter, -1, []int{
 				COL_ID,
 				COL_MAIN_PACKET_ID,
 				COL_PACKET,
@@ -258,6 +280,9 @@ func (viewer *PacketListViewer) addSubpackets(iter *gtk.TreeIter, layers *peer.P
 				false,
 				int64(KIND_DATA_REPLIC),
 			})
+			if err != nil {
+				println("failed to insert rows:", err.Error())
+			}
 
 			if joinData, ok := subpacket.(*peer.Packet83_0B); ok {
 				for instanceIndex, instance := range joinData.Instances {
