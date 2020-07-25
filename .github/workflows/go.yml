@@ -30,7 +30,7 @@ jobs:
 
     - name: Check out code into the Go module directory
       shell: msys2 {0}
-      run: PATH=$GOROOT/bin:$PATH echo $GOROOT && go get -v -t -d -tags divert github.com/Gskartwii/roblox-dissector/...
+      run: PATH=$GOROOT/bin:$PATH go get -v -t -d -tags divert github.com/Gskartwii/roblox-dissector/...
 
     # - name: Download WinDivert binaries
     #   run: |
