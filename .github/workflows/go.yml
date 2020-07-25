@@ -48,3 +48,4 @@ jobs:
       with:
         name: windows-binary
         path: C:\artifacts
+
