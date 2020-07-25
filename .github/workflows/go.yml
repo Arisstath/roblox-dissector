@@ -43,7 +43,7 @@ jobs:
 
     - name: Compile
       shell: msys2 {0}
-      run: PATH=$GOROOT/bin:$PATH echo $PATH && echo $(go env GOPATH) && cd "$(go env GOPATH)/src/github.com/Gskartwii/roblox-dissector" && git checkout gtk && go build
+      run: PATH=$GOROOT/bin:$PATH echo $PATH && echo $(go env GOPATH) && cd "$(go env GOPATH)/src/github.com/Gskartwii/roblox-dissector" && git checkout gtk && git submodule update --init && go build
 
     # - name: Insert WinDivert binaries
     #   run: cp ~/windivert/WinDivert-2.2.0-A/x64/WinDivert{64.sys,.dll} `go env GOPATH`/src/github.com/Gskartwii/roblox-dissector/deploy/windows/
