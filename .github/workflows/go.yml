@@ -13,7 +13,7 @@ jobs:
     steps:
 
     - name: Install Chocolatey packages
-      uses: crazy-max/ghaction-chocolatey@v2
+      uses: crazy-max/ghaction-chocolatey@v1
       with:
         args: install golang git msys2
 
