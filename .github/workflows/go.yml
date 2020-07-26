@@ -29,9 +29,17 @@ jobs:
       shell: msys2 {0}
       run: sed -i -e 's/-Wl,-luuid/-luuid/g' /mingw64/lib/pkgconfig/gdk-3.0.pc
 
-    - name: Check out code into the Go module directory
-      shell: msys2 {0}
-      run: PATH=$GOROOT/bin:$PATH ls $GOROOT/bin && $GOROOT/bin/go get -v -t -d -tags divert github.com/Gskartwii/roblox-dissector/...
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        path: ${{ go.module-path }}
+      
+    - uses: actions/cache@v2
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
 
     # - name: Download WinDivert binaries
     #   run: |
@@ -42,15 +50,17 @@ jobs:
     #   run: cp ~/windivert/WinDivert-2.2.0-A/x64/WinDivert.dll `go env GOPATH`/src/github.com/Gskartwii/windivert-go/libwindivert.dll
 
     - name: Compile
+      working-directory: ${{ go.module-path }}
       shell: msys2 {0}
-      run: PATH=$GOROOT/bin:$PATH echo $PATH && echo $(go env GOPATH) && cd "$(go env GOPATH)/src/github.com/Gskartwii/roblox-dissector" && git checkout gtk && git submodule update --init && go build
+      run: git checkout gtk && git submodule update --init && go build
 
     # - name: Insert WinDivert binaries
     #   run: cp ~/windivert/WinDivert-2.2.0-A/x64/WinDivert{64.sys,.dll} `go env GOPATH`/src/github.com/Gskartwii/roblox-dissector/deploy/windows/
 
     - name: Copy artifacts
       shell: msys2 {0}
-      run: PATH=$GOROOT/bin:$PATH mkdir /c/artifacts && cd "$(go env GOPATH)/src/github.com/Gskartwii/roblox-dissector" && cp roblox-dissector.exe /c/artifacts && cp -R res/ /c/artifacts/res
+      working-directory: ${{ go.module-path }}
+      run: cp roblox-dissector.exe /c/artifacts && cp -R res/ /c/artifacts/res
     
     - name: Upload artifacts
       uses: actions/upload-artifact@v2
