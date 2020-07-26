@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/Gskartwii/roblox-dissector/peer"
+	"github.com/dustin/go-humanize"
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
 )
@@ -208,6 +209,217 @@ func viewerForDataPacket(packet peer.Packet83Subpacket) (gtk.IWidget, error) {
 		scrolled.SetMarginStart(8)
 		scrolled.SetMarginEnd(8)
 		scrolled.Add(view)
+		scrolled.ShowAll()
+		return scrolled, nil
+	case 0x11:
+		stats := packet.(*peer.Packet83_11)
+		scrolled, err := gtk.ScrolledWindowNew(nil, nil)
+		if err != nil {
+			return nil, err
+		}
+		box, err := boxWithMargin()
+		if err != nil {
+			return nil, err
+		}
+
+		n, pref := humanize.ComputeSI(stats.MemoryStats.TotalServerMemory)
+		memLabel, err := newLabelF("Total server memory: %f %sB", n, pref)
+		if err != nil {
+			return nil, err
+		}
+		box.Add(memLabel)
+		categoriesLabel, err := newLabelF("Memory usage by categories")
+		if err != nil {
+			return nil, err
+		}
+		box.Add(categoriesLabel)
+
+		model, err := gtk.TreeStoreNew(
+			glib.TYPE_STRING, // name
+			glib.TYPE_STRING, // usage
+		)
+		if err != nil {
+			return nil, err
+		}
+		view, err := gtk.TreeViewNewWithModel(model)
+		if err != nil {
+			return nil, err
+		}
+		renderer, err := gtk.CellRendererTextNew()
+		if err != nil {
+			return nil, err
+		}
+		for i, title := range []string{"Name", "Memory usage"} {
+			col, err := gtk.TreeViewColumnNewWithAttribute(title, renderer, "text", i)
+			if err != nil {
+				return nil, err
+			}
+			view.AppendColumn(col)
+		}
+
+		var devCategoryIter gtk.TreeIter
+		model.InsertWithValues(&devCategoryIter, nil, -1, []int{0}, []interface{}{"Developer categories"})
+		for _, category := range stats.MemoryStats.DeveloperTags {
+			n, pref := humanize.ComputeSI(category.Memory)
+			model.InsertWithValues(nil, &devCategoryIter, -1, []int{0, 1}, []interface{}{category.Name, fmt.Sprintf("%G %sB", n, pref)})
+		}
+		var internalCategoryIter gtk.TreeIter
+		model.InsertWithValues(&internalCategoryIter, nil, -1, []int{0}, []interface{}{"Internal categories"})
+		for _, category := range stats.MemoryStats.InternalCategories {
+			n, pref := humanize.ComputeSI(category.Memory)
+			model.InsertWithValues(nil, &internalCategoryIter, -1, []int{0, 1}, []interface{}{category.Name, fmt.Sprintf("%G %sB", n, pref)})
+		}
+		memoryStatsScroller, err := gtk.ScrolledWindowNew(nil, nil)
+		if err != nil {
+			return nil, err
+		}
+		memoryStatsScroller.Add(view)
+		memoryStatsScroller.SetVExpand(true)
+		box.Add(memoryStatsScroller)
+
+		if stats.DataStoreStats.Enabled {
+			getAsyncLabel, err := newLabelF("GetAsync: %d", stats.DataStoreStats.GetAsync)
+			if err != nil {
+				return nil, err
+			}
+			box.Add(getAsyncLabel)
+			setAndIncrementAsyncLabel, err := newLabelF("SetAndIncrementAsync: %d", stats.DataStoreStats.SetAndIncrementAsync)
+			if err != nil {
+				return nil, err
+			}
+			box.Add(setAndIncrementAsyncLabel)
+			updateAsyncLabel, err := newLabelF("UpdateAsync: %d", stats.DataStoreStats.UpdateAsync)
+			if err != nil {
+				return nil, err
+			}
+			box.Add(updateAsyncLabel)
+			getSortedAsyncLabel, err := newLabelF("GetSortedAsync: %d", stats.DataStoreStats.GetSortedAsync)
+			if err != nil {
+				return nil, err
+			}
+			box.Add(getSortedAsyncLabel)
+			setIncrementSortedAsyncLabel, err := newLabelF("SetIncrementSortedAsync: %d", stats.DataStoreStats.SetIncrementSortedAsync)
+			if err != nil {
+				return nil, err
+			}
+			box.Add(setIncrementSortedAsyncLabel)
+			onUpdateLabel, err := newLabelF("OnUpdate: %d", stats.DataStoreStats.OnUpdate)
+			if err != nil {
+				return nil, err
+			}
+			box.Add(onUpdateLabel)
+		}
+
+		jobStatsLabel, err := newLabelF("Job stats:")
+		if err != nil {
+			return nil, err
+		}
+		box.Add(jobStatsLabel)
+		jobStatsModel, err := gtk.TreeStoreNew(
+			glib.TYPE_STRING, // name
+			glib.TYPE_FLOAT,  // duty cycle
+			glib.TYPE_FLOAT,  // op/s
+			glib.TYPE_FLOAT,  // time/op
+		)
+		if err != nil {
+			return nil, err
+		}
+		jobStatsView, err := gtk.TreeViewNewWithModel(jobStatsModel)
+		if err != nil {
+			return nil, err
+		}
+		jobStatsRenderer, err := gtk.CellRendererTextNew()
+		if err != nil {
+			return nil, err
+		}
+		for i, title := range []string{"Name", "Duty cycle (%)", "Op/s", "Time/op (ms)"} {
+			col, err := gtk.TreeViewColumnNewWithAttribute(title, jobStatsRenderer, "text", i)
+			if err != nil {
+				return nil, err
+			}
+			jobStatsView.AppendColumn(col)
+		}
+		for _, job := range stats.JobStats {
+			jobStatsModel.InsertWithValues(nil, nil, -1, []int{0, 1, 2, 3}, []interface{}{job.Name, job.Stat1, job.Stat2, job.Stat3})
+		}
+		jobStatsScroller, err := gtk.ScrolledWindowNew(nil, nil)
+		if err != nil {
+			return nil, err
+		}
+		jobStatsScroller.Add(jobStatsView)
+		jobStatsScroller.SetVExpand(true)
+		box.Add(jobStatsScroller)
+
+		scriptStatsLabel, err := newLabelF("Script stats:")
+		if err != nil {
+			return nil, err
+		}
+		box.Add(scriptStatsLabel)
+		scriptStatsModel, err := gtk.TreeStoreNew(
+			glib.TYPE_STRING, // name
+			glib.TYPE_FLOAT,  // activity
+			glib.TYPE_FLOAT,  // rate/s
+		)
+		if err != nil {
+			return nil, err
+		}
+		scriptStatsView, err := gtk.TreeViewNewWithModel(scriptStatsModel)
+		if err != nil {
+			return nil, err
+		}
+		scriptStatsRenderer, err := gtk.CellRendererTextNew()
+		if err != nil {
+			return nil, err
+		}
+		for i, title := range []string{"Name", "Activity (%)", "Rate/s"} {
+			col, err := gtk.TreeViewColumnNewWithAttribute(title, scriptStatsRenderer, "text", i)
+			if err != nil {
+				return nil, err
+			}
+			scriptStatsView.AppendColumn(col)
+		}
+		for _, script := range stats.ScriptStats {
+			scriptStatsModel.InsertWithValues(nil, nil, -1, []int{0, 1, 2}, []interface{}{script.Name, script.Stat1, script.Stat2})
+		}
+		scriptStatsScroller, err := gtk.ScrolledWindowNew(nil, nil)
+		if err != nil {
+			return nil, err
+		}
+		scriptStatsScroller.Add(scriptStatsView)
+		scriptStatsScroller.SetVExpand(true)
+		box.Add(scriptStatsScroller)
+
+		avgPingMsLabel, err := newLabelF("Average ping (ms): %g", stats.AvgPingMs)
+		if err != nil {
+			return nil, err
+		}
+		box.Add(avgPingMsLabel)
+		avgPhysicsSenderPktPSLabel, err := newLabelF("Average physics sender packets/s: %g", stats.AvgPhysicsSenderPktPS)
+		if err != nil {
+			return nil, err
+		}
+		box.Add(avgPhysicsSenderPktPSLabel)
+		totalDataKBPSLabel, err := newLabelF("Total data kb/s: %g", stats.TotalDataKBPS)
+		if err != nil {
+			return nil, err
+		}
+		box.Add(totalDataKBPSLabel)
+		totalPhysicsKBPSLabel, err := newLabelF("Total physics kb/s: %g", stats.TotalPhysicsKBPS)
+		if err != nil {
+			return nil, err
+		}
+		box.Add(totalPhysicsKBPSLabel)
+		dataThroughputRatioLabel, err := newLabelF("Data throughput ratio: %g", stats.DataThroughputRatio)
+		if err != nil {
+			return nil, err
+		}
+		box.Add(dataThroughputRatioLabel)
+
+		scrolled.SetMarginTop(8)
+		scrolled.SetMarginBottom(8)
+		scrolled.SetMarginStart(8)
+		scrolled.SetMarginEnd(8)
+		scrolled.Add(box)
 		scrolled.ShowAll()
 		return scrolled, nil
 	case 0x12:
