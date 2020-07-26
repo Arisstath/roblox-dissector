@@ -5,27 +5,27 @@
   <object class="GtkImage" id="image1">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
-    <property name="pixbuf">folder-open-line.svg</property>
+    <property name="icon_name">folder-open-symbolic</property>
   </object>
   <object class="GtkImage" id="image2">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
-    <property name="pixbuf">cloud-network-line.svg</property>
+    <property name="icon_name">network-cellular-symbolic</property>
   </object>
   <object class="GtkImage" id="image3">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
-    <property name="pixbuf">pause-line.svg</property>
+    <property name="icon_name">media-playback-pause-symbolic</property>
   </object>
   <object class="GtkImage" id="image4">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
-    <property name="pixbuf">stop-line.svg</property>
+    <property name="icon_name">media-playback-stop-symbolic.symbolic</property>
   </object>
   <object class="GtkImage" id="image5">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
-    <property name="pixbuf">tree-view-line.svg</property>
+    <property name="icon_name">view-list-bullet-symbolic</property>
   </object>
   <object class="GtkWindow" id="dissectorwindow">
     <property name="can_focus">False</property>
@@ -201,7 +201,6 @@
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <property name="toolbar_style">icons</property>
-            <property name="icon_size">2</property>
             <child>
               <object class="GtkToolButton" id="fromfilebutton">
                 <property name="visible">True</property>

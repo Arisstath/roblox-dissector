@@ -19,8 +19,10 @@ func invalidUi(name string) error {
 type DissectorWindow struct {
 	*gtk.Window
 
-	tabs           *gtk.Notebook
-	forgetAcksItem *gtk.CheckMenuItem
+	tabs                 *gtk.Notebook
+	forgetAcksItem       *gtk.CheckMenuItem
+	tabIndexToSession    []*CaptureSession
+	tabIndexToListViewer []*PacketListViewer
 }
 
 func ShowError(wdg gtk.IWidget, err error, extrainfo string) {
@@ -49,6 +51,51 @@ func (win *DissectorWindow) ShowCaptureError(err error, extrainfo string) {
 	ShowError(win, err, extrainfo)
 }
 
+func (win *DissectorWindow) AppendClosablePage(title string, session *CaptureSession, listViewer *PacketListViewer) {
+	titleLabel, err := gtk.LabelNew(title)
+	if err != nil {
+		win.ShowCaptureError(err, "Accepting new listviewer")
+		return
+	}
+	titleHBox, err := gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 4)
+	if err != nil {
+		win.ShowCaptureError(err, "Accepting new listviewer")
+		return
+	}
+	titleHBox.PackStart(titleLabel, true, true, 0)
+
+	closeButton, err := gtk.ButtonNew()
+	if err != nil {
+		win.ShowCaptureError(err, "Accepting new listviewer")
+		return
+	}
+	buttonImg, err := gtk.ImageNewFromIconName("edit-delete", gtk.ICON_SIZE_BUTTON)
+	closeButton.SetRelief(gtk.RELIEF_NONE)
+	closeButton.SetFocusOnClick(false)
+	closeButton.Add(buttonImg)
+	titleHBox.PackEnd(closeButton, false, false, 0)
+	titleHBox.ShowAll()
+
+	closeButton.Connect("clicked", func() {
+		pageNum := win.tabs.PageNum(listViewer.mainWidget)
+		if pageNum == -1 {
+			return
+		}
+		win.tabs.RemovePage(pageNum)
+		win.tabIndexToListViewer = append(win.tabIndexToListViewer[:pageNum], win.tabIndexToListViewer[pageNum+1:]...)
+		win.tabIndexToSession = append(win.tabIndexToSession[:pageNum], win.tabIndexToSession[pageNum+1:]...)
+		win.UpdateActionsEnabled()
+	})
+
+	win.tabs.AppendPage(listViewer.mainWidget, titleHBox)
+	win.tabIndexToListViewer = append(win.tabIndexToListViewer, listViewer)
+	win.tabIndexToSession = append(win.tabIndexToSession, session)
+}
+
+func (win *DissectorWindow) UpdateActionsEnabled() {
+	// nop for now
+}
+
 func (win *DissectorWindow) CaptureFromPcapDevice(name string) {
 	handle, err := pcap.OpenLive(name, 2000, false, 1*time.Second)
 	if err != nil {
@@ -57,19 +104,14 @@ func (win *DissectorWindow) CaptureFromPcapDevice(name string) {
 		return
 	}
 	context, cancelFunc := context.WithCancel(context.TODO())
-	session, err := NewCaptureSession(name, cancelFunc, func(listViewer *PacketListViewer, err error) {
+	var session *CaptureSession
+	session, err = NewCaptureSession(name, cancelFunc, func(listViewer *PacketListViewer, err error) {
 		if err != nil {
 			win.ShowCaptureError(err, "Accepting new listviewer")
 			return
 		}
-		titleLabel, err := gtk.LabelNew(listViewer.title)
-		if err != nil {
-			win.ShowCaptureError(err, "Accepting new listviewer")
-			return
-		}
-		win.tabs.AppendPage(listViewer.mainWidget, titleLabel)
 		listViewer.mainWidget.ShowAll()
-		titleLabel.ShowAll()
+		win.AppendClosablePage(listViewer.title, session, listViewer)
 
 		windowHeight := win.GetAllocatedHeight()
 		paneHeight := int(0.6 * float64(windowHeight))
@@ -124,7 +166,8 @@ func (win *DissectorWindow) CaptureFromFile(filename string) {
 	progressDialog.SetSizeRequest(200, 32)
 	progressDialog.ShowAll()
 
-	session, err := NewCaptureSession(filename, cancelFunc, func(listViewer *PacketListViewer, err error) {
+	var session *CaptureSession
+	session, err = NewCaptureSession(filename, cancelFunc, func(listViewer *PacketListViewer, err error) {
 		if err != nil {
 			win.ShowCaptureError(err, "Accepting new listviewer")
 			return
@@ -134,7 +177,7 @@ func (win *DissectorWindow) CaptureFromFile(filename string) {
 			win.ShowCaptureError(err, "Accepting new listviewer")
 			return
 		}
-		win.tabs.AppendPage(listViewer.mainWidget, titleLabel)
+		win.AppendClosablePage(listViewer.title, session, listViewer)
 		listViewer.mainWidget.ShowAll()
 		titleLabel.ShowAll()
 
