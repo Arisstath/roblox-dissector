@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 
 	"github.com/Gskartwii/roblox-dissector/peer"
@@ -209,6 +210,54 @@ func viewerForDataPacket(packet peer.Packet83Subpacket) (gtk.IWidget, error) {
 		scrolled.Add(view)
 		scrolled.ShowAll()
 		return scrolled, nil
+	case 0x12:
+		hashes := packet.(*peer.Packet83_12)
+		model, err := gtk.ListStoreNew(
+			glib.TYPE_STRING, // index
+			glib.TYPE_STRING, // hash
+		)
+		if err != nil {
+			return nil, err
+		}
+		view, err := gtk.TreeViewNewWithModel(model)
+		if err != nil {
+			return nil, err
+		}
+		renderer, err := gtk.CellRendererTextNew()
+		if err != nil {
+			return nil, err
+		}
+		for i, title := range []string{"Index", "Hash"} {
+			col, err := gtk.TreeViewColumnNewWithAttribute(title, renderer, "text", i)
+			if err != nil {
+				return nil, err
+			}
+			view.AppendColumn(col)
+		}
+		for i, hash := range hashes.HashList {
+			row := model.Append()
+			model.SetValue(row, 0, strconv.Itoa(i))
+			model.SetValue(row, 1, fmt.Sprintf("%08X", hash))
+		}
+		if hashes.HasSecurityTokens {
+			for i, st := range hashes.SecurityTokens {
+				row := model.Append()
+				model.SetValue(row, 0, "ST"+strconv.Itoa(i))
+				model.SetValue(row, 1, fmt.Sprintf("%08X", st))
+			}
+		}
+		scrolled, err := gtk.ScrolledWindowNew(nil, nil)
+		if err != nil {
+			return nil, err
+		}
+		scrolled.SetMarginTop(8)
+		scrolled.SetMarginBottom(8)
+		scrolled.SetMarginStart(8)
+		scrolled.SetMarginEnd(8)
+		scrolled.Add(view)
+		scrolled.ShowAll()
+		return scrolled, nil
+
 	}
 	return nil, errors.New("unimplemented")
 }
