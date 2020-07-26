@@ -24,9 +24,9 @@ type DissectorWindow struct {
 
 func ShowError(wdg gtk.IWidget, err error, extrainfo string) {
 	widget := wdg.ToWidget()
-	parentWindow, err := widget.GetToplevel()
-	if err != nil {
-		println("failed to find parent window:", err.Error())
+	parentWindow, topLevelErr := widget.GetToplevel()
+	if topLevelErr != nil {
+		println("failed to find parent window:", topLevelErr.Error())
 		return
 	}
 	dialog := gtk.MessageDialogNew(
@@ -46,6 +46,47 @@ func ShowError(wdg gtk.IWidget, err error, extrainfo string) {
 
 func (win *DissectorWindow) ShowCaptureError(err error, extrainfo string) {
 	ShowError(win, err, extrainfo)
+}
+
+func (win *DissectorWindow) CaptureFromPcapDevice(name string) {
+	handle, err := pcap.OpenLive(name, 2000, false, 1*time.Second)
+	if err != nil {
+		println("error starting capture", err.Error())
+		win.ShowCaptureError(err, "Starting capture")
+		return
+	}
+	context, cancelFunc := context.WithCancel(context.TODO())
+	session, err := NewCaptureSession(name, cancelFunc, func(listViewer *PacketListViewer, err error) {
+		if err != nil {
+			win.ShowCaptureError(err, "Accepting new listviewer")
+			return
+		}
+		titleLabel, err := gtk.LabelNew(listViewer.title)
+		if err != nil {
+			win.ShowCaptureError(err, "Accepting new listviewer")
+			return
+		}
+		win.tabs.AppendPage(listViewer.mainWidget, titleLabel)
+		listViewer.mainWidget.ShowAll()
+		titleLabel.ShowAll()
+
+		windowHeight := win.GetAllocatedHeight()
+		paneHeight := int(0.6 * float64(windowHeight))
+		listViewer.mainWidget.SetPosition(paneHeight)
+		listViewer.mainWidget.SetWideHandle(true)
+	})
+	if err != nil {
+		win.ShowCaptureError(err, "Starting capture")
+		return
+	}
+
+	go func() {
+		err = CaptureFromHandle(context, session, handle)
+		if err != nil {
+			win.ShowCaptureError(err, "Starting capture")
+			return
+		}
+	}()
 }
 
 func (win *DissectorWindow) CaptureFromFile(filename string) {
@@ -171,6 +212,13 @@ func (win *DissectorWindow) PromptCaptureFromFile() {
 	}
 }
 
+func (win *DissectorWindow) PromptCaptureLive() {
+	err := PromptInterfaceName(win.CaptureFromPcapDevice)
+	if err != nil {
+		win.ShowCaptureError(err, "Making interface chooser")
+	}
+}
+
 func NewDissectorWindow() (*gtk.Window, error) {
 	winBuilder, err := gtk.BuilderNewFromFile("res/dissectorwindow.ui")
 	if err != nil {
@@ -221,6 +269,25 @@ func NewDissectorWindow() (*gtk.Window, error) {
 		return nil, invalidUi("fromfilebutton")
 	}
 	fromFileButton.Connect("clicked", dwin.PromptCaptureFromFile)
+
+	fromLiveItem, err := winBuilder.GetObject("frominterfaceitem")
+	if err != nil {
+		return nil, err
+	}
+	fromLiveMenuItem, ok := fromLiveItem.(*gtk.MenuItem)
+	if !ok {
+		return nil, invalidUi("frominterfaceitem")
+	}
+	fromLiveMenuItem.Connect("activate", dwin.PromptCaptureLive)
+	fromLiveButton_, err := winBuilder.GetObject("frominterfacebutton")
+	if err != nil {
+		return nil, err
+	}
+	fromLiveButton, ok := fromLiveButton_.(*gtk.ToolButton)
+	if !ok {
+		return nil, invalidUi("frominterfacebutton")
+	}
+	fromLiveButton.Connect("clicked", dwin.PromptCaptureLive)
 
 	return wind, nil
 }

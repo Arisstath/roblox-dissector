@@ -1,8 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.20.4 -->
+<!-- Generated with glade 3.36.0 -->
 <interface>
   <requires lib="gtk+" version="3.20"/>
-  <object class="GtkDialog">
+  <object class="GtkListStore" id="interfaceliststore">
+    <columns>
+      <!-- column-name Name -->
+      <column type="gchararray"/>
+      <!-- column-name Description -->
+      <column type="gchararray"/>
+      <!-- column-name IP addresses -->
+      <column type="gchararray"/>
+    </columns>
+  </object>
+  <object class="GtkDialog" id="maindialog">
+    <property name="width_request">360</property>
+    <property name="height_request">240</property>
     <property name="can_focus">False</property>
     <property name="type_hint">dialog</property>
     <child internal-child="vbox">
@@ -50,54 +62,65 @@
           </packing>
         </child>
         <child>
-          <object class="GtkCheckButton" id="promiscuousmodebutton">
-            <property name="label" translatable="yes">Promiscuous mode</property>
+          <object class="GtkScrolledWindow">
             <property name="visible">True</property>
             <property name="can_focus">True</property>
-            <property name="receives_default">False</property>
-            <property name="draw_indicator">True</property>
+            <property name="shadow_type">in</property>
+            <child>
+              <object class="GtkTreeView" id="interfacelistview">
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="model">interfaceliststore</property>
+                <property name="enable_search">False</property>
+                <property name="search_column">0</property>
+                <child internal-child="selection">
+                  <object class="GtkTreeSelection" id="itfselection"/>
+                </child>
+                <child>
+                  <object class="GtkTreeViewColumn" id="namecolumn">
+                    <property name="title" translatable="yes">Name</property>
+                    <child>
+                      <object class="GtkCellRendererText" id="namerenderer"/>
+                      <attributes>
+                        <attribute name="text">0</attribute>
+                      </attributes>
+                    </child>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkTreeViewColumn" id="descriptioncolumn">
+                    <property name="title" translatable="yes">Description</property>
+                    <child>
+                      <object class="GtkCellRendererText" id="descriptionrenderer"/>
+                      <attributes>
+                        <attribute name="text">1</attribute>
+                      </attributes>
+                    </child>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkTreeViewColumn" id="ipaddressescolumn">
+                    <property name="title" translatable="yes">IP addresses</property>
+                    <child>
+                      <object class="GtkCellRendererText" id="ipaddressesrenderer"/>
+                      <attributes>
+                        <attribute name="text">2</attribute>
+                      </attributes>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </child>
           </object>
           <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">1</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkTreeView" id="interfacelistview">
-            <property name="visible">True</property>
-            <property name="can_focus">True</property>
-            <child internal-child="selection">
-              <object class="GtkTreeSelection"/>
-            </child>
-            <child>
-              <object class="GtkTreeViewColumn" id="namecolumn">
-                <property name="resizable">True</property>
-                <property name="title" translatable="yes">Name</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkTreeViewColumn" id="descriptioncolumn">
-                <property name="resizable">True</property>
-                <property name="title" translatable="yes">Description</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkTreeViewColumn" id="ipaddressescolumn">
-                <property name="resizable">True</property>
-                <property name="title" translatable="yes">IP addresses</property>
-              </object>
-            </child>
-          </object>
-          <packing>
-            <property name="expand">False</property>
+            <property name="expand">True</property>
             <property name="fill">True</property>
             <property name="position">2</property>
           </packing>
         </child>
       </object>
     </child>
-    <child>
+    <child type="titlebar">
       <placeholder/>
     </child>
   </object>
