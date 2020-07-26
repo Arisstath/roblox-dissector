@@ -56,7 +56,7 @@ jobs:
 
     - name: Copy artifacts
       shell: msys2 {0}
-      run: cp roblox-dissector.exe /c/artifacts && cp -R res/ /c/artifacts/res
+      run: mkdir /c/artifacts && cp roblox-dissector.exe /c/artifacts && cp -R res/ /c/artifacts/res
     
     - name: Upload artifacts
       uses: actions/upload-artifact@v2
