@@ -150,6 +150,27 @@ func (win *DissectorWindow) CaptureFromFile(filename string) {
 	}()
 }
 
+func (win *DissectorWindow) PromptCaptureFromFile() {
+	chooser, err := gtk.FileChooserNativeDialogNew("Choose PCAP file", win, gtk.FILE_CHOOSER_ACTION_OPEN, "Choose", "Cancel")
+	if err != nil {
+		win.ShowCaptureError(err, "Making chooser")
+		return
+	}
+	filter, err := gtk.FileFilterNew()
+	if err != nil {
+		win.ShowCaptureError(err, "Creating filter")
+		return
+	}
+	filter.AddPattern("*.pcap")
+	filter.SetName("PCAP network capture files (*.pcap)")
+	chooser.AddFilter(filter)
+	resp := chooser.NativeDialog.Run()
+	if gtk.ResponseType(resp) == gtk.RESPONSE_ACCEPT {
+		filename := chooser.GetFilename()
+		win.CaptureFromFile(filename)
+	}
+}
+
 func NewDissectorWindow() (*gtk.Window, error) {
 	winBuilder, err := gtk.BuilderNewFromFile("res/dissectorwindow.ui")
 	if err != nil {
@@ -190,26 +211,16 @@ func NewDissectorWindow() (*gtk.Window, error) {
 	if !ok {
 		return nil, invalidUi("fromfileitem")
 	}
-	fromFileMenuItem.Connect("activate", func() {
-		chooser, err := gtk.FileChooserNativeDialogNew("Choose PCAP file", wind, gtk.FILE_CHOOSER_ACTION_OPEN, "Choose", "Cancel")
-		if err != nil {
-			dwin.ShowCaptureError(err, "Making chooser")
-			return
-		}
-		filter, err := gtk.FileFilterNew()
-		if err != nil {
-			dwin.ShowCaptureError(err, "Creating filter")
-			return
-		}
-		filter.AddPattern("*.pcap")
-		filter.SetName("PCAP network capture files (*.pcap)")
-		chooser.AddFilter(filter)
-		resp := chooser.NativeDialog.Run()
-		if gtk.ResponseType(resp) == gtk.RESPONSE_ACCEPT {
-			filename := chooser.GetFilename()
-			dwin.CaptureFromFile(filename)
-		}
-	})
+	fromFileMenuItem.Connect("activate", dwin.PromptCaptureFromFile)
+	fromFileButton_, err := winBuilder.GetObject("fromfilebutton")
+	if err != nil {
+		return nil, err
+	}
+	fromFileButton, ok := fromFileButton_.(*gtk.ToolButton)
+	if !ok {
+		return nil, invalidUi("fromfilebutton")
+	}
+	fromFileButton.Connect("clicked", dwin.PromptCaptureFromFile)
 
 	return wind, nil
 }
