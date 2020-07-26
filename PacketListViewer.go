@@ -221,6 +221,35 @@ func (viewer *PacketListViewer) NotifyOfflinePacket(layers *peer.PacketLayers) {
 	}
 }
 
+func (viewer *PacketListViewer) NotifyACK(layers *peer.PacketLayers) {
+	id := layers.UniqueID
+	model := viewer.model
+	viewer.packetStore[id] = layers
+	var direction string
+
+	if layers.Root.FromClient {
+		direction = "C->S"
+	} else if layers.Root.FromServer {
+		direction = "S->C"
+	} else {
+		direction = "???"
+	}
+	var newRow gtk.TreeIter
+	model.InsertWithValues(&newRow, nil, -1, []int{COL_ID, COL_PACKET, COL_DIRECTION, COL_HAS_LENGTH, COL_PACKET_KIND}, []interface{}{
+		int64(id),
+		layers.String(),
+		direction,
+		false,
+		int64(KIND_MAIN),
+	})
+
+	var err error
+	viewer.packetRows[id], err = model.GetPath(&newRow)
+	if err != nil {
+		println("failed to get path:", err.Error())
+	}
+}
+
 func (viewer *PacketListViewer) updatePacketInfo(iter *gtk.TreeIter, layers *peer.PacketLayers) {
 	model := viewer.model
 	if !viewer.packetTypeApplied[layers.UniqueID] && layers.SplitPacket.HasPacketType {
@@ -415,13 +444,15 @@ func (viewer *PacketListViewer) NotifyFullPacket(layers *peer.PacketLayers) {
 	}
 }
 
-func (viewer *PacketListViewer) NotifyPacket(channel string, layers *peer.PacketLayers) {
+func (viewer *PacketListViewer) NotifyPacket(channel string, layers *peer.PacketLayers, forgetAcks bool) {
 	if channel == "offline" {
 		viewer.NotifyOfflinePacket(layers)
 	} else if channel == "reliable" {
 		viewer.NotifyPartialPacket(layers)
 	} else if channel == "full-reliable" {
 		viewer.NotifyFullPacket(layers)
+	} else if channel == "ack" && !forgetAcks {
+		viewer.NotifyACK(layers)
 	}
 }
 
@@ -478,6 +509,13 @@ func (viewer *PacketListViewer) selectionChanged(selection *gtk.TreeSelection) {
 			viewer.packetDetailsViewer.ShowMainLayer(packetViewer)
 		} else if layers.Error != nil {
 			packetViewer, err := blanketViewer("Error while decoding: " + layers.Error.Error() + "\n\n" + layers.String())
+			if err != nil {
+				println("failed to get packet viewer:", err.Error())
+				return
+			}
+			viewer.packetDetailsViewer.ShowMainLayer(packetViewer)
+		} else if layers.RakNet.Flags.IsACK || layers.RakNet.Flags.IsNAK {
+			packetViewer, err := ackViewer(layers.RakNet)
 			if err != nil {
 				println("failed to get packet viewer:", err.Error())
 				return

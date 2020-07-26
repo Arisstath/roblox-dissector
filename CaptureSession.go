@@ -29,6 +29,7 @@ type CaptureSession struct {
 	ListViewerCallback    func(*PacketListViewer, error)
 	ProgressCallback      func(int)
 	progress              int
+	ForgetAcks            bool
 }
 
 func AddressEq(a *net.UDPAddr, b *net.UDPAddr) bool {
@@ -114,7 +115,7 @@ func (session *CaptureSession) AddConversation(conv *Conversation) (*PacketListV
 
 		associatedProgress := session.progress
 		_, err := glib.IdleAdd(func() bool {
-			viewer.NotifyPacket(topic, layers)
+			viewer.NotifyPacket(topic, layers, session.ForgetAcks)
 			session.ProgressCallback(associatedProgress)
 			return false
 		})

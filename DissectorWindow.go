@@ -19,7 +19,8 @@ func invalidUi(name string) error {
 type DissectorWindow struct {
 	*gtk.Window
 
-	tabs *gtk.Notebook
+	tabs           *gtk.Notebook
+	forgetAcksItem *gtk.CheckMenuItem
 }
 
 func ShowError(wdg gtk.IWidget, err error, extrainfo string) {
@@ -79,6 +80,7 @@ func (win *DissectorWindow) CaptureFromPcapDevice(name string) {
 		win.ShowCaptureError(err, "Starting capture")
 		return
 	}
+	session.ForgetAcks = win.forgetAcksItem.GetActive()
 
 	go func() {
 		err = CaptureFromHandle(context, session, handle)
@@ -145,6 +147,7 @@ func (win *DissectorWindow) CaptureFromFile(filename string) {
 		win.ShowCaptureError(err, "Starting capture")
 		return
 	}
+	session.ForgetAcks = win.forgetAcksItem.GetActive()
 
 	countPackets := 0.0
 	frac := 0.0
@@ -288,6 +291,16 @@ func NewDissectorWindow() (*gtk.Window, error) {
 		return nil, invalidUi("frominterfacebutton")
 	}
 	fromLiveButton.Connect("clicked", dwin.PromptCaptureLive)
+
+	forgetAcksItem_, err := winBuilder.GetObject("forgetacksitem")
+	if err != nil {
+		return nil, err
+	}
+	forgetAcksItem, ok := forgetAcksItem_.(*gtk.CheckMenuItem)
+	if !ok {
+		return nil, invalidUi("forgetacksitem")
+	}
+	dwin.forgetAcksItem = forgetAcksItem
 
 	return wind, nil
 }

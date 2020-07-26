@@ -1063,3 +1063,59 @@ func viewerForMainPacket(packet peer.RakNetPacket) (gtk.IWidget, error) {
 		return nil, fmt.Errorf("unimplemented packet type %02X", packet.Type())
 	}
 }
+
+func ackViewer(packet *peer.RakNetLayer) (gtk.IWidget, error) {
+	box, err := boxWithMargin()
+	if err != nil {
+		return nil, err
+	}
+	scrolled, err := gtk.ScrolledWindowNew(nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	model, err := gtk.ListStoreNew(
+		glib.TYPE_UINT,
+		glib.TYPE_UINT,
+	)
+	if err != nil {
+		return nil, err
+	}
+	view, err := gtk.TreeViewNewWithModel(model)
+	if err != nil {
+		return nil, err
+	}
+	renderer, err := gtk.CellRendererTextNew()
+	if err != nil {
+		return nil, err
+	}
+
+	col, err := gtk.TreeViewColumnNewWithAttribute(
+		"Min",
+		renderer,
+		"text",
+		0,
+	)
+	if err != nil {
+		return nil, err
+	}
+	view.AppendColumn(col)
+	col, err = gtk.TreeViewColumnNewWithAttribute(
+		"Max",
+		renderer,
+		"text",
+		1,
+	)
+	if err != nil {
+		return nil, err
+	}
+	view.AppendColumn(col)
+
+	for _, rang := range packet.ACKs {
+		model.InsertWithValues(nil, -1, []int{0, 1}, []interface{}{uint(rang.Min), uint(rang.Max)})
+	}
+	scrolled.Add(view)
+	scrolled.SetVExpand(true)
+	box.Add(scrolled)
+	box.ShowAll()
+	return box, nil
+}

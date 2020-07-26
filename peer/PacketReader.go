@@ -338,6 +338,7 @@ func (reader *DefaultPacketReader) ReadPacket(payload []byte, layers *PacketLaye
 	layers.RakNet = rakNetLayer
 	if rakNetLayer.Flags.IsACK || rakNetLayer.Flags.IsNAK {
 		layers.UniqueID = reader.context.uniqueID
+		layers.OfflinePayload = payload
 		reader.context.uniqueID++
 		reader.emitLayers("ack", layers)
 	} else {
