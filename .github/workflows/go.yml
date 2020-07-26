@@ -31,8 +31,6 @@ jobs:
 
     - name: Checkout
       uses: actions/checkout@v2
-      with:
-        path: ${{ go.module-path }}
       
     - uses: actions/cache@v2
       with:
@@ -50,7 +48,6 @@ jobs:
     #   run: cp ~/windivert/WinDivert-2.2.0-A/x64/WinDivert.dll `go env GOPATH`/src/github.com/Gskartwii/windivert-go/libwindivert.dll
 
     - name: Compile
-      working-directory: ${{ go.module-path }}
       shell: msys2 {0}
       run: git checkout gtk && git submodule update --init && go build
 
@@ -59,7 +56,6 @@ jobs:
 
     - name: Copy artifacts
       shell: msys2 {0}
-      working-directory: ${{ go.module-path }}
       run: cp roblox-dissector.exe /c/artifacts && cp -R res/ /c/artifacts/res
     
     - name: Upload artifacts
