@@ -12,19 +12,26 @@ jobs:
     runs-on: windows-latest
     steps:
 
-    - name: Install Chocolatey packages
-      uses: crazy-max/ghaction-chocolatey@v2
+    - name: Install Go
+      uses: actions/setup-go@v2
       with:
-        args: install golang git msys2
+        go-version: '^1.13.1' # The Go version to download (if necessary) and use.
 
-    - name: Install MinGW packages
-      run: C:\tools\msys64\usr\bin\bash -lc "pacman -S mingw-w64_64-gtk3 mingw-w64-x86_64-toolchain base-devel glib2-devel pkg-config"
+    - name: Install MSYS
+      uses: msys2/setup-msys2@v2
+      with:
+        release: false
+        update: false
+        install: 'mingw-w64-x86_64-gtk3 mingw-w64-x86_64-toolchain base-devel glib2-devel pkg-config'
+        path-type: inherit
 
     - name: Patch pkg-config bug
-      run: C:\tools\msys64\usr\bin\bash -lc "sed -i -e 's/-Wl,-luuid/-luuid/g' /mingw64/lib/pkgconfig/gdk-3.0.pc"
+      shell: msys2 {0}
+      run: sed -i -e 's/-Wl,-luuid/-luuid/g' /mingw64/lib/pkgconfig/gdk-3.0.pc
 
     - name: Check out code into the Go module directory
-      run: C:\tools\msys64\usr\bin\bash -lc "PATH=/c/Go/bin:/c/Program\ Files/Git/bin:$PATH go get -v -t -d -tags divert github.com/Gskartwii/roblox-dissector/..."
+      shell: msys2 {0}
+      run: PATH=$GOROOT/bin:$PATH ls $GOROOT/bin && $GOROOT/bin/go get -v -t -d -tags divert github.com/Gskartwii/roblox-dissector/...
 
     # - name: Download WinDivert binaries
     #   run: |
@@ -35,16 +42,19 @@ jobs:
     #   run: cp ~/windivert/WinDivert-2.2.0-A/x64/WinDivert.dll `go env GOPATH`/src/github.com/Gskartwii/windivert-go/libwindivert.dll
 
     - name: Compile
-      run: C:\tools\msys64\usr\bin\bash -lc "PATH=/c/Go/bin:/c/Program\ Files/Git/bin:$PATH (cd `go env GOPATH`/src/github.com/Gskartwii/roblox-dissector; go build)"
+      shell: msys2 {0}
+      run: PATH=$GOROOT/bin:$PATH echo $PATH && echo $(go env GOPATH) && cd "$(go env GOPATH)/src/github.com/Gskartwii/roblox-dissector" && git checkout gtk && git submodule update --init && go build
 
     # - name: Insert WinDivert binaries
     #   run: cp ~/windivert/WinDivert-2.2.0-A/x64/WinDivert{64.sys,.dll} `go env GOPATH`/src/github.com/Gskartwii/roblox-dissector/deploy/windows/
 
     - name: Copy artifacts
-      run: C:\tools\msys64\usr\bin\bash -lc "PATH=/c/Go/bin:/c/Program\ Files/Git/bin:$PATH (mkdir /c/artifacts; cp `go env GOPATH`/src/github.com/Gskartwii/roblox-dissector/roblox-dissector.exe /c/artifacts/)"
+      shell: msys2 {0}
+      run: PATH=$GOROOT/bin:$PATH mkdir /c/artifacts && cp "$(go env GOPATH)/src/github.com/Gskartwii/roblox-dissector/roblox-dissector.exe" /c/artifacts/
     
     - name: Upload artifacts
       uses: actions/upload-artifact@v2
       with:
         name: windows-binary
         path: C:\artifacts
+
