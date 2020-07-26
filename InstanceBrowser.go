@@ -257,7 +257,7 @@ func (viewer *InstanceViewer) ViewInstance(instance *peer.ReplicationInstance) {
 func NewInstanceViewer() (*InstanceViewer, error) {
 	viewer := &InstanceViewer{}
 
-	builder, err := gtk.BuilderNewFromFile("instancebrowser.ui")
+	builder, err := gtk.BuilderNewFromFile("res/instancebrowser.ui")
 	if err != nil {
 		return nil, err
 	}
@@ -435,7 +435,7 @@ func (viewer *PropEventViewer) ViewEvent(instance *datamodel.Instance, name stri
 func NewPropertyEventViewer() (*PropEventViewer, error) {
 	viewer := &PropEventViewer{}
 
-	builder, err := gtk.BuilderNewFromFile("propeventviewer.ui")
+	builder, err := gtk.BuilderNewFromFile("res/propeventviewer.ui")
 	if err != nil {
 		return nil, err
 	}

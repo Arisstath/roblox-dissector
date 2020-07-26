@@ -50,7 +50,7 @@ jobs:
 
     - name: Copy artifacts
       shell: msys2 {0}
-      run: PATH=$GOROOT/bin:$PATH mkdir /c/artifacts && cp "$(go env GOPATH)/src/github.com/Gskartwii/roblox-dissector/roblox-dissector.exe" /c/artifacts/
+      run: PATH=$GOROOT/bin:$PATH mkdir /c/artifacts && cd "$(go env GOPATH)/src/github.com/Gskartwii/roblox-dissector" && cp roblox-dissector.exe /c/artifacts && cp -R res/ /c/artifacts/res
     
     - name: Upload artifacts
       uses: actions/upload-artifact@v2

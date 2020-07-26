@@ -38,7 +38,7 @@ type PacketDetailsViewer struct {
 func NewPacketDetailsViewer() (*PacketDetailsViewer, error) {
 	viewer := &PacketDetailsViewer{}
 
-	builder, err := gtk.BuilderNewFromFile("packetdetailsviewer.ui")
+	builder, err := gtk.BuilderNewFromFile("res/packetdetailsviewer.ui")
 	if err != nil {
 		return nil, err
 	}

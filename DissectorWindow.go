@@ -151,7 +151,7 @@ func (win *DissectorWindow) CaptureFromFile(filename string) {
 }
 
 func NewDissectorWindow() (*gtk.Window, error) {
-	winBuilder, err := gtk.BuilderNewFromFile("dissectorwindow.ui")
+	winBuilder, err := gtk.BuilderNewFromFile("res/dissectorwindow.ui")
 	if err != nil {
 		return nil, err
 	}
