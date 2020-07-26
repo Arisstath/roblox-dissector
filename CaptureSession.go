@@ -67,7 +67,7 @@ func (session *CaptureSession) ConversationFor(source *net.UDPAddr, dest *net.UD
 		}
 	}
 
-	if len(payload) < 1 || payload[0] != 0x05 {
+	if len(payload) < 1 || payload[0] != 0x7B {
 		return nil
 	}
 	isHandshake := peer.IsOfflineMessage(payload)
