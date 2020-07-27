@@ -36,14 +36,12 @@ func AddressEq(a *net.UDPAddr, b *net.UDPAddr) bool {
 	return a.Port == b.Port && bytes.Equal(a.IP, b.IP)
 }
 
-func NewCaptureSession(name string, cancelFunc context.CancelFunc, listViewerCallback func(*PacketListViewer, error)) (*CaptureSession, error) {
+func NewCaptureSession(name string, cancelFunc context.CancelFunc, listViewerCallback func(*CaptureSession, *PacketListViewer, error)) (*CaptureSession, error) {
 	initialViewer, err := NewPacketListViewer(fmt.Sprintf("%s#%d", name, 1))
 	if err != nil {
 		return nil, err
 	}
-	listViewerCallback(initialViewer, nil)
-
-	return &CaptureSession{
+	session := &CaptureSession{
 		Name:                  name,
 		ViewerCounter:         2,
 		IsCapturing:           true,
@@ -51,7 +49,10 @@ func NewCaptureSession(name string, cancelFunc context.CancelFunc, listViewerCal
 		CancelFunc:            cancelFunc,
 		InitialViewerOccupied: false,
 		ListViewers:           []*PacketListViewer{initialViewer},
-	}, nil
+	}
+	listViewerCallback(session, initialViewer, nil)
+
+	return session, nil
 }
 
 func (session *CaptureSession) SetProgress(prog int) {
@@ -140,6 +141,7 @@ func (session *CaptureSession) StopCapture() {
 
 func (session *CaptureSession) ReportDone() {
 	glib.IdleAdd(func() bool {
+		session.IsCapturing = false
 		if session.ProgressCallback != nil {
 			session.ProgressCallback(-1)
 		}

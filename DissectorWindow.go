@@ -23,6 +23,11 @@ type DissectorWindow struct {
 	forgetAcksItem       *gtk.CheckMenuItem
 	tabIndexToSession    []*CaptureSession
 	tabIndexToListViewer []*PacketListViewer
+	sessionRefCount      map[*CaptureSession]uint
+
+	stopButton            *gtk.ToolButton
+	pauseButton           *gtk.ToolButton
+	browseDataModelButton *gtk.ToolButton
 }
 
 func ShowError(wdg gtk.IWidget, err error, extrainfo string) {
@@ -75,6 +80,7 @@ func (win *DissectorWindow) AppendClosablePage(title string, session *CaptureSes
 	closeButton.Add(buttonImg)
 	titleHBox.PackEnd(closeButton, false, false, 0)
 	titleHBox.ShowAll()
+	win.sessionRefCount[session] += 1
 
 	closeButton.Connect("clicked", func() {
 		pageNum := win.tabs.PageNum(listViewer.mainWidget)
@@ -82,18 +88,77 @@ func (win *DissectorWindow) AppendClosablePage(title string, session *CaptureSes
 			return
 		}
 		win.tabs.RemovePage(pageNum)
+
+		oldSession := win.tabIndexToSession[pageNum]
 		win.tabIndexToListViewer = append(win.tabIndexToListViewer[:pageNum], win.tabIndexToListViewer[pageNum+1:]...)
 		win.tabIndexToSession = append(win.tabIndexToSession[:pageNum], win.tabIndexToSession[pageNum+1:]...)
+		win.sessionRefCount[oldSession] -= 1
+
+		if win.sessionRefCount[oldSession] == 0 {
+			delete(win.sessionRefCount, oldSession)
+			oldSession.StopCapture()
+		}
 		win.UpdateActionsEnabled()
 	})
 
-	win.tabs.AppendPage(listViewer.mainWidget, titleHBox)
 	win.tabIndexToListViewer = append(win.tabIndexToListViewer, listViewer)
 	win.tabIndexToSession = append(win.tabIndexToSession, session)
+	win.tabs.AppendPage(listViewer.mainWidget, titleHBox)
+}
+
+func (win *DissectorWindow) UpdateActionsForPage(curPage int) {
+	if curPage == -1 {
+		pauseButtonIcon, err := win.pauseButton.GetIconWidget()
+		if err != nil {
+			println("error while switching pause button")
+			return
+		}
+		var iconName = "media-playback-pause-symbolic"
+		pauseButtonIcon.(*gtk.Image).SetFromIconName(iconName, gtk.ICON_SIZE_BUTTON)
+		win.stopButton.SetSensitive(false)
+		win.pauseButton.SetSensitive(false)
+		win.browseDataModelButton.SetSensitive(false)
+		return
+	}
+
+	curSession := win.tabIndexToSession[curPage]
+	curViewer := win.tabIndexToListViewer[curPage]
+	win.stopButton.SetSensitive(curSession.IsCapturing)
+	win.pauseButton.SetSensitive(curSession.IsCapturing)
+	win.browseDataModelButton.SetSensitive(true)
+
+	pauseButtonIcon, err := win.pauseButton.GetIconWidget()
+	if err != nil {
+		println("error while switching pause button")
+		return
+	}
+	var iconName = "media-playback-pause-symbolic"
+	if !curViewer.updatePassthrough {
+		iconName = "media-playback-play-symbolic"
+	}
+	pauseButtonIcon.(*gtk.Image).SetFromIconName(iconName, gtk.ICON_SIZE_BUTTON)
 }
 
 func (win *DissectorWindow) UpdateActionsEnabled() {
-	// nop for now
+	win.UpdateActionsForPage(win.tabs.GetCurrentPage())
+}
+
+func (win *DissectorWindow) StopClicked() {
+	curPage := win.tabs.GetCurrentPage()
+	currSession := win.tabIndexToSession[curPage]
+	currSession.StopCapture()
+	win.UpdateActionsEnabled()
+}
+
+func (win *DissectorWindow) PauseClicked() {
+	curPage := win.tabs.GetCurrentPage()
+	currViewer := win.tabIndexToListViewer[curPage]
+	currViewer.ToggleUpdatePassthrough()
+	win.UpdateActionsEnabled()
+}
+
+func (win *DissectorWindow) BrowseDataModelClicked() {
+	// nop
 }
 
 func (win *DissectorWindow) CaptureFromPcapDevice(name string) {
@@ -103,9 +168,8 @@ func (win *DissectorWindow) CaptureFromPcapDevice(name string) {
 		win.ShowCaptureError(err, "Starting capture")
 		return
 	}
-	context, cancelFunc := context.WithCancel(context.TODO())
-	var session *CaptureSession
-	session, err = NewCaptureSession(name, cancelFunc, func(listViewer *PacketListViewer, err error) {
+	context, cancelFunc := context.WithCancel(context.Background())
+	session, err := NewCaptureSession(name, cancelFunc, func(session *CaptureSession, listViewer *PacketListViewer, err error) {
 		if err != nil {
 			win.ShowCaptureError(err, "Accepting new listviewer")
 			return
@@ -139,7 +203,6 @@ func (win *DissectorWindow) CaptureFromFile(filename string) {
 		win.ShowCaptureError(err, "Starting capture")
 		return
 	}
-	context, cancelFunc := context.WithCancel(context.TODO())
 
 	progressDialog, err := gtk.DialogNew()
 	if err != nil {
@@ -166,20 +229,14 @@ func (win *DissectorWindow) CaptureFromFile(filename string) {
 	progressDialog.SetSizeRequest(200, 32)
 	progressDialog.ShowAll()
 
-	var session *CaptureSession
-	session, err = NewCaptureSession(filename, cancelFunc, func(listViewer *PacketListViewer, err error) {
+	context, cancelFunc := context.WithCancel(context.Background())
+	session, err := NewCaptureSession(filename, cancelFunc, func(session *CaptureSession, listViewer *PacketListViewer, err error) {
 		if err != nil {
 			win.ShowCaptureError(err, "Accepting new listviewer")
 			return
 		}
-		titleLabel, err := gtk.LabelNew(listViewer.title)
-		if err != nil {
-			win.ShowCaptureError(err, "Accepting new listviewer")
-			return
-		}
-		win.AppendClosablePage(listViewer.title, session, listViewer)
 		listViewer.mainWidget.ShowAll()
-		titleLabel.ShowAll()
+		win.AppendClosablePage(listViewer.title, session, listViewer)
 
 		windowHeight := win.GetAllocatedHeight()
 		paneHeight := int(0.6 * float64(windowHeight))
@@ -199,6 +256,7 @@ func (win *DissectorWindow) CaptureFromFile(filename string) {
 	session.ProgressCallback = func(progress int) {
 		if progress == -1 {
 			progressDialog.Close()
+			win.UpdateActionsEnabled()
 			return
 		}
 
@@ -283,7 +341,8 @@ func NewDissectorWindow() (*gtk.Window, error) {
 	wind.SetDefaultSize(800, 640)
 
 	dwin := &DissectorWindow{
-		Window: wind,
+		Window:          wind,
+		sessionRefCount: make(map[*CaptureSession]uint),
 	}
 
 	tabs, err := winBuilder.GetObject("conversationtabs")
@@ -296,6 +355,9 @@ func NewDissectorWindow() (*gtk.Window, error) {
 		return nil, invalidUi("convtabs")
 	}
 	dwin.tabs = tabsNotebook
+	tabsNotebook.Connect("switch-page", func(_ *gtk.Notebook, _ gtk.IWidget, num int) {
+		dwin.UpdateActionsForPage(num)
+	})
 
 	fromFileItem, err := winBuilder.GetObject("fromfileitem")
 	if err != nil {
@@ -334,6 +396,38 @@ func NewDissectorWindow() (*gtk.Window, error) {
 		return nil, invalidUi("frominterfacebutton")
 	}
 	fromLiveButton.Connect("clicked", dwin.PromptCaptureLive)
+
+	stopButton_, err := winBuilder.GetObject("stopcapturebutton")
+	if err != nil {
+		return nil, err
+	}
+	stopButton, ok := stopButton_.(*gtk.ToolButton)
+	if !ok {
+		return nil, invalidUi("stopcapturebutton")
+	}
+	stopButton.Connect("clicked", dwin.StopClicked)
+	dwin.stopButton = stopButton
+	pauseButton_, err := winBuilder.GetObject("pauseupdatebutton")
+	if err != nil {
+		return nil, err
+	}
+	pauseButton, ok := pauseButton_.(*gtk.ToolButton)
+	if !ok {
+		return nil, invalidUi("pauseupdatebutton")
+	}
+	pauseButton.Connect("clicked", dwin.PauseClicked)
+	dwin.pauseButton = pauseButton
+	browseDataModelButton_, err := winBuilder.GetObject("viewdatamodelbutton")
+	if err != nil {
+		return nil, err
+	}
+	browseDataModelButton, ok := browseDataModelButton_.(*gtk.ToolButton)
+	if !ok {
+		return nil, invalidUi("viewdatamodelbutton")
+	}
+	browseDataModelButton.Connect("clicked", dwin.BrowseDataModelClicked)
+	dwin.browseDataModelButton = browseDataModelButton
+	dwin.UpdateActionsEnabled()
 
 	forgetAcksItem_, err := winBuilder.GetObject("forgetacksitem")
 	if err != nil {

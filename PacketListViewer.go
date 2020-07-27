@@ -28,6 +28,10 @@ const (
 )
 
 type PacketListViewer struct {
+	updatePassthrough bool
+	queuedChannels    []string
+	queuedLayers      []*peer.PacketLayers
+
 	title string
 
 	mainWidget  *gtk.Paned
@@ -50,6 +54,7 @@ func NewPacketListViewer(title string) (*PacketListViewer, error) {
 		packetStore:       make(map[uint64]*peer.PacketLayers),
 		packetTypeApplied: make(map[uint64]bool),
 		lazyLoadFakeRows:  make(map[uint64]*gtk.TreePath),
+		updatePassthrough: true,
 	}
 	model, err := gtk.TreeStoreNew(
 		glib.TYPE_INT64,   // COL_ID
@@ -444,14 +449,35 @@ func (viewer *PacketListViewer) NotifyFullPacket(layers *peer.PacketLayers) {
 	}
 }
 
+func (viewer *PacketListViewer) ToggleUpdatePassthrough() {
+	viewer.updatePassthrough = !viewer.updatePassthrough
+	if viewer.updatePassthrough {
+		for i := 0; i < len(viewer.queuedLayers); i++ {
+			viewer.NotifyPacket(viewer.queuedChannels[i], viewer.queuedLayers[i], false)
+		}
+		viewer.queuedLayers = nil
+		viewer.queuedChannels = nil
+	}
+}
+
 func (viewer *PacketListViewer) NotifyPacket(channel string, layers *peer.PacketLayers, forgetAcks bool) {
+	if channel == "ack" && forgetAcks {
+		return
+	}
+
+	if !viewer.updatePassthrough {
+		viewer.queuedChannels = append(viewer.queuedChannels, channel)
+		viewer.queuedLayers = append(viewer.queuedLayers, layers)
+		return
+	}
+
 	if channel == "offline" {
 		viewer.NotifyOfflinePacket(layers)
 	} else if channel == "reliable" {
 		viewer.NotifyPartialPacket(layers)
 	} else if channel == "full-reliable" {
 		viewer.NotifyFullPacket(layers)
-	} else if channel == "ack" && !forgetAcks {
+	} else if channel == "ack" {
 		viewer.NotifyACK(layers)
 	}
 }

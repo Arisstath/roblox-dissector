@@ -55,44 +55,46 @@ type Conversations interface {
 
 func CaptureFromSource(ctx context.Context, convs Conversations, packetSource *gopacket.PacketSource) error {
 	var progress int
-	for packet := range packetSource.Packets() {
+	packetChan := packetSource.Packets()
+	for {
 		select {
 		case <-ctx.Done():
 			print("done")
 			return nil
-		default:
-		}
-		progress++
+		case packet, ok := <-packetChan:
+			if !ok {
+				return nil
+			}
+			progress++
 
-		if packet.ApplicationLayer() == nil ||
-			(packet.Layer(layers.LayerTypeIPv4) == nil && packet.Layer(layers.LayerTypeIPv6) == nil) ||
-			packet.Layer(layers.LayerTypeUDP) == nil {
-			continue
-		}
-		payload := packet.ApplicationLayer().Payload()
-		if len(payload) == 0 {
-			continue
-		}
+			if packet.ApplicationLayer() == nil ||
+				(packet.Layer(layers.LayerTypeIPv4) == nil && packet.Layer(layers.LayerTypeIPv6) == nil) ||
+				packet.Layer(layers.LayerTypeUDP) == nil {
+				continue
+			}
+			payload := packet.ApplicationLayer().Payload()
+			if len(payload) == 0 {
+				continue
+			}
 
-		src, dest := SrcAndDestFromGoPacket(packet)
-		conv := convs.ConversationFor(src, dest, payload)
-		if conv == nil {
-			continue // Not a RakNet packet
-		}
-		fromClient := AddressEq(src, conv.Client)
+			src, dest := SrcAndDestFromGoPacket(packet)
+			conv := convs.ConversationFor(src, dest, payload)
+			if conv == nil {
+				continue // Not a RakNet packet
+			}
+			fromClient := AddressEq(src, conv.Client)
 
-		layers := NewLayers(src, dest, fromClient)
-		var reader PacketProvider
-		if fromClient {
-			reader = conv.ClientReader
-		} else {
-			reader = conv.ServerReader
+			layers := NewLayers(src, dest, fromClient)
+			var reader PacketProvider
+			if fromClient {
+				reader = conv.ClientReader
+			} else {
+				reader = conv.ServerReader
+			}
+			reader.ReadPacket(payload, layers)
+			convs.SetProgress(progress)
 		}
-		reader.ReadPacket(payload, layers)
-		convs.SetProgress(progress)
 	}
-
-	return nil
 }
 
 func CaptureFromHandle(ctx context.Context, convs Conversations, handle *pcap.Handle) error {
