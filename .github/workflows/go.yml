@@ -39,6 +39,10 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-
 
+    - name: Download deps
+      shell: msys2 {0}
+      run: git submodule update --init && go get -d -v -tags=divert ./...
+
     - name: Download WinDivert binaries
       shell: msys2 {0}
       run: |
