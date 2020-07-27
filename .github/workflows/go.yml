@@ -39,15 +39,15 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-
 
-     - name: Download WinDivert binaries
-       shell: msys2 {0}
-       run: |
-         wget https://reqrypt.org/download/WinDivert-2.2.0-A.zip -O ~/windivert.zip
-         unzip ~/windivert.zip -d ~/windivert
+    - name: Download WinDivert binaries
+      shell: msys2 {0}
+      run: |
+        wget https://reqrypt.org/download/WinDivert-2.2.0-A.zip -O ~/windivert.zip
+        unzip ~/windivert.zip -d ~/windivert
 
-     - name: Make -lwindivert available
-       shell: msys2 {0}
-       run: cp ~/windivert/WinDivert-2.2.0-A/x64/WinDivert.dll `go env GOPATH`/src/github.com/Gskartwii/windivert-go/libwindivert.dll
+    - name: Make -lwindivert available
+      shell: msys2 {0}
+      run: cp ~/windivert/WinDivert-2.2.0-A/x64/WinDivert.dll `go env GOPATH`/src/github.com/Gskartwii/windivert-go/libwindivert.dll
 
     - name: Compile
       shell: msys2 {0}
