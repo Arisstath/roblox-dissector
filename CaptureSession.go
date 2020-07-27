@@ -26,7 +26,7 @@ type CaptureSession struct {
 	CancelFunc            context.CancelFunc
 	InitialViewerOccupied bool
 	ListViewers           []*PacketListViewer
-	ListViewerCallback    func(*PacketListViewer, error)
+	ListViewerCallback    func(*CaptureSession, *PacketListViewer, error)
 	ProgressCallback      func(int)
 	progress              int
 	ForgetAcks            bool
@@ -49,6 +49,7 @@ func NewCaptureSession(name string, cancelFunc context.CancelFunc, listViewerCal
 		CancelFunc:            cancelFunc,
 		InitialViewerOccupied: false,
 		ListViewers:           []*PacketListViewer{initialViewer},
+		ListViewerCallback:    listViewerCallback,
 	}
 	listViewerCallback(session, initialViewer, nil)
 
@@ -107,8 +108,12 @@ func (session *CaptureSession) AddConversation(conv *Conversation) (*PacketListV
 	} else {
 		title := fmt.Sprintf("%s#%d", session.Name, session.ViewerCounter)
 		session.ViewerCounter++
-		viewer, err = NewPacketListViewer(title)
-		session.ListViewerCallback(viewer, err)
+
+		glib.IdleAdd(func() bool {
+			viewer, err = NewPacketListViewer(title)
+			session.ListViewerCallback(session, viewer, err)
+			return false
+		})
 	}
 	handler := func(e *emitter.Event) {
 		topic := e.OriginalTopic
@@ -117,7 +122,9 @@ func (session *CaptureSession) AddConversation(conv *Conversation) (*PacketListV
 		associatedProgress := session.progress
 		_, err := glib.IdleAdd(func() bool {
 			viewer.NotifyPacket(topic, layers, session.ForgetAcks)
-			session.ProgressCallback(associatedProgress)
+			if session.ProgressCallback != nil {
+				session.ProgressCallback(associatedProgress)
+			}
 			return false
 		})
 		if err != nil {

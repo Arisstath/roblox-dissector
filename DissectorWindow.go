@@ -133,8 +133,8 @@ func (win *DissectorWindow) UpdateActionsForPage(curPage int) {
 		return
 	}
 	var iconName = "media-playback-pause-symbolic"
-	if !curViewer.updatePassthrough {
-		iconName = "media-playback-play-symbolic"
+	if !curViewer.updatePassthrough && curSession.IsCapturing {
+		iconName = "media-playback-start-symbolic"
 	}
 	pauseButtonIcon.(*gtk.Image).SetFromIconName(iconName, gtk.ICON_SIZE_BUTTON)
 }
@@ -438,6 +438,39 @@ func NewDissectorWindow() (*gtk.Window, error) {
 		return nil, invalidUi("forgetacksitem")
 	}
 	dwin.forgetAcksItem = forgetAcksItem
+
+	divertItem, err := winBuilder.GetObject("fromdivertitem")
+	if err != nil {
+		return nil, err
+	}
+	divertMenuItem, ok := divertItem.(*gtk.MenuItem)
+	if !ok {
+		return nil, invalidUi("divertmenuitem")
+	}
+	divertMenuItem.Connect("activate", func() {
+		ctx, cancelFunc := context.WithCancel(context.Background())
+		session, err := NewCaptureSession("<DIVERT>", cancelFunc, func(session *CaptureSession, listViewer *PacketListViewer, err error) {
+			if err != nil {
+				dwin.ShowCaptureError(err, "Accepting new listviewer")
+				return
+			}
+
+			listViewer.mainWidget.ShowAll()
+			dwin.AppendClosablePage(listViewer.title, session, listViewer)
+
+			windowHeight := dwin.GetAllocatedHeight()
+			paneHeight := int(0.6 * float64(windowHeight))
+			listViewer.mainWidget.SetPosition(paneHeight)
+			listViewer.mainWidget.SetWideHandle(true)
+		})
+		if err != nil {
+			dwin.ShowCaptureError(err, "Starting WinDivert proxy")
+		}
+		err = CaptureFromDivert(ctx, session)
+		if err != nil {
+			dwin.ShowCaptureError(err, "Starting WinDivert proxy")
+		}
+	})
 
 	return wind, nil
 }

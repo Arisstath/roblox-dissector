@@ -43,7 +43,6 @@ func NewLayers(source *net.UDPAddr, dest *net.UDPAddr, fromClient bool) *peer.Pa
 }
 
 type PacketProvider interface {
-	peer.PacketReader
 	Layers() *emitter.Emitter
 	Errors() *emitter.Emitter
 }
@@ -91,7 +90,7 @@ func CaptureFromSource(ctx context.Context, convs Conversations, packetSource *g
 			} else {
 				reader = conv.ServerReader
 			}
-			reader.ReadPacket(payload, layers)
+			reader.(peer.PacketReader).ReadPacket(payload, layers)
 			convs.SetProgress(progress)
 		}
 	}

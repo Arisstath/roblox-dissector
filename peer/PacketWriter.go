@@ -100,7 +100,9 @@ func (writer *DefaultPacketWriter) WriteOffline(packet RakNetPacket) error {
 		PacketType:     packet.Type(),
 		Main:           packet,
 		OfflinePayload: buffer.Bytes(),
+		UniqueID:       writer.context.uniqueID,
 	}
+	writer.context.uniqueID++
 
 	writer.output(layers.OfflinePayload)
 	<-writer.LayerEmitter.Emit("offline", layers)
@@ -196,6 +198,7 @@ func (writer *DefaultPacketWriter) writeAsSplits(estHeaderLength int, data []byt
 		newLayers.SplitPacket.NumReceivedSplits = uint32(i + 1)
 		newLayers.SplitPacket.NextExpectedPacket = uint32(i)
 		newLayers.SplitPacket.IsFinal = i == requiredSplits-1
+		newLayers.UniqueID = newLayers.SplitPacket.UniqueID
 
 		<-writer.LayerEmitter.Emit("reliability", newLayers)
 		<-writer.LayerEmitter.Emit("reliable", newLayers)
@@ -263,6 +266,7 @@ func (writer *DefaultPacketWriter) writeReliablePacket(data []byte, layers *Pack
 		writer.context.uniqueID++
 		layers.RakNet = rakNet
 		layers.SplitPacket = packet.SplitBuffer
+		layers.UniqueID = packet.SplitBuffer.UniqueID
 
 		<-writer.LayerEmitter.Emit("reliability", layers)
 		<-writer.LayerEmitter.Emit("reliable", layers)
@@ -381,8 +385,10 @@ func (writer *DefaultPacketWriter) WriteACKs(datagrams []int, isNAK bool) error 
 		ACKs: ackStructure,
 	}
 	layers := &PacketLayers{
-		RakNet: result,
+		RakNet:   result,
+		UniqueID: writer.context.uniqueID,
 	}
+	writer.context.uniqueID++
 	<-writer.LayerEmitter.Emit("ack", layers)
 
 	return writer.WriteRakNet(layers)

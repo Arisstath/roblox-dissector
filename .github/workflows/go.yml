@@ -39,24 +39,26 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-
 
-    # - name: Download WinDivert binaries
-    #   run: |
-    #     wget https://reqrypt.org/download/WinDivert-2.2.0-A.zip -O ~/windivert.zip
-    #     unzip ~/windivert.zip -d ~/windivert
-    #
-    # - name: Make -lwindivert available
-    #   run: cp ~/windivert/WinDivert-2.2.0-A/x64/WinDivert.dll `go env GOPATH`/src/github.com/Gskartwii/windivert-go/libwindivert.dll
+     - name: Download WinDivert binaries
+       shell: msys2 {0}
+       run: |
+         wget https://reqrypt.org/download/WinDivert-2.2.0-A.zip -O ~/windivert.zip
+         unzip ~/windivert.zip -d ~/windivert
+
+     - name: Make -lwindivert available
+       shell: msys2 {0}
+       run: cp ~/windivert/WinDivert-2.2.0-A/x64/WinDivert.dll `go env GOPATH`/src/github.com/Gskartwii/windivert-go/libwindivert.dll
 
     - name: Compile
       shell: msys2 {0}
-      run: git checkout gtk && git submodule update --init && go build
-
-    # - name: Insert WinDivert binaries
-    #   run: cp ~/windivert/WinDivert-2.2.0-A/x64/WinDivert{64.sys,.dll} `go env GOPATH`/src/github.com/Gskartwii/roblox-dissector/deploy/windows/
+      run: git submodule update --init && go build -tags divert
 
     - name: Copy artifacts
       shell: msys2 {0}
       run: mkdir /c/artifacts && cp roblox-dissector.exe /c/artifacts && cp -R res/ /c/artifacts/res
+
+    - name: Insert WinDivert binaries
+      run: cp ~/windivert/WinDivert-2.2.0-A/x64/WinDivert{64.sys,.dll} /c/artifacts
     
     - name: Upload artifacts
       uses: actions/upload-artifact@v2

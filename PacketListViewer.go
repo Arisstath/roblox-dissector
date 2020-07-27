@@ -490,14 +490,6 @@ func (viewer *PacketListViewer) getGoValue(treeIter *gtk.TreeIter, col int) (int
 	return id.GoValue()
 }
 
-func (viewer *PacketListViewer) goValueFromPath(path *gtk.TreePath, col int) (interface{}, error) {
-	treeIter, err := viewer.sortModel.GetIter(path)
-	if err != nil {
-		return nil, err
-	}
-	return viewer.getGoValue(treeIter, col)
-}
-
 func (viewer *PacketListViewer) uint64FromIter(treeIter *gtk.TreeIter, col int) (uint64, error) {
 	v, err := viewer.getGoValue(treeIter, col)
 	if err != nil {
