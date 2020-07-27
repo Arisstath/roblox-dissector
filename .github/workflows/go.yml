@@ -62,6 +62,7 @@ jobs:
       run: mkdir /c/artifacts && cp roblox-dissector.exe /c/artifacts && cp -R res/ /c/artifacts/res
 
     - name: Insert WinDivert binaries
+      shell: msys2 {0}
       run: cp ~/windivert/WinDivert-2.2.0-A/x64/WinDivert{64.sys,.dll} /c/artifacts
     
     - name: Upload artifacts
