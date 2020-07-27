@@ -7,6 +7,7 @@ replace github.com/gotk3/gotk3 => ./gotk3
 require (
 	github.com/0intro/pcap v0.0.0-20170331094027-8d130fc509b3 // indirect
 	github.com/DataDog/zstd v1.4.5
+	github.com/Gskartwii/windivert-go v0.0.0-20200531151053-0e90e2d074c3
 	github.com/dreadl0ck/gopcap v0.0.0-20190327214342-be2a4d78505f
 	github.com/dustin/go-humanize v1.0.0
 	github.com/google/gopacket v1.1.17

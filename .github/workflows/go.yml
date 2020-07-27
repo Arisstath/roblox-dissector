@@ -51,7 +51,7 @@ jobs:
 
     - name: Make -lwindivert available
       shell: msys2 {0}
-      run: cp ~/windivert/WinDivert-2.2.0-A/x64/WinDivert.dll `go env GOPATH`/src/github.com/Gskartwii/windivert-go/libwindivert.dll
+      run: cp ~/windivert/WinDivert-2.2.0-A/x64/WinDivert.dll `go list -f '{{.Dir}}' github.com/Gskartwii/windivert-go`/libwindivert.dll
 
     - name: Compile
       shell: msys2 {0}
