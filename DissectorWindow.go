@@ -8,6 +8,7 @@ import (
 
 	"github.com/dreadl0ck/gopcap"
 	"github.com/google/gopacket/pcap"
+	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
 )
@@ -47,8 +48,9 @@ func ShowError(wdg gtk.IWidget, err error, extrainfo string) {
 		err.Error(),
 	)
 	dialog.SetTitle("Error")
+	dialog.SetIconFromFile("res/app-icon.ico")
+	dialog.Connect("response", (*gtk.MessageDialog).Destroy)
 	dialog.ShowAll()
-	dialog.Show()
 	dialog.Run()
 }
 
@@ -471,6 +473,40 @@ func NewDissectorWindow() (*gtk.Window, error) {
 			dwin.ShowCaptureError(err, "Starting WinDivert proxy")
 		}
 	})
+
+	aboutDialogItem, err := winBuilder.GetObject("aboutitem")
+	if err != nil {
+		return nil, err
+	}
+	aboutDialogMenuItem, ok := aboutDialogItem.(*gtk.MenuItem)
+	if !ok {
+		return nil, invalidUi("aboutitem")
+	}
+	aboutDialogMenuItem.Connect("activate", func() {
+		dialog, err := gtk.AboutDialogNew()
+		if err != nil {
+			dwin.ShowCaptureError(err, "Show about dialog")
+		}
+		dialog.SetProgramName("Sala")
+		dialog.SetVersion("v0.7.6")
+		dialog.SetCopyright("© 2017 - 2020 Aleksi Hannula\nLicensed under the MIT license.")
+		dialog.SetComments(`Codename "Maailman salaisuudet".
+
+Sala is tool for dissecting Roblox network packets.`)
+		dialog.SetWebsite("https://github.com/Gskartwii/roblox-dissector")
+		dialog.SetWebsiteLabel("GitHub repository")
+		dialog.SetAuthors([]string{"Aleksi Hannula", "Arisstath", "Alureon"})
+		logo, err := gdk.PixbufNewFromFile("res/app-icon.ico")
+		if err != nil {
+			dwin.ShowCaptureError(err, "Show about dialog")
+		}
+		dialog.SetLogo(logo)
+		dialog.SetIconFromFile("res/app-icon.ico")
+		dialog.Connect("response", (*gtk.AboutDialog).Destroy)
+		dialog.Run()
+	})
+
+	wind.SetIconFromFile("res/app-icon.ico")
 
 	return wind, nil
 }

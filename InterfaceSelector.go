@@ -98,6 +98,8 @@ func PromptInterfaceName(callback func(string)) error {
 		callback(nameG.(string))
 	})
 
+	mainWidget.SetIconFromFile("res/app-icon.ico")
+	mainWidget.SetTitle("Choose interface to capture from")
 	mainWidget.ShowAll()
 	return nil
 }
