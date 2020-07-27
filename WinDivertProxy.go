@@ -23,7 +23,7 @@ type ProxiedPacket struct {
 	Layers  *peer.PacketLayers
 }
 
-func CaptureWithDivertedPacket(ctx context.Context, session *CaptureSession, clientAddr *net.UDPAddr, serverAddr *net.UDPAddr, payload []byte, ifIdx uint32, subIfIdx uint32, opened chan struct{}) error {
+func CaptureWithDivertedPacket(ctx context.Context, session *CaptureSession, clientAddr *net.UDPAddr, serverAddr *net.UDPAddr, payload []byte, ifIdx uint32, subIfIdx uint32) error {
 	filter := fmt.Sprintf("(ip.SrcAddr == %s and udp.SrcPort == %d) or (ip.DstAddr == %s and udp.DstPort == %d)",
 		clientAddr.IP.String(), clientAddr.Port,
 		clientAddr.IP.String(), clientAddr.Port)
@@ -31,10 +31,6 @@ func CaptureWithDivertedPacket(ctx context.Context, session *CaptureSession, cli
 	divertConnection, err := windivert.Open(filter, windivert.LayerNetwork, 405, 0)
 	if err != nil {
 		return err
-	}
-	// inform other threads that it is now safe to pass the join.ashx
-	if opened != nil {
-		close(opened)
 	}
 	// this must ALWAYS be executed
 	// if not, the WinDivert kernel driver may remain loaded
@@ -148,7 +144,7 @@ func genPayloadFilter(offset int, bytes []byte) string {
 	return build.String()
 }
 
-func CaptureFromWinDivert(ctx context.Context, session *CaptureSession) error {
+func CaptureFromDivert(ctx context.Context, session *CaptureSession) error {
 	filter := genPayloadFilter(0, append([]byte{0x7B}, peer.OfflineMessageID...))
 
 	divertConnection, err := windivert.Open(filter, windivert.LayerNetwork, 405, 0)
