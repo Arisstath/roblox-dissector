@@ -55,7 +55,7 @@ jobs:
 
     - name: Compile
       shell: msys2 {0}
-      run: git submodule update --init && go build -tags divert
+      run: git submodule update --init && go build -tags divert -ldflags "-H=windowsgui"
 
     - name: Copy artifacts
       shell: msys2 {0}
