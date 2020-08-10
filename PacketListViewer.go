@@ -295,7 +295,7 @@ func (m *PacketListViewer) AddFullPacket(context *peer.CommunicationContext, lay
 		paintItems(rootRow, gui.NewQColor3(255, 255, 0, 127))
 	}
 	if layers.Error != nil {
-    	// add this here for offline packets
+		// add this here for offline packets
 		paintItems(rootRow, gui.NewQColor3(255, 0, 0, 127))
 	}
 

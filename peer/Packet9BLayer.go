@@ -10,6 +10,7 @@ type Packet9BLayer struct {
 	Challenge uint32
 	Response  uint32
 	Script    []byte
+	Signature []byte
 }
 
 func (thisStream *extendedReader) DecodePacket9BLayer(reader PacketReader, layers *PacketLayers) (RakNetPacket, error) {
@@ -30,6 +31,10 @@ func (thisStream *extendedReader) DecodePacket9BLayer(reader PacketReader, layer
 			return layer, err
 		}
 		layer.Script, err = thisStream.readString(int(length))
+		if err != nil {
+			return layer, err
+		}
+		layer.Signature, err = thisStream.readString(32)
 		if err != nil {
 			return layer, err
 		}
@@ -62,7 +67,11 @@ func (layer *Packet9BLayer) Serialize(writer PacketWriter, stream *extendedWrite
 		if err != nil {
 			return err
 		}
-		return stream.allBytes(layer.Script)
+		err = stream.allBytes(layer.Script)
+		if err != nil {
+			return err
+		}
+		return stream.allBytes(layer.Signature)
 	}
 
 	err := stream.writeUint32BE(layer.Challenge)

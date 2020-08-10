@@ -246,13 +246,13 @@ func (b *extendedWriter) writeNewProtectedString(val rbxfile.ValueProtectedStrin
 func (b *extendedWriter) writeNewBinaryString(val rbxfile.ValueBinaryString) error {
 	return b.writeVarLengthString(string(val))
 }
-func (b *extendedWriter) writeNewContent(val rbxfile.ValueContent) error {
+func (b *extendedWriter) writeNewContent(val rbxfile.ValueContent, context *CommunicationContext) error {
 	foundPrefixId := uint8(0) // default to empty prefix, if none are found
 	suffix := string(val)
-	for i := 1; i < len(contentPrefixes); i++ {
-		if strings.HasPrefix(string(val), contentPrefixes[i]) {
+	for i := 1; i < len(context.NetworkSchema.ContentPrefixes); i++ {
+		if strings.HasPrefix(string(val), context.NetworkSchema.ContentPrefixes[i]) {
 			foundPrefixId = uint8(i)
-			suffix = strings.TrimPrefix(string(val), contentPrefixes[i])
+			suffix = strings.TrimPrefix(string(val), context.NetworkSchema.ContentPrefixes[i])
 			break
 		}
 	}

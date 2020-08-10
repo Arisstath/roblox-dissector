@@ -1,7 +1,7 @@
 package peer
 
 import (
-    "bytes"
+	"bytes"
 	"errors"
 	"fmt"
 	"log"
@@ -175,7 +175,7 @@ func (reader *DefaultPacketReader) readOffline(stream *extendedReader, packetTyp
 			layers.Error = fmt.Errorf("Failed to decode offline packet %02X: %s", packetType, err.Error())
 		}
 	} else {
-    	layers.Error = fmt.Errorf("Unknown offline packet %02X", packetType)
+		layers.Error = fmt.Errorf("Unknown offline packet %02X", packetType)
 	}
 }
 

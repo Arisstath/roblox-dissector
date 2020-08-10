@@ -16,6 +16,7 @@ func ShowPacket9B(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 	} else {
 		layerLayout.AddWidget(NewQLabelF("Unknown int: %08X", MainLayer.Int1), 0, 0)
 		layerLayout.AddWidget(NewQLabelF("Challenge: %08X", MainLayer.Challenge), 0, 0)
+		layerLayout.AddWidget(NewQLabelF("Signature: %X", MainLayer.Signature), 0, 0)
 		dumpScriptButton := widgets.NewQPushButton2("Dump challenge script bytecode", nil)
 		dumpScriptButton.ConnectReleased(func() {
 			scriptLocation := widgets.QFileDialog_GetSaveFileName(dumpScriptButton, "Dump script bytecode...", "", "RBXC files (*.rbxc)", "", 0)

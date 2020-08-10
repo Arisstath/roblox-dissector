@@ -93,6 +93,19 @@ func ShowPacket97(layerLayout *widgets.QVBoxLayout, context *peer.CommunicationC
 	instanceSchemaList.SortByColumn(0, core.Qt__AscendingOrder)
 	layerLayout.AddWidget(instanceSchemaList, 0, 0)
 
+	labelForPrefixes := NewQLabelF("Preshared Content prefixes (%d entries):", len(MainLayer.Schema.ContentPrefixes))
+	layerLayout.AddWidget(labelForPrefixes, 0, 0)
+	prefixList := widgets.NewQTreeView(nil)
+	prefixModel := NewProperSortModel(nil)
+	prefixModel.SetHorizontalHeaderLabels([]string{"Name"})
+	prefixRootNode := prefixModel.InvisibleRootItem()
+	for _, prefix := range MainLayer.Schema.ContentPrefixes {
+		prefixRootNode.AppendRow([]*gui.QStandardItem{NewQStandardItemF("%s", prefix)})
+	}
+	prefixList.SetModel(prefixModel)
+	prefixList.SetSelectionMode(0)
+	layerLayout.AddWidget(prefixList, 0, 0)
+
 	dumpButton := widgets.NewQPushButton2("Dump...", nil)
 	dumpButton.ConnectReleased(func() {
 		schemaLocation := widgets.QFileDialog_GetSaveFileName(dumpButton, "Save schema...", "", "TXT files (*.txt)", "", 0)

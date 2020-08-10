@@ -260,4 +260,6 @@ type NetworkSchema struct {
 	Properties []*NetworkPropertySchema
 	Events     []*NetworkEventSchema
 	Enums      []*NetworkEnumSchema
+
+	ContentPrefixes []string
 }
