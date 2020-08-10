@@ -190,10 +190,21 @@ func NewProxyWriter(ctx context.Context) *ProxyWriter {
 
 // ProxyClient should be called when the client sends a packet.
 func (writer *ProxyWriter) ProxyClient(payload []byte, layers *PacketLayers) {
+	if payload[0] < 0x80 {
+		// FIXME: Passthrough for initial connection packets until they're properly implemented.
+		writer.ServerHalf.Output.Emit("udp", payload)
+		return
+	}
+
 	writer.ClientHalf.ReadPacket(payload, layers)
 }
 
 // ProxyServer should be called when the server sends a packet.
 func (writer *ProxyWriter) ProxyServer(payload []byte, layers *PacketLayers) {
+	if payload[0] < 0x80 {
+		writer.ClientHalf.Output.Emit("udp", payload)
+		return
+	}
+
 	writer.ServerHalf.ReadPacket(payload, layers)
 }
