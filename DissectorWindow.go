@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
+	"os/exec"
+	"runtime"
 	"time"
 
 	"github.com/dreadl0ck/gopcap"
@@ -325,6 +328,24 @@ func (win *DissectorWindow) PromptCaptureLive() {
 	}
 }
 
+func openBrowser(url string) {
+	var err error
+
+	switch runtime.GOOS {
+	case "linux":
+		err = exec.Command("xdg-open", url).Start()
+	case "windows":
+		err = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+	case "darwin":
+		err = exec.Command("open", url).Start()
+	default:
+		err = fmt.Errorf("unsupported platform")
+	}
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
 func NewDissectorWindow() (*gtk.Window, error) {
 	winBuilder, err := gtk.BuilderNewFromFile("res/dissectorwindow.ui")
 	if err != nil {
@@ -505,6 +526,26 @@ Sala is tool for dissecting Roblox network packets.`)
 		dialog.Connect("response", (*gtk.AboutDialog).Destroy)
 		dialog.Run()
 	})
+
+	urls := map[string]string{
+		"viewgithubitem":  "https://github.com/Gskartwii/roblox-dissector",
+		"reportissueitem": "https://github.com/Gskartwii/roblox-dissector/issues/new",
+		"joindiscorditem": "https://discord.gg/zPbprb",
+	}
+
+	for itemName, url := range urls {
+		item, err := winBuilder.GetObject(itemName)
+		if err != nil {
+			return nil, err
+		}
+		menuItem, ok := item.(*gtk.MenuItem)
+		if !ok {
+			return nil, invalidUi(itemName)
+		}
+		menuItem.Connect("activate", func() {
+			openBrowser(url)
+		})
+	}
 
 	wind.SetIconFromFile("res/app-icon.ico")
 
