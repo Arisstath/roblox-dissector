@@ -547,6 +547,20 @@ Sala is tool for dissecting Roblox network packets.`)
 		})
 	}
 
+	applyFilterItem, err := winBuilder.GetObject("applyfilteritem")
+	if err != nil {
+		return nil, err
+	}
+	applyFilterMenuItem, ok := applyFilterItem.(*gtk.MenuItem)
+	if !ok {
+		return nil, invalidUi("applyfilteritem")
+	}
+	applyFilterMenuItem.Connect("activate", func() {
+		NewEditFilterWindow("", true, func(filterScript string, extraInfo bool) {
+			println(filterScript)
+		})
+	})
+
 	wind.SetIconFromFile("res/app-icon.ico")
 
 	return wind, nil
