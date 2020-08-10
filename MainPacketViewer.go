@@ -946,6 +946,48 @@ func schemaViewer(packet *peer.Packet97Layer) (gtk.IWidget, error) {
 	classesScrolled.SetVExpand(true)
 	box.Add(classesScrolled)
 
+	prefixLabel, err := newLabelF("Preshared Content prefixes (%d entries):", len(packet.Schema.ContentPrefixes))
+	if err != nil {
+		return nil, err
+	}
+	box.Add(prefixLabel)
+	prefixScrolled, err := gtk.ScrolledWindowNew(nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	prefixModel, err := gtk.ListStoreNew(
+		glib.TYPE_STRING,
+	)
+	if err != nil {
+		return nil, err
+	}
+	prefixView, err := gtk.TreeViewNewWithModel(prefixModel)
+	if err != nil {
+		return nil, err
+	}
+	prefixRenderer, err := gtk.CellRendererTextNew()
+	if err != nil {
+		return nil, err
+	}
+	for i, title := range []string{"Prefix"} {
+		col, err := gtk.TreeViewColumnNewWithAttribute(
+			title,
+			prefixRenderer,
+			"text",
+			i,
+		)
+		if err != nil {
+			return nil, err
+		}
+		prefixView.AppendColumn(col)
+	}
+	for _, prefix := range packet.Schema.ContentPrefixes {
+		prefixModel.InsertWithValues(nil, -1, []int{0}, []interface{}{prefix})
+	}
+	prefixScrolled.Add(prefixView)
+	prefixScrolled.SetVExpand(true)
+	box.Add(prefixScrolled)
+
 	dumpSchemaBtn, err := gtk.ButtonNew()
 	if err != nil {
 		return nil, err
@@ -1020,6 +1062,11 @@ func luauChallengeViewer(packet *peer.Packet9BLayer) (gtk.IWidget, error) {
 			return nil, err
 		}
 		box.Add(int1)
+		if err != nil {
+			return nil, err
+		}
+		signature, err := newLabelF("Signature: %X", packet.Signature)
+		box.Add(signature)
 	}
 	box.ShowAll()
 	return box, nil
