@@ -75,10 +75,10 @@
               </object>
             </child>
             <child>
-              <object class="GtkMenuItem" id="viewmenuitem">
+              <object class="GtkMenuItem" id="filtermenuitem">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="label" translatable="yes">_View</property>
+                <property name="label" translatable="yes">_Filter</property>
                 <property name="use_underline">True</property>
                 <child type="submenu">
                   <object class="GtkMenu" id="viewmenu">

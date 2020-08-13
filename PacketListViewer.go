@@ -1,9 +1,12 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/Gskartwii/roblox-dissector/peer"
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
+	"github.com/yuin/gopher-lua"
 )
 
 const (
@@ -19,7 +22,8 @@ const (
 )
 
 const (
-	KIND_MAIN = iota
+	KIND_UNINITIALIZED = iota // HACK: the model will initialize this field to 0
+	KIND_MAIN
 	KIND_DATA_REPLIC
 	KIND_DATA_JOIN_DATA_INSTANCE
 	KIND_DATA_STREAM_DATA_INSTANCE
@@ -46,6 +50,13 @@ type PacketListViewer struct {
 	packetStore       map[uint64]*peer.PacketLayers
 	packetTypeApplied map[uint64]bool
 	lazyLoadFakeRows  map[uint64]*gtk.TreePath
+
+	FilterScript       string
+	FilterUseExtraInfo bool
+	FilterLogWindow    *FilterLogWindow
+
+	filter      *lua.FunctionProto
+	filterState *lua.LState
 }
 
 func NewPacketListViewer(title string) (*PacketListViewer, error) {
@@ -56,6 +67,13 @@ func NewPacketListViewer(title string) (*PacketListViewer, error) {
 		lazyLoadFakeRows:  make(map[uint64]*gtk.TreePath),
 		updatePassthrough: true,
 	}
+
+	filterLogWindow, err := NewFilterLogWindow("Filter log: " + title)
+	if err != nil {
+		return nil, err
+	}
+	viewer.FilterLogWindow = filterLogWindow
+
 	model, err := gtk.TreeStoreNew(
 		glib.TYPE_INT64,   // COL_ID
 		glib.TYPE_STRING,  // COL_PACKET
@@ -192,7 +210,75 @@ func NewPacketListViewer(title string) (*PacketListViewer, error) {
 }
 
 func (viewer *PacketListViewer) FilterAcceptsPacket(model *gtk.TreeModelFilter, iter *gtk.TreeIter, userData interface{}) bool {
+	if viewer.filter == nil {
+		return true
+	}
+
+	baseId, err := viewer.uint64FromIter(iter, COL_ID, model)
+	if err != nil {
+		println("failed to base id for filtering")
+		return true
+	}
+	kind, err := viewer.uint64FromIter(iter, COL_PACKET_KIND, model)
+	if err != nil {
+		println("failed to get packet kind for filtering")
+		return true
+	}
+	if kind != KIND_MAIN {
+		return true
+	}
+	if packet, ok := viewer.packetStore[baseId]; ok {
+		var extraInfo *PacketInformation = nil
+		if viewer.FilterUseExtraInfo {
+			extraInfo = &PacketInformation{
+				Id:         baseId,
+				FromClient: packet.Root.FromClient,
+				HasError:   packet.Error != nil,
+				Incomplete: packet.Main == nil && packet.Error != nil,
+				WellFormed: packet.Main != nil,
+				Type:       packet.PacketType,
+			}
+		} else {
+			// when filtering, drop error packets by default
+			if packet.Main == nil {
+				return false
+			}
+			if packet.Error != nil {
+				return false
+			}
+		}
+
+		acc, err := FilterAcceptsPacket(viewer.filterState, viewer.filter, packet.Main, extraInfo)
+		if err != nil {
+			viewer.filter = nil
+			viewer.filterState = nil
+			viewer.FilterLogWindow.AppendLog(fmt.Sprintf("Filter error on packet %d\n", baseId))
+			viewer.FilterLogWindow.AppendLog(err.Error())
+			ShowError(viewer.mainWidget, err, fmt.Sprintf("Filter error on packet %d", baseId))
+			return true
+		}
+		return acc
+	}
 	return true
+}
+
+func (viewer *PacketListViewer) ApplyFilter(script string, useExtraInfo bool) {
+	viewer.FilterScript = script
+	viewer.FilterUseExtraInfo = useExtraInfo
+	if script == "" {
+		viewer.filter = nil
+		viewer.filterState = nil
+		viewer.filterModel.Refilter()
+		return
+	}
+	compiled, err := CompileFilter(script)
+	if err != nil {
+		ShowError(viewer.mainWidget, err, "Failed to compile filter")
+		return
+	}
+	viewer.filter = compiled
+	viewer.filterState = NewLuaFilterState(viewer.FilterLogWindow.AppendLog)
+	viewer.filterModel.Refilter()
 }
 
 func (viewer *PacketListViewer) NotifyOfflinePacket(layers *peer.PacketLayers) {
@@ -482,7 +568,14 @@ func (viewer *PacketListViewer) NotifyPacket(channel string, layers *peer.Packet
 	}
 }
 
-func (viewer *PacketListViewer) getGoValue(treeIter *gtk.TreeIter, col int) (interface{}, error) {
+func (viewer *PacketListViewer) getGoValue(treeIter *gtk.TreeIter, col int, model ...*gtk.TreeModelFilter) (interface{}, error) {
+	if len(model) == 1 {
+		id, err := model[0].GetValue(treeIter, col)
+		if err != nil {
+			return nil, err
+		}
+		return id.GoValue()
+	}
 	id, err := viewer.sortModel.GetValue(treeIter, col)
 	if err != nil {
 		return nil, err
@@ -490,8 +583,8 @@ func (viewer *PacketListViewer) getGoValue(treeIter *gtk.TreeIter, col int) (int
 	return id.GoValue()
 }
 
-func (viewer *PacketListViewer) uint64FromIter(treeIter *gtk.TreeIter, col int) (uint64, error) {
-	v, err := viewer.getGoValue(treeIter, col)
+func (viewer *PacketListViewer) uint64FromIter(treeIter *gtk.TreeIter, col int, model ...*gtk.TreeModelFilter) (uint64, error) {
+	v, err := viewer.getGoValue(treeIter, col, model...)
 	if err != nil {
 		return 0, err
 	}
