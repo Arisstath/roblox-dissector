@@ -16,6 +16,22 @@ import (
 	"github.com/gotk3/gotk3/gtk"
 )
 
+func connectUrl(winBuilder *gtk.Builder, itemName string, url string) error {
+	item, err := winBuilder.GetObject(itemName)
+	if err != nil {
+		return err
+	}
+	menuItem, ok := item.(*gtk.MenuItem)
+	if !ok {
+		return invalidUi(itemName)
+	}
+	menuItem.Connect("activate", func() {
+		println("open", itemName, url)
+		openBrowser(url)
+	})
+	return nil
+}
+
 func invalidUi(name string) error {
 	return errors.New("invalid ui (" + name + ")")
 }
@@ -532,21 +548,14 @@ Sala is tool for dissecting Roblox network packets.`)
 	urls := map[string]string{
 		"viewgithubitem":  "https://github.com/Gskartwii/roblox-dissector",
 		"reportissueitem": "https://github.com/Gskartwii/roblox-dissector/issues/new",
-		"joindiscorditem": "https://discord.gg/zPbprb",
+		"joindiscorditem": "https://discord.gg/UecHMfk",
 	}
 
 	for itemName, url := range urls {
-		item, err := winBuilder.GetObject(itemName)
+		err = connectUrl(winBuilder, itemName, url) // we have to do this because Go closures are not Lua closures
 		if err != nil {
 			return nil, err
 		}
-		menuItem, ok := item.(*gtk.MenuItem)
-		if !ok {
-			return nil, invalidUi(itemName)
-		}
-		menuItem.Connect("activate", func() {
-			openBrowser(url)
-		})
 	}
 
 	applyFilterItem, err := winBuilder.GetObject("applyfilteritem")
