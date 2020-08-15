@@ -18,5 +18,6 @@ require (
 	github.com/robloxapi/rbxapi v0.1.0
 	github.com/robloxapi/rbxapiref v0.2.0
 	github.com/robloxapi/rbxfile v0.1.2
+	github.com/yuin/gopher-lua v0.0.0-20200807101526-d70801a73ebe
 	go.universe.tf/netboot v0.0.0-20200701170418-ddb47796bc4c // indirect
 )

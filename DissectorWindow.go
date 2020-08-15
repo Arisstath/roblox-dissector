@@ -16,6 +16,22 @@ import (
 	"github.com/gotk3/gotk3/gtk"
 )
 
+func connectUrl(winBuilder *gtk.Builder, itemName string, url string) error {
+	item, err := winBuilder.GetObject(itemName)
+	if err != nil {
+		return err
+	}
+	menuItem, ok := item.(*gtk.MenuItem)
+	if !ok {
+		return invalidUi(itemName)
+	}
+	menuItem.Connect("activate", func() {
+		println("open", itemName, url)
+		openBrowser(url)
+	})
+	return nil
+}
+
 func invalidUi(name string) error {
 	return errors.New("invalid ui (" + name + ")")
 }
@@ -32,6 +48,7 @@ type DissectorWindow struct {
 	stopButton            *gtk.ToolButton
 	pauseButton           *gtk.ToolButton
 	browseDataModelButton *gtk.ToolButton
+	filterMenuItem        *gtk.MenuItem
 }
 
 func ShowError(wdg gtk.IWidget, err error, extrainfo string) {
@@ -123,6 +140,7 @@ func (win *DissectorWindow) UpdateActionsForPage(curPage int) {
 		win.stopButton.SetSensitive(false)
 		win.pauseButton.SetSensitive(false)
 		win.browseDataModelButton.SetSensitive(false)
+		win.filterMenuItem.SetSensitive(false)
 		return
 	}
 
@@ -131,6 +149,7 @@ func (win *DissectorWindow) UpdateActionsForPage(curPage int) {
 	win.stopButton.SetSensitive(curSession.IsCapturing)
 	win.pauseButton.SetSensitive(curSession.IsCapturing)
 	win.browseDataModelButton.SetSensitive(true)
+	win.filterMenuItem.SetSensitive(true)
 
 	pauseButtonIcon, err := win.pauseButton.GetIconWidget()
 	if err != nil {
@@ -450,7 +469,6 @@ func NewDissectorWindow() (*gtk.Window, error) {
 	}
 	browseDataModelButton.Connect("clicked", dwin.BrowseDataModelClicked)
 	dwin.browseDataModelButton = browseDataModelButton
-	dwin.UpdateActionsEnabled()
 
 	forgetAcksItem_, err := winBuilder.GetObject("forgetacksitem")
 	if err != nil {
@@ -530,21 +548,14 @@ Sala is tool for dissecting Roblox network packets.`)
 	urls := map[string]string{
 		"viewgithubitem":  "https://github.com/Gskartwii/roblox-dissector",
 		"reportissueitem": "https://github.com/Gskartwii/roblox-dissector/issues/new",
-		"joindiscorditem": "https://discord.gg/zPbprb",
+		"joindiscorditem": "https://discord.gg/UecHMfk",
 	}
 
 	for itemName, url := range urls {
-		item, err := winBuilder.GetObject(itemName)
+		err = connectUrl(winBuilder, itemName, url) // we have to do this because Go closures are not Lua closures
 		if err != nil {
 			return nil, err
 		}
-		menuItem, ok := item.(*gtk.MenuItem)
-		if !ok {
-			return nil, invalidUi(itemName)
-		}
-		menuItem.Connect("activate", func() {
-			openBrowser(url)
-		})
 	}
 
 	applyFilterItem, err := winBuilder.GetObject("applyfilteritem")
@@ -556,10 +567,49 @@ Sala is tool for dissecting Roblox network packets.`)
 		return nil, invalidUi("applyfilteritem")
 	}
 	applyFilterMenuItem.Connect("activate", func() {
-		NewEditFilterWindow("", true, func(filterScript string, extraInfo bool) {
-			println(filterScript)
-		})
+		curPage := dwin.tabs.GetCurrentPage()
+		currViewer := dwin.tabIndexToListViewer[curPage]
+		NewEditFilterWindow(currViewer.FilterScript, currViewer.FilterUseExtraInfo, currViewer.ApplyFilter)
 	})
+	viewFilterLogItem, err := winBuilder.GetObject("viewfilterlogitem")
+	if err != nil {
+		return nil, err
+	}
+	viewFilterLogMenuItem, ok := viewFilterLogItem.(*gtk.MenuItem)
+	if !ok {
+		return nil, invalidUi("viewfilterlogitem")
+	}
+	viewFilterLogMenuItem.Connect("activate", func() {
+		curPage := dwin.tabs.GetCurrentPage()
+		currViewer := dwin.tabIndexToListViewer[curPage]
+		currViewer.FilterLogWindow.Show()
+	})
+	resetFilterItem, err := winBuilder.GetObject("resetfilteritem")
+	if err != nil {
+		return nil, err
+	}
+	resetFilterMenuItem, ok := resetFilterItem.(*gtk.MenuItem)
+	if !ok {
+		return nil, invalidUi("resetfilteritem")
+	}
+	resetFilterMenuItem.Connect("activate", func() {
+		curPage := dwin.tabs.GetCurrentPage()
+		currViewer := dwin.tabIndexToListViewer[curPage]
+		currViewer.ApplyFilter("", false)
+	})
+
+	filterItem, err := winBuilder.GetObject("filtermenuitem")
+	if err != nil {
+		return nil, err
+	}
+	filterMenuItem, ok := filterItem.(*gtk.MenuItem)
+	if !ok {
+		return nil, invalidUi("filtermenuitem")
+	}
+	filterMenuItem.SetSensitive(false)
+	dwin.filterMenuItem = filterMenuItem
+
+	dwin.UpdateActionsEnabled()
 
 	wind.SetIconFromFile("res/app-icon.ico")
 
