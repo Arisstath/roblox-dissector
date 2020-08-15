@@ -8,6 +8,8 @@
       <object class="GtkPaned" id="instanceviewpanes">
         <property name="visible">True</property>
         <property name="can_focus">True</property>
+        <property name="position">128</property>
+        <property name="wide_handle">True</property>
         <child>
           <object class="GtkScrolledWindow" id="instancetreecontainer">
             <property name="visible">True</property>

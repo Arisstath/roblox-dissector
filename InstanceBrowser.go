@@ -9,10 +9,13 @@ import (
 	"github.com/gotk3/gotk3/gtk"
 	"github.com/gotk3/gotk3/pango"
 	"github.com/robloxapi/rbxfile"
+	"github.com/robloxapi/rbxfile/xml"
 
 	"encoding/hex"
 	"fmt"
+	"os"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -582,4 +585,408 @@ func NewPropertyEventViewer() (*PropEventViewer, error) {
 	viewer.version = version
 
 	return viewer, nil
+}
+
+func addInstances(dataTreeModel *gtk.TreeStore, parent *gtk.TreeIter, instances []*datamodel.Instance) {
+	for _, inst := range instances {
+		var thisRow gtk.TreeIter
+		dataTreeModel.InsertWithValues(&thisRow, parent, -1, []int{0, 1, 2, 3, 4}, []interface{}{
+			inst.Name(),
+			inst.ClassName,
+			inst.Ref.String(),
+			inst.Ref.Scope,
+			uint64(inst.Ref.Id),
+		})
+		addInstances(dataTreeModel, &thisRow, inst.Children)
+	}
+}
+
+type InstanceProperty struct {
+	Instance *rbxfile.Instance
+	Name     string
+}
+
+func findScripts(instances []*rbxfile.Instance, propertyList []InstanceProperty) []InstanceProperty {
+	for _, instance := range instances {
+		for name, property := range instance.Properties {
+			thisType := property.Type()
+			if thisType == datamodel.TypeSignedProtectedString {
+				propertyList = append(propertyList, InstanceProperty{
+					Instance: instance,
+					Name:     name,
+				})
+			}
+		}
+		propertyList = findScripts(instance.Children, propertyList)
+	}
+	return propertyList
+}
+
+func instName(instance *rbxfile.Instance) string {
+	name := instance.Get("Name")
+	if name == nil {
+		return instance.ClassName
+	}
+	var nameStr rbxfile.ValueString
+	var ok bool
+	if nameStr, ok = name.(rbxfile.ValueString); !ok {
+		return instance.ClassName
+	}
+	return string(nameStr)
+}
+
+func getFullName(instance *rbxfile.Instance) string {
+	if instance == nil {
+		return "nil"
+	}
+	parts := make([]string, 0, 8)
+	for instance != nil {
+		parts = append([]string{instName(instance)}, parts...)
+		instance = instance.Parent()
+	}
+	var builder strings.Builder
+	for _, part := range parts {
+		builder.WriteByte('.')
+		builder.WriteString(part)
+	}
+	return builder.String()[1:]
+}
+
+func dumpScripts(location string, instances []*rbxfile.Instance, encountered map[string]int) error {
+	instList := findScripts(instances, nil)
+
+	for _, instProp := range instList {
+		instFullName := getFullName(instProp.Instance)
+		name := fmt.Sprintf("%s/%s.rbxc", location, instFullName)
+		if count, ok := encountered[name]; ok {
+			oldName := name
+			name = fmt.Sprintf("%s/%s.%d.rbxc", location, instFullName, count)
+			encountered[oldName] = count + 1
+		} else {
+			encountered[name] = 1
+		}
+
+		file, err := os.Create(name)
+		if err != nil {
+			return err
+		}
+		_, err = file.Write([]byte(instProp.Instance.Properties[instProp.Name].(datamodel.ValueSignedProtectedString).Value))
+		if err != nil {
+			return err
+		}
+		err = file.Close()
+		if err != nil {
+			return err
+		}
+
+		// HACK: We clear the script source here to prevent issues with the XML parser
+		// This may be unexpected in the case of Studio, where the source code is not protected
+		delete(instProp.Instance.Properties, instProp.Name)
+	}
+	return nil
+}
+
+func DumpDataModel(parent gtk.IWidget, context *peer.CommunicationContext, location string) {
+	writableClone := context.DataModel.ToRbxfile()
+
+	writer, err := os.OpenFile(location+"/datamodel.rbxlx", os.O_RDWR|os.O_CREATE, 0666)
+	defer writer.Close()
+	if err != nil {
+		ShowError(parent, err, "Error while creating RBXLX")
+		return
+	}
+
+	scriptData, err := os.OpenFile(location+"/scriptKeys", os.O_RDWR|os.O_CREATE, 0666)
+	defer scriptData.Close()
+	if err != nil {
+		ShowError(parent, err, "Error while dumping script keys")
+		return
+	}
+
+	_, err = fmt.Fprintf(scriptData, "Script key: %d\nCore script key: %d", context.ScriptKey, context.CoreScriptKey)
+	if err != nil {
+		ShowError(parent, err, "Error while dumping script keys")
+		return
+	}
+
+	err = dumpScripts(location, writableClone.Instances, make(map[string]int))
+	if err != nil {
+		ShowError(parent, err, "Error while dumping scripts")
+		return
+	}
+
+	err = xml.Serialize(writer, nil, writableClone)
+	if err != nil {
+		ShowError(parent, err, "Error while serializing place")
+		return
+	}
+}
+
+func BrowseDataModel(ctx *peer.CommunicationContext) error {
+	builder, err := gtk.BuilderNewFromFile("res/instancebrowser.ui")
+	if err != nil {
+		return err
+	}
+	mainWidget_, err := builder.GetObject("instanceviewpanes")
+	if err != nil {
+		return err
+	}
+	mainWidget, ok := mainWidget_.(*gtk.Paned)
+	if !ok {
+		return invalidUi("instanceviewpanes")
+	}
+
+	mainContainer_, err := builder.GetObject("instanceviewcontainer")
+	if err != nil {
+		return err
+	}
+	mainContainer, ok := mainContainer_.(*gtk.Window)
+	if !ok {
+		return invalidUi("instanceviewcontainer")
+	}
+	mainContainer.Remove(mainWidget)
+
+	subContainer_, err := builder.GetObject("instanceinfobox")
+	if err != nil {
+		return err
+	}
+	subContainer, ok := subContainer_.(*gtk.Box)
+	if !ok {
+		return invalidUi("instanceinfobox")
+	}
+
+	propertiesViewContainer_, err := builder.GetObject("propertiescontainer")
+	if err != nil {
+		return err
+	}
+	propertiesContainer, ok := propertiesViewContainer_.(*gtk.ScrolledWindow)
+	if !ok {
+		return invalidUi("properties viewer container")
+	}
+
+	emptyPixbuf, err := gdk.PixbufNew(0, false, 8, 1, 1)
+	if err != nil {
+		return err
+	}
+	model, err := gtk.TreeStoreNew(
+		glib.TYPE_STRING,               // COL_PROP_NAME
+		glib.TYPE_STRING,               // COL_PROP_TYPE
+		glib.TYPE_STRING,               // COL_PROP_VALUE
+		glib.TYPE_BOOLEAN,              // COL_SHOW_PIXBUF
+		emptyPixbuf.TypeFromInstance(), // COL_PIXBUF
+		glib.TYPE_STRING,               // COL_PROP_ADDITIONAL_VALUE
+	)
+	if err != nil {
+		return err
+	}
+	treeView, err := gtk.TreeViewNewWithModel(model)
+	if err != nil {
+		return err
+	}
+	treeView.SetHExpand(true)
+	propertiesContainer.Add(treeView)
+
+	for i, colName := range []string{"Name", "Type"} {
+		colRenderer, err := gtk.CellRendererTextNew()
+		if err != nil {
+			return err
+		}
+		col, err := gtk.TreeViewColumnNewWithAttribute(
+			colName,
+			colRenderer,
+			"text",
+			i,
+		)
+		if err != nil {
+			return err
+		}
+		col.SetSortColumnID(i)
+
+		treeView.AppendColumn(col)
+	}
+
+	colorRenderer, err := gtk.CellRendererPixbufNew()
+	if err != nil {
+		return err
+	}
+	colRenderer, err := gtk.CellRendererTextNew()
+	if err != nil {
+		return err
+	}
+	col, err := gtk.TreeViewColumnNew()
+	if err != nil {
+		return err
+	}
+	colRenderer.Set("ellipsize", int(pango.ELLIPSIZE_END))
+	col.PackStart(colorRenderer, false)
+	col.PackStart(colRenderer, true)
+	col.SetSpacing(4)
+	col.SetTitle("Value")
+	col.AddAttribute(colRenderer, "text", COL_PROP_VALUE)
+	col.AddAttribute(colorRenderer, "visible", COL_SHOW_PIXBUF)
+	col.AddAttribute(colorRenderer, "pixbuf", COL_PIXBUF)
+	col.SetSortColumnID(COL_PROP_VALUE)
+	treeView.AppendColumn(col)
+
+	err = bindValueCopy(model, treeView)
+	if err != nil {
+		return err
+	}
+
+	instanceBasicInfo_, err := builder.GetObject("instancebasicinfobox")
+	if err != nil {
+		return err
+	}
+	instanceBasicInfo, ok := instanceBasicInfo_.(*gtk.Box)
+	if !ok {
+		return invalidUi("instancebasicinfobox")
+	}
+	subContainer.Remove(instanceBasicInfo)
+
+	instanceTreeContainer_, err := builder.GetObject("instancetreecontainer")
+	if err != nil {
+		return err
+	}
+	instanceTreeContainer, ok := instanceTreeContainer_.(*gtk.ScrolledWindow)
+	if !ok {
+		return invalidUi("instancetreecontainer")
+	}
+	dataTreeModel, err := gtk.TreeStoreNew(
+		glib.TYPE_STRING, // Name
+		glib.TYPE_STRING, // ClassName
+		glib.TYPE_STRING, // ID
+		glib.TYPE_STRING, // scope (hidden)
+		glib.TYPE_UINT64, // id (hidden)
+	)
+	if err != nil {
+		return err
+	}
+	dataTreeView, err := gtk.TreeViewNewWithModel(dataTreeModel)
+	if err != nil {
+		return err
+	}
+
+	for i, colName := range []string{"Name", "Class name", "ID"} {
+		colRenderer, err := gtk.CellRendererTextNew()
+		if err != nil {
+			return err
+		}
+		col, err := gtk.TreeViewColumnNewWithAttribute(
+			colName,
+			colRenderer,
+			"text",
+			i,
+		)
+		if err != nil {
+			return err
+		}
+		col.SetSortColumnID(i)
+
+		dataTreeView.AppendColumn(col)
+	}
+
+	addInstances(dataTreeModel, nil, ctx.DataModel.Instances)
+
+	sel, err := dataTreeView.GetSelection()
+	if err != nil {
+		return err
+	}
+	sel.Connect("changed", func(sel *gtk.TreeSelection) {
+		model.Clear()
+		_, iter, ok := sel.GetSelected()
+		if !ok {
+			return
+		}
+
+		scope_, err := dataTreeModel.GetValue(iter, 3)
+		if err != nil {
+			println("error finding instance:", err.Error())
+			return
+		}
+		scope, err := scope_.GoValue()
+		if err != nil {
+			println("error finding instance:", err.Error())
+			return
+		}
+		id_, err := dataTreeModel.GetValue(iter, 4)
+		if err != nil {
+			println("error finding instance:", err.Error())
+			return
+		}
+		id, err := id_.GoValue()
+		if err != nil {
+			println("error finding instance:", err.Error())
+			return
+		}
+
+		ref := datamodel.Reference{
+			Scope: scope.(string),
+			Id:    uint32(id.(uint64)),
+		}
+		instance, err := ctx.InstancesByReference.TryGetInstance(ref)
+		if err != nil {
+			println("error finding instance:", err.Error())
+			return
+		}
+		for name, value := range instance.Properties {
+			appendValueRow(model, nil, name, value, treeView)
+		}
+	})
+
+	dataTreeView.SetVExpand(true)
+	dataTreeView.SetHExpand(true)
+	instanceTreeContainer.Add(dataTreeView)
+
+	win, err := gtk.WindowNew(gtk.WINDOW_TOPLEVEL)
+	if err != nil {
+		return err
+	}
+
+	box, err := boxWithMargin()
+	if err != nil {
+		return err
+	}
+	box.Add(mainWidget)
+
+	buttonRow, err := gtk.ButtonBoxNew(gtk.ORIENTATION_HORIZONTAL)
+	if err != nil {
+		return err
+	}
+	buttonRow.SetLayout(gtk.BUTTONBOX_END)
+	buttonRow.SetSpacing(8)
+	loadFromFile, err := gtk.ButtonNewWithLabel("Dump as RBXLX and scripts (RBXC)...")
+	if err != nil {
+		return err
+	}
+	loadFromFile.Connect("clicked", func() {
+		chooser, err := gtk.FileChooserNativeDialogNew("Choose empty folder", win, gtk.FILE_CHOOSER_ACTION_CREATE_FOLDER, "Choose", "Cancel")
+		if err != nil {
+			ShowError(win, err, "Making chooser")
+			return
+		}
+
+		resp := chooser.NativeDialog.Run()
+		if gtk.ResponseType(resp) == gtk.RESPONSE_ACCEPT {
+			folderName := chooser.GetFilename()
+			DumpDataModel(win, ctx, folderName)
+		}
+	})
+	buttonRow.Add(loadFromFile)
+
+	okButton, err := gtk.ButtonNewWithLabel("OK")
+	if err != nil {
+		return err
+	}
+	okButton.Connect("clicked", func() {
+		win.Destroy()
+	})
+	buttonRow.Add(okButton)
+
+	box.Add(buttonRow)
+	win.Add(box)
+	win.SetSizeRequest(800, 640)
+	win.SetTitle("DataModel browser")
+	win.ShowAll()
+
+	return nil
 }

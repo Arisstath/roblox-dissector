@@ -32,6 +32,8 @@ const (
 )
 
 type PacketListViewer struct {
+	Conversation *Conversation
+
 	updatePassthrough bool
 	queuedChannels    []string
 	queuedLayers      []*peer.PacketLayers
@@ -59,8 +61,9 @@ type PacketListViewer struct {
 	filterState *lua.LState
 }
 
-func NewPacketListViewer(title string) (*PacketListViewer, error) {
+func NewPacketListViewer(title string, conversation *Conversation) (*PacketListViewer, error) {
 	viewer := &PacketListViewer{
+		Conversation:      conversation,
 		packetRows:        make(map[uint64]*gtk.TreePath),
 		packetStore:       make(map[uint64]*peer.PacketLayers),
 		packetTypeApplied: make(map[uint64]bool),

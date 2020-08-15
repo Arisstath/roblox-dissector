@@ -37,7 +37,7 @@ func AddressEq(a *net.UDPAddr, b *net.UDPAddr) bool {
 }
 
 func NewCaptureSession(name string, cancelFunc context.CancelFunc, listViewerCallback func(*CaptureSession, *PacketListViewer, error)) (*CaptureSession, error) {
-	initialViewer, err := NewPacketListViewer(fmt.Sprintf("%s#%d", name, 1))
+	initialViewer, err := NewPacketListViewer(fmt.Sprintf("%s#%d", name, 1), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -105,12 +105,13 @@ func (session *CaptureSession) AddConversation(conv *Conversation) (*PacketListV
 	if !session.InitialViewerOccupied {
 		session.InitialViewerOccupied = true
 		viewer = session.ListViewers[0]
+		viewer.Conversation = conv
 	} else {
 		title := fmt.Sprintf("%s#%d", session.Name, session.ViewerCounter)
 		session.ViewerCounter++
 
 		glib.IdleAdd(func() bool {
-			viewer, err = NewPacketListViewer(title)
+			viewer, err = NewPacketListViewer(title, conv)
 			session.ListViewerCallback(session, viewer, err)
 			return false
 		})

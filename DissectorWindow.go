@@ -148,7 +148,7 @@ func (win *DissectorWindow) UpdateActionsForPage(curPage int) {
 	curViewer := win.tabIndexToListViewer[curPage]
 	win.stopButton.SetSensitive(curSession.IsCapturing)
 	win.pauseButton.SetSensitive(curSession.IsCapturing)
-	win.browseDataModelButton.SetSensitive(true)
+	win.browseDataModelButton.SetSensitive(curViewer.Conversation != nil)
 	win.filterMenuItem.SetSensitive(true)
 
 	pauseButtonIcon, err := win.pauseButton.GetIconWidget()
@@ -182,7 +182,9 @@ func (win *DissectorWindow) PauseClicked() {
 }
 
 func (win *DissectorWindow) BrowseDataModelClicked() {
-	// nop
+	curPage := win.tabs.GetCurrentPage()
+	currViewer := win.tabIndexToListViewer[curPage]
+	BrowseDataModel(currViewer.Conversation.Context)
 }
 
 func (win *DissectorWindow) CaptureFromPcapDevice(name string) {
