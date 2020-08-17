@@ -615,6 +615,19 @@ Sala is tool for dissecting Roblox network packets.`)
 	filterMenuItem.SetSensitive(false)
 	dwin.filterMenuItem = filterMenuItem
 
+	startServerItem_, err := winBuilder.GetObject("startserveritem")
+	if err != nil {
+		return nil, err
+	}
+	startServerItem, ok := startServerItem_.(*gtk.MenuItem)
+	if !ok {
+		return nil, invalidUi("startserveritem")
+	}
+	startServerItem.Connect("activate", func() {
+		NewServerStartWidget(func(schemaLocation string, rbxlLocation string, port uint16) {
+		})
+	})
+
 	dwin.UpdateActionsEnabled()
 
 	wind.SetIconFromFile("res/app-icon.ico")
