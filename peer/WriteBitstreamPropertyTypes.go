@@ -432,6 +432,7 @@ var typeToNetworkConvTable = map[rbxfile.Type]uint8{
 	rbxfile.TypeInt64:                    PropertyTypeInt64,
 	datamodel.TypePathWaypoint:           PropertyTypePathWaypoint,
 	datamodel.TypeDeferredString:         PropertyTypeSharedString,
+	datamodel.TypeDateTime:               PropertyTypeDateTime,
 }
 
 func typeToNetwork(val rbxfile.Value) (uint8, bool) {
@@ -536,6 +537,8 @@ func (b *extendedWriter) writeSerializedValueGeneric(val rbxfile.Value, valueTyp
 		err = b.writePathWaypoint(val.(datamodel.ValuePathWaypoint))
 	case PropertyTypeSharedString:
 		err = b.writeSharedString(val.(*datamodel.ValueDeferredString), deferred)
+	case PropertyTypeDateTime:
+		err = b.writeDateTime(val.(datamodel.ValueDateTime))
 	default:
 		return errors.New("Unsupported property type: " + strconv.Itoa(int(valueType)))
 	}
@@ -735,6 +738,10 @@ func (b *extendedWriter) writeSharedString(val *datamodel.ValueDeferredString, d
 	deferred.Defer(val)
 
 	return nil
+}
+
+func (b *extendedWriter) writeDateTime(val datamodel.ValueDateTime) error {
+	return b.writeUint64BE(val.UnixMilliseconds)
 }
 
 func (b *extendedWriter) writeCoordsMode0(val rbxfile.ValueVector3) error {

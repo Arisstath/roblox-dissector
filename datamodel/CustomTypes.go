@@ -52,6 +52,7 @@ const (
 	TypePathWaypoint          = rbxfile.TypeSharedString + 1 + iota
 	TypeDeferredString        = rbxfile.TypeSharedString + 1 + iota
 	TypeSignedProtectedString = rbxfile.TypeSharedString + 1 + iota
+	TypeDateTime = rbxfile.TypeSharedString + 1 + iota
 )
 
 var CustomTypeNames = map[rbxfile.Type]string{
@@ -71,6 +72,7 @@ var CustomTypeNames = map[rbxfile.Type]string{
 	TypeVector3int32:           "Vector3int32",
 	TypePathWaypoint:           "PathWaypoint",
 	TypeDeferredString:         "SharedString (deferred)",
+	TypeDateTime: "DateTime",
 }
 
 type ValueColorSequenceKeypoint rbxfile.ValueColorSequenceKeypoint
@@ -118,6 +120,10 @@ type ValueDeferredString struct {
 type ValueSignedProtectedString struct {
 	Signature []byte
 	Value     []byte
+}
+
+type ValueDateTime struct {
+    UnixMilliseconds uint64
 }
 
 func TypeString(val rbxfile.Value) string {
@@ -363,4 +369,14 @@ func (x ValueSignedProtectedString) Copy() rbxfile.Value {
 	newString.Signature = append(newString.Signature, x.Signature...)
 	newString.Value = append(newString.Value, x.Value...)
 	return newString
+}
+
+func (x ValueDateTime) Type() rbxfile.Type {
+    return TypeDateTime
+}
+func (x ValueDateTime) String() string {
+    return fmt.Sprintf("%d", x.UnixMilliseconds)
+}
+func (x ValueDateTime) Copy() rbxfile.Value {
+    return ValueDateTime{UnixMilliseconds: x.UnixMilliseconds}
 }

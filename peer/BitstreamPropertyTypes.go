@@ -1188,6 +1188,16 @@ func (b *extendedReader) readSharedString(deferred deferredStrings) (*datamodel.
 	return deferred.NewValue(md5), nil
 }
 
+func (b *extendedReader) readDateTime() (datamodel.ValueDateTime, error) {
+	var out datamodel.ValueDateTime
+	val, err := b.readUint64BE()
+	if err != nil {
+		return out, err
+	}
+	out.UnixMilliseconds = val
+	return out, nil
+}
+
 func (b *extendedReader) readPhysicsVelocity() (rbxfile.ValueVector3, error) {
 	var val rbxfile.ValueVector3
 	flags, err := b.readUint8()
@@ -1289,6 +1299,8 @@ func (b *extendedReader) readSerializedValueGeneric(reader PacketReader, valueTy
 		result, err = b.readPathWaypoint()
 	case PropertyTypeSharedString:
 		result, err = b.readSharedString(deferred)
+	case PropertyTypeDateTime:
+		result, err = b.readDateTime()
 	default:
 		err = fmt.Errorf("unsupported value type %d", valueType)
 	}

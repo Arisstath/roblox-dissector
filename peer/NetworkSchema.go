@@ -102,6 +102,8 @@ const (
 	PropertyTypeSharedString = iota
 	// PropertyTypeLuauString is the type for Luau ProtectedStrings
 	PropertyTypeLuauString = iota
+	// PropertyTypeDateTime is the type for DateTime values
+	PropertyTypeDateTime = iota
 )
 
 // TypeNames is a list of names for value types
@@ -152,6 +154,7 @@ var TypeNames = map[uint8]string{
 	PropertyTypePathWaypoint:           "PathWaypoint",
 	PropertyTypeSharedString:           "SharedString",
 	PropertyTypeLuauString:             "Luau ProtectedString",
+	PropertyTypeDateTime:               "DateTime",
 }
 
 // NetworkArgumentSchema describes the schema of one event argument
