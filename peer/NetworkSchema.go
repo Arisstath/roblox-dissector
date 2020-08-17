@@ -104,6 +104,8 @@ const (
 	PropertyTypeLuauString = iota
 	// PropertyTypeDateTime is the type for DateTime values
 	PropertyTypeDateTime = iota
+	// PropertyTypeOptimizedString is the type for string values that can be loaded from a lookup table
+	PropertyTypeOptimizedString = iota
 )
 
 // TypeNames is a list of names for value types
@@ -155,6 +157,7 @@ var TypeNames = map[uint8]string{
 	PropertyTypeSharedString:           "SharedString",
 	PropertyTypeLuauString:             "Luau ProtectedString",
 	PropertyTypeDateTime:               "DateTime",
+	PropertyTypeOptimizedString:        "string (optimized)",
 }
 
 // NetworkArgumentSchema describes the schema of one event argument
@@ -264,5 +267,6 @@ type NetworkSchema struct {
 	Events     []*NetworkEventSchema
 	Enums      []*NetworkEnumSchema
 
-	ContentPrefixes []string
+	ContentPrefixes  []string
+	OptimizedStrings []string
 }

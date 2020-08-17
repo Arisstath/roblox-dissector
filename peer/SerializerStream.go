@@ -140,6 +140,8 @@ func (b *extendedWriter) WriteSerializedValue(val rbxfile.Value, writer PacketWr
 		err = b.writeNewDictionary(val.(datamodel.ValueDictionary), writer, deferred)
 	case PropertyTypeMap:
 		err = b.writeNewMap(val.(datamodel.ValueMap), writer, deferred)
+	case PropertyTypeOptimizedString:
+		err = b.writeOptimizedString(val.(rbxfile.ValueString), writer.Context())
 	default:
 		return b.writeSerializedValueGeneric(val, valueType, deferred)
 	}
@@ -287,6 +289,8 @@ func (b *joinSerializeWriter) WriteSerializedValue(val rbxfile.Value, writer Pac
 		err = b.WriteObject(val.(datamodel.ValueReference).Instance, writer)
 	case PropertyTypeContent:
 		err = b.writeNewContent(val.(rbxfile.ValueContent))
+	case PropertyTypeOptimizedString:
+		err = b.writeOptimizedString(val.(rbxfile.ValueString), writer.Context())
 	default:
 		return b.writeSerializedValueGeneric(val, valueType, deferred)
 	}

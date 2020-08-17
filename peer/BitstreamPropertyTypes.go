@@ -1198,6 +1198,42 @@ func (b *extendedReader) readDateTime() (datamodel.ValueDateTime, error) {
 	return out, nil
 }
 
+func (b *extendedReader) readOptimizedString(context *CommunicationContext) (rbxfile.ValueString, error) {
+	header, err := b.ReadByte()
+	if err != nil {
+		return nil, err
+	}
+	if header <= 0x7F {
+		length := int(header)
+		if header == 0x7F {
+			newLength, err := b.readUintUTF8()
+			if err != nil {
+				return nil, err
+			}
+			length = int(newLength)
+		}
+		str, err := b.readASCII(length)
+		if err != nil {
+			return nil, err
+		}
+		return rbxfile.ValueString(str), nil
+	}
+
+	header &= 0x7F
+	presharedId := int(header)
+	if header == 0x7F {
+		newId, err := b.readUintUTF8()
+		if err != nil {
+			return nil, err
+		}
+		presharedId = int(newId)
+	}
+	if presharedId >= len(context.NetworkSchema.OptimizedStrings) {
+		return nil, errors.New("preshared string id oob")
+	}
+	return rbxfile.ValueString(context.NetworkSchema.OptimizedStrings[presharedId]), nil
+}
+
 func (b *extendedReader) readPhysicsVelocity() (rbxfile.ValueVector3, error) {
 	var val rbxfile.ValueVector3
 	flags, err := b.readUint8()
@@ -1301,6 +1337,8 @@ func (b *extendedReader) readSerializedValueGeneric(reader PacketReader, valueTy
 		result, err = b.readSharedString(deferred)
 	case PropertyTypeDateTime:
 		result, err = b.readDateTime()
+	case PropertyTypeOptimizedString:
+		result, err = b.readOptimizedString(reader.Context())
 	default:
 		err = fmt.Errorf("unsupported value type %d", valueType)
 	}

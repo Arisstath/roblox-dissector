@@ -448,7 +448,7 @@ func isCorrectType(val rbxfile.Value, expected uint8) bool {
 		return false
 	}
 	switch expected {
-	case PropertyTypeString, PropertyTypeStringNoCache:
+	case PropertyTypeString, PropertyTypeStringNoCache, PropertyTypeOptimizedString:
 		return typ == PropertyTypeString
 	case PropertyTypeProtectedString0, PropertyTypeProtectedString1, PropertyTypeProtectedString2, PropertyTypeProtectedString3:
 		return typ == PropertyTypeProtectedString0
@@ -742,6 +742,34 @@ func (b *extendedWriter) writeSharedString(val *datamodel.ValueDeferredString, d
 
 func (b *extendedWriter) writeDateTime(val datamodel.ValueDateTime) error {
 	return b.writeUint64BE(val.UnixMilliseconds)
+}
+
+func (b *extendedWriter) writeOptimizedString(val rbxfile.ValueString, context *CommunicationContext) error {
+	for i := 0; i < len(context.NetworkSchema.OptimizedStrings); i++ {
+		if context.NetworkSchema.OptimizedStrings[i] == string(val) {
+			if i < 0x7F {
+				return b.WriteByte(0x80 | uint8(i))
+			}
+			err := b.WriteByte(0x80 | 0x7F)
+			if err != nil {
+				return err
+			}
+			return b.writeVarint64(uint64(i))
+		}
+	}
+	// Not found in the preshared ids
+	if len(string(val)) < 0x7F {
+		err := b.WriteByte(uint8(len(string(val))))
+		if err != nil {
+			return err
+		}
+		return b.writeASCII(string(val))
+	}
+	err := b.writeVarint64(uint64(len(string(val))))
+	if err != nil {
+		return err
+	}
+	return b.writeASCII(string(val))
 }
 
 func (b *extendedWriter) writeCoordsMode0(val rbxfile.ValueVector3) error {

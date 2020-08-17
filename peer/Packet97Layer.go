@@ -213,6 +213,23 @@ func (thisStream *extendedReader) DecodePacket97Layer(reader PacketReader, layer
 		layer.Schema.ContentPrefixes[i] = prefix
 	}
 
+	optimizedStringsLen, err := stream.readUintUTF8()
+	if err != nil {
+		return layer, err
+	}
+	layer.Schema.OptimizedStrings = make([]string, optimizedStringsLen)
+	for i := uint32(0); i < optimizedStringsLen; i++ {
+		optimizedStringLen, err := stream.readUintUTF8()
+		if err != nil {
+			return layer, err
+		}
+		optimizedString, err := stream.readASCII(int(optimizedStringLen))
+		if err != nil {
+			return layer, err
+		}
+		layer.Schema.OptimizedStrings[i] = optimizedString
+	}
+
 	reader.Context().NetworkSchema = layer.Schema
 
 	return layer, err
@@ -340,6 +357,21 @@ func (layer *Packet97Layer) Serialize(writer PacketWriter, stream *extendedWrite
 			return err
 		}
 		err = zstdStream.writeASCII(layer.Schema.ContentPrefixes[i])
+		if err != nil {
+			return err
+		}
+	}
+
+	err = zstdStream.writeUintUTF8(uint32(len(layer.Schema.OptimizedStrings)))
+	if err != nil {
+		return err
+	}
+	for i := 0; i < len(layer.Schema.OptimizedStrings); i++ {
+		err = zstdStream.writeUintUTF8(uint32(len(layer.Schema.OptimizedStrings[i])))
+		if err != nil {
+			return err
+		}
+		err = zstdStream.writeASCII(layer.Schema.OptimizedStrings[i])
 		if err != nil {
 			return err
 		}
