@@ -181,6 +181,9 @@ func (layer *Packet81Layer) Serialize(writer PacketWriter, stream *extendedWrite
 	}
 
 	err = stream.writeUintUTF8(uint32(len(layer.Items)))
+	if err != nil {
+		return err
+	}
 	for _, item := range layer.Items {
 		err = stream.writeJoinObject(item.Instance, writer.Context())
 		if err != nil {

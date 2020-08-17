@@ -15,6 +15,9 @@ func (thisStream *extendedReader) DecodePacket83_14(reader PacketReader, layers 
 	var err error
 
 	inner.Region, err = thisStream.readStreamInfo()
+	if err != nil {
+		return inner, err
+	}
 	int1, err := thisStream.readUint32BE()
 	if err != nil {
 		return inner, err

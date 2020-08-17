@@ -1066,6 +1066,9 @@ func luauChallengeViewer(packet *peer.Packet9BLayer) (gtk.IWidget, error) {
 			return nil, err
 		}
 		signature, err := newLabelF("Signature: %X", packet.Signature)
+		if err != nil {
+			return nil, err
+		}
 		box.Add(signature)
 	}
 	box.ShowAll()

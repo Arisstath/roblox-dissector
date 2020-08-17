@@ -39,11 +39,6 @@ type Packet85Layer struct {
 	SubPackets []*Packet85LayerSubpacket
 }
 
-// NewPacket85Layer Initializes a new Packet85Layer
-func NewPacket85Layer() *Packet85Layer {
-	return &Packet85Layer{}
-}
-
 func (b *extendedReader) readPhysicsData(data *PhysicsData, motors bool, reader PacketReader) error {
 	var err error
 	if motors {
@@ -70,6 +65,9 @@ func (b *extendedReader) readPhysicsData(data *PhysicsData, motors bool, reader 
 		return err
 	}
 	reference, err := b.ReadObject(reader)
+	if err != nil {
+		return err
+	}
 	data.PlatformChild, _ = reader.Context().InstancesByReference.TryGetInstance(reference)
 	return nil
 }

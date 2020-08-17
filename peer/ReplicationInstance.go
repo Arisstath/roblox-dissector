@@ -60,6 +60,9 @@ func decodeReplicationInstance(reader PacketReader, thisStream instanceReader, l
 	repInstance.Instance = thisInstance
 
 	schemaIDx, err := thisStream.readUint16BE()
+	if err != nil {
+		return nil, err
+	}
 	if int(schemaIDx) > len(context.NetworkSchema.Instances) {
 		return repInstance, fmt.Errorf("class idx %d is higher than %d", schemaIDx, len(context.NetworkSchema.Instances))
 	}

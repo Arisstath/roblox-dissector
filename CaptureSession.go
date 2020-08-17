@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"github.com/Gskartwii/roblox-dissector/peer"
@@ -33,7 +32,7 @@ type CaptureSession struct {
 }
 
 func AddressEq(a *net.UDPAddr, b *net.UDPAddr) bool {
-	return a.Port == b.Port && bytes.Equal(a.IP, b.IP)
+	return a.Port == b.Port && a.IP.Equal(b.IP)
 }
 
 func NewCaptureSession(name string, cancelFunc context.CancelFunc, listViewerCallback func(*CaptureSession, *PacketListViewer, error)) (*CaptureSession, error) {

@@ -175,10 +175,10 @@ func (reader *DefaultPacketReader) readOffline(stream *extendedReader, packetTyp
 	if decoder != nil {
 		layers.Main, err = decoder(stream, reader, layers)
 		if err != nil {
-			layers.Error = fmt.Errorf("Failed to decode offline packet %02X: %s", packetType, err.Error())
+			layers.Error = fmt.Errorf("failed to decode offline packet %02X: %s", packetType, err.Error())
 		}
 	} else {
-		layers.Error = fmt.Errorf("Unknown offline packet %02X", packetType)
+		layers.Error = fmt.Errorf("unknown offline packet %02X", packetType)
 	}
 }
 
@@ -188,14 +188,14 @@ func (reader *DefaultPacketReader) readGeneric(stream *extendedReader, layers *P
 		tsLayer, err := packetDecoders[0x1B](stream, reader, layers)
 		if err != nil {
 			layers.Reliability.SplitBuffer.Logger.Println("error:", err.Error())
-			layers.Error = fmt.Errorf("Failed to decode timestamped packet: %s", err.Error())
+			layers.Error = fmt.Errorf("failed to decode timestamped packet: %s", err.Error())
 			return
 		}
 		layers.Timestamp = tsLayer.(*Packet1BLayer)
 		packetType, err := stream.ReadByte()
 		if err != nil {
 			layers.Reliability.SplitBuffer.Logger.Println("error:", err.Error())
-			layers.Error = fmt.Errorf("Failed to decode timestamped packet: %s", err.Error())
+			layers.Error = fmt.Errorf("failed to decode timestamped packet: %s", err.Error())
 			return
 		}
 		layers.Reliability.SplitBuffer.PacketType = packetType
@@ -210,7 +210,7 @@ func (reader *DefaultPacketReader) readGeneric(stream *extendedReader, layers *P
 		if err != nil {
 			layers.Main = nil
 			layers.Reliability.SplitBuffer.Logger.Println("error:", err.Error())
-			layers.Error = fmt.Errorf("Failed to decode reliable packet %02X: %s", layers.PacketType, err.Error())
+			layers.Error = fmt.Errorf("failed to decode reliable packet %02X: %s", layers.PacketType, err.Error())
 		}
 	} else {
 		layers.Error = fmt.Errorf("Unknown packetType %d", layers.PacketType)
@@ -226,7 +226,7 @@ func (reader *DefaultPacketReader) readOrdered(layers *PacketLayers) {
 		packetType, err = buffer.dataReader.ReadByte()
 		if err != nil {
 			subPacket.SplitBuffer.Logger.Println("error:", err.Error())
-			layers.Error = fmt.Errorf("Failed to decode reliablePacket type %d: %s", packetType, err.Error())
+			layers.Error = fmt.Errorf("failed to decode reliablePacket type %d: %s", packetType, err.Error())
 		} else {
 			layers.PacketType = packetType
 			reader.readGeneric(buffer.dataReader, layers)
@@ -248,7 +248,7 @@ func (reader *DefaultPacketReader) readReliable(layers *PacketLayers) {
 	stream := layers.RakNet.payload
 	reliabilityLayer, err := stream.DecodeReliabilityLayer(reader, layers)
 	if err != nil {
-		layers.Error = errors.New("Failed to decode reliable packet: " + err.Error())
+		layers.Error = errors.New("failed to decode reliable packet: " + err.Error())
 		reader.emitLayers("reliability", layers)
 		return
 	}
@@ -264,7 +264,7 @@ func (reader *DefaultPacketReader) readReliable(layers *PacketLayers) {
 
 		if err != nil {
 			subPacket.SplitBuffer.Logger.Println("error while handling split:", err.Error())
-			reliablePacketLayers.Error = fmt.Errorf("Error while handling split packet: %s", err.Error())
+			reliablePacketLayers.Error = fmt.Errorf("error while handling split packet: %s", err.Error())
 			reader.emitLayers("reliable", reliablePacketLayers)
 			return
 		}
@@ -300,7 +300,7 @@ func (reader *DefaultPacketReader) readReliable(layers *PacketLayers) {
 				}
 			}
 		default:
-			reliablePacketLayers.Error = fmt.Errorf("Unknown reliability: %d", reliablePacketLayers.Reliability.Reliability)
+			reliablePacketLayers.Error = fmt.Errorf("unknown reliability: %d", reliablePacketLayers.Reliability.Reliability)
 			// TODO: Is it legal to emit the reliable packet twice?
 			reader.emitLayers("reliable", reliablePacketLayers)
 			return

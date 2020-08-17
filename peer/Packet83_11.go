@@ -314,6 +314,9 @@ func (layer *Packet83_11) Serialize(writer PacketWriter, stream *extendedWriter)
 	}
 	// write isEnd
 	err = stream.writeBoolByte(true)
+	if err != nil {
+		return err
+	}
 
 	for _, script := range layer.ScriptStats {
 		// write isEnd

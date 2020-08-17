@@ -50,14 +50,6 @@ type ReliabilityLayer struct {
 	Packets []*ReliablePacket
 }
 
-// GetLog returns the accumulated log for the packet
-func (packet *ReliablePacket) GetLog() string {
-	if packet.SplitBuffer.logBuffer == nil {
-		return ""
-	}
-	return packet.SplitBuffer.logBuffer.String()
-}
-
 // IsReliable returns a bool describing whether the packet's reliability is considered "Reliable"
 func (packet *ReliablePacket) IsReliable() bool {
 	return packet.Reliability == Reliable || packet.Reliability == ReliableSequenced || packet.Reliability == ReliableOrdered

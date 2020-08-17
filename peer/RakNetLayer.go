@@ -16,14 +16,6 @@ func bufferToStream(buffer []byte) *extendedReader {
 	return &extendedReader{bytes.NewReader(buffer)}
 }
 
-func bitsToBytes(bits uint) uint {
-	return (bits + 7) >> 3
-}
-
-func bytesToBits(bytes uint) uint {
-	return bytes << 3
-}
-
 // RakNetPacket describes any packet that can be serialized and written to UDP
 type RakNetPacket interface {
 	fmt.Stringer
@@ -169,7 +161,7 @@ func IsOfflineMessage(data []byte) bool {
 	if len(data) < 1+len(OfflineMessageID) {
 		return false
 	}
-	return bytes.Compare(data[1:1+len(OfflineMessageID)], OfflineMessageID) == 0
+	return bytes.Equal(data[1:1+len(OfflineMessageID)], OfflineMessageID)
 }
 
 func (stream *extendedReader) DecodeRakNetLayer(reader PacketReader, packetType byte, layers *PacketLayers) (*RakNetLayer, error) {
@@ -206,6 +198,9 @@ func (stream *extendedReader) DecodeRakNetLayer(reader PacketReader, packetType 
 				max = min
 			} else {
 				max, err = stream.readUint24LE()
+				if err != nil {
+					return layer, err
+				}
 			}
 
 			layer.ACKs = append(layer.ACKs, ACKRange{min, max})

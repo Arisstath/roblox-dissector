@@ -2,7 +2,6 @@ package peer
 
 import (
 	"bytes"
-	"compress/gzip"
 	"crypto/aes"
 	"crypto/cipher"
 	"encoding/binary"
@@ -46,12 +45,6 @@ func (b *extendedReader) readUint16BE() (uint16, error) {
 	dest := make([]byte, 2)
 	err := b.bytes(dest, 2)
 	return binary.BigEndian.Uint16(dest), err
-}
-
-func (b *extendedReader) readUint16LE() (uint16, error) {
-	dest := make([]byte, 2)
-	err := b.bytes(dest, 2)
-	return binary.LittleEndian.Uint16(dest), err
 }
 
 func (b *extendedReader) readBoolByte() (bool, error) {
@@ -100,21 +93,11 @@ func (b *extendedReader) readUint8() (uint8, error) {
 func (b *extendedReader) readString(length int) ([]byte, error) {
 	var dest []byte
 	if uint(length) > 0x1000000 {
-		return dest, errors.New("Sanity check: string too long")
+		return dest, errors.New("sanity check: string too long")
 	}
 	dest = make([]byte, length)
 	err := b.bytes(dest, length)
 	return dest, err
-}
-
-func (b *extendedReader) readLengthAndString() (string, error) {
-	var ret []byte
-	thisLen, err := b.readUint16BE()
-	if err != nil {
-		return "", err
-	}
-	ret, err = b.readString(int(thisLen))
-	return string(ret), err
 }
 
 func (b *extendedReader) readASCII(length int) (string, error) {
@@ -128,7 +111,7 @@ func (b *extendedReader) readAddress() (*net.UDPAddr, error) {
 		return nil, err
 	}
 	if version != 4 {
-		return nil, errors.New("Unsupported version")
+		return nil, errors.New("unsupported version")
 	}
 	var address net.IP = make([]byte, 4)
 	err = b.bytes(address, 4)
@@ -146,14 +129,6 @@ func (b *extendedReader) readAddress() (*net.UDPAddr, error) {
 	return &net.UDPAddr{IP: address, Port: int(port)}, nil
 }
 
-func (b *extendedReader) readFloat32LE() (float32, error) {
-	intf, err := b.readUint32LE()
-	if err != nil {
-		return 0.0, err
-	}
-	return math.Float32frombits(intf), err
-}
-
 func (b *extendedReader) readFloat32BE() (float32, error) {
 	intf, err := b.readUint32BE()
 	if err != nil {
@@ -168,28 +143,6 @@ func (b *extendedReader) readFloat64BE() (float64, error) {
 		return 0.0, err
 	}
 	return math.Float64frombits(intf), err
-}
-
-func (b *extendedReader) RegionToGZipStream() (*extendedReader, error) {
-	compressedLen, err := b.readUint32BE()
-	if err != nil {
-		return nil, err
-	}
-	println("compressedLen:", compressedLen)
-
-	compressed := make([]byte, compressedLen)
-	err = b.bytes(compressed, int(compressedLen))
-	if err != nil {
-		return nil, err
-	}
-	fmt.Printf("compressed start: %v\n", compressed[:0x20])
-
-	gzipStream, err := gzip.NewReader(bytes.NewReader(compressed))
-	if err != nil {
-		return nil, err
-	}
-
-	return &extendedReader{gzipStream}, err
 }
 
 func (b *extendedReader) RegionToZStdStream() (*extendedReader, error) {
@@ -272,21 +225,6 @@ func (b *extendedReader) readJoinObject(context *CommunicationContext) (datamode
 		return ref, err
 	}
 	return b.readObjectPeerID(context)
-}
-
-func (b *extendedReader) readFloat16BE(floatMin float32, floatMax float32) (float32, error) {
-	scale, err := b.readUint16BE()
-	if err != nil {
-		return 0.0, err
-	}
-
-	outFloat := float32(scale)/65535.0*(floatMax-floatMin) + floatMin
-	if outFloat < floatMin {
-		return floatMin, nil
-	} else if outFloat > floatMax {
-		return floatMax, nil
-	}
-	return outFloat, nil
 }
 
 type cacheReadCallback func(*extendedReader) (interface{}, error)

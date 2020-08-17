@@ -152,9 +152,6 @@ func (b *extendedWriter) writeVector3int16(val rbxfile.ValueVector3int16) error 
 func (b *extendedWriter) writePBool(val rbxfile.ValueBool) error {
 	return b.writeBoolByte(bool(val))
 }
-func (b *extendedWriter) writePSint(val rbxfile.ValueInt) error {
-	return b.writeUint32BE(uint32(val))
-}
 func (b *extendedWriter) writePFloat(val rbxfile.ValueFloat) error {
 	return b.writeFloat32BE(float32(val))
 }
@@ -418,6 +415,8 @@ var typeToNetworkConvTable = map[rbxfile.Type]uint8{
 	rbxfile.TypeVector2int16:             PropertyTypeVector2int16,
 	datamodel.TypeNumberSequence:         PropertyTypeNumberSequence,
 	datamodel.TypeColorSequence:          PropertyTypeColorSequence,
+	datamodel.TypeRegion3:                PropertyTypeRegion3,
+	datamodel.TypeRegion3int16:           PropertyTypeRegion3int16,
 	rbxfile.TypeNumberRange:              PropertyTypeNumberRange,
 	rbxfile.TypeRect2D:                   PropertyTypeRect2D,
 	rbxfile.TypePhysicalProperties:       PropertyTypePhysicalProperties,
@@ -525,6 +524,10 @@ func (b *extendedWriter) writeSerializedValueGeneric(val rbxfile.Value, valueTyp
 		err = b.writeColorSequence(val.(datamodel.ValueColorSequence))
 	case PropertyTypeColorSequenceKeypoint:
 		err = b.writeColorSequenceKeypoint(val.(datamodel.ValueColorSequenceKeypoint))
+	case PropertyTypeRegion3:
+		err = b.writeRegion3(val.(datamodel.ValueRegion3))
+	case PropertyTypeRegion3int16:
+		err = b.writeRegion3int16(val.(datamodel.ValueRegion3int16))
 	case PropertyTypeRect2D:
 		err = b.writeRect2D(val.(rbxfile.ValueRect2D))
 	case PropertyTypePhysicalProperties:
@@ -553,6 +556,9 @@ func (b *extendedWriter) writeNewTypeAndValue(val rbxfile.Value, writer PacketWr
 		return errors.New("invalid network type")
 	}
 	err = b.WriteByte(uint8(valueType))
+	if err != nil {
+		return err
+	}
 	// if it's nil:
 	if valueType == 0 {
 		return nil
@@ -714,8 +720,11 @@ func (b *extendedWriter) writePhysicalProperties(val rbxfile.ValuePhysicalProper
 			return err
 		}
 		err = b.writeFloat32BE(val.ElasticityWeight)
+		if err != nil {
+			return err
+		}
 	}
-	return err
+	return nil
 }
 
 func (b *extendedWriter) writePathWaypoint(val datamodel.ValuePathWaypoint) error {
@@ -770,46 +779,6 @@ func (b *extendedWriter) writeOptimizedString(val rbxfile.ValueString, context *
 		return err
 	}
 	return b.writeASCII(string(val))
-}
-
-func (b *extendedWriter) writeCoordsMode0(val rbxfile.ValueVector3) error {
-	return b.writeVector3Simple(val)
-}
-func (b *extendedWriter) writeCoordsMode1(val rbxfile.ValueVector3) error {
-	valRange := float32(math.Max(math.Max(math.Abs(float64(val.X)), math.Abs(float64(val.Y))), math.Abs(float64(val.Z))))
-	err := b.writeFloat32BE(valRange)
-	if err != nil {
-		return err
-	}
-	if valRange <= 0.0000099999997 {
-		return nil
-	}
-	err = b.writeUint16BE(uint16(val.X/valRange*32767.0 + 32767.0))
-	if err != nil {
-		return err
-	}
-	err = b.writeUint16BE(uint16(val.Y/valRange*32767.0 + 32767.0))
-	if err != nil {
-		return err
-	}
-	err = b.writeUint16BE(uint16(val.Z/valRange*32767.0 + 32767.0))
-	return err
-}
-func (b *extendedWriter) writeCoordsMode2(val rbxfile.ValueVector3) error {
-	xShort := uint16((val.X + 1024.0) * 16.0)
-	yShort := uint16((val.Y + 1024.0) * 16.0)
-	zShort := uint16((val.Z + 1024.0) * 16.0)
-
-	err := b.writeUint16BE((xShort&0x7F)<<7 | (xShort >> 8))
-	if err != nil {
-		return err
-	}
-	err = b.writeUint16BE((yShort&0x7F)<<7 | (yShort >> 8))
-	if err != nil {
-		return err
-	}
-	err = b.writeUint16BE((zShort&0x7F)<<7 | (zShort >> 8))
-	return err
 }
 
 func (b *extendedWriter) writePhysicsCoords(val rbxfile.ValueVector3) error {
@@ -991,41 +960,6 @@ func (b *extendedWriter) writePhysicsCoords(val rbxfile.ValueVector3) error {
 	return nil
 }
 
-func (b *extendedWriter) writeMatrixMode0(val [9]float32) error {
-	var err error
-	q := rotMatrixToQuaternion(val)
-	b.writeFloat32BE(q[3])
-	for i := 0; i < 3; i++ {
-		err = b.writeFloat32BE(q[i])
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-func (b *extendedWriter) writeMatrixMode1(val [9]float32) error {
-	q := rotMatrixToQuaternion(val)
-	err := b.writeBoolByte(q[3] < 0) // sqrt doesn't return negative numbers
-	if err != nil {
-		return err
-	}
-	for i := 0; i < 3; i++ {
-		err = b.writeBoolByte(q[i] < 0)
-		if err != nil {
-			return err
-		}
-	}
-	for i := 0; i < 3; i++ {
-		err = b.writeUint16LE(uint16(math.Abs(float64(q[i]))))
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-func (b *extendedWriter) writeMatrixMode2(val [9]float32) error {
-	return b.writeMatrixMode1(val)
-}
 func (b *extendedWriter) writePhysicsMatrix(val [9]float32) error {
 	var err error
 	quat := rotMatrixToQuaternion(val)

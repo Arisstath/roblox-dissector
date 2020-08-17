@@ -63,7 +63,3 @@ func (logWin *FilterLogWindow) AppendLog(log string) {
 func (logWin *FilterLogWindow) Show() {
 	logWin.win.ShowAll()
 }
-
-func (logWin *FilterLogWindow) Hide() {
-	logWin.win.Hide()
-}

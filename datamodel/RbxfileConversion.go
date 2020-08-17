@@ -78,7 +78,7 @@ func (instance *Instance) ToRbxfile(pool *RbxfileReferencePool) *rbxfile.Instanc
 	instance.PropertiesMutex.RLock()
 	inst.Properties = make(map[string]rbxfile.Value, len(instance.Properties))
 	for name, value := range instance.Properties {
-		switch value.(type) {
+		switch value := value.(type) {
 		case ValueNumberSequenceKeypoint,
 			ValueColorSequenceKeypoint,
 			ValueSystemAddress,
@@ -90,27 +90,27 @@ func (instance *Instance) ToRbxfile(pool *RbxfileReferencePool) *rbxfile.Instanc
 			ValueRegion3int16:
 			println("Dropping property", name)
 		case ValueNumberSequence:
-			oldSeq := value.(ValueNumberSequence)
+			oldSeq := value
 			newSeq := make([]rbxfile.ValueNumberSequenceKeypoint, len(oldSeq))
 			for i, keypoint := range oldSeq {
 				newSeq[i] = rbxfile.ValueNumberSequenceKeypoint(keypoint)
 			}
 			inst.Properties[name] = rbxfile.ValueNumberSequence(newSeq)
 		case ValueColorSequence:
-			oldSeq := value.(ValueColorSequence)
+			oldSeq := value
 			newSeq := make([]rbxfile.ValueColorSequenceKeypoint, len(oldSeq))
 			for i, keypoint := range oldSeq {
 				newSeq[i] = rbxfile.ValueColorSequenceKeypoint(keypoint)
 			}
 			inst.Properties[name] = rbxfile.ValueColorSequence(newSeq)
 		case ValueToken:
-			inst.Properties[name] = rbxfile.ValueToken(value.(ValueToken).Value)
+			inst.Properties[name] = rbxfile.ValueToken(value.Value)
 		case ValueReference:
 			inst.Properties[name] = rbxfile.ValueReference{
-				Instance: pool.Make(value.(ValueReference).Instance),
+				Instance: pool.Make(value.Instance),
 			}
 		case *ValueDeferredString:
-			inst.Properties[name] = value.(*ValueDeferredString).Value
+			inst.Properties[name] = value.Value
 		case nil:
 			// Strip this property
 		default:

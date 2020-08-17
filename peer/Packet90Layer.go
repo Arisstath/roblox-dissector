@@ -65,7 +65,7 @@ func (stream *extendedReader) DecodePacket90Layer(reader PacketReader, layers *P
 		placeID, _ := strconv.Atoi(placeIDMatches[1])
 		reader.Context().PlaceID = int64(placeID)
 	} else {
-		return layer, errors.New("Could not match placeId regex (malformed JoinData)")
+		return layer, errors.New("could not match placeId regex (malformed JoinData)")
 	}
 
 	layer.PubKeyData, err = thisStream.readString(32)

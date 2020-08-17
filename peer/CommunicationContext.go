@@ -79,7 +79,7 @@ func (c *ByteSliceCache) Equal(index uint8, val interface{}) (bool, bool) {
 	if val1 == nil || val == nil {
 		return val1 == val, val1 == nil
 	}
-	return bytes.Compare(val1.([]byte), val.([]byte)) == 0, val1 != nil
+	return bytes.Equal(val1.([]byte), val.([]byte)), val1 != nil
 }
 
 // LastWrite implements Cache.LastWrite().

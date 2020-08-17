@@ -52,12 +52,6 @@ func (b *extendedWriter) writeUint16BE(value uint16) error {
 	binary.BigEndian.PutUint16(dest, value)
 	return b.bytes(2, dest)
 }
-func (b *extendedWriter) writeUint16LE(value uint16) error {
-	dest := make([]byte, 2)
-	binary.LittleEndian.PutUint16(dest, value)
-	return b.bytes(2, dest)
-}
-
 func (b *extendedWriter) writeUint32BE(value uint32) error {
 	dest := make([]byte, 4)
 	binary.BigEndian.PutUint32(dest, value)
@@ -87,10 +81,6 @@ func (b *extendedWriter) writeFloat32BE(value float32) error {
 
 func (b *extendedWriter) writeFloat64BE(value float64) error {
 	return b.writeUint64BE(math.Float64bits(value))
-}
-
-func (b *extendedWriter) writeFloat16BE(value float32, min float32, max float32) error {
-	return b.writeUint16BE(uint16(value / (max - min) * 65535.0))
 }
 
 func (b *extendedWriter) writeBoolByte(value bool) error {
@@ -283,13 +273,6 @@ func (b *extendedWriter) writeObject(object *datamodel.Instance, context *Commun
 	}
 	return b.writeRef(object.Ref, caches)
 }
-func (b *extendedWriter) writeAnyObject(object *datamodel.Instance, writer PacketWriter, isJoinData bool) error {
-	if isJoinData {
-		return b.writeJoinObject(object, writer.Context())
-	}
-	return b.writeObject(object, writer.Context(), writer.Caches())
-}
-
 func (b *extendedWriter) writeRefPeerID(ref datamodel.Reference, context *CommunicationContext) error {
 	if ref.IsNull {
 		return b.writeVarint64(0)

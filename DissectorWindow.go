@@ -97,6 +97,10 @@ func (win *DissectorWindow) AppendClosablePage(title string, session *CaptureSes
 		return
 	}
 	buttonImg, err := gtk.ImageNewFromIconName("edit-delete", gtk.ICON_SIZE_BUTTON)
+	if err != nil {
+		win.ShowCaptureError(err, "Accepting new listviewer")
+		return
+	}
 	closeButton.SetRelief(gtk.RELIEF_NONE)
 	closeButton.SetFocusOnClick(false)
 	closeButton.Add(buttonImg)

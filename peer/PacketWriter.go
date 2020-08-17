@@ -192,6 +192,9 @@ func (writer *DefaultPacketWriter) writeAsSplits(estHeaderLength int, data []byt
 
 		thisReliabilityLayer := &ReliabilityLayer{[]*ReliablePacket{thisPacket}}
 		thisRakNet, err := writer.createRakNet(thisReliabilityLayer, newLayers)
+		if err != nil {
+			return err
+		}
 		newLayers.RakNet = thisRakNet
 		newLayers.SplitPacket.ReliablePackets[i] = thisPacket
 		newLayers.SplitPacket.RakNetPackets[i] = thisRakNet

@@ -21,9 +21,7 @@ func (thisStream *extendedReader) DecodePacket00Layer(reader PacketReader, layer
 
 // Serialize implements RakNetPacket.Serialize()
 func (layer *Packet00Layer) Serialize(writer PacketWriter, stream *extendedWriter) error {
-	var err error
-	err = stream.writeUint64BE(layer.SendPingTime)
-	return err
+	return stream.writeUint64BE(layer.SendPingTime)
 }
 func (layer *Packet00Layer) String() string {
 	return fmt.Sprintf("ID_CONNECTED_PING: %d", layer.SendPingTime)

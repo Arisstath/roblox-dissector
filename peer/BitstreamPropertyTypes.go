@@ -215,12 +215,6 @@ func (b *extendedReader) readPBool() (rbxfile.ValueBool, error) {
 	return rbxfile.ValueBool(val), err
 }
 
-// reads a signed integer
-func (b *extendedReader) readPSInt() (rbxfile.ValueInt, error) {
-	val, err := b.readUint32BE()
-	return rbxfile.ValueInt(val), err
-}
-
 // reads a single-precision float
 func (b *extendedReader) readPFloat() (rbxfile.ValueFloat, error) {
 	val, err := b.readFloat32BE()
@@ -341,48 +335,13 @@ func quaternionToRotMatrix(q [4]float32) [9]float32 {
 	}
 }
 
-func transformQuaternionToMatrix(q [4]float32) [9]float32 {
-	midresult := quaternionToRotMatrix(q)
-
-	xScaleFactor := float32(1.0 / math.Sqrt(float64(midresult[0]*midresult[0]+midresult[3]*midresult[3]+midresult[6]*midresult[6])))
-
-	result := [9]float32{
-		xScaleFactor * midresult[0], 0, 0,
-		xScaleFactor * midresult[3], 0, 0,
-		xScaleFactor * midresult[6], 0, 0,
-	} // X has been normalized
-
-	sXYSum := result[0]*midresult[1] + result[3]*midresult[4] + result[6]*midresult[7]
-	trueR01 := midresult[1] - result[0]*sXYSum
-	trueR11 := midresult[4] - result[3]*sXYSum
-	trueR21 := midresult[7] - result[6]*sXYSum
-
-	yScaleFactor := float32(1.0 / math.Sqrt(float64(trueR01*trueR01+trueR11*trueR11+trueR21*trueR21)))
-	result[1] = trueR01 * yScaleFactor
-	result[4] = trueR11 * yScaleFactor
-	result[7] = trueR21 * yScaleFactor
-
-	sYZSum := result[1]*midresult[2] + result[4]*midresult[5] + result[7]*midresult[8]
-	sXZSum := result[0]*midresult[2] + result[3]*midresult[5] + result[6]*midresult[8]
-	trueR02 := midresult[2] - result[0]*sXZSum - result[1]*sYZSum
-	trueR12 := midresult[5] - result[3]*sXZSum - result[4]*sYZSum
-	trueR22 := midresult[8] - result[6]*sXZSum - result[7]*sYZSum
-
-	zScaleFactor := float32(1.0 / math.Sqrt(float64(trueR02*trueR02+trueR12*trueR12+trueR22*trueR22)))
-	result[2] = trueR02 * zScaleFactor
-	result[5] = trueR12 * zScaleFactor
-	result[8] = trueR22 * zScaleFactor
-
-	return result
-}
-
 var specialColumns = [6][3]float32{
-	[3]float32{1, 0, 0},
-	[3]float32{0, 1, 0},
-	[3]float32{0, 0, 1},
-	[3]float32{-1, 0, 0},
-	[3]float32{0, -1, 0},
-	[3]float32{0, 0, -1},
+	{1, 0, 0},
+	{0, 1, 0},
+	{0, 0, 1},
+	{-1, 0, 0},
+	{0, -1, 0},
+	{0, 0, -1},
 }
 
 func lookupRotMatrix(special uint64) [9]float32 {
@@ -427,16 +386,6 @@ func (b *extendedReader) readCFrame() (rbxfile.ValueCFrame, error) {
 	}
 
 	return val, err
-}
-
-func (b *joinSerializeReader) readContent() (rbxfile.ValueContent, error) {
-	var result string
-	stringLen, err := b.readUint32BE()
-	if err != nil {
-		return rbxfile.ValueContent(result), err
-	}
-	result, err = b.readASCII(int(stringLen))
-	return rbxfile.ValueContent(result), err
 }
 
 // TODO: Make this function uniform with other cache functions
@@ -585,10 +534,6 @@ func (b *extendedReader) readNewEnumValue(enumID uint16, context *CommunicationC
 func (b *extendedReader) readNewPSint() (rbxfile.ValueInt, error) {
 	val, err := b.readSintUTF8()
 	return rbxfile.ValueInt(val), err
-}
-
-func getEnumName(context *CommunicationContext, id uint16) string {
-	return context.NetworkSchema.Enums[id].Name
 }
 
 // readNewTypeAndValue is never used by join data!
@@ -803,59 +748,6 @@ func (b *extendedReader) readPhysicalProperties() (rbxfile.ValuePhysicalProperti
 	return props, err
 }
 
-func (b *extendedReader) readCoordsMode0() (rbxfile.ValueVector3, error) {
-	return b.readVector3Simple()
-}
-func (b *extendedReader) readCoordsMode1() (rbxfile.ValueVector3, error) {
-	value := rbxfile.ValueVector3{}
-	cRange, err := b.readFloat32BE()
-	if err != nil {
-		return value, err
-	}
-	if cRange <= 0.0000099999997 { // Has to be precise
-		return rbxfile.ValueVector3{}, nil
-	}
-	x, err := b.readUint16BE()
-	if err != nil {
-		return value, err
-	}
-	y, err := b.readUint16BE()
-	if err != nil {
-		return value, err
-	}
-	z, err := b.readUint16BE()
-	if err != nil {
-		return value, err
-	}
-	value.X = (float32(x)/32767.0 - 1.0) * cRange
-	value.Y = (float32(y)/32767.0 - 1.0) * cRange
-	value.Z = (float32(z)/32767.0 - 1.0) * cRange
-	return value, nil
-}
-func (b *extendedReader) readCoordsMode2() (rbxfile.ValueVector3, error) {
-	val := rbxfile.ValueVector3{}
-	/*x, err := b.bits(15)
-	if err != nil {
-		return val, err
-	}
-	xShort := uint16((x >> 7) | ((x & 0x7F) << 8))
-	y, err := b.bits(14)
-	if err != nil {
-		return val, err
-	}
-	yShort := uint16((y >> 6) | ((y & 0x3F) >> 8))
-	z, err := b.bits(15)
-	if err != nil {
-		return val, err
-	}
-	zShort := uint16((z >> 7) | ((z & 0x7F) << 8))
-
-	val.X = float32(xShort)*0.0625 - 2048.0
-	val.Y = float32(yShort)*0.0625 - 2048.0
-	val.Z = float32(zShort)*0.0625 - 2048.0*/
-	return val, errors.New("coordmode 2 not implemented")
-}
-
 func (b *extendedReader) readPhysicsCoords() (rbxfile.ValueVector3, error) {
 	var val rbxfile.ValueVector3
 	flags, err := b.readUint8()
@@ -935,91 +827,12 @@ func (b *extendedReader) readPhysicsCoords() (rbxfile.ValueVector3, error) {
 	return val, err
 }
 
-func (b *extendedReader) readMatrixMode0() ([9]float32, error) {
-	var val [9]float32
-	var err error
-
-	q := [4]float32{}
-	q[3], err = b.readFloat32BE()
-	if err != nil {
-		return val, err
-	}
-	q[0], err = b.readFloat32BE()
-	if err != nil {
-		return val, err
-	}
-	q[1], err = b.readFloat32BE()
-	if err != nil {
-		return val, err
-	}
-	q[2], err = b.readFloat32BE()
-	if err != nil {
-		return val, err
-	}
-
-	return quaternionToRotMatrix(q), nil
-}
-
-func (b *extendedReader) readMatrixMode1() ([9]float32, error) {
-	q := [4]float32{}
-	/*invertW, err := b.readBool()
-	var val [9]float32
-	if err != nil {
-		return val, err
-	}
-	invertX, err := b.readBool()
-	if err != nil {
-		return val, err
-	}
-	invertY, err := b.readBool()
-	if err != nil {
-		return val, err
-	}
-	invertZ, err := b.readBool()
-	if err != nil {
-		return val, err
-	}
-	x, err := b.readUint16LE()
-	if err != nil {
-		return val, err
-	}
-	y, err := b.readUint16LE()
-	if err != nil {
-		return val, err
-	}
-	z, err := b.readUint16LE()
-	if err != nil {
-		return val, err
-	}
-	xs := float32(x) / 65535.0
-	ys := float32(y) / 65535.0
-	zs := float32(z) / 65535.0
-	if invertX {
-		xs = -xs
-	}
-	if invertY {
-		ys = -ys
-	}
-	if invertZ {
-		zs = -zs
-	}
-	w := float32(math.Sqrt(math.Max(0.0, float64(1.0-xs-ys-zs))))
-	if invertW {
-		w = -w
-	}
-	q = [4]float32{xs, ys, zs, w}*/
-	return quaternionToRotMatrix(q), errors.New("matrixmode1 not implemented")
-}
-func (b *extendedReader) readMatrixMode2() ([9]float32, error) {
-	return b.readMatrixMode1()
-}
-
 var quaternionIndices = [4][3]int{
 	// the index is the number that is omitted
-	[3]int{1, 2, 3}, // index 0
-	[3]int{0, 2, 3}, // index 1
-	[3]int{0, 1, 3}, // index 2
-	[3]int{0, 1, 2}, // index 3
+	{1, 2, 3}, // index 0
+	{0, 2, 3}, // index 1
+	{0, 1, 3}, // index 2
+	{0, 1, 2}, // index 3
 }
 
 func (b *extendedReader) readPhysicsMatrix() ([9]float32, error) {
