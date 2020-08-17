@@ -2,7 +2,7 @@ name: Go
 
 on:
   push:
-    branches: [ gtk ]
+    branches: [ master ]
   pull_request:
     branches: [ master ]
 
