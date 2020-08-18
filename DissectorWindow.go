@@ -48,7 +48,9 @@ type DissectorWindow struct {
 	stopButton            *gtk.ToolButton
 	pauseButton           *gtk.ToolButton
 	browseDataModelButton *gtk.ToolButton
-	filterMenuItem        *gtk.MenuItem
+	resetFilterItem       *gtk.MenuItem
+	applyFilterItem       *gtk.MenuItem
+	viewFilterLogItem     *gtk.MenuItem
 }
 
 func ShowError(wdg gtk.IWidget, err error, extrainfo string) {
@@ -144,7 +146,9 @@ func (win *DissectorWindow) UpdateActionsForPage(curPage int) {
 		win.stopButton.SetSensitive(false)
 		win.pauseButton.SetSensitive(false)
 		win.browseDataModelButton.SetSensitive(false)
-		win.filterMenuItem.SetSensitive(false)
+		win.resetFilterItem.SetSensitive(false)
+		win.applyFilterItem.SetSensitive(false)
+		win.viewFilterLogItem.SetSensitive(false)
 		return
 	}
 
@@ -153,7 +157,9 @@ func (win *DissectorWindow) UpdateActionsForPage(curPage int) {
 	win.stopButton.SetSensitive(curSession.IsCapturing)
 	win.pauseButton.SetSensitive(curSession.IsCapturing)
 	win.browseDataModelButton.SetSensitive(curViewer.Conversation != nil)
-	win.filterMenuItem.SetSensitive(true)
+	win.resetFilterItem.SetSensitive(true)
+	win.applyFilterItem.SetSensitive(true)
+	win.viewFilterLogItem.SetSensitive(true)
 
 	pauseButtonIcon, err := win.pauseButton.GetIconWidget()
 	if err != nil {
@@ -604,16 +610,9 @@ Sala is tool for dissecting Roblox network packets.`)
 		currViewer.ApplyFilter("")
 	})
 
-	filterItem, err := winBuilder.GetObject("filtermenuitem")
-	if err != nil {
-		return nil, err
-	}
-	filterMenuItem, ok := filterItem.(*gtk.MenuItem)
-	if !ok {
-		return nil, invalidUi("filtermenuitem")
-	}
-	filterMenuItem.SetSensitive(false)
-	dwin.filterMenuItem = filterMenuItem
+	dwin.resetFilterItem = resetFilterMenuItem
+	dwin.applyFilterItem = applyFilterMenuItem
+	dwin.viewFilterLogItem = viewFilterLogMenuItem
 
 	startServerItem_, err := winBuilder.GetObject("startserveritem")
 	if err != nil {
