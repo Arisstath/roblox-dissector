@@ -227,21 +227,20 @@ func (viewer *PacketListViewer) FilterAcceptsPacket(model *gtk.TreeModelFilter, 
 		println("failed to get packet kind for filtering")
 		return true
 	}
-	if kind != KIND_MAIN {
-		return true
+
+	reportError := func(id uint64, err error) {
+		viewer.filter = nil
+		viewer.filterState = nil
+		viewer.FilterLogWindow.AppendLog(fmt.Sprintf("Filter error on packet %d\n", baseId))
+		viewer.FilterLogWindow.AppendLog(err.Error())
+		ShowError(viewer.mainWidget, err, fmt.Sprintf("Filter error on packet %d", baseId))
 	}
-	if packet, ok := viewer.packetStore[baseId]; ok {
-		var extraInfo *PacketInformation = nil
-		if viewer.FilterUseExtraInfo {
-			extraInfo = &PacketInformation{
-				Id:         baseId,
-				FromClient: packet.Root.FromClient,
-				HasError:   packet.Error != nil,
-				Incomplete: packet.Main == nil && packet.Error != nil,
-				WellFormed: packet.Main != nil,
-				Type:       packet.PacketType,
-			}
-		} else {
+
+	switch kind {
+	case KIND_UNINITIALIZED:
+		return true
+	case KIND_MAIN:
+		if packet, ok := viewer.packetStore[baseId]; ok {
 			// when filtering, drop error packets by default
 			if packet.Main == nil {
 				return false
@@ -249,18 +248,29 @@ func (viewer *PacketListViewer) FilterAcceptsPacket(model *gtk.TreeModelFilter, 
 			if packet.Error != nil {
 				return false
 			}
-		}
 
-		acc, err := FilterAcceptsPacket(viewer.filterState, viewer.filter, packet.Main, extraInfo)
+			acc, err := FilterAcceptsPacket(viewer.filterState, viewer.filter, packet.Main)
+			if err != nil {
+				reportError(baseId, err)
+				return true
+			}
+			return acc
+		}
+	case KIND_DATA_REPLIC:
+		mainPacketId, err := viewer.uint64FromIter(iter, COL_MAIN_PACKET_ID, model)
 		if err != nil {
-			viewer.filter = nil
-			viewer.filterState = nil
-			viewer.FilterLogWindow.AppendLog(fmt.Sprintf("Filter error on packet %d\n", baseId))
-			viewer.FilterLogWindow.AppendLog(err.Error())
-			ShowError(viewer.mainWidget, err, fmt.Sprintf("Filter error on packet %d", baseId))
+			println("failed to base id for filtering")
+			return true
+		}
+		replicPacket := viewer.packetStore[mainPacketId].Main.(*peer.Packet83Layer).SubPackets[baseId]
+		acc, err := FilterAcceptsReplicPacket(viewer.filterState, viewer.filter, replicPacket)
+		if err != nil {
+			reportError(mainPacketId, err)
 			return true
 		}
 		return acc
+	default:
+		return true
 	}
 	return true
 }

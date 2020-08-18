@@ -262,6 +262,7 @@ var packetMethods = map[string]lua.LGFunction{
 	"HasSubpacket": func(L *lua.LState) int {
 		packet := checkPacket(L)
 		typ := uint8(L.CheckInt(2))
+
 		if packet.Type() != 0x83 {
 			L.Push(lua.LBool(false))
 			return 1
@@ -274,6 +275,39 @@ var packetMethods = map[string]lua.LGFunction{
 		}
 
 		L.Push(lua.LBool(false))
+		return 1
+	},
+}
+
+var replicPacketMethods = map[string]lua.LGFunction{
+	"ReferencesInstance": func(L *lua.LState) int {
+		packet := checkPacket(L)
+
+		var ref datamodel.Reference
+		var maskIdx int
+		if L.Get(2).Type() == lua.LTNil {
+			ref.IsNull = true
+			maskIdx = 3
+		} else {
+			ref.PeerId = uint32(L.CheckInt(2))
+			ref.Id = uint32(L.CheckInt(3))
+			maskIdx = 4
+		}
+		var mask uint
+		if L.Get(maskIdx).Type() == lua.LTNil {
+			mask = ^uint(0) // "any"
+		} else {
+			mask = uint(L.CheckInt(maskIdx))
+		}
+
+		result := referencesInstance(packet, ref)
+		L.Push(lua.LBool(result&mask != 0)) // test if referenced bitset intersects with the one we asked for
+		return 1
+	},
+	"HasSubpacket": func(L *lua.LState) int {
+		packet := checkPacket(L)
+		typ := uint8(L.CheckInt(2))
+		L.Push(lua.LBool(packet.Type() == typ))
 		return 1
 	},
 }
@@ -299,9 +333,25 @@ func packetIndex(L *lua.LState) int {
 	return 0
 }
 
+func replicPacketIndex(L *lua.LState) int {
+	checkPacket(L)
+	name := L.CheckString(2)
+	if name == "Type" {
+		L.Push(lua.LNumber(0x83))
+		return 1
+	} else if method, ok := replicPacketMethods[name]; ok {
+		L.Push(L.NewFunction(method))
+		return 1
+	}
+	return 0
+}
+
 func registerPacketType(L *lua.LState) {
 	mt := L.NewTypeMetatable("Packet")
 	L.SetField(mt, "__index", L.NewFunction(packetIndex))
+
+	replicMt := L.NewTypeMetatable("ReplicPacket")
+	L.SetField(replicMt, "__index", L.NewFunction(replicPacketIndex))
 }
 
 func registerInstanceRefEnum(L *lua.LState) {
@@ -312,13 +362,13 @@ func registerInstanceRefEnum(L *lua.LState) {
 	L.SetGlobal("InstRefType", tab)
 }
 
-func BridgePacket(L *lua.LState, packet peer.RakNetPacket) lua.LValue {
+func BridgePacket(L *lua.LState, packet peer.RakNetPacket, mt string) lua.LValue {
 	if packet == nil {
 		return lua.LNil
 	}
 	ud := L.NewUserData()
 	ud.Value = packet
-	L.SetMetatable(ud, L.GetTypeMetatable("Packet"))
+	L.SetMetatable(ud, L.GetTypeMetatable(mt))
 	return ud
 }
 
@@ -363,36 +413,31 @@ func NewLuaFilterState(printFunc func(string)) *lua.LState {
 	return L
 }
 
-type PacketInformation struct {
-	Type       uint8
-	HasError   bool
-	Incomplete bool
-	WellFormed bool
-	Id         uint64
-	FromClient bool
-}
-
-func BridgeInformation(L *lua.LState, information *PacketInformation) lua.LValue {
-	tab := L.NewTable()
-	tab.RawSetString("Type", lua.LNumber(information.Type))
-	tab.RawSetString("HasError", lua.LBool(information.HasError))
-	tab.RawSetString("Incomplete", lua.LBool(information.Incomplete))
-	tab.RawSetString("Id", lua.LNumber(information.Id))
-	tab.RawSetString("WellFormed", lua.LBool(information.WellFormed))
-	tab.RawSetString("FromClient", lua.LBool(information.FromClient))
-	return tab
-}
-
-func FilterAcceptsPacket(L *lua.LState, filter *lua.FunctionProto, packet peer.RakNetPacket, information *PacketInformation) (bool, error) {
+func FilterAcceptsReplicPacket(L *lua.LState, filter *lua.FunctionProto, packet peer.Packet83Subpacket) (bool, error) {
 	lfunc := L.NewFunctionFromProto(filter)
 	L.Push(lfunc)
 	var numArgs int
-	L.Push(BridgePacket(L, packet))
+	L.Push(BridgePacket(L, packet, "ReplicPacket"))
 	numArgs++
-	if information != nil {
-		L.Push(BridgeInformation(L, information))
-		numArgs++
+
+	err := L.PCall(numArgs, lua.MultRet, nil)
+	if err != nil {
+		return false, err
 	}
+	returnVal := L.Get(1)
+	L.Pop(1)
+	if b, ok := returnVal.(lua.LBool); ok {
+		return bool(b), nil
+	}
+	return false, errors.New("invalid return value from filter")
+}
+
+func FilterAcceptsPacket(L *lua.LState, filter *lua.FunctionProto, packet peer.RakNetPacket) (bool, error) {
+	lfunc := L.NewFunctionFromProto(filter)
+	L.Push(lfunc)
+	var numArgs int
+	L.Push(BridgePacket(L, packet, "Packet"))
+	numArgs++
 
 	err := L.PCall(numArgs, lua.MultRet, nil)
 	if err != nil {
