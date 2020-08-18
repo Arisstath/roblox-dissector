@@ -575,7 +575,7 @@ Sala is tool for dissecting Roblox network packets.`)
 	applyFilterMenuItem.Connect("activate", func() {
 		curPage := dwin.tabs.GetCurrentPage()
 		currViewer := dwin.tabIndexToListViewer[curPage]
-		NewEditFilterWindow(currViewer.FilterScript, currViewer.FilterUseExtraInfo, currViewer.ApplyFilter)
+		NewEditFilterWindow(currViewer.FilterScript, currViewer.ApplyFilter)
 	})
 	viewFilterLogItem, err := winBuilder.GetObject("viewfilterlogitem")
 	if err != nil {
@@ -601,7 +601,7 @@ Sala is tool for dissecting Roblox network packets.`)
 	resetFilterMenuItem.Connect("activate", func() {
 		curPage := dwin.tabs.GetCurrentPage()
 		currViewer := dwin.tabIndexToListViewer[curPage]
-		currViewer.ApplyFilter("", false)
+		currViewer.ApplyFilter("")
 	})
 
 	filterItem, err := winBuilder.GetObject("filtermenuitem")

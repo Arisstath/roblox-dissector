@@ -53,9 +53,8 @@ type PacketListViewer struct {
 	packetTypeApplied map[uint64]bool
 	lazyLoadFakeRows  map[uint64]*gtk.TreePath
 
-	FilterScript       string
-	FilterUseExtraInfo bool
-	FilterLogWindow    *FilterLogWindow
+	FilterScript    string
+	FilterLogWindow *FilterLogWindow
 
 	filter      *lua.FunctionProto
 	filterState *lua.LState
@@ -275,9 +274,8 @@ func (viewer *PacketListViewer) FilterAcceptsPacket(model *gtk.TreeModelFilter, 
 	return true
 }
 
-func (viewer *PacketListViewer) ApplyFilter(script string, useExtraInfo bool) {
+func (viewer *PacketListViewer) ApplyFilter(script string) {
 	viewer.FilterScript = script
-	viewer.FilterUseExtraInfo = useExtraInfo
 	if script == "" {
 		viewer.filter = nil
 		viewer.filterState = nil

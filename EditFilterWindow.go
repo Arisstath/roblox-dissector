@@ -5,17 +5,11 @@ import (
 	"io/ioutil"
 )
 
-func NewEditFilterWindow(oldFilter string, oldUseExtraInfo bool, callback func(string, bool)) error {
+func NewEditFilterWindow(oldFilter string, callback func(string)) error {
 	box, err := boxWithMargin()
 	if err != nil {
 		return err
 	}
-	extraInfo, err := gtk.CheckButtonNewWithLabel("Use extra info")
-	if err != nil {
-		return err
-	}
-	extraInfo.SetActive(oldUseExtraInfo)
-	box.Add(extraInfo)
 
 	filterBuffer, err := gtk.TextBufferNew(nil)
 	if err != nil {
@@ -88,7 +82,7 @@ func NewEditFilterWindow(oldFilter string, oldUseExtraInfo bool, callback func(s
 			return
 		}
 		win.Destroy()
-		callback(text.(string), extraInfo.GetActive())
+		callback(text.(string))
 	})
 	buttonRow.Add(okButton)
 
