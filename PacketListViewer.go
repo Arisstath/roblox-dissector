@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/Gskartwii/roblox-dissector/peer"
+	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
 	"github.com/yuin/gopher-lua"
@@ -58,6 +59,34 @@ type PacketListViewer struct {
 
 	filter      *lua.FunctionProto
 	filterState *lua.LState
+}
+
+func ShowPacketListViewerWindow(title string, forPacket *peer.PacketLayers) error {
+	listViewer, err := NewPacketListViewer(title, nil)
+	if err != nil {
+		return err
+	}
+
+	if len(forPacket.OfflinePayload) > 0 {
+		listViewer.NotifyOfflinePacket(forPacket)
+	} else if forPacket.RakNet.Flags.IsACK || forPacket.RakNet.Flags.IsNAK {
+		listViewer.NotifyACK(forPacket)
+	} else {
+		listViewer.NotifyPartialPacket(forPacket)
+		if forPacket.Main != nil || forPacket.Error != nil {
+			listViewer.NotifyFullPacket(forPacket)
+		}
+	}
+
+	win, err := gtk.WindowNew(gtk.WINDOW_TOPLEVEL)
+	if err != nil {
+		return err
+	}
+	win.SetTitle(title)
+	win.Add(listViewer.mainWidget)
+	win.ShowAll()
+
+	return nil
 }
 
 func NewPacketListViewer(title string, conversation *Conversation) (*PacketListViewer, error) {
@@ -200,6 +229,66 @@ func NewPacketListViewer(title string, conversation *Conversation) (*PacketListV
 			viewer.treeView.ExpandRow(sortFilterPath, false)
 		}
 	})
+
+	_, err = treeView.Connect("button-press-event", func(_ gtk.IWidget, evt *gdk.Event) {
+		trueEvt := gdk.EventButtonNewFromEvent(evt)
+		// only care about right clicks
+		if trueEvt.Button() != gdk.BUTTON_SECONDARY {
+			return
+		}
+		x := trueEvt.X()
+		y := trueEvt.Y()
+		path, _, _, _, _ := treeView.GetPathAtPos(int(x), int(y))
+		if path == nil {
+			// There's no row here
+			return
+		}
+		iter, err := sortModel.GetIter(path)
+		if err != nil {
+			println("Failed to get iter:", err.Error())
+			return
+		}
+		popupMenu, err := gtk.MenuNew()
+		if err != nil {
+			println("Failed to make menu:", err.Error())
+			return
+		}
+		showAction, err := gtk.MenuItemNewWithLabel("Show in external window")
+		if err != nil {
+			println("Failed to make menu:", err.Error())
+			return
+		}
+		showAction.Connect("activate", func() {
+			baseId, err := viewer.uint64FromIter(iter, COL_ID, viewer.sortModel)
+			if err != nil {
+				println("failed to base id from selection")
+				return
+			}
+			kind, err := viewer.uint64FromIter(iter, COL_PACKET_KIND, viewer.sortModel)
+			if err != nil {
+				println("failed to get packet kind from selection")
+				return
+			}
+			if kind == KIND_MAIN {
+				mainPacket := viewer.packetStore[baseId]
+				err = ShowPacketListViewerWindow(fmt.Sprintf("View packet %d: %s", baseId, mainPacket.String()), mainPacket)
+			} else {
+				mainPacketId, err := viewer.uint64FromIter(iter, COL_MAIN_PACKET_ID, viewer.sortModel)
+				if err != nil {
+					println("failed to parent id from selection:", err.Error())
+					return
+				}
+				mainPacket := viewer.packetStore[mainPacketId]
+				err = ShowPacketListViewerWindow(fmt.Sprintf("View packet %d: %s", baseId, mainPacket.String()), mainPacket)
+			}
+		})
+		popupMenu.Append(showAction)
+		popupMenu.ShowAll()
+		popupMenu.PopupAtPointer(evt)
+	})
+	if err != nil {
+		return nil, err
+	}
 
 	viewer.title = title
 	viewer.packetDetailsViewer = packetDetailsViewer
@@ -579,7 +668,11 @@ func (viewer *PacketListViewer) NotifyPacket(channel string, layers *peer.Packet
 	}
 }
 
-func (viewer *PacketListViewer) getGoValue(treeIter *gtk.TreeIter, col int, model ...*gtk.TreeModelFilter) (interface{}, error) {
+type TreeModel interface {
+	GetValue(*gtk.TreeIter, int) (*glib.Value, error)
+}
+
+func (viewer *PacketListViewer) getGoValue(treeIter *gtk.TreeIter, col int, model ...TreeModel) (interface{}, error) {
 	if len(model) == 1 {
 		id, err := model[0].GetValue(treeIter, col)
 		if err != nil {
@@ -594,7 +687,7 @@ func (viewer *PacketListViewer) getGoValue(treeIter *gtk.TreeIter, col int, mode
 	return id.GoValue()
 }
 
-func (viewer *PacketListViewer) uint64FromIter(treeIter *gtk.TreeIter, col int, model ...*gtk.TreeModelFilter) (uint64, error) {
+func (viewer *PacketListViewer) uint64FromIter(treeIter *gtk.TreeIter, col int, model ...TreeModel) (uint64, error) {
 	v, err := viewer.getGoValue(treeIter, col, model...)
 	if err != nil {
 		return 0, err
