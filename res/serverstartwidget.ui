@@ -140,7 +140,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkButton" id="cancel">
+              <object class="GtkButton" id="cancelbutton">
                 <property name="label" translatable="yes">Cancel</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>

@@ -5,15 +5,20 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math/rand"
+	"os"
 	"os/exec"
 	"runtime"
 	"time"
 
+	"github.com/Gskartwii/roblox-dissector/datamodel"
+	"github.com/Gskartwii/roblox-dissector/peer"
 	"github.com/dreadl0ck/gopcap"
 	"github.com/google/gopacket/pcap"
 	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
+	"github.com/robloxapi/rbxfile/xml"
 )
 
 func connectUrl(winBuilder *gtk.Builder, itemName string, url string) error {
@@ -231,6 +236,32 @@ func (win *DissectorWindow) CaptureFromPcapDevice(name string) {
 			return
 		}
 	}()
+}
+
+func (win *DissectorWindow) CaptureFromServer(port uint16, schema *peer.NetworkSchema, dm *datamodel.DataModel, instanceDictionary *datamodel.InstanceDictionary) error {
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	session, err := NewCaptureSession("<SERVER>", cancelFunc, func(session *CaptureSession, listViewer *PacketListViewer, err error) {
+		if err != nil {
+			win.ShowCaptureError(err, "Accepting new listviewer")
+			return
+		}
+		listViewer.mainWidget.ShowAll()
+		win.AppendClosablePage(listViewer.title, session, listViewer)
+
+		windowHeight := win.GetAllocatedHeight()
+		paneHeight := int(0.6 * float64(windowHeight))
+		listViewer.mainWidget.SetPosition(paneHeight)
+		listViewer.mainWidget.SetWideHandle(true)
+	})
+	server, err := peer.NewCustomServer(ctx, port, schema, dm, instanceDictionary)
+	if err != nil {
+		return err
+	}
+	server.InstanceDictionary = instanceDictionary
+	server.Context.InstancesByReference.Populate(dm.Instances)
+
+	go CaptureFromServer(ctx, session, server)
+	return nil
 }
 
 func (win *DissectorWindow) CaptureFromFile(filename string) {
@@ -623,8 +654,41 @@ Sala is tool for dissecting Roblox network packets.`)
 		return nil, invalidUi("startserveritem")
 	}
 	startServerItem.Connect("activate", func() {
-		NewServerStartWidget(func(schemaLocation string, rbxlLocation string, port uint16) {
+		err := NewServerStartWidget(func(schemaLocation string, rbxlxLocation string, port uint16) {
+			file, err := os.Open(schemaLocation)
+			if err != nil {
+				ShowError(dwin, err, "Parsing schema")
+				return
+			}
+			schema, err := peer.ParseSchema(file)
+			if err != nil {
+				ShowError(dwin, err, "Parsing schema")
+				return
+			}
+			dataModelReader, err := os.Open(rbxlxLocation)
+			if err != nil {
+				ShowError(dwin, err, "Parsing rbxlx")
+				return
+			}
+			dataModelRoot, err := xml.Deserialize(dataModelReader, nil)
+			if err != nil {
+				ShowError(dwin, err, "Parsing rbxlx")
+				return
+			}
+
+			rand.Seed(time.Now().UnixNano())
+			instanceDictionary := datamodel.NewInstanceDictionary(1)
+			thisRoot := datamodel.FromRbxfile(instanceDictionary, dataModelRoot)
+			normalizeRoot(thisRoot, schema)
+			err = dwin.CaptureFromServer(port, schema, thisRoot, instanceDictionary)
+			if err != nil {
+				ShowError(dwin, err, "Starting server")
+				return
+			}
 		})
+		if err != nil {
+			dwin.ShowCaptureError(err, "Making server start dialog")
+		}
 	})
 
 	dwin.UpdateActionsEnabled()
