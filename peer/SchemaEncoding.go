@@ -140,6 +140,39 @@ func ParseSchema(schemafile io.Reader) (*NetworkSchema, error) {
 
 		schema.Instances[i] = thisInstance
 	}
+
+	var lenContentPrefixes int
+	_, err = fmt.Fscanf(file, "%d\n", &lenContentPrefixes)
+	if err != nil {
+		return schema, err
+	}
+	schema.ContentPrefixes = make([]string, lenContentPrefixes)
+	contentPrefixExp := regexp.MustCompile(`\s*"([^\"]+)"\s*`)
+	for i := 0; i < lenContentPrefixes; i++ {
+		line, err := file.ReadString('\n')
+		if err != nil {
+			return schema, err
+		}
+		contentPrefixMatch := contentPrefixExp.FindStringSubmatch(line)
+		schema.ContentPrefixes[i] = contentPrefixMatch[1]
+	}
+
+	var lenOptimizedStrings int
+	_, err = fmt.Fscanf(file, "%d\n", &lenOptimizedStrings)
+	if err != nil {
+		return schema, err
+	}
+	schema.OptimizedStrings = make([]string, lenOptimizedStrings)
+	optimizedStringExp := contentPrefixExp
+	for i := 0; i < lenOptimizedStrings; i++ {
+		line, err := file.ReadString('\n')
+		if err != nil {
+			return schema, err
+		}
+		optimizedStringMatch := optimizedStringExp.FindStringSubmatch(line)
+		schema.OptimizedStrings[i] = optimizedStringMatch[1]
+	}
+
 	return schema, nil
 }
 
@@ -197,6 +230,29 @@ func (schema *NetworkSchema) Dump(file io.Writer) error {
 					return err
 				}
 			}
+		}
+	}
+
+	lenContentPrefixes := len(schema.ContentPrefixes)
+	_, err = file.Write([]byte(fmt.Sprintf("%d\n", lenContentPrefixes)))
+	if err != nil {
+		return err
+	}
+	for _, prefix := range schema.ContentPrefixes {
+		_, err := file.Write([]byte(fmt.Sprintf("%q\n", prefix)))
+		if err != nil {
+			return err
+		}
+	}
+	lenOptimizedStrings := len(schema.OptimizedStrings)
+	_, err = file.Write([]byte(fmt.Sprintf("%d\n", lenOptimizedStrings)))
+	if err != nil {
+		return err
+	}
+	for _, optString := range schema.OptimizedStrings {
+		_, err := file.Write([]byte(fmt.Sprintf("%q\n", optString)))
+		if err != nil {
+			return err
 		}
 	}
 	return nil
