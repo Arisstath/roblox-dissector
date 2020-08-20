@@ -20,6 +20,7 @@ type Chunk struct {
 	SideLength uint32
 	Int1       uint8
 	CellCube   [][][]Cell
+	Mask       [][]uint8
 }
 
 // IsEmpty returns a value indicating whether the chunk is empty,
@@ -67,7 +68,8 @@ func (chunk Chunk) IsCube() bool {
 	return true
 }
 
-func cellIndexToCoords(sideLength uint32, cubeIndex uint32) (uint32, uint32, uint32) {
+func cellIndexToCoords(sideLenU32 uint32, cubeIndex uint64) (uint64, uint64, uint64) {
+	sideLength := uint64(sideLenU32)
 	xCoord := cubeIndex % sideLength
 	zCoord := (cubeIndex / sideLength) % sideLength
 	yCoord := (cubeIndex / sideLength) / sideLength
@@ -87,6 +89,24 @@ type chunkDeserializer interface {
 	readBoolByte() (bool, error)
 	readUint16BE() (uint16, error)
 	readUint32BE() (uint32, error)
+}
+
+func deserializeMask(stream chunkDeserializer) ([][]uint8, error) {
+	maskCount, err := stream.readUint8()
+	if err != nil {
+		return nil, err
+	}
+	masks := make([][]uint8, maskCount)
+	for i := uint8(0); i < maskCount; i++ {
+		masks[i] = make([]uint8, 3)
+		for j := 0; j < 3; i++ {
+			masks[i][j], err = stream.readUint8()
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	return masks, nil
 }
 
 func deserializeChunks(stream chunkDeserializer) ([]Chunk, error) {
@@ -156,7 +176,7 @@ func deserializeChunks(stream chunkDeserializer) ([]Chunk, error) {
 			Z: z,
 		}
 
-		var cubeSideLength uint32 = 1 << (header & 0xF)
+		var cubeSideLength uint64 = 1 << (header & 0xF)
 		subpacket.SideLength = uint32(cubeSideLength)
 		subpacket.Int1 = header >> 6 // unknown value
 
@@ -165,11 +185,15 @@ func deserializeChunks(stream chunkDeserializer) ([]Chunk, error) {
 			return chunks, err
 		}
 		if isEmpty {
+			subpacket.Mask, err = deserializeMask(stream)
+			if err != nil {
+				return chunks, err
+			}
 			chunks = append(chunks, subpacket)
 			continue
 		}
 		cubeSize := cubeSideLength * cubeSideLength * cubeSideLength
-		if cubeSize > 0x100000 {
+		if subpacket.SideLength > 0x100 {
 			return chunks, errors.New("cube size larger than max")
 		}
 		subpacket.CellCube = make([][][]Cell, subpacket.SideLength)
@@ -181,7 +205,7 @@ func deserializeChunks(stream chunkDeserializer) ([]Chunk, error) {
 		}
 
 		// Don't increment i here; we will do it inside the loop
-		for i := uint32(0); i < cubeSize; {
+		for i := uint64(0); i < cubeSize; {
 			cellHeader, err := stream.readUint8()
 			if err != nil {
 				return chunks, err
@@ -201,13 +225,13 @@ func deserializeChunks(stream chunkDeserializer) ([]Chunk, error) {
 				occupancy = 0
 			}
 
-			var count uint32
+			var count uint64
 			if cellHeader&0x80 != 0 {
 				countVal, err := stream.readUint8()
 				if err != nil {
 					return chunks, err
 				}
-				count = uint32(countVal)
+				count = uint64(countVal)
 			}
 			// Implicit count of +1
 			count++
@@ -229,12 +253,16 @@ func deserializeChunks(stream chunkDeserializer) ([]Chunk, error) {
 			// maxX*maxZ => x=0 y=1 z=0
 			// yeah...
 			sideLength := subpacket.SideLength
-			for cubeIndex := uint32(i); cubeIndex < i+count; cubeIndex++ {
+			for cubeIndex := uint64(i); cubeIndex < i+count; cubeIndex++ {
 				xCoord, yCoord, zCoord := cellIndexToCoords(sideLength, cubeIndex)
 				subpacket.CellCube[xCoord][yCoord][zCoord] = cell
 			}
 
 			i += count
+		}
+		subpacket.Mask, err = deserializeMask(stream)
+		if err != nil {
+			return chunks, err
 		}
 		chunks = append(chunks, subpacket)
 	}
@@ -288,6 +316,22 @@ func areInBounds(min int32, max int32, vals ...int32) bool {
 		}
 	}
 	return true
+}
+
+func serializeMask(stream chunkSerializer, mask [][]uint8) error {
+	err := stream.WriteByte(uint8(len(mask)))
+	if err != nil {
+		return err
+	}
+	for i := 0; i < len(mask); i++ {
+		for j := 0; j < 3; j++ {
+			err = stream.WriteByte(mask[i][j])
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (layer *Packet8DLayer) serializeChunks(stream chunkSerializer) error {
@@ -375,6 +419,10 @@ func (layer *Packet8DLayer) serializeChunks(stream chunkSerializer) error {
 			return err
 		}
 		if isEmpty {
+			err = serializeMask(stream, chunk.Mask)
+			if err != nil {
+				return err
+			}
 			continue
 		}
 
@@ -382,9 +430,10 @@ func (layer *Packet8DLayer) serializeChunks(stream chunkSerializer) error {
 			return errors.New("non-empty chunk isn't a cube")
 		}
 
-		cubeSize := chunk.SideLength * chunk.SideLength * chunk.SideLength
-		for cellIndex := uint32(0); cellIndex < cubeSize; {
-			rleCount := uint32(0)
+		sideLen := uint64(chunk.SideLength)
+		cubeSize := sideLen * sideLen * sideLen
+		for cellIndex := uint64(0); cellIndex < cubeSize; {
+			rleCount := uint64(0)
 			currCellX, currCellY, currCellZ := cellIndexToCoords(chunk.SideLength, cellIndex)
 			currCell := chunk.CellCube[currCellX][currCellY][currCellZ]
 			for isRunLength := true; isRunLength; {
@@ -433,6 +482,10 @@ func (layer *Packet8DLayer) serializeChunks(stream chunkSerializer) error {
 			}
 
 			cellIndex += rleCount
+		}
+		err = serializeMask(stream, chunk.Mask)
+		if err != nil {
+			return err
 		}
 	}
 	return nil

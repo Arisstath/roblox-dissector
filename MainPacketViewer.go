@@ -647,6 +647,7 @@ func clusterViewer(packet *peer.Packet8DLayer) (gtk.IWidget, error) {
 		glib.TYPE_STRING,
 		glib.TYPE_STRING,
 		glib.TYPE_INT,
+		glib.TYPE_INT,
 	)
 	if err != nil {
 		return nil, err
@@ -659,7 +660,7 @@ func clusterViewer(packet *peer.Packet8DLayer) (gtk.IWidget, error) {
 	if err != nil {
 		return nil, err
 	}
-	for i, title := range []string{"Index", "Dimensions", "Int 1"} {
+	for i, title := range []string{"Index", "Dimensions", "Int 1", "Mask length"} {
 		col, err := gtk.TreeViewColumnNewWithAttribute(
 			title,
 			renderer,
@@ -672,7 +673,7 @@ func clusterViewer(packet *peer.Packet8DLayer) (gtk.IWidget, error) {
 		view.AppendColumn(col)
 	}
 	for _, chunk := range packet.Chunks {
-		model.InsertWithValues(nil, -1, []int{0, 1, 2}, []interface{}{chunk.ChunkIndex.String(), fmt.Sprintf("%d x %d x %d", chunk.SideLength, chunk.SideLength, chunk.SideLength), int(chunk.Int1)})
+		model.InsertWithValues(nil, -1, []int{0, 1, 2, 3}, []interface{}{chunk.ChunkIndex.String(), fmt.Sprintf("%d x %d x %d", chunk.SideLength, chunk.SideLength, chunk.SideLength), int(chunk.Int1), len(chunk.Mask)})
 	}
 	scrolled.Add(view)
 	scrolled.SetVExpand(true)
