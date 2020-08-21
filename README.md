@@ -4,7 +4,7 @@
 [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/Gskartwii/roblox-dissector/Go)](https://github.com/Gskartwii/roblox-dissector/actions)
 [![Documentation](https://godoc.org/github.com/Gskartwii/roblox-dissector?status.svg)](https://godoc.org/github.com/Gskartwii/roblox-dissector)
 [![Go Report](https://goreportcard.com/badge/github.com/Gskartwii/roblox-dissector)](https://goreportcard.com/report/github.com/Gskartwii/roblox-dissector)
-[![Release v1.0.0-rc.1](https://img.shields.io/badge/release-v1.0.0-rc.1-blue.svg)](https://github.com/Gskartwii/roblox-dissector/releases)
+[![Release v1.0.0-rc.1](https://img.shields.io/badge/release-v1.0.0rc.1-blue.svg)](https://github.com/Gskartwii/roblox-dissector/releases)
 [![Discord Chat](https://img.shields.io/discord/564392147038502912)](https://discord.gg/zPbprKb)
 
 Sala is a suite of tools to aid developers, hackers\* and designers in understanding the internal workings of Roblox networking. Currently, Sala is in beta. Contributions are welcome. Check out the GitHub Wiki for documentation.
