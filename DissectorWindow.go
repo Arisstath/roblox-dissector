@@ -570,7 +570,7 @@ func NewDissectorWindow() (*gtk.Window, error) {
 			dwin.ShowCaptureError(err, "Show about dialog")
 		}
 		dialog.SetProgramName("Sala")
-		dialog.SetVersion("v0.7.6")
+		dialog.SetVersion("v1.0.0-rc1")
 		dialog.SetCopyright("© 2017 - 2020 Aleksi Hannula\nLicensed under the MIT license.")
 		dialog.SetComments(`Codename "Maailman salaisuudet".
 
