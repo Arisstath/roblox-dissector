@@ -4,7 +4,7 @@
 [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/Gskartwii/roblox-dissector/Go)](https://github.com/Gskartwii/roblox-dissector/actions)
 [![Documentation](https://godoc.org/github.com/Gskartwii/roblox-dissector?status.svg)](https://godoc.org/github.com/Gskartwii/roblox-dissector)
 [![Go Report](https://goreportcard.com/badge/github.com/Gskartwii/roblox-dissector)](https://goreportcard.com/report/github.com/Gskartwii/roblox-dissector)
-[![Release v0.7.5beta](https://img.shields.io/badge/release-v0.7.5beta-blue.svg)](https://github.com/Gskartwii/roblox-dissector/releases)
+[![Release v1.0.0-rc.1](https://img.shields.io/badge/release-v1.0.0-rc.1-blue.svg)](https://github.com/Gskartwii/roblox-dissector/releases)
 [![Discord Chat](https://img.shields.io/discord/564392147038502912)](https://discord.gg/zPbprKb)
 
 Sala is a suite of tools to aid developers, hackers\* and designers in understanding the internal workings of Roblox networking. Currently, Sala is in beta. Contributions are welcome. Check out the GitHub Wiki for documentation.
@@ -13,6 +13,7 @@ Sala is a suite of tools to aid developers, hackers\* and designers in understan
 
 ## Getting builds
 Some releases are available under the [releases tab](https://github.com/Gskartwii/roblox-dissector/releases). Nightly builds can be found by going to Actions and picking the latest commit and downloading `windows-binary` from under "Artifacts". Instructions for compiling the project can be found on the Wiki.
+Make sure to install the [GTK3 runtime](https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer/releases) before attempting to run Sala.
 
 ## Features
 * Read PCAP Files
@@ -22,7 +23,7 @@ Some releases are available under the [releases tab](https://github.com/Gskartwi
 * Dump DataModels based on capture (with some limitations)
     - Only replicated instances can be dumped
     - Locally available scripts are dumped as *.rbxc files. You need a script decompiler to view them.
-* Capture in WinDivert proxy mode (experimental).
+* Capture in WinDivert proxy mode.
 * [Versatile API](https://godoc.org/github.com/Gskartwii/roblox-dissector/peer)
 
 ## Screenshots
