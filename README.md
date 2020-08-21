@@ -27,9 +27,9 @@ Make sure to install the [GTK3 runtime](https://github.com/tschoonj/GTK-for-Wind
 * [Versatile API](https://godoc.org/github.com/Gskartwii/roblox-dissector/peer)
 
 ## Screenshots
-![Sala provides a offline interface for exploring PCAP files.](https://user-images.githubusercontent.com/6651822/55480485-0fc92880-5629-11e9-93eb-8431f85dd793.png)
+![Sala provides a offline interface for exploring PCAP files.](https://user-images.githubusercontent.com/6651822/90891380-43deee00-e3c4-11ea-8852-6a82e64c97a6.png)
 
-![DataModel browser](https://user-images.githubusercontent.com/6651822/55480533-35563200-5629-11e9-9b7d-b5ed892a2ff0.png)
+![DataModel browser](https://user-images.githubusercontent.com/6651822/90891449-62dd8000-e3c4-11ea-9b10-78e717559277.png)
 
 ## About the name
 _Sala_ < Finnish _salaisuus_ ‘secret’ (noun). The name refers to how Sala introduces its user to many obscure aspects of the Roblox network protocol.
