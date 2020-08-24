@@ -392,9 +392,20 @@ func (writer *DefaultPacketWriter) WriteACKs(datagrams []int, isNAK bool) error 
 		UniqueID: writer.context.uniqueID,
 	}
 	writer.context.uniqueID++
+
+	output := make([]byte, 0, 1492)
+	buffer := bytes.NewBuffer(output)
+	stream := &extendedWriter{buffer}
+	packet := layers.RakNet
+	err := packet.Serialize(writer, stream)
+	if err != nil {
+		return err
+	}
+	layers.OfflinePayload = buffer.Bytes()
 	<-writer.LayerEmitter.Emit("ack", layers)
 
-	return writer.WriteRakNet(layers)
+	writer.output(layers.OfflinePayload)
+	return nil
 }
 
 // Layers returns the emitter that emits packet layers while they are
