@@ -443,16 +443,12 @@ func (b *extendedReader) readVarLengthString() (string, error) {
 	return b.readASCII(int(stringLen))
 }
 
-func (b *extendedReader) readLuauProtectedStringRaw() (datamodel.ValueSignedProtectedString, error) {
-	stringLen, err := b.readUintUTF8()
+func (b *extendedReader) readLuauProtectedStringRaw(deferred deferredStrings) (datamodel.ValueSignedProtectedString, error) {
+	md5, err := b.readASCII(0x10)
 	if err != nil {
 		return datamodel.ValueSignedProtectedString{}, err
 	}
-
-	val, err := b.readString(int(stringLen))
-	if err != nil {
-		return datamodel.ValueSignedProtectedString{}, err
-	}
+	def := deferred.NewValue(md5)
 
 	extraBytesLen, err := b.readUintUTF8()
 	if err != nil {
@@ -464,7 +460,7 @@ func (b *extendedReader) readLuauProtectedStringRaw() (datamodel.ValueSignedProt
 	}
 
 	return datamodel.ValueSignedProtectedString{
-		Value:     val,
+		Value:     def,
 		Signature: extraBytes,
 	}, nil
 }
@@ -479,20 +475,14 @@ func (b *extendedReader) readNewPString(caches *Caches) (rbxfile.ValueString, er
 }
 
 func (b *joinSerializeReader) readNewProtectedString() (rbxfile.ValueProtectedString, error) {
-	res, err := b.readNewPString()
-	return rbxfile.ValueProtectedString(res), err
+	return rbxfile.ValueProtectedString(nil), nil
 }
 func (b *extendedReader) readNewProtectedString(caches *Caches) (rbxfile.ValueProtectedString, error) {
-	res, err := b.readNewCachedProtectedString(caches)
-	return rbxfile.ValueProtectedString(res), err
+	return rbxfile.ValueProtectedString(nil), nil
 }
 
-func (b *joinSerializeReader) readLuauProtectedString() (datamodel.ValueSignedProtectedString, error) {
-	return b.readLuauProtectedStringRaw()
-}
-func (b *extendedReader) readLuauProtectedString(caches *Caches) (datamodel.ValueSignedProtectedString, error) {
-	res, err := b.readLuauCachedProtectedString(caches)
-	return res, err
+func (b *extendedReader) readLuauProtectedString(deferred deferredStrings) (datamodel.ValueSignedProtectedString, error) {
+	return b.readLuauProtectedStringRaw(deferred)
 }
 
 func (b *joinSerializeReader) readNewContent() (rbxfile.ValueContent, error) {

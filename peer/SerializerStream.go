@@ -45,15 +45,15 @@ func (b *extendedReader) ReadSerializedValue(reader PacketReader, valueType uint
 	case PropertyTypeString:
 		result, err = b.readNewPString(reader.Caches())
 	case PropertyTypeProtectedString0:
-		result, err = b.readNewProtectedString(reader.Caches())
+		//result, err = b.readNewProtectedString(reader.Caches())
 	case PropertyTypeProtectedString1:
-		result, err = b.readNewProtectedString(reader.Caches())
+		//result, err = b.readNewProtectedString(reader.Caches())
 	case PropertyTypeProtectedString2:
-		result, err = b.readNewProtectedString(reader.Caches())
+		//result, err = b.readNewProtectedString(reader.Caches())
 	case PropertyTypeProtectedString3:
-		result, err = b.readNewProtectedString(reader.Caches())
+		//result, err = b.readNewProtectedString(reader.Caches())
 	case PropertyTypeLuauString:
-		result, err = b.readLuauProtectedString(reader.Caches())
+		result, err = b.readLuauProtectedString(deferred)
 	case PropertyTypeInstance:
 		var reference datamodel.Reference
 		reference, err = b.ReadObject(reader)
@@ -127,7 +127,7 @@ func (b *extendedWriter) WriteSerializedValue(val rbxfile.Value, writer PacketWr
 	case PropertyTypeProtectedString3:
 		err = b.writeNewProtectedString(val.(rbxfile.ValueProtectedString), writer.Caches())
 	case PropertyTypeLuauString:
-		err = b.writeLuauProtectedString(val.(datamodel.ValueSignedProtectedString), writer.Caches())
+		err = b.writeLuauProtectedString(val.(datamodel.ValueSignedProtectedString), deferred)
 	case PropertyTypeInstance:
 		err = b.WriteObject(val.(datamodel.ValueReference).Instance, writer)
 	case PropertyTypeContent:
@@ -221,7 +221,7 @@ func (b *joinSerializeReader) ReadSerializedValue(reader PacketReader, valueType
 	case PropertyTypeProtectedString3:
 		result, err = b.readNewProtectedString()
 	case PropertyTypeLuauString:
-		result, err = b.readLuauProtectedString()
+		result, err = b.readLuauProtectedString(deferred)
 	case PropertyTypeInstance:
 		var reference datamodel.Reference
 		reference, err = b.readJoinObject(reader.Context())
@@ -284,7 +284,7 @@ func (b *joinSerializeWriter) WriteSerializedValue(val rbxfile.Value, writer Pac
 	case PropertyTypeProtectedString3:
 		err = b.writeNewProtectedString(val.(rbxfile.ValueProtectedString))
 	case PropertyTypeLuauString:
-		err = b.writeLuauProtectedString(val.(datamodel.ValueSignedProtectedString))
+		err = b.writeLuauProtectedString(val.(datamodel.ValueSignedProtectedString), deferred)
 	case PropertyTypeInstance:
 		err = b.WriteObject(val.(datamodel.ValueReference).Instance, writer)
 	case PropertyTypeContent:

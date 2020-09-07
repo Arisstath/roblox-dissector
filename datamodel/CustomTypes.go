@@ -119,7 +119,7 @@ type ValueDeferredString struct {
 
 type ValueSignedProtectedString struct {
 	Signature []byte
-	Value     []byte
+	Value     *ValueDeferredString
 }
 
 type ValueDateTime struct {
@@ -362,12 +362,12 @@ func (x ValueSignedProtectedString) Type() rbxfile.Type {
 	return TypeSignedProtectedString
 }
 func (x ValueSignedProtectedString) String() string {
-	return fmt.Sprintf("Signed string, len %d", len(x.Value))
+	return fmt.Sprintf("Signed string, md5=%X", x.Value.Hash)
 }
 func (x ValueSignedProtectedString) Copy() rbxfile.Value {
 	newString := new(ValueSignedProtectedString)
 	newString.Signature = append(newString.Signature, x.Signature...)
-	newString.Value = append(newString.Value, x.Value...)
+	newString.Value = x.Value.Copy().(*ValueDeferredString)
 	return newString
 }
 

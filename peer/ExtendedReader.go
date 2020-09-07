@@ -326,23 +326,6 @@ func (b *extendedReader) readNewCachedProtectedString(caches *Caches) ([]byte, e
 	return thisString.([]byte), err
 }
 
-func (b *extendedReader) readLuauCachedProtectedString(caches *Caches) (datamodel.ValueSignedProtectedString, error) {
-	cache := &caches.ProtectedString
-	var signature []byte
-	thisString, err := b.readWithCache(cache, func(b *extendedReader) (interface{}, error) {
-		str, err := b.readLuauProtectedStringRaw()
-		signature = str.Signature
-		return []byte(str.Value), err
-	})
-	if err != nil {
-		return datamodel.ValueSignedProtectedString{}, err
-	}
-	if thisString == nil { // return zero value
-		return datamodel.ValueSignedProtectedString{}, nil
-	}
-	return datamodel.ValueSignedProtectedString{Value: thisString.([]byte), Signature: signature}, err
-}
-
 func shuffleSlice(src []byte) []byte {
 	ShuffledSrc := make([]byte, 0, len(src))
 	ShuffledSrc = append(ShuffledSrc, src[:0x10]...)

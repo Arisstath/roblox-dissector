@@ -207,15 +207,17 @@ func (b *extendedWriter) writeVarLengthString(val string) error {
 	return b.writeASCII(val)
 }
 
-func (b *extendedWriter) writeLuauProtectedStringRaw(val datamodel.ValueSignedProtectedString) error {
-	err := b.writeUintUTF8(uint32(len(val.Value)))
+func (b *extendedWriter) writeLuauProtectedStringRaw(val datamodel.ValueSignedProtectedString, deferred writeDeferredStrings) error {
+	if len(val.Value.Hash) != 0x10 {
+		return errors.New("invalid deferred hash")
+	}
+	err := b.writeASCII(val.Value.Hash)
 	if err != nil {
 		return err
 	}
-	err = b.allBytes([]byte(val.Value))
-	if err != nil {
-		return err
-	}
+
+	deferred.Defer(val.Value)
+
 	err = b.writeUintUTF8(uint32(len(val.Signature)))
 	if err != nil {
 		return err
@@ -223,11 +225,8 @@ func (b *extendedWriter) writeLuauProtectedStringRaw(val datamodel.ValueSignedPr
 	return b.allBytes(val.Signature)
 }
 
-func (b *joinSerializeWriter) writeLuauProtectedString(val datamodel.ValueSignedProtectedString) error {
-	return b.writeLuauProtectedStringRaw(val)
-}
-func (b *extendedWriter) writeLuauProtectedString(val datamodel.ValueSignedProtectedString, caches *Caches) error {
-	return b.writeLuauCachedProtectedString(val, caches)
+func (b *extendedWriter) writeLuauProtectedString(val datamodel.ValueSignedProtectedString, deferred writeDeferredStrings) error {
+	return b.writeLuauProtectedStringRaw(val, deferred)
 }
 
 func (b *extendedWriter) writeNewPString(val rbxfile.ValueString, caches *Caches) error {

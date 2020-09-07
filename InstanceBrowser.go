@@ -238,7 +238,7 @@ func appendValueRow(model *gtk.TreeStore, parent *gtk.TreeIter, name string, val
 		}
 	case datamodel.TypeSignedProtectedString:
 		str := value.(datamodel.ValueSignedProtectedString)
-		model.SetValue(newRow, COL_PROP_ADDITIONAL_VALUE, hex.EncodeToString(str.Value))
+		model.SetValue(newRow, COL_PROP_ADDITIONAL_VALUE, hex.EncodeToString(str.Value.Value))
 	}
 }
 
@@ -670,7 +670,7 @@ func dumpScripts(location string, instances []*rbxfile.Instance, encountered map
 		if err != nil {
 			return err
 		}
-		_, err = file.Write([]byte(instProp.Instance.Properties[instProp.Name].(datamodel.ValueSignedProtectedString).Value))
+		_, err = file.Write([]byte(instProp.Instance.Properties[instProp.Name].(datamodel.ValueSignedProtectedString).Value.Value))
 		if err != nil {
 			return err
 		}

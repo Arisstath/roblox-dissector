@@ -199,17 +199,6 @@ func (b *extendedWriter) writeNewCachedProtectedString(val []byte, caches *Cache
 		return b.allBytes(val.([]byte))
 	})
 }
-func (b *extendedWriter) writeLuauCachedProtectedString(val datamodel.ValueSignedProtectedString, caches *Caches) error {
-	cache := &caches.ProtectedString
-
-	if len(val.Value) == 0 {
-		return b.WriteByte(0)
-	}
-
-	return b.writeWithCache(val.Value, cache, func(b *extendedWriter, _ interface{}) error {
-		return b.writeLuauProtectedStringRaw(val)
-	})
-}
 
 func (b *extendedWriter) writeJoinRef(ref datamodel.Reference, context *CommunicationContext) error {
 	var err error
