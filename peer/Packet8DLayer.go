@@ -279,7 +279,7 @@ func (thisStream *extendedReader) DecodePacket8DLayer(reader PacketReader, layer
 
 	context := reader.Context()
 
-	reference, err := thisStream.ReadObject(reader)
+	reference, err := thisStream.readObject(reader.Context())
 	if err != nil {
 		return nil, err
 	}
@@ -493,7 +493,7 @@ func (layer *Packet8DLayer) serializeChunks(stream chunkSerializer) error {
 
 // Serialize implements RakNetPacket.Serialize
 func (layer *Packet8DLayer) Serialize(writer PacketWriter, stream *extendedWriter) error {
-	err := stream.WriteObject(layer.Instance, writer)
+	err := stream.writeObject(layer.Instance, writer.Context())
 	if err != nil {
 		return err
 	}

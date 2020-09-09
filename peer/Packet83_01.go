@@ -15,7 +15,7 @@ func (thisStream *extendedReader) DecodePacket83_01(reader PacketReader, layers 
 	inner := &Packet83_01{}
 
 	// NULL deletion is actually legal. Who would have known?
-	reference, err := thisStream.ReadObject(reader)
+	reference, err := thisStream.readObject(reader.Context())
 	if err != nil {
 		return inner, err
 	}
@@ -26,7 +26,7 @@ func (thisStream *extendedReader) DecodePacket83_01(reader PacketReader, layers 
 
 // Serialize implements Packet83Subpacket.Serialize()
 func (layer *Packet83_01) Serialize(writer PacketWriter, stream *extendedWriter) error {
-	return stream.WriteObject(layer.Instance, writer)
+	return stream.writeObject(layer.Instance, writer.Context())
 }
 
 // Type implements Packet83Subpacket.Type()

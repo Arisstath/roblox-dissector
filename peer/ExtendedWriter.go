@@ -181,24 +181,6 @@ func (b *extendedWriter) writeCached(val string, caches *Caches) error {
 
 	return b.writeWithCache(val, cache, (*extendedWriter).writeUint32AndString)
 }
-func (b *extendedWriter) writeCachedObject(val string, caches *Caches) error {
-	cache := &caches.Object
-
-	return b.writeWithCache(val, cache, (*extendedWriter).writeUint32AndString)
-}
-
-func (b *extendedWriter) writeNewCachedProtectedString(val []byte, caches *Caches) error {
-	cache := &caches.ProtectedString
-
-	return b.writeWithCache(val, cache, func(b *extendedWriter, val interface{}) error {
-		str := val.([]byte)
-		err := b.writeUint32BE(uint32(len(str)))
-		if err != nil {
-			return err
-		}
-		return b.allBytes(val.([]byte))
-	})
-}
 
 func (b *extendedWriter) writeJoinRef(ref datamodel.Reference, context *CommunicationContext) error {
 	var err error
@@ -221,46 +203,15 @@ func (b *extendedWriter) writeJoinRef(ref datamodel.Reference, context *Communic
 
 	return b.writeUint32LE(ref.Id)
 }
-func (b *extendedWriter) writeJoinObject(object *datamodel.Instance, context *CommunicationContext) error {
-	if context.ServerPeerID != 0 {
-		if object == nil {
-			// Yes, I know it's equivalent to WriteByte(0)
-			// I think this is more clear though
-			return b.writeVarint64(0)
-		}
-		return b.writeRefPeerID(object.Ref, context)
-	}
-	if object == nil {
-		return b.WriteByte(0)
-	}
-	return b.writeJoinRef(object.Ref, context)
-}
-
-func (b *extendedWriter) writeRef(ref datamodel.Reference, caches *Caches) error {
-	if ref.IsNull {
-		return b.WriteByte(0)
-	}
-	err := b.writeCachedObject(ref.Scope, caches)
-	if err != nil {
-		return err
-	}
-	return b.writeUint32LE(ref.Id)
-}
 
 // TODO: Implement a similar system for readers, where it simply returns an instance
-func (b *extendedWriter) writeObject(object *datamodel.Instance, context *CommunicationContext, caches *Caches) error {
-	if context.ServerPeerID != 0 {
-		if object == nil {
-			// Yes, I know it's equivalent to WriteByte(0)
-			// I think this is more clear though
-			return b.writeVarint64(0)
-		}
-		return b.writeRefPeerID(object.Ref, context)
-	}
+func (b *extendedWriter) writeObject(object *datamodel.Instance, context *CommunicationContext) error {
 	if object == nil {
-		return b.WriteByte(0)
+		// Yes, I know it's equivalent to WriteByte(0)
+		// I think this is more clear though
+		return b.writeVarint64(0)
 	}
-	return b.writeRef(object.Ref, caches)
+	return b.writeRefPeerID(object.Ref, context)
 }
 func (b *extendedWriter) writeRefPeerID(ref datamodel.Reference, context *CommunicationContext) error {
 	if ref.IsNull {

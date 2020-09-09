@@ -1,7 +1,6 @@
 package peer
 
 import (
-	"bytes"
 	"fmt"
 
 	"github.com/Gskartwii/roblox-dissector/datamodel"
@@ -54,44 +53,9 @@ func (c *StringCache) LastWrite() uint8 {
 	return c.lastWrite
 }
 
-// ByteSliceCache is a Cache that stores []byte objects.
-type ByteSliceCache struct {
-	// Values contains the []byte objects.
-	Values    [0x80]interface{}
-	lastWrite uint8
-}
-
-// Get implements Cache.Get().
-func (c *ByteSliceCache) Get(index uint8) (interface{}, bool) {
-	a := c.Values[index]
-	return a, a != nil
-}
-
-// Put implements Cache.Put().
-func (c *ByteSliceCache) Put(val interface{}, index uint8) {
-	c.Values[index] = val.([]byte)
-	c.lastWrite = index
-}
-
-// Equal implements Cache.Equal().
-func (c *ByteSliceCache) Equal(index uint8, val interface{}) (bool, bool) {
-	val1 := c.Values[index]
-	if val1 == nil || val == nil {
-		return val1 == val, val1 == nil
-	}
-	return bytes.Equal(val1.([]byte), val.([]byte)), val1 != nil
-}
-
-// LastWrite implements Cache.LastWrite().
-func (c *ByteSliceCache) LastWrite() uint8 {
-	return c.lastWrite
-}
-
 // Caches represents a collection of network caches that are used by various packets
 type Caches struct {
-	String          StringCache
-	Object          StringCache
-	ProtectedString ByteSliceCache
+	String StringCache
 }
 
 // CommunicationContext represents a network communication's

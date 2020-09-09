@@ -173,7 +173,7 @@ func (b *extendedReader) RegionToZStdStream() (*extendedReader, error) {
 	return &extendedReader{zstdStream}, nil
 }
 
-func (b *extendedReader) readObjectPeerID(context *CommunicationContext) (datamodel.Reference, error) {
+func (b *extendedReader) readObject(context *CommunicationContext) (datamodel.Reference, error) {
 	ref := datamodel.Reference{}
 	peerID, err := b.readVarint64()
 	if err != nil {
@@ -193,38 +193,6 @@ func (b *extendedReader) readObjectPeerID(context *CommunicationContext) (datamo
 	ref.Id, err = b.readUint32LE()
 
 	return ref, nil
-}
-
-func (b *extendedReader) readJoinObject(context *CommunicationContext) (datamodel.Reference, error) {
-	ref := datamodel.Reference{}
-	if context.ServerPeerID == 0 {
-		// read scope using old system
-		stringLen, err := b.readUint8()
-		if err != nil {
-			return ref, err
-		}
-		if stringLen == 0x00 {
-			ref.IsNull = true
-			ref.Scope = "null"
-			return ref, err
-		}
-		var refString string
-		if stringLen != 0xFF {
-			refString, err = b.readASCII(int(stringLen))
-			if err != nil {
-				return ref, err
-			}
-			if len(refString) != 0x23 {
-				return ref, errors.New("wrong scope len")
-			}
-			ref.Scope = refString
-		} else {
-			ref.Scope = context.InstanceTopScope
-		}
-		ref.Id, err = b.readUint32LE()
-		return ref, err
-	}
-	return b.readObjectPeerID(context)
 }
 
 type cacheReadCallback func(*extendedReader) (interface{}, error)
@@ -292,38 +260,6 @@ func (b *extendedReader) readCached(caches *Caches) (string, error) {
 		return "", nil
 	}
 	return thisString.(string), err
-}
-
-func (b *extendedReader) readCachedScope(caches *Caches) (string, error) {
-	cache := &caches.Object
-	thisString, err := b.readWithCache(cache, (*extendedReader).readScope)
-	if err != nil {
-		return "", err
-	}
-	if thisString == nil {
-		return "NULL", nil
-	}
-	return thisString.(string), err
-}
-
-func (b *extendedReader) readNewCachedProtectedString(caches *Caches) ([]byte, error) {
-	cache := &caches.ProtectedString
-
-	thisString, err := b.readWithCache(cache, func(b *extendedReader) (interface{}, error) {
-		stringLen, err := b.readUint32BE()
-		if err != nil {
-			return []byte{}, err
-		}
-		thisString, err := b.readString(int(stringLen))
-		return thisString, err
-	})
-	if err != nil {
-		return nil, err
-	}
-	if thisString == nil {
-		return nil, errors.New("script can't be nil")
-	}
-	return thisString.([]byte), err
 }
 
 func shuffleSlice(src []byte) []byte {

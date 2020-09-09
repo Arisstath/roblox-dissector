@@ -20,7 +20,7 @@ func (thisStream *extendedReader) DecodePacket83_07(reader PacketReader, layers 
 	var err error
 	layer := &Packet83_07{}
 
-	reference, err := thisStream.ReadObject(reader)
+	reference, err := thisStream.readObject(reader.Context())
 	if err != nil {
 		return layer, err
 	}
@@ -64,7 +64,7 @@ func (layer *Packet83_07) Serialize(writer PacketWriter, stream *extendedWriter)
 	if layer.Instance == nil {
 		return errors.New("self is nil in serialize repl inst")
 	}
-	err := stream.WriteObject(layer.Instance, writer)
+	err := stream.writeObject(layer.Instance, writer.Context())
 	if err != nil {
 		return err
 	}

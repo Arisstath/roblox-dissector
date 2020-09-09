@@ -98,7 +98,7 @@ func (thisStream *extendedReader) DecodePacket81Layer(reader PacketReader, layer
 	layer.Items = make([]*Packet81LayerItem, arrayLen)
 	for i := 0; i < int(arrayLen); i++ {
 		thisItem := &Packet81LayerItem{}
-		reference, err := thisStream.readJoinObject(context)
+		reference, err := thisStream.readObject(context)
 		if err != nil {
 			return layer, err
 		}
@@ -185,7 +185,7 @@ func (layer *Packet81Layer) Serialize(writer PacketWriter, stream *extendedWrite
 		return err
 	}
 	for _, item := range layer.Items {
-		err = stream.writeJoinObject(item.Instance, writer.Context())
+		err = stream.writeObject(item.Instance, writer.Context())
 		if err != nil {
 			return err
 		}

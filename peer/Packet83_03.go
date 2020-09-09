@@ -23,7 +23,7 @@ func (thisStream *extendedReader) DecodePacket83_03(reader PacketReader, layers 
 	var err error
 	layer := &Packet83_03{}
 
-	reference, err := thisStream.ReadObject(reader)
+	reference, err := thisStream.readObject(reader.Context())
 	if err != nil {
 		return layer, err
 	}
@@ -55,7 +55,7 @@ func (thisStream *extendedReader) DecodePacket83_03(reader PacketReader, layers 
 	context := reader.Context()
 	if int(propertyIDx) == int(len(context.NetworkSchema.Properties)) { // explicit Parent property system
 		var reference datamodel.Reference
-		reference, err = thisStream.ReadObject(reader)
+		reference, err = thisStream.readObject(reader.Context())
 		if err != nil {
 			return layer, err
 		}
@@ -98,7 +98,7 @@ func (layer *Packet83_03) Serialize(writer PacketWriter, stream *extendedWriter)
 		return errors.New("self is nil in serialize repl prop")
 	}
 
-	err := stream.WriteObject(layer.Instance, writer)
+	err := stream.writeObject(layer.Instance, writer.Context())
 	if err != nil {
 		return err
 	}
@@ -121,7 +121,7 @@ func (layer *Packet83_03) Serialize(writer PacketWriter, stream *extendedWriter)
 			}
 		}
 
-		return stream.WriteObject(layer.Value.(datamodel.ValueReference).Instance, writer)
+		return stream.writeObject(layer.Value.(datamodel.ValueReference).Instance, writer.Context())
 	}
 
 	err = stream.writeUint16BE(layer.Schema.NetworkID)

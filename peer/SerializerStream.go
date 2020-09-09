@@ -9,7 +9,7 @@ import (
 
 type serializeReader interface {
 	ReadSerializedValue(reader PacketReader, valType uint8, enumID uint16, deferred deferredStrings) (rbxfile.Value, error)
-	ReadObject(reader PacketReader) (datamodel.Reference, error)
+	readObject(context *CommunicationContext) (datamodel.Reference, error)
 
 	// We must also ask for the following methods for compatibility reasons.
 	// Any better way to do this? I can't tell Go that the interface
@@ -26,7 +26,7 @@ type instanceReader interface {
 
 type serializeWriter interface {
 	WriteSerializedValue(val rbxfile.Value, writer PacketWriter, valType uint8, deferred writeDeferredStrings) error
-	WriteObject(object *datamodel.Instance, writer PacketWriter) error
+	writeObject(object *datamodel.Instance, context *CommunicationContext) error
 
 	writeUint16BE(uint16) error
 	writeBoolByte(bool) error
@@ -44,19 +44,11 @@ func (b *extendedReader) ReadSerializedValue(reader PacketReader, valueType uint
 	switch valueType {
 	case PropertyTypeString:
 		result, err = b.readNewPString(reader.Caches())
-	case PropertyTypeProtectedString0:
-		//result, err = b.readNewProtectedString(reader.Caches())
-	case PropertyTypeProtectedString1:
-		//result, err = b.readNewProtectedString(reader.Caches())
-	case PropertyTypeProtectedString2:
-		//result, err = b.readNewProtectedString(reader.Caches())
-	case PropertyTypeProtectedString3:
-		//result, err = b.readNewProtectedString(reader.Caches())
 	case PropertyTypeLuauString:
 		result, err = b.readLuauProtectedString(deferred)
 	case PropertyTypeInstance:
 		var reference datamodel.Reference
-		reference, err = b.ReadObject(reader)
+		reference, err = b.readObject(reader.Context())
 		if err != nil {
 			return nil, err
 		}
@@ -83,9 +75,6 @@ func (b *extendedReader) ReadSerializedValue(reader PacketReader, valueType uint
 		return b.readSerializedValueGeneric(reader, valueType, enumID, deferred)
 	}
 	return result, err
-}
-func (b *extendedReader) ReadObject(reader PacketReader) (datamodel.Reference, error) {
-	return b.readObject(reader.Context(), reader.Caches())
 }
 func (b *extendedReader) ReadProperties(schema []*NetworkPropertySchema, properties map[string]rbxfile.Value, reader PacketReader, deferred deferredStrings) error {
 	for i := 0; i < 2; i++ {
@@ -118,18 +107,10 @@ func (b *extendedWriter) WriteSerializedValue(val rbxfile.Value, writer PacketWr
 	switch valueType {
 	case PropertyTypeString:
 		err = b.writeNewPString(val.(rbxfile.ValueString), writer.Caches())
-	case PropertyTypeProtectedString0:
-		err = b.writeNewProtectedString(val.(rbxfile.ValueProtectedString), writer.Caches())
-	case PropertyTypeProtectedString1:
-		err = b.writeNewProtectedString(val.(rbxfile.ValueProtectedString), writer.Caches())
-	case PropertyTypeProtectedString2:
-		err = b.writeNewProtectedString(val.(rbxfile.ValueProtectedString), writer.Caches())
-	case PropertyTypeProtectedString3:
-		err = b.writeNewProtectedString(val.(rbxfile.ValueProtectedString), writer.Caches())
 	case PropertyTypeLuauString:
 		err = b.writeLuauProtectedString(val.(datamodel.ValueSignedProtectedString), deferred)
 	case PropertyTypeInstance:
-		err = b.WriteObject(val.(datamodel.ValueReference).Instance, writer)
+		err = b.writeObject(val.(datamodel.ValueReference).Instance, writer.Context())
 	case PropertyTypeContent:
 		err = b.writeNewContent(val.(rbxfile.ValueContent), writer.Context())
 	case PropertyTypeTuple:
@@ -146,9 +127,6 @@ func (b *extendedWriter) WriteSerializedValue(val rbxfile.Value, writer PacketWr
 		return b.writeSerializedValueGeneric(val, valueType, deferred)
 	}
 	return err
-}
-func (b *extendedWriter) WriteObject(object *datamodel.Instance, writer PacketWriter) error {
-	return b.writeObject(object, writer.Context(), writer.Caches())
 }
 func (b *extendedWriter) WriteProperties(schema []*NetworkPropertySchema, properties map[string]rbxfile.Value, writer PacketWriter, deferred writeDeferredStrings) error {
 	var err error
@@ -212,19 +190,11 @@ func (b *joinSerializeReader) ReadSerializedValue(reader PacketReader, valueType
 	switch valueType {
 	case PropertyTypeString:
 		result, err = b.readNewPString()
-	case PropertyTypeProtectedString0:
-		result, err = b.readNewProtectedString()
-	case PropertyTypeProtectedString1:
-		result, err = b.readNewProtectedString()
-	case PropertyTypeProtectedString2:
-		result, err = b.readNewProtectedString()
-	case PropertyTypeProtectedString3:
-		result, err = b.readNewProtectedString()
 	case PropertyTypeLuauString:
 		result, err = b.readLuauProtectedString(deferred)
 	case PropertyTypeInstance:
 		var reference datamodel.Reference
-		reference, err = b.readJoinObject(reader.Context())
+		reference, err = b.readObject(reader.Context())
 		if err != nil {
 			return datamodel.ValueReference{Instance: nil, Reference: reference}, err
 		}
@@ -243,9 +213,6 @@ func (b *joinSerializeReader) ReadSerializedValue(reader PacketReader, valueType
 		return b.extendedReader.readSerializedValueGeneric(reader, valueType, enumID, deferred)
 	}
 	return result, err
-}
-func (b *joinSerializeReader) ReadObject(reader PacketReader) (datamodel.Reference, error) {
-	return b.readJoinObject(reader.Context())
 }
 func (b *joinSerializeReader) ReadProperties(schema []*NetworkPropertySchema, properties map[string]rbxfile.Value, reader PacketReader, deferred deferredStrings) error {
 	propertyIndex, err := b.readUint8()
@@ -275,18 +242,10 @@ func (b *joinSerializeWriter) WriteSerializedValue(val rbxfile.Value, writer Pac
 	switch valueType {
 	case PropertyTypeString:
 		err = b.writeNewPString(val.(rbxfile.ValueString))
-	case PropertyTypeProtectedString0:
-		err = b.writeNewProtectedString(val.(rbxfile.ValueProtectedString))
-	case PropertyTypeProtectedString1:
-		err = b.writeNewProtectedString(val.(rbxfile.ValueProtectedString))
-	case PropertyTypeProtectedString2:
-		err = b.writeNewProtectedString(val.(rbxfile.ValueProtectedString))
-	case PropertyTypeProtectedString3:
-		err = b.writeNewProtectedString(val.(rbxfile.ValueProtectedString))
 	case PropertyTypeLuauString:
 		err = b.writeLuauProtectedString(val.(datamodel.ValueSignedProtectedString), deferred)
 	case PropertyTypeInstance:
-		err = b.WriteObject(val.(datamodel.ValueReference).Instance, writer)
+		err = b.writeObject(val.(datamodel.ValueReference).Instance, writer.Context())
 	case PropertyTypeContent:
 		err = b.writeNewContent(val.(rbxfile.ValueContent))
 	case PropertyTypeOptimizedString:
@@ -295,9 +254,6 @@ func (b *joinSerializeWriter) WriteSerializedValue(val rbxfile.Value, writer Pac
 		return b.writeSerializedValueGeneric(val, valueType, deferred)
 	}
 	return err
-}
-func (b *joinSerializeWriter) WriteObject(object *datamodel.Instance, writer PacketWriter) error {
-	return b.extendedWriter.writeJoinObject(object, writer.Context())
 }
 
 func (b *joinSerializeWriter) WriteProperties(schema []*NetworkPropertySchema, properties map[string]rbxfile.Value, writer PacketWriter, deferred writeDeferredStrings) error {

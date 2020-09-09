@@ -236,9 +236,6 @@ func (b *extendedWriter) writePStringNoCache(val rbxfile.ValueString) error {
 	return b.writeVarLengthString(string(val))
 }
 
-func (b *extendedWriter) writeNewProtectedString(val rbxfile.ValueProtectedString, caches *Caches) error {
-	return b.writeNewCachedProtectedString([]byte(val), caches)
-}
 func (b *extendedWriter) writeNewBinaryString(val rbxfile.ValueBinaryString) error {
 	return b.writeVarLengthString(string(val))
 }
@@ -279,9 +276,6 @@ func (b *extendedWriter) writeNewContent(val rbxfile.ValueContent, context *Comm
 
 func (b *joinSerializeWriter) writeNewPString(val rbxfile.ValueString) error {
 	return b.extendedWriter.writePStringNoCache(val)
-}
-func (b *joinSerializeWriter) writeNewProtectedString(val rbxfile.ValueProtectedString) error {
-	return b.extendedWriter.writePStringNoCache(rbxfile.ValueString(val))
 }
 func (b *joinSerializeWriter) writeNewContent(val rbxfile.ValueContent) error {
 	return b.writeVarLengthString(string(val))

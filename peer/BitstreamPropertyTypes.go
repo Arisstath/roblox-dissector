@@ -252,24 +252,6 @@ func (b *extendedReader) readBrickColor() (rbxfile.ValueBrickColor, error) {
 	return rbxfile.ValueBrickColor(val), err
 }
 
-func (b *extendedReader) readObject(context *CommunicationContext, caches *Caches) (datamodel.Reference, error) {
-	if context.ServerPeerID != 0 {
-		return b.readObjectPeerID(context)
-	}
-	scope, err := b.readCachedScope(caches)
-	if err != nil && err != ErrCacheReadOOB { // TODO: hack! physics packets may have problems with caches
-		return datamodel.Reference{}, err
-	}
-	reference := datamodel.Reference{Scope: scope}
-	if scope != "NULL" {
-		reference.Id, err = b.readUint32LE()
-	} else {
-		reference.IsNull = true
-	}
-
-	return reference, err
-}
-
 func (b *extendedReader) readCFrameSimple() (rbxfile.ValueCFrame, error) {
 	var err error
 	val := rbxfile.ValueCFrame{}
@@ -1066,6 +1048,9 @@ func (b *extendedReader) readSerializedValueGeneric(reader PacketReader, valueTy
 	switch valueType {
 	case PropertyTypeNil: // I assume this is how it works, anyway
 		result = nil
+		err = nil
+	case PropertyTypeProtectedString0, PropertyTypeProtectedString1, PropertyTypeProtectedString2, PropertyTypeProtectedString3:
+		result = nil // not serialized in any way
 		err = nil
 	case PropertyTypeStringNoCache:
 		temp, err = b.readVarLengthString()

@@ -46,7 +46,7 @@ func decodeReplicationInstance(reader PacketReader, thisStream instanceReader, l
 	var reference datamodel.Reference
 	context := reader.Context()
 
-	reference, err = thisStream.ReadObject(reader)
+	reference, err = thisStream.readObject(reader.Context())
 	if err != nil {
 		return nil, errors.New("while parsing self: " + err.Error())
 	}
@@ -88,7 +88,7 @@ func decodeReplicationInstance(reader PacketReader, thisStream instanceReader, l
 		}
 	}
 
-	reference, err = thisStream.ReadObject(reader)
+	reference, err = thisStream.readObject(reader.Context())
 	if err != nil {
 		return repInstance, errors.New("while parsing parent: " + err.Error())
 	}
@@ -123,7 +123,7 @@ func (instance *ReplicationInstance) Serialize(writer PacketWriter, stream insta
 	if instance == nil || instance.Instance == nil {
 		return errors.New("self is nil in serialize repl inst")
 	}
-	err = stream.WriteObject(instance.Instance, writer)
+	err = stream.writeObject(instance.Instance, writer.Context())
 	if err != nil {
 		return err
 	}
@@ -149,5 +149,5 @@ func (instance *ReplicationInstance) Serialize(writer PacketWriter, stream insta
 		}
 	}
 
-	return stream.WriteObject(instance.Parent, writer)
+	return stream.writeObject(instance.Parent, writer.Context())
 }

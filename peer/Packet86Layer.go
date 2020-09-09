@@ -43,7 +43,7 @@ func (thisStream *extendedReader) DecodePacket86Layer(reader PacketReader, layer
 	context := reader.Context()
 	for {
 		subpacket := &Packet86LayerSubpacket{}
-		reference, err := thisStream.ReadObject(reader)
+		reference, err := thisStream.readObject(reader.Context())
 		if err != nil {
 			return layer, err
 		}
@@ -52,7 +52,7 @@ func (thisStream *extendedReader) DecodePacket86Layer(reader PacketReader, layer
 		}
 		subpacket.Instance1, _ = context.InstancesByReference.TryGetInstance(reference)
 
-		reference, err = thisStream.ReadObject(reader)
+		reference, err = thisStream.readObject(reader.Context())
 		if err != nil {
 			return layer, err
 		}
@@ -80,11 +80,11 @@ func (layer *Packet86Layer) Serialize(writer PacketWriter, stream *extendedWrite
 			println("WARNING: 0x86 skipping serialize because instances don't exist yet!")
 			continue
 		}
-		err = stream.WriteObject(subpacket.Instance1, writer)
+		err = stream.writeObject(subpacket.Instance1, writer.Context())
 		if err != nil {
 			return err
 		}
-		err = stream.WriteObject(subpacket.Instance2, writer)
+		err = stream.writeObject(subpacket.Instance2, writer.Context())
 		if err != nil {
 			return err
 		}
