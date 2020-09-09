@@ -191,6 +191,9 @@ func (b *extendedReader) readObject(context *CommunicationContext) (datamodel.Re
 		ref.Scope = fmt.Sprintf("RBXPID%d", peerID)
 	}
 	ref.Id, err = b.readUint32LE()
+	if err != nil {
+		return ref, err
+	}
 
 	return ref, nil
 }
@@ -233,17 +236,6 @@ func (b *extendedReader) readUint32AndString() (interface{}, error) {
 	stringLen, err := b.readUint32BE()
 	if err != nil {
 		return "", err
-	}
-	return b.readASCII(int(stringLen))
-}
-
-func (b *extendedReader) readScope() (interface{}, error) {
-	stringLen, err := b.readUint32BE()
-	if err != nil {
-		return "", err
-	}
-	if stringLen != 0x23 {
-		return "", errors.New("invalid scope len")
 	}
 	return b.readASCII(int(stringLen))
 }

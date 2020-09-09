@@ -253,6 +253,9 @@ func (win *DissectorWindow) CaptureFromServer(port uint16, schema *peer.NetworkS
 		listViewer.mainWidget.SetPosition(paneHeight)
 		listViewer.mainWidget.SetWideHandle(true)
 	})
+	if err != nil {
+		return err
+	}
 	server, err := peer.NewCustomServer(ctx, port, schema, dm, instanceDictionary)
 	if err != nil {
 		return err

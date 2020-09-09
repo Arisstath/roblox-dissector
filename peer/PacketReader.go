@@ -213,7 +213,7 @@ func (reader *DefaultPacketReader) readGeneric(stream *extendedReader, layers *P
 			layers.Error = fmt.Errorf("failed to decode reliable packet %02X: %s", layers.PacketType, err.Error())
 		}
 	} else {
-		layers.Error = fmt.Errorf("Unknown packetType %d", layers.PacketType)
+		layers.Error = fmt.Errorf("unknown packetType %d", layers.PacketType)
 	}
 }
 

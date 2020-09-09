@@ -281,6 +281,10 @@ func NewPacketListViewer(title string, conversation *Conversation) (*PacketListV
 				mainPacket := viewer.packetStore[mainPacketId]
 				err = ShowPacketListViewerWindow(fmt.Sprintf("View packet %d: %s", baseId, mainPacket.String()), mainPacket)
 			}
+			if err != nil {
+				println("failed to make packet viewer")
+				return
+			}
 		})
 		popupMenu.Append(showAction)
 		popupMenu.ShowAll()

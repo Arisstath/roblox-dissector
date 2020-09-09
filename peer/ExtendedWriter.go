@@ -182,28 +182,6 @@ func (b *extendedWriter) writeCached(val string, caches *Caches) error {
 	return b.writeWithCache(val, cache, (*extendedWriter).writeUint32AndString)
 }
 
-func (b *extendedWriter) writeJoinRef(ref datamodel.Reference, context *CommunicationContext) error {
-	var err error
-	if ref.IsNull {
-		err = b.WriteByte(0)
-		return err
-	}
-	if ref.Scope == context.InstanceTopScope {
-		err = b.WriteByte(0xFF)
-	} else {
-		err = b.WriteByte(uint8(len(ref.Scope)))
-		if err != nil {
-			return err
-		}
-		err = b.writeASCII(ref.Scope)
-	}
-	if err != nil {
-		return err
-	}
-
-	return b.writeUint32LE(ref.Id)
-}
-
 // TODO: Implement a similar system for readers, where it simply returns an instance
 func (b *extendedWriter) writeObject(object *datamodel.Instance, context *CommunicationContext) error {
 	if object == nil {
