@@ -456,13 +456,6 @@ func (b *extendedReader) readNewPString(caches *Caches) (rbxfile.ValueString, er
 	return rbxfile.ValueString(val), err
 }
 
-func (b *joinSerializeReader) readNewProtectedString() (rbxfile.ValueProtectedString, error) {
-	return rbxfile.ValueProtectedString(nil), nil
-}
-func (b *extendedReader) readNewProtectedString(caches *Caches) (rbxfile.ValueProtectedString, error) {
-	return rbxfile.ValueProtectedString(nil), nil
-}
-
 func (b *extendedReader) readLuauProtectedString(deferred deferredStrings) (datamodel.ValueSignedProtectedString, error) {
 	return b.readLuauProtectedStringRaw(deferred)
 }
@@ -1050,7 +1043,7 @@ func (b *extendedReader) readSerializedValueGeneric(reader PacketReader, valueTy
 		result = nil
 		err = nil
 	case PropertyTypeProtectedString0, PropertyTypeProtectedString1, PropertyTypeProtectedString2, PropertyTypeProtectedString3:
-		result = nil // not serialized in any way
+		result = rbxfile.ValueProtectedString(nil) // not serialized in any way
 		err = nil
 	case PropertyTypeStringNoCache:
 		temp, err = b.readVarLengthString()
