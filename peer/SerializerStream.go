@@ -44,23 +44,6 @@ func (b *extendedReader) ReadSerializedValue(reader PacketReader, valueType uint
 	switch valueType {
 	case PropertyTypeString:
 		result, err = b.readNewPString(reader.Caches())
-	case PropertyTypeLuauString:
-		result, err = b.readLuauProtectedString(deferred)
-	case PropertyTypeInstance:
-		var reference datamodel.Reference
-		reference, err = b.readObject(reader.Context())
-		if err != nil {
-			return nil, err
-		}
-		// Note: NULL is a valid reference!
-		if reference.IsNull {
-			result = datamodel.ValueReference{Instance: nil, Reference: reference}
-		} else {
-			// CreateInstance: allow forward references in ID_NEW_INST or ID_PROP
-			var instance *datamodel.Instance
-			instance, err = reader.Context().InstancesByReference.CreateInstance(reference)
-			result = datamodel.ValueReference{Instance: instance, Reference: reference}
-		}
 	case PropertyTypeContent:
 		result, err = b.readNewContent(reader.Context())
 	case PropertyTypeTuple:
@@ -190,23 +173,6 @@ func (b *joinSerializeReader) ReadSerializedValue(reader PacketReader, valueType
 	switch valueType {
 	case PropertyTypeString:
 		result, err = b.readNewPString()
-	case PropertyTypeLuauString:
-		result, err = b.readLuauProtectedString(deferred)
-	case PropertyTypeInstance:
-		var reference datamodel.Reference
-		reference, err = b.readObject(reader.Context())
-		if err != nil {
-			return datamodel.ValueReference{Instance: nil, Reference: reference}, err
-		}
-		// Note: NULL is a valid reference!
-		if reference.IsNull {
-			result = datamodel.ValueReference{Instance: nil, Reference: reference}
-			break
-		}
-		// CreateInstance: allow forward references
-		var instance *datamodel.Instance
-		instance, err = reader.Context().InstancesByReference.CreateInstance(reference)
-		result = datamodel.ValueReference{Instance: instance, Reference: reference}
 	case PropertyTypeContent:
 		result, err = b.readNewContent()
 	default:

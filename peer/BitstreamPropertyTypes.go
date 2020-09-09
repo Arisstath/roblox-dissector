@@ -1120,6 +1120,23 @@ func (b *extendedReader) readSerializedValueGeneric(reader PacketReader, valueTy
 		result, err = b.readDateTime()
 	case PropertyTypeOptimizedString:
 		result, err = b.readOptimizedString(reader.Context())
+	case PropertyTypeLuauString:
+		result, err = b.readLuauProtectedString(deferred)
+	case PropertyTypeInstance:
+		var reference datamodel.Reference
+		reference, err = b.readObject(reader.Context())
+		if err != nil {
+			return nil, err
+		}
+		// Note: NULL is a valid reference!
+		if reference.IsNull {
+			result = datamodel.ValueReference{Instance: nil, Reference: reference}
+		} else {
+			// CreateInstance: allow forward references
+			var instance *datamodel.Instance
+			instance, err = reader.Context().InstancesByReference.CreateInstance(reference)
+			result = datamodel.ValueReference{Instance: instance, Reference: reference}
+		}
 	default:
 		err = fmt.Errorf("unsupported value type %d", valueType)
 	}
