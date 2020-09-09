@@ -535,6 +535,8 @@ func (b *extendedWriter) writeSerializedValueGeneric(val rbxfile.Value, valueTyp
 		err = b.writeSharedString(val.(*datamodel.ValueDeferredString), deferred)
 	case PropertyTypeDateTime:
 		err = b.writeDateTime(val.(datamodel.ValueDateTime))
+	case PropertyTypeProtectedString0, PropertyTypeProtectedString1, PropertyTypeProtectedString2, PropertyTypeProtectedString3:
+		err = nil
 	default:
 		return errors.New("Unsupported property type: " + strconv.Itoa(int(valueType)))
 	}
