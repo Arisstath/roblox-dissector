@@ -68,7 +68,7 @@ func (stream *extendedReader) DecodePacket90Layer(reader PacketReader, layers *P
 		return layer, errors.New("could not match placeId regex (malformed JoinData)")
 	}
 
-	layer.PubKeyData, err = thisStream.readString(32)
+	layer.PubKeyData, err = thisStream.readString(16)
 	if err != nil {
 		return layer, err
 	}
