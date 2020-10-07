@@ -758,11 +758,6 @@ func protocolSyncViewer(packet *peer.Packet90Layer) (gtk.IWidget, error) {
 		return nil, err
 	}
 	box.Add(joinData)
-	pubKeyData, err := newLabelF("Public key data: %X", packet.PubKeyData)
-	if err != nil {
-		return nil, err
-	}
-	box.Add(pubKeyData)
 
 	for i, ver := range packet.VersionID {
 		label, err := newLabelF("Version id %d: %08X", i, uint32(ver))
