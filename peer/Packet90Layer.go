@@ -17,7 +17,6 @@ type Packet90Layer struct {
 	Int2           uint8
 	RequestedFlags []string
 	JoinData       string
-	PubKeyData     []byte
 	VersionID      Packet90VersionID
 }
 
@@ -66,11 +65,6 @@ func (stream *extendedReader) DecodePacket90Layer(reader PacketReader, layers *P
 		reader.Context().PlaceID = int64(placeID)
 	} else {
 		return layer, errors.New("could not match placeId regex (malformed JoinData)")
-	}
-
-	layer.PubKeyData, err = thisStream.readString(16)
-	if err != nil {
-		return layer, err
 	}
 
 	id, err := thisStream.readUint32BE()
@@ -155,11 +149,6 @@ func (layer *Packet90Layer) Serialize(writer PacketWriter, stream *extendedWrite
 		}
 	}
 	err = rawStream.writeVarLengthString(layer.JoinData)
-	if err != nil {
-		return err
-	}
-
-	err = rawStream.allBytes(layer.PubKeyData)
 	if err != nil {
 		return err
 	}
